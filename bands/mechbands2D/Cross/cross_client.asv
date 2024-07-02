@@ -1,0 +1,36 @@
+%% cross-client
+% We are going to write this script to implement the mechanical
+% bandstructure for the cross phononic shield. 
+
+% Parameters
+
+P.beamMat = 'diamond';                  % beam material name
+P.anisoMat = 1;
+P.rxtal = 45;  
+
+
+% Unit cell parameters
+P.a = 455e-9;
+P.hc = 393e-9;
+P.wc = 88e-9;
+P.th = 160e-9;
+P.r1 = 10e-9;
+P.r2 = 10e-9;
+
+P.datLoc = 'E:\michael\omc-comsol-master-files\cross\initial_study';
+
+P.mbfreq = 0;                           % target frequency - set to 0 for bandstructure simulations
+P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 5;                           % no. of bands to solve for
+P.max_dof = 3e6;                        % max # of degrees of freedom
+P.meshSize = 4;
+
+% plotting
+P.plotgeom = 1;             % 1 to plot unit cell geometry
+P.savegeom = 1;             % 1 to save unit cell geometry
+P.saveplots = 0;            % 1 to save displacement plots
+P.saveMPH = 1;              % 1 to save COMSOL model file
+P.savebndplot = 1;          % 1 to save bandstructure plot
+P.savedat = 1;              % 1 to save data structure containing results
+
+bds = solveBands(P);

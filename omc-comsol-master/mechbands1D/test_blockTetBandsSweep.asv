@@ -1,0 +1,330 @@
+clear all; clc; close all;
+clear P
+
+% unit cell params
+P.xsect = 'rect';                    % beam cross sectional shape  - 'tri' or 'rect'
+P.beamMat = 'diamond';              % beam material name
+P.celltype = 'blockTet';                    % hole shape
+P.a = 500e-9;%1000e-9;                           % nominal lattice constant
+P.w = 500e-9;%1000e-9;                          % beam width
+P.th = 200e-9;%230e-9;                       % beam thickness
+P.hx = 350e-9;%670e-9;                          % nominal hole height (along x-axis)
+P.hy = 50e-9;
+
+
+P.filRad = 0e-9;
+
+P.nperiod = 1;                      % no. of periods to simulate for
+P.holeatedge = 0;                   % 1/0 for hole at edge/center of unit cell
+
+P.kpts = 10;                         % no. of k-points, EXCLUDING gamma point
+P.nbands = 5;                       % no. of bands to solve for
+
+P.solveasym = 1;                    % 1 to solve for antisymmetric bands
+P.completeBandGaps = 1;             % 1 to plot complete bandgaps (across all symmetries)
+P.plotgeom = 1;                     % 1 to plot the geometry
+P.savedat = 1;                      % 1 to save data structures
+P.savebndplot = 1;                  % 1 to save bandstructure plot
+P.saveplots = 1;                    % 1 to save displacement and strain profiles
+
+%% mechanical simulation parameters 
+% solid mechanics solver parameters
+P.mbeveny = 1;                      % 1 to find even mechanical mode about y
+P.mbevenz = 1;                      % 1 to find even mechanical mode about z
+P.mbfreq = 0;                       % target frequency
+
+% % material properties
+% P.E = 1050e9;                       % Young's modulus
+% P.rho = 3500;                       % density
+% P.nu = 0.2;                         % Poisson ratio
+%  
+% % Anisotropic elasticity matrix - COMSOL v4+ ordering: 
+% % 11, 12,22, 13,23,33, 14,24,34,44, 15,25,35,45,55, 16,26,36,46,56,66
+% % disable P.D is using isotropic material (defined by E, nu, rho)
+% c11 = 1076e9;
+% c12 = 125e9;
+% c44 = 578e9;
+% P.D = [c11, c12,c11, c12,c12,c11, 0,0,0,c44, 0,0,0,0,c44, 0,0,0,0,0,c44];
+P.anisoMat = 1;
+P.rxtal = 45;                       % ccw rotation of elasticity matrix in deg 
+                                    % from <100> inplane direction about <100> surface normal
+
+%%
+P.max_dof = 3e6;                      % max # of degrees of freedom
+
+%% Reference
+% datLoc = 'D:\Files\PhonXtal\BlockTet\RefCell\';
+% bds = solveBands(P,datLoc);
+
+%% Sweep thickness
+datLoc = 'D:\Files\PhonXtal\BlockTet\SweepTh\';
+thAll = [50,100,200,300,400,500]*1e-9;
+clear cbg
+cbg.mid = [];
+cbg.gap = [];
+cbg.gmr = [];
+YeZeG = [];
+YoZeG = [];
+YeZoG = [];
+YoZoG = [];
+for th = thAll
+    Pd = P;
+    Pd.th = th;
+    bds = solveBands2(Pd,datLoc);
+    
+    % compile complete bandgaps
+    gmr0 = bds.complete.gapSize./bds.complete.midGap;
+    [gmr,sortIdxs] = sort(gmr0,'descend');
+    cbg.gmr(end+1,1:length(bds.complete.midGap)) = gmr;
+    cbg.mid(end+1,1:length(bds.complete.midGap)) = bds.complete.midGap(sortIdxs);
+    cbg.gap(end+1,1:length(bds.complete.midGap)) = bds.complete.gapSize(sortIdxs);
+    
+    % compile gamma point freqs
+    [nr,nc] = size(bds.sym.F);
+    YeZeG(1:nc,end+1) = bds.sym.F(1,1:nc)';
+    YoZeG(1:nc,end+1) = bds.asymYsymZ.F(1,1:nc)';
+    YeZoG(1:nc,end+1) = bds.symYasymZ.F(1,1:nc)';
+    YoZoG(1:nc,end+1) = bds.asym.F(1,1:nc)';
+    
+end
+[gmrMax,gmrMaxIdx] = max(cbg.gmr(:));
+[swpIdx,bIdx] = ind2sub(size(cbg.gmr),gmrMaxIdx);
+disp(['max complete bandgap at sweep index ',num2str(swpIdx),', th = ',num2str(thAll(swpIdx)*1e9)])
+disp(['midgap = ',num2str(cbg.mid(swpIdx,bIdx)*1e-9),' GHz, ',...
+      'gap size = ',num2str(cbg.gap(swpIdx,bIdx)*1e-9),' GHz, ',...
+      'gap/midgap ratio = ',num2str(cbg.gmr(swpIdx,bIdx))])
+pathMat = [datLoc,'cbg.mat'];
+save(pathMat,'cbg');
+disp('sweep done')
+
+figure;
+hold on; box on;
+plot(thAll*1e9,YeZeG*1e-9,'kx-','linewidth',1);
+plot(thAll*1e9,YoZoG*1e-9,'bs:','linewidth',1.5);
+plot(thAll*1e9,YeZoG*1e-9,'m^--','linewidth',1);
+plot(thAll*1e9,YoZeG*1e-9,'o-.','linewidth',1,'Color',80/256*[1 1 1]);
+% legend({'even','odd','even Y odd Z','odd Y even Z'},'location','southoutside','orientation','horizontal')
+xlabel('th / nm'); ylabel('Frequency / GHz');
+xlim([min(thAll) max(thAll)]*1e9)
+saveas(gcf,[datLoc,'sweep.fig']);
+saveas(gcf,[datLoc,'sweep.png']);
+close
+
+%% Sweep hx/a
+datLoc = 'D:\Files\PhonXtal\BlockTet\SweepHx_a\';
+hxaAll = 0.1:0.1:0.9;
+clear cbg
+cbg.mid = [];
+cbg.gap = [];
+cbg.gmr = [];
+YeZeG = [];
+YoZeG = [];
+YeZoG = [];
+YoZoG = [];
+for hxa = hxaAll
+    Pd = P;
+    Pd.hx = hxa*Pd.a;
+    bds = solveBands2(Pd,datLoc);
+    
+    % compile complete bandgaps
+    gmr0 = bds.complete.gapSize./bds.complete.midGap;
+    [gmr,sortIdxs] = sort(gmr0,'descend');
+    cbg.gmr(end+1,1:length(bds.complete.midGap)) = gmr;
+    cbg.mid(end+1,1:length(bds.complete.midGap)) = bds.complete.midGap(sortIdxs);
+    cbg.gap(end+1,1:length(bds.complete.midGap)) = bds.complete.gapSize(sortIdxs);
+    
+    % compile gamma point freqs
+    [nr,nc] = size(bds.sym.F);
+    YeZeG(1:nc,end+1) = bds.sym.F(1,1:nc)';
+    YoZeG(1:nc,end+1) = bds.asymYsymZ.F(1,1:nc)';
+    YeZoG(1:nc,end+1) = bds.symYasymZ.F(1,1:nc)';
+    YoZoG(1:nc,end+1) = bds.asym.F(1,1:nc)';
+    
+end
+[gmrMax,gmrMaxIdx] = max(cbg.gmr(:));
+[swpIdx,bIdx] = ind2sub(size(cbg.gmr),gmrMaxIdx);
+disp(['max complete bandgap at sweep index ',num2str(swpIdx),', hx/a = ',num2str(hxaAll(swpIdx))])
+disp(['midgap = ',num2str(cbg.mid(swpIdx,bIdx)*1e-9),' GHz, ',...
+      'gap size = ',num2str(cbg.gap(swpIdx,bIdx)*1e-9),' GHz, ',...
+      'gap/midgap ratio = ',num2str(cbg.gmr(swpIdx,bIdx))])
+pathMat = [datLoc,'cbg.mat'];
+save(pathMat,'cbg');
+disp('sweep done')
+
+figure;
+hold on; box on;
+plot(hxaAll,YeZeG*1e-9,'kx-','linewidth',1);
+plot(hxaAll,YoZoG*1e-9,'bs:','linewidth',1.5);
+plot(hxaAll,YeZoG*1e-9,'m^--','linewidth',1);
+plot(hxaAll,YoZeG*1e-9,'o-.','linewidth',1,'Color',80/256*[1 1 1]);
+% legend({'even','odd','even Y odd Z','odd Y even Z'},'location','southoutside','orientation','horizontal')
+xlabel('hx/a'); ylabel('Frequency / GHz');
+xlim([min(hxaAll) max(hxaAll)])
+saveas(gcf,[datLoc,'sweep.fig']);
+saveas(gcf,[datLoc,'sweep.png']);
+close
+
+%% Sweep hy/w
+datLoc = 'D:\Files\PhonXtal\BlockTet\SweepHy_w\';
+hywAll = 0.1:0.1:0.9;
+clear cbg
+cbg.mid = [];
+cbg.gap = [];
+cbg.gmr = [];
+YeZeG = [];
+YoZeG = [];
+YeZoG = [];
+YoZoG = [];
+for hyw = hywAll
+    Pd = P;
+    Pd.hy = hyw*Pd.a;
+    bds = solveBands2(Pd,datLoc);
+    
+    % compile complete bandgaps
+    gmr0 = bds.complete.gapSize./bds.complete.midGap;
+    [gmr,sortIdxs] = sort(gmr0,'descend');
+    cbg.gmr(end+1,1:length(bds.complete.midGap)) = gmr;
+    cbg.mid(end+1,1:length(bds.complete.midGap)) = bds.complete.midGap(sortIdxs);
+    cbg.gap(end+1,1:length(bds.complete.midGap)) = bds.complete.gapSize(sortIdxs);
+    
+    % compile gamma point freqs
+    [nr,nc] = size(bds.sym.F);
+    YeZeG(1:nc,end+1) = bds.sym.F(1,1:nc)';
+    YoZeG(1:nc,end+1) = bds.asymYsymZ.F(1,1:nc)';
+    YeZoG(1:nc,end+1) = bds.symYasymZ.F(1,1:nc)';
+    YoZoG(1:nc,end+1) = bds.asym.F(1,1:nc)';
+    
+end
+[gmrMax,gmrMaxIdx] = max(cbg.gmr(:));
+[swpIdx,bIdx] = ind2sub(size(cbg.gmr),gmrMaxIdx);
+disp(['max complete bandgap at sweep index ',num2str(swpIdx),', hy/w = ',num2str(hywAll(swpIdx))])
+disp(['midgap = ',num2str(cbg.mid(swpIdx,bIdx)*1e-9),' GHz, ',...
+      'gap size = ',num2str(cbg.gap(swpIdx,bIdx)*1e-9),' GHz, ',...
+      'gap/midgap ratio = ',num2str(cbg.gmr(swpIdx,bIdx))])
+pathMat = [datLoc,'cbg.mat'];
+save(pathMat,'cbg');
+disp('sweep done')
+
+figure;
+hold on; box on;
+plot(hywAll,YeZeG*1e-9,'kx-','linewidth',1);
+plot(hywAll,YoZoG*1e-9,'bs:','linewidth',1.5);
+plot(hywAll,YeZoG*1e-9,'m^--','linewidth',1);
+plot(hywAll,YoZeG*1e-9,'o-.','linewidth',1,'Color',80/256*[1 1 1]);
+% legend({'even','odd','even Y odd Z','odd Y even Z'},'location','southoutside','orientation','horizontal')
+xlabel('hy/w'); ylabel('Frequency / GHz');
+xlim([min(hywAll) max(hywAll)])
+saveas(gcf,[datLoc,'sweep.fig']);
+saveas(gcf,[datLoc,'sweep.png']);
+close
+
+%% Sweep a, keep hx/a
+datLoc = 'D:\Files\PhonXtal\BlockTet\Sweepa\';
+hxa0 = P.hx/P.a;
+aAll = (300:50:700)*1e-9;
+clear cbg
+cbg.mid = [];
+cbg.gap = [];
+cbg.gmr = [];
+YeZeG = [];
+YoZeG = [];
+YeZoG = [];
+YoZoG = [];
+for a = aAll
+    Pd = P;
+    Pd.a = a;
+    Pd.hx = hxa0*Pd.a;
+    bds = solveBands2(Pd,datLoc);
+    
+    % compile complete bandgaps
+    gmr0 = bds.complete.gapSize./bds.complete.midGap;
+    [gmr,sortIdxs] = sort(gmr0,'descend');
+    cbg.gmr(end+1,1:length(bds.complete.midGap)) = gmr;
+    cbg.mid(end+1,1:length(bds.complete.midGap)) = bds.complete.midGap(sortIdxs);
+    cbg.gap(end+1,1:length(bds.complete.midGap)) = bds.complete.gapSize(sortIdxs);
+    
+    % compile gamma point freqs
+    [nr,nc] = size(bds.sym.F);
+    YeZeG(1:nc,end+1) = bds.sym.F(1,1:nc)';
+    YoZeG(1:nc,end+1) = bds.asymYsymZ.F(1,1:nc)';
+    YeZoG(1:nc,end+1) = bds.symYasymZ.F(1,1:nc)';
+    YoZoG(1:nc,end+1) = bds.asym.F(1,1:nc)';
+    
+end
+[gmrMax,gmrMaxIdx] = max(cbg.gmr(:));
+[swpIdx,bIdx] = ind2sub(size(cbg.gmr),gmrMaxIdx);
+disp(['max complete bandgap at sweep index ',num2str(swpIdx),', a = ',num2str(aAll(swpIdx)*1e9)])
+disp(['midgap = ',num2str(cbg.mid(swpIdx,bIdx)*1e-9),' GHz, ',...
+      'gap size = ',num2str(cbg.gap(swpIdx,bIdx)*1e-9),' GHz, ',...
+      'gap/midgap ratio = ',num2str(cbg.gmr(swpIdx,bIdx))])
+pathMat = [datLoc,'cbg.mat'];
+save(pathMat,'cbg');
+disp('sweep done')
+
+figure;
+hold on; box on;
+plot(aAll*1e9,YeZeG*1e-9,'kx-','linewidth',1);
+plot(aAll*1e9,YoZoG*1e-9,'bs:','linewidth',1.5);
+plot(aAll*1e9,YeZoG*1e-9,'m^--','linewidth',1);
+plot(aAll*1e9,YoZeG*1e-9,'o-.','linewidth',1,'Color',80/256*[1 1 1]);
+% legend({'even','odd','even Y odd Z','odd Y even Z'},'location','southoutside','orientation','horizontal')
+xlabel('a / nm'); ylabel('Frequency / GHz');
+xlim([min(aAll) max(thAll)]*1e9)
+saveas(gcf,[datLoc,'sweep.fig']);
+saveas(gcf,[datLoc,'sweep.png']);
+close
+
+%% Sweep w, keep hy/w
+datLoc = 'D:\Files\PhonXtal\BlockTet\Sweepw\';
+hyw0 = P.hy/P.w;
+wAll = (300:50:700)*1e-9;
+clear cbg
+cbg.mid = [];
+cbg.gap = [];
+cbg.gmr = [];
+YeZeG = [];
+YoZeG = [];
+YeZoG = [];
+YoZoG = [];
+for w = wAll
+    Pd = P;
+    Pd.w = w;
+    Pd.hy = hyw0*Pd.w;
+    bds = solveBands2(Pd,datLoc);
+    
+    % compile complete bandgaps
+    gmr0 = bds.complete.gapSize./bds.complete.midGap;
+    [gmr,sortIdxs] = sort(gmr0,'descend');
+    cbg.gmr(end+1,1:length(bds.complete.midGap)) = gmr;
+    cbg.mid(end+1,1:length(bds.complete.midGap)) = bds.complete.midGap(sortIdxs);
+    cbg.gap(end+1,1:length(bds.complete.midGap)) = bds.complete.gapSize(sortIdxs);
+    
+    % compile gamma point freqs
+    [nr,nc] = size(bds.sym.F);
+    YeZeG(1:nc,end+1) = bds.sym.F(1,1:nc)';
+    YoZeG(1:nc,end+1) = bds.asymYsymZ.F(1,1:nc)';
+    YeZoG(1:nc,end+1) = bds.symYasymZ.F(1,1:nc)';
+    YoZoG(1:nc,end+1) = bds.asym.F(1,1:nc)';
+    
+end
+[gmrMax,gmrMaxIdx] = max(cbg.gmr(:));
+[swpIdx,bIdx] = ind2sub(size(cbg.gmr),gmrMaxIdx);
+disp(['max complete bandgap at sweep index ',num2str(swpIdx),', w = ',num2str(wAll(swpIdx)*1e9)])
+disp(['midgap = ',num2str(cbg.mid(swpIdx,bIdx)*1e-9),' GHz, ',...
+      'gap size = ',num2str(cbg.gap(swpIdx,bIdx)*1e-9),' GHz, ',...
+      'gap/midgap ratio = ',num2str(cbg.gmr(swpIdx,bIdx))])
+pathMat = [datLoc,'cbg.mat'];
+save(pathMat,'cbg');
+disp('sweep done')
+
+figure;
+hold on; box on;
+plot(wAll*1e9,YeZeG*1e-9,'kx-','linewidth',1);
+plot(wAll*1e9,YoZoG*1e-9,'bs:','linewidth',1.5);
+plot(wAll*1e9,YeZoG*1e-9,'m^--','linewidth',1);
+plot(wAll*1e9,YoZeG*1e-9,'o-.','linewidth',1,'Color',80/256*[1 1 1]);
+% legend({'even','odd','even Y odd Z','odd Y even Z'},'location','southoutside','orientation','horizontal')
+xlabel('w / nm'); ylabel('Frequency / GHz');
+saveas(gcf,[datLoc,'sweep.fig']);
+saveas(gcf,[datLoc,'sweep.png']);
+close
