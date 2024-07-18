@@ -68,7 +68,25 @@ elseif strcmp(P.beamMat,'silicon') || strcmp(P.beamMat,'Si')
     P.p11 = -0.094;
     P.p12 = 0.017;
     P.p44 = -0.051;
+elseif strcmp(P.beamMat,'silicon carbide') || strcmp(P.beamMat,'SiC')
+    P.beamMat = 'silicon carbide';
+    % material properties 
+    P.E = 410e9;     % Young's modulus (Pa), single crystal 
+    P.rho = 3210;   % density (kg/m3)
+    P.nu = 0.25;    % Poisson ratio
+
+    % Anisotropic elasticity matrix elements (units: Pa)
+    c11 = 166e9;
+    c12 = 64e9;
+    c44 = 80e9;
     
+    % index of refraction in material
+    P.nbeam = 2.561;
+    
+    % photoelastic constants (need to update)
+    P.p11 = -0.094;
+    P.p12 = 0.017;
+    P.p44 = -0.051;
     
     
 end

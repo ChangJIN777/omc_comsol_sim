@@ -41,8 +41,8 @@ P.rxtal = 0;                            % ccw rotation of elasticity matrix in d
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
 %% Single solve
-% datLoc = 'D:\Files\PhonXtal\BlockTet\ASN\';
-% bds = solveBands(P,datLoc);
+datLoc = '.\test\BlockTet\ASN\';
+bds = solveBands(P,datLoc);
 
 %% Loop
 datLoc = 'D:\Files\PhonXtal\BlockTet\ASN\';

@@ -68,7 +68,7 @@ P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future im
 
 % plotting & saving
 P.plotgeom = 0;                         % 1 to plot the geometry
-P.storeMPH = 1;                         % 1 to save COMSOL model file
+P.storeMPH = 0;                         % 1 to save COMSOL model file
 P.plotMech = 1*P.solveMech;             % 1 to plot displacement and strain profiles
 P.plotOpt = 1*P.solveOpt;               % 1 to plot E-field profiles
 P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
@@ -131,5 +131,5 @@ P.max_dof = 5e6;                        % max # of degrees of freedom
 
 %% single run
 % data location to save files in
-datLoc = '.\OMCTri35SiV\'; 
+datLoc = '.\test\070324\'; 
 [ds,model] = RunNanobeamFEM(P,datLoc);

@@ -4,7 +4,7 @@ function ds = solveBands(vars,P)
 
 
 P.beamMat = 'diamond';                  % beam material name
-P.anisoMat = 1;
+P.anisoMat = 1;clc
 P.rxtal = 45;  
 
 P.a = vars.a*1e-9;%580e-9;                           % nominal lattice constant
@@ -51,6 +51,7 @@ if ~isfield(P,'fileBase')
 end
 fBase = P.fileBase;
 if isempty(dir([datLoc,fBase,'_bds.mat']))
+    tStart = tic;
     disp('Solving with symmetric boundary condition');
     P.mbevenz = 1;
     sym = runBands(P);
@@ -137,7 +138,8 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
         saveas(gcf,[pathFig,'.png']);
         saveas(gcf,[pathFig,'.fig']);
     end
-    
+    tEnd = toc(tStart);
+    disp(['Simulation time = ',num2str(tEnd/60,'%.2f'),'mins'])
 else
     disp('Data folder exists in working directory')
     ds.sym = [];

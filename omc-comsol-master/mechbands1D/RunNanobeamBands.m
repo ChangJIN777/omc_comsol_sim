@@ -66,6 +66,7 @@ end
 % if using triangular cross section, recalculate height of beam
 if strcmp(P.xsect,'tri')
     thi = wid/(2*tan(P.theta*pi/180));
+    P.th = thi;
     P.mbevenz = 0;
 end
 

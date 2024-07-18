@@ -5,7 +5,7 @@
 % 2. We'll run it for kpts = 2
 
 
-addpath('C:\Users\mhaas\Documents\GitHub\device_design\bands\mechbands2D\Cross')
+addpath('.\test\')
 
 % a, wc, hc
 
@@ -29,7 +29,7 @@ P.th = 160e-9;
 P.r1 = 30e-9;
 P.r2 = 30e-9;
 target_freq = 13e9;
-P.datLoc = 'E:\michael\omc-comsol-master-files\cross\opt_v3\';
+P.datLoc = '.\test\';
 
 if min(vars.a-vars.hc,vars.wc) < 60
     disp('Fabrication intolerant');
