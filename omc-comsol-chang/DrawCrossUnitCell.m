@@ -45,16 +45,54 @@ wp.geom.create('fil2', 'Fillet');
 wp.geom.feature('fil2').set('radius', r2);
 wp.geom.feature('fil2').selection('point').set('fil1(1)', [8 9 16 17]);
 
-ucellgeom.create('ext1', 'Extrude');
-ucellgeom.feature('ext1').selection('input').set({'wp1'});
+% extrude
+finBeamTag = 'ucellholes';
+ucellHoles = ucellgeom.feature.create(finBeamTag, 'Extrude');
+ucellHoles.selection('input').set({'wp1'});
 if abssym
-ucellgeom.feature('ext1').setIndex('distance', th/2, 0);
+ucellHoles.setIndex('distance', th/2, 0);
 else
-ucellgeom.feature('ext1').setIndex('distance', th, 0);
+ucellHoles.setIndex('distance', th, 0);
 end
 ucellgeom.run;
 ucellgeom.run('fin');
 
+%% Symmetry in z 
+if abs(P.mbevenz)
+    symZth = th/2;
+    symW = a;
+    % create symmetry block
+    symZWP = ucellgeom.feature.create('symZWP', 'WorkPlane');
+    symZWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -symZth);
+    symZPlane = symZWP.geom.feature.create('symZPlane', 'Rectangle');
+    symZPlane.set('type', 'solid').set('base', 'corner');
+    symZPlane.set('pos', [-P.a/2 -symW/2]).set('size', [P.a symW]);
+
+    % extrude symmetry block
+    ucellgeom.runCurrent;
+    symZPlaneExt = ucellgeom.feature.create('symZPlaneExt', 'Extrude');
+    symZPlaneExt.set('distance', symZth);
+
+    % compose: unit cell - symmetry block
+    symZComp = ucellgeom.feature.create('symZComp', 'Compose');
+    symZComp.selection('input').set(finBeamTag);
+    symZComp.selection('input').set('symZPlaneExt');
+    symZComp.set('formula', [finBeamTag,' - symZPlaneExt']);
+    ucellgeom.runCurrent;
+
+
+    % beam z-symmetry plane
+    delta = 10e-9;
+    ZsymSel = ucellgeom.create('ZsymSel', 'BoxSelection');
+    ZsymSel.set('xmin', -a/2-delta).set('xmax', a/2+delta);
+    ZsymSel.set('ymin', -a/2-delta).set('ymax', a/2+delta);
+    ZsymSel.set('zmin', -delta).set('zmax', delta);
+    ZsymSel.set('entitydim', 2).set('condition', 'allvertices'); % only want beam surface, exclude air holes
+    ucellgeom.runCurrent;
+    inds = model.selection([ucellname,'_ZsymSel']).inputEntities();
+    P.bndSel.Zsym = inds';
+
+end
 
 %% Making selections
 

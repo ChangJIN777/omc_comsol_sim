@@ -433,7 +433,7 @@ inner_inds = find(strcmp(sols.psolv.mapheaders,'Inner'));
 outer_inds = find(strcmp(sols.psolv.mapheaders,'Outer'));
 
 % assemble solutions
-for ki = 0:kpts
+for ki = 0:3*kpts-1
 %     fem = mbfem;
     % assemble eigenvalues and eigenfrequencies
     lambda_ki = find(sols.psolv.map(:,outer_inds)==ki+1);

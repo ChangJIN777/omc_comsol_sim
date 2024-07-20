@@ -18,7 +18,7 @@ P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
-P.kpts = 3;                             % no. of k-points, EXCLUDING gamma point
+P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 9;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
@@ -45,22 +45,22 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 %% define the maximum number of degree of freedom to limit the simulation time
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
-% %% debugging the unit cells 
-% % import COMSOL class
-% import com.comsol.model.*
-% import com.comsol.model.util.*
-% 
-% ModelUtil.showProgress(true);
-% ModelUtil.clear();
-% clear model
-% 
-% % create COMSOL model named 'model' from which COMSOL methods can be called, 
-% % e.g. model.save
-% model = ModelUtil.create('model');
-% 
-% DrawCrossUnitCell(model,P);
-% mphlaunch(model);
-%% Single solve
-datLoc = '.\test\cross\071424\';
-P.datLoc = datLoc;
-bds = solveBands(P);
+%% debugging the unit cells 
+% import COMSOL class
+import com.comsol.model.*
+import com.comsol.model.util.*
+
+ModelUtil.showProgress(true);
+ModelUtil.clear();
+clear model
+
+% create COMSOL model named 'model' from which COMSOL methods can be called, 
+% e.g. model.save
+model = ModelUtil.create('model');
+
+DrawCrossUnitCell(model,P);
+mphlaunch(model);
+% %% Single solve
+% datLoc = '.\test\cross\072024\';
+% P.datLoc = datLoc;
+% bds = solveBands(P);
