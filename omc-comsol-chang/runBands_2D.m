@@ -45,54 +45,61 @@ end
 % M-Gamma
 model.param.set('k', '0');
 model.param.set('a', [num2str(a),'[m]']);
-model.param.set('kx', 'if(k<1,pi/a*k,if(k<2,pi/a,(3-k)*pi/a))');
-model.param.set('ky', 'if(k<1,0,if(k<2,(k-1)*pi/a,(3-k)*pi/a))');
 
-for ki = 0:3*kpts-1
-    ds.k_norm(ki+1,1) = ki/kpts;
-    ds.kx_norm(ki+1,1) = ((ki/kpts)*(ki<kpts)+...                  % Gamma-X
-                        1*(ki>=kpts && ki<2*kpts)+...              % X-M
-                        (3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
-    ds.ky_norm(ki+1,1) = (0*(ki<kpts)+...                          % Gamma-X
-                        (ki-kpts)/kpts*(ki>=kpts && ki<2*kpts)+... % X-M
-                        (3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
-end
-
-% compile expressions for input to COMSOL model
-kliststr = ['range(0,1/',num2str(kpts),',3-1/',num2str(kpts),')'];
-for ki = 1:3*kpts
-    kparamstr{ki} = ['"k", "',num2str((ki-1)/kpts),'"'];
-end
-
-% %% Define k-points for sweep over wavevectors (1D band structure)
-% % adapted from phononic crystal model on COMSOL
-% 
-% % parameter node for COMSOL model
-% % k runs from 0 to 3: 0-->1 for Gamma-X, 1-->2 for X-->M, 2-->3 for
-% % M-Gamma
-% model.param.set('kx', '0');
-% 
-% % define k-points
-% kliststr = ['0'];
-% for ki=0:kpts
-%     ds.kx(ki+1) = 0 + (pi/P.a)*ki/kpts;
-%     if ki > 0
-%         kliststr = [kliststr,', ',num2str(ds.kx(ki+1))];
-%     end
-%     kparamstr{ki+1} = ['"k", "',num2str(ds.kx(ki+1)),'"'];
-% end
+if strcmp(P.unitcell,'hexagonal')
+    model.param.set('kx', 'if(k<1,(pi/a)*k*(sqrt(3)/2),if(k<2,(sqrt(3)/2)*pi/a,(sqrt(3)/2)*(3-k)*pi/a))');
+    model.param.set('ky', 'if(k<1,(pi/a)*k*(-1/2),if(k<2,(k-1-1/2)*pi/a,(1/2)*(3-k)*pi/a))');
+    
+    for ki = 0:3*kpts-1
+        ds.k_norm(ki+1,1) = ki/kpts;
+        ds.kx_norm(ki+1,1) = (((sqrt(3)/2)*ki/kpts)*(ki<kpts)+...                  % Gamma-X
+                            (sqrt(3)/2)*(ki>=kpts && ki<2*kpts)+...              % X-M
+                            (sqrt(3)/2)*(3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+        ds.ky_norm(ki+1,1) = ((-1/2)*(ki<kpts)+...                          % Gamma-X
+                            ((ki-kpts)/kpts-1/2)*(ki>=kpts && ki<2*kpts)+... % X-M
+                            (1/2)*(3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+    end
+    
+    % compile expressions for input to COMSOL model
+    kliststr = ['range(0,1/',num2str(kpts),',3-1/',num2str(kpts),')'];
+    for ki = 1:3*kpts
+        kparamstr{ki} = ['"k", "',num2str((ki-1)/kpts),'"'];
+    end
+else
+    model.param.set('kx', 'if(k<1,pi/a*k,if(k<2,pi/a,(3-k)*pi/a))');
+    model.param.set('ky', 'if(k<1,0,if(k<2,(k-1)*pi/a,(3-k)*pi/a))');
+    
+    for ki = 0:3*kpts-1
+        ds.k_norm(ki+1,1) = ki/kpts;
+        ds.kx_norm(ki+1,1) = ((ki/kpts)*(ki<kpts)+...                  % Gamma-X
+                            1*(ki>=kpts && ki<2*kpts)+...              % X-M
+                            (3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+        ds.ky_norm(ki+1,1) = (0*(ki<kpts)+...                          % Gamma-X
+                            (ki-kpts)/kpts*(ki>=kpts && ki<2*kpts)+... % X-M
+                            (3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+    end
+    % compile expressions for input to COMSOL model
+    kliststr = ['range(0,1/',num2str(kpts),',3-1/',num2str(kpts),')'];
+    for ki = 1:3*kpts
+        kparamstr{ki} = ['"k", "',num2str((ki-1)/kpts),'"'];
+    end
+end 
 
 %% Set up the geometry
 if strcmp(P.celltype,'cross')
     [model,P] = DrawCrossUnitCell(model,P);
+elseif strcmp(P.celltype,'boomerang')
+    [model,P] = buildBoomerangUnitCell(model,P);
+elseif strcmp(P.celltype,'boomerang_lower')
+    [model,P] = buildLowerBoomerangUnitCell(model,P);
 end
 
 if P.plotgeom
     figure;
     mphgeom(model)
-    % pathFig = [P.datLoc,fBase,'\',fBase,'_geom'];
-    % saveas(gcf,[pathFig,'.fig']);
-    % saveas(gcf,[pathFig,'.png']);
+    pathFig = [P.datLoc,'\',P.fileBase,'_geom'];
+    saveas(gcf,[pathFig,'.fig']);
+    saveas(gcf,[pathFig,'.png']);
 end
 
 %% Define material and properties
@@ -244,7 +251,7 @@ disp('Solid Mechanics added - boundary conditions done');
 % add parametric and eigenfrequency study
 study = model.study.create('study');
 std_param = study.create('std_param', 'Parametric');
-std_param.set('pname', 'kx');
+std_param.set('pname', 'k');
 std_param.set('plistarr', kliststr);
 std_param.set('punit', '');
 std_eigv = study.create('std_eigv','Eigenfrequency');
@@ -273,7 +280,7 @@ pbatch = model.batch.create('pbatch', 'Parametric');
 pbatch_solseq = pbatch.create('pbatch_solseq', 'Solutionseq');
 pbatch.study('study');
 pbatch.attach('study');
-pbatch.set('pname', 'kx');
+pbatch.set('pname', 'k');
 pbatch.set('plistarr', kliststr);
 pbatch.set('punit', '');
 pbatch.set('err', true);
@@ -311,6 +318,8 @@ while (~mesh_ok) && (mesh_quality < 10)
     mesh_ok = 1;
 end
 mphsave('test_geom')
+mbfem.mbMesh = mesh_quality;
+
 % debugging 
 % mphlaunch(model);
 %% Solve for bands
@@ -327,68 +336,73 @@ pdset = model.result.dataset('pdset');
 pdset.set('solution', 'psolv');
 
 if P.saveplots
-    % create sector dataset
-    xySymFac = 2^abs(eveny);
-    zSym = abs(evenz)*strcmp(P.xsect,'rect');
-    zSymFac = 2^zSym;
-    
-    dsetTags = mphmodel(model.result.dataset);
-    
-    if ~isfield(dsetTags,'pdset_sec')
-        pdset_sec = model.result.dataset.create('pdset_sec', 'Sector3D');
-    else
-        pdset_sec = model.result.dataset('pdset_sec');
-    end
+    % % create sector dataset
+    % xySymFac = 2^abs(eveny);
+    % zSym = abs(evenz)*strcmp(P.xsect,'rect');
+    % zSymFac = 2^zSym;
+    % 
+    % dsetTags = mphmodel(model.result.dataset);
+    % 
+    % if ~isfield(dsetTags,'pdset_sec')
+    %     pdset_sec = model.result.dataset.create('pdset_sec', 'Sector3D');
+    % else
+    %     pdset_sec = model.result.dataset('pdset_sec');
+    % end
 
-    pdset_sec.label('M Sol Full Beam XY');
-    pdset_sec.set('data', 'pdset');
-    pdset_sec.set('method', 'twopoint');
-    pdset_sec.setIndex('genpoints', '0', 0, 0); % set axis data
-    pdset_sec.setIndex('genpoints', '0', 0, 1);
-    pdset_sec.setIndex('genpoints', '0', 0, 2);
-    pdset_sec.setIndex('genpoints', '0', 1, 0);
-    pdset_sec.setIndex('genpoints', '0', 1, 1);
-    pdset_sec.setIndex('genpoints', '1', 1, 2);
-    pdset_sec.set('sectors', xySymFac);
-    pdset_sec.set('trans', 'rotrefl');          % transformation: rotate and reflect
-    pdset_sec.set('reflaxis', {'1' '0' '0'});   % reflection axis
+    % pdset_sec.label('M Sol Full Beam XY');
+    % pdset_sec.set('data', 'pdset');
+    % pdset_sec.set('method', 'twopoint');
+    % pdset_sec.setIndex('genpoints', '0', 0, 0); % set axis data
+    % pdset_sec.setIndex('genpoints', '0', 0, 1);
+    % pdset_sec.setIndex('genpoints', '0', 0, 2);
+    % pdset_sec.setIndex('genpoints', '0', 1, 0);
+    % pdset_sec.setIndex('genpoints', '0', 1, 1);
+    % pdset_sec.setIndex('genpoints', '1', 1, 2);
+    % if xySymFac
+    %     pdset_sec.set('sectors', xySymFac);
+    %     pdset_sec.set('trans', 'rotrefl');          % transformation: rotate and reflect
+    %     pdset_sec.set('reflaxis', {'0' '0' '1'});   % reflection axis
+    % end
 
-    % model.result.dataset.create('sec1', 'Sector3D');
-    % model.result.dataset('sec1').set('trans', 'rotrefl');
-    % model.result.dataset('sec1').set('pddir', {'1' '0' '0'});
-    % model.result.dataset('sec1').set('reflaxis', {'0' '1' '0'});
-    % model.result.dataset('sec1').set('data', 'pdset');
-    if eveny==-1
-        pdset_sec.set('rotinv', 'on');  % odd symmetry about x-plane
-        pdset_sec.set('reflinv', 'on');
+    model.result.dataset.create('sec1', 'Sector3D');
+    model.result.dataset('sec1').set('trans', 'rotrefl');
+    model.result.dataset('sec1').set('pddir', {'1' '0' '0'});
+    model.result.dataset('sec1').set('reflaxis', {'0' '1' '0'});
+    model.result.dataset('sec1').set('data', 'pdset');
+    if evenz == -1
+        model.result.dataset('sec1').set('reflinv', 'on');
     end
-    pdsetPlot = 'pdset_sec';
+    % if eveny==-1
+    %     pdset_sec.set('rotinv', 'on');  % odd symmetry about x-plane
+    %     pdset_sec.set('reflinv', 'on');
+    % end
+    % pdsetPlot = 'pdset_sec';
 
-    if zSym
-        if ~isfield(dsetTags,'pdset_secZ')
-            pdset_sec = model.result.dataset.create('pdset_secZ', 'Sector3D');
-        else
-            pdset_sec = model.result.dataset('pdset_secZ');
-        end
-        pdset_sec.label('M Sol Full Beam XYZ');
-        pdset_sec.set('data', 'pdset_sec');
-        pdset_sec.set('method', 'twopoint');
-        pdset_sec.setIndex('genpoints', '0', 0, 0); % set axis data
-        pdset_sec.setIndex('genpoints', '0', 0, 1);
-        pdset_sec.setIndex('genpoints', '0', 0, 2);
-        pdset_sec.setIndex('genpoints', '1', 1, 0);
-        pdset_sec.setIndex('genpoints', '0', 1, 1);
-        pdset_sec.setIndex('genpoints', '0', 1, 2);
-        pdset_sec.set('sectors', zSymFac);
-        pdset_sec.set('trans', 'rotrefl');          % transformation: rotate and reflect
-        pdset_sec.set('reflaxis', {'0' '1' '0'});   % reflection axis
-        if evenz==-1
-            pdset_sec.set('rotinv', 'on');  % odd symmetry about z-plane
-            pdset_sec.set('reflinv', 'on');
-        end
-        pdsetPlot = 'pdset_secZ';
-        
-    end
+    % if zSym
+    %     if ~isfield(dsetTags,'pdset_secZ')
+    %         pdset_sec = model.result.dataset.create('pdset_secZ', 'Sector3D');
+    %     else
+    %         pdset_sec = model.result.dataset('pdset_secZ');
+    %     end
+    %     pdset_sec.label('M Sol Full Beam XYZ');
+    %     pdset_sec.set('data', 'pdset_sec');
+    %     pdset_sec.set('method', 'twopoint');
+    %     pdset_sec.setIndex('genpoints', '0', 0, 0); % set axis data
+    %     pdset_sec.setIndex('genpoints', '0', 0, 1);
+    %     pdset_sec.setIndex('genpoints', '0', 0, 2);
+    %     pdset_sec.setIndex('genpoints', '1', 1, 0);
+    %     pdset_sec.setIndex('genpoints', '0', 1, 1);
+    %     pdset_sec.setIndex('genpoints', '0', 1, 2);
+    %     pdset_sec.set('sectors', zSymFac);
+    %     pdset_sec.set('trans', 'rotrefl');          % transformation: rotate and reflect
+    %     pdset_sec.set('reflaxis', {'0' '0' '1'});   % reflection axis
+    %     if evenz==-1
+    %         pdset_sec.set('rotinv', 'on');  % odd symmetry about z-plane
+    %         pdset_sec.set('reflinv', 'on');
+    %     end
+    %     pdsetPlot = 'pdset_secZ';
+    % 
+    % end
 
     % if evenz == -1
     %     model.result.dataset('sec1').set('reflinv', 'on');
@@ -396,7 +410,7 @@ if P.saveplots
     
     % create 3D plot group for displacement field
     dispplot = model.result.create('dispplot', 'PlotGroup3D');
-    dispplot.set('data',pdsetPlot);
+    dispplot.set('data','sec1');
     dispplot.set('solrepresentation', 'solutioninfo');
     dispplot.set('titletype', 'none');
     dispplot_vol = dispplot.create('dispplot_vol', 'Volume');
@@ -405,17 +419,17 @@ if P.saveplots
     dispplot_vol.set('data', 'parent');
     dispplot.run;
 
-    % create 3D plot group for strain profile
-    strplot = model.result.create('strplot', 'PlotGroup3D');
-    strplot.set('data',pdsetPlot);
-    strplot.set('solrepresentation', 'solutioninfo');
-    strplot.set('titletype', 'none');
-    strplot_slc = strplot.create('strplot_slc', 'Slice');
-    strplot_slc.set('planetype', 'quick');
-    strplot_slc.set('quickxmethod', 'coord').set('quickx', (1-holeatedge/2)*a);
-    strplot_slc.set('rangedataactive','on').set('rangecoloractive','on');
-    strplot_slc.set('data', 'parent');
-    strplot.run;
+    % % create 3D plot group for strain profile
+    % strplot = model.result.create('strplot', 'PlotGroup3D');
+    % strplot.set('data',pdsetPlot);
+    % strplot.set('solrepresentation', 'solutioninfo');
+    % strplot.set('titletype', 'none');
+    % strplot_slc = strplot.create('strplot_slc', 'Slice');
+    % strplot_slc.set('planetype', 'quick');
+    % strplot_slc.set('quickxmethod', 'coord').set('quickx', (1-holeatedge/2)*a);
+    % strplot_slc.set('rangedataactive','on').set('rangecoloractive','on');
+    % strplot_slc.set('data', 'parent');
+    % strplot.run;
     
 end
 
@@ -432,6 +446,7 @@ k_inds = find(strcmp(sols.psolv.mapheaders,'kx'));
 inner_inds = find(strcmp(sols.psolv.mapheaders,'Inner'));
 outer_inds = find(strcmp(sols.psolv.mapheaders,'Outer'));
 
+
 % assemble solutions
 for ki = 0:3*kpts-1
 %     fem = mbfem;
@@ -442,17 +457,30 @@ for ki = 0:3*kpts-1
     for nb = 1:nbands
         ds.F(ki+1,nb) = fem.sol.freqs(nb);
     end
-    if P.bandStruct_2D
-        ds.k_norm(ki+1,1) = ki/kpts;
-        ds.kx_norm(ki+1,1) = ((ki/kpts)*(ki<kpts)+...                  % Gamma-X
-                        1*(ki>=kpts && ki<2*kpts)+...              % X-M
-                        (3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
-        ds.ky_norm(ki+1,1) = (0*(ki<kpts)+...                          % Gamma-X
-                        (ki-kpts)/kpts*(ki>=kpts && ki<2*kpts)+... % X-M
-                        (3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
-    else
-        ds.k_norm = transpose(ds.kx/(pi/P.a));
-    end
+
+
+    % if P.bandStruct_2D
+    %     if strcmp(P.unitcell,'hexagonal')
+    % 
+    %         ds.k_norm(ki+1,1) = ki/kpts;
+    %         ds.kx_norm(ki+1,1) = (((sqrt(3)/2)*ki/kpts)*(ki<kpts)+...                  % Gamma-X
+    %                         (sqrt(3)/2)*(ki>=kpts && ki<2*kpts)+...              % X-M
+    %                         (sqrt(3)/2)*(3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+    %         ds.ky_norm(ki+1,1) = ((-1/2)*(ki<kpts)+...                          % Gamma-X
+    %                         ((ki-kpts)/kpts-1/2)*(ki>=kpts && ki<2*kpts)+... % X-M
+    %                         (1/2)*(3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+    %     else
+    %         ds.k_norm(ki+1,1) = ki/kpts;
+    %         ds.kx_norm(ki+1,1) = ((ki/kpts)*(ki<kpts)+...                  % Gamma-X
+    %                             1*(ki>=kpts && ki<2*kpts)+...              % X-M
+    %                             (3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+    %         ds.ky_norm(ki+1,1) = (0*(ki<kpts)+...                          % Gamma-X
+    %                             (ki-kpts)/kpts*(ki>=kpts && ki<2*kpts)+... % X-M
+    %                             (3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+    %     end
+    % else
+    %     ds.k_norm = transpose(ds.kx/(pi/P.a));
+    % end
     % save displacement and strain profile for all bands at 
     % high symmetry points (Gamma, X, M)
     if P.saveplots && mod(ki,kpts) == 0

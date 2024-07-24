@@ -103,5 +103,6 @@ P.yEnd1 =  bndindex(ucellgeom, [0 -a/2 0], [0 1 0]);
 P.yEnd2 = bndindex(ucellgeom, [0 a/2 0], [0 1 0]);
 % Note that this will return no indices if there is no boundary at z=0
 P.zEnd = bndindex(ucellgeom, [0 0 0], [0 0 1]);
+disp(P) % debugging
 
 end

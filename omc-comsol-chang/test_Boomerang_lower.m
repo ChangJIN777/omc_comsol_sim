@@ -4,13 +4,15 @@ clear P;
 %% unit cell params 
 P.xsect = 'rect'; 
 P.beamMat = 'diamond';                  % beam material name
-P.celltype = 'cross';                   % specify the cell type
+P.celltype = 'boomerang_lower';                   % specify the cell type
 P.unitcell = 'square';                  % specify the shape of the unit cell
-P.a = 481e-9;              % lattice constant (along x)
-P.hc = 417e-9;              % unit cell width (along y)
-P.wc = 170e-9;              % unit cell thickness (along z)
+P.a = 481e-9;              % lattice constant 
+P.w = 93e-9;              % unit cell width (along x)
+P.r = 172e-9;              % unit cell height (along y)
 P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
+P.h = 180e-9;           % the height of the hole in the lower portion
+P.d = 100e-9;           % the width of the hole in the lower portion
 P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r2 = 40e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
@@ -28,15 +30,15 @@ P.plotgeom = 1;                         % 1 to plot the geometry
 P.savedat = 1;                          % 1 to save data structures
 P.savebndplot = 1;                      % 1 to save bandstructure plot
 P.saveplots = 1;                        % 1 to save displacement and strain profiles
-P.saveMPH = 1; 
+P.saveMPH = 0; 
 P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
-P.mbeveny = 1;                          % 1 to find even mechanical mode about y
+P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
-P.meshSize = 3;                         % mesh quality for mechanical simulations
+P.meshSize = 4;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
 P.anisoMat = 1;
@@ -59,9 +61,9 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % % e.g. model.save
 % model = ModelUtil.create('model');
 % 
-% DrawCrossUnitCell(model,P);
+% buildLowerBoomerangUnitCell(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\cross\072224\';
+datLoc = '.\test\cross\072324\';
 P.datLoc = datLoc;
 bds = solveBands(P);

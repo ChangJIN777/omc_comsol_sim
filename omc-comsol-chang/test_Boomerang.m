@@ -4,11 +4,11 @@ clear P;
 %% unit cell params 
 P.xsect = 'rect'; 
 P.beamMat = 'diamond';                  % beam material name
-P.celltype = 'cross';                   % specify the cell type
-P.unitcell = 'square';                  % specify the shape of the unit cell
-P.a = 481e-9;              % lattice constant (along x)
-P.hc = 417e-9;              % unit cell width (along y)
-P.wc = 170e-9;              % unit cell thickness (along z)
+P.celltype = 'boomerang';                   % specify the cell type
+P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
+P.a = 481e-9;              % lattice constant 
+P.w = 93e-9;              % unit cell width (along x)
+P.r = 172e-9;              % unit cell height (along y)
 P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -20,7 +20,7 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
 P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 9;                           % no. of bands to solve for
+P.nbands = 8;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -33,7 +33,7 @@ P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
-P.mbeveny = 1;                          % 1 to find even mechanical mode about y
+P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 3;                         % mesh quality for mechanical simulations
@@ -59,7 +59,7 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % % e.g. model.save
 % model = ModelUtil.create('model');
 % 
-% DrawCrossUnitCell(model,P);
+% buildBoomerangUnitCell(model,P);
 % mphlaunch(model);
 %% Single solve
 datLoc = '.\test\cross\072224\';
