@@ -20,7 +20,7 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
 P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 8;                           % no. of bands to solve for
+P.nbands = 20;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -62,6 +62,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildBoomerangUnitCell(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\cross\072224\';
+datLoc = '.\test\boomerang\072324\';
 P.datLoc = datLoc;
 bds = solveBands(P);

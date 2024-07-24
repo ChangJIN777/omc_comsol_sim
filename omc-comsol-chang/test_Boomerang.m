@@ -6,9 +6,9 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 481e-9;              % lattice constant 
+P.a = 480e-9;              % lattice constant 
 P.w = 93e-9;              % unit cell width (along x)
-P.r = 172e-9;              % unit cell height (along y)
+P.r = 180e-9;              % unit cell height (along y)
 P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -19,8 +19,8 @@ P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
-P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 8;                           % no. of bands to solve for
+P.kpts = 3;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 30;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -28,7 +28,7 @@ P.plotgeom = 1;                         % 1 to plot the geometry
 P.savedat = 1;                          % 1 to save data structures
 P.savebndplot = 1;                      % 1 to save bandstructure plot
 P.saveplots = 1;                        % 1 to save displacement and strain profiles
-P.saveMPH = 1; 
+P.saveMPH = 0; 
 P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 
 %% mechanical simulation parameters 
@@ -62,6 +62,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildBoomerangUnitCell(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\cross\072224\';
+datLoc = '.\test\boomerang\072324\';
 P.datLoc = datLoc;
 bds = solveBands(P);

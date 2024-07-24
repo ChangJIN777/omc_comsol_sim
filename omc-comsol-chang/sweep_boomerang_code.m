@@ -4,15 +4,14 @@ P.celltype = 'boomerang';                   % specify the cell type
 a = 480e-9; % lattice constant
 w_min = 0.2*a; 
 w_max = 0.3*a;
-r_min = 0.2*a;
-r_max = 0.45*a;
+r_min = 90e-9;
+r_max = 180e-9;
 w_list = linspace(w_min,w_max,3);
-r_list = linspace(w_min,w_max,3);
+r_list = linspace(w_min,w_max,5);
 
 %% run the sweep
 for i=1:length(w_list)
     for j=1:length(r_list)
-
         sweep_boomerang(P,w_list(i),r_list(j))
     end
 end
@@ -39,7 +38,7 @@ function sweep_boomerang(P,w,r)
     P.mbevenz = 1;      % 1 to find even mechanical mode about z
     
     P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 8;                           % no. of bands to solve for
+    P.nbands = 30;                           % no. of bands to solve for
     
     P.solveasym = 1;                        % 1 to solve for antisymmetric bands
     P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -66,7 +65,7 @@ function sweep_boomerang(P,w,r)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\cross\072324_sweep1\';
+    datLoc = '.\test\boomerang\072424_sweep1\';
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 
