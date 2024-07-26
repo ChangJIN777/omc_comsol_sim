@@ -2,31 +2,28 @@
 P.celltype = 'boomerang_lower';                   % specify the cell type
 
 a = 480e-9; % lattice constant
-w_min = 0.2*a; 
-w_max = 0.3*a;
-r_min = 0.2*a;
-r_max = 0.45*a;
-w_list = linspace(w_min,w_max,3);
-r_list = linspace(w_min,w_max,3);
+h_min = 0.8*180e-9;
+h_max = 1.2*180e-9;
+d=100e-9;
+h_list = linspace(h_min,h_max,5);
+d_list = linspace(d_min,d_max,3);
 
 %% run the sweep
-for i=1:length(w_list)
-    for j=1:length(r_list)
-        sweep_boomerang_lower(P,w_list(i),r_list(j))
-    end
+for i=1:length(h_list)
+   sweep_boomerang_lower(P,h_list(i),d)
 end
 
-function sweep_boomerang_lower(P,w,r)    
+function sweep_boomerang_lower(P,h,d)    
     %% unit cell params 
     P.xsect = 'rect'; 
     P.beamMat = 'diamond';                  % beam material name
     P.celltype = 'boomerang_lower';                   % specify the cell type
     P.unitcell = 'square';                  % specify the shape of the unit cell
     P.a = 480e-9;              % lattice constant 
-    P.h = 180e-9;           % the height of the hole in the lower portion
-    P.d = 100e-9;           % the width of the hole in the lower portion
-    P.w = w;              % unit cell width (along x)
-    P.r = r;              % unit cell height (along y)
+    P.h = h;           % the height of the hole in the lower portion
+    P.d = d;           % the width of the hole in the lower portion
+    P.w = 144e-9;              % unit cell width (along x)
+    P.r = 144e-9;              % unit cell height (along y)
     P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
     P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -65,7 +62,7 @@ function sweep_boomerang_lower(P,w,r)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\cross\072324_sweep2\';
+    datLoc = '.\test\boomerang\072424_sweep2\';
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 
