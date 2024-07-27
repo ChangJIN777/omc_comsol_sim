@@ -124,8 +124,7 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
         
         % plot asymmetric bandgaps
         for k = 1:length(asym.gapSize)
-            bgp = patch([0 3 3 0],1e-9.*(asym.
-Gap(k) + 0.5*[asym.gapSize(k) ...
+            bgp = patch([0 3 3 0],1e-9.*(asym.midGap(k) + 0.5*[asym.gapSize(k) ...
                 asym.gapSize(k) -asym.gapSize(k) -asym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
             alpha(bgp,0.2);
         end

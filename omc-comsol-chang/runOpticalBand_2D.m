@@ -75,7 +75,7 @@ if strcmp(P.celltype,'cross')
 elseif strcmp(P.celltype,'boomerang')
     [model,P] = buildBoomerangUnitCell_2D(model,P);
 elseif strcmp(P.celltype,'boomerang_lower')
-    [model,P] = buildLowerBoomerangUnitCell(model,P);
+    [model,P] = buildLowerBoomerangUnitCell_2D(model,P);
 end
 
 if P.plotgeom
@@ -99,9 +99,9 @@ model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('
 %% setup the physics and the boundary conditions
 model.component('comp1').physics.create('ewfd', 'ElectromagneticWavesFrequencyDomain', 'geom1');
 model.component('comp1').physics('ewfd').create('pc1', 'PeriodicCondition', 1);
-model.component('comp1').physics('ewfd').feature('pc1').selection.set([1 12]);
+model.component('comp1').physics('ewfd').feature('pc1').selection.set([P.xEnd1 P.xEnd2]);
 model.component('comp1').physics('ewfd').create('pc2', 'PeriodicCondition', 1);
-model.component('comp1').physics('ewfd').feature('pc2').selection.set([2 7]);
+model.component('comp1').physics('ewfd').feature('pc2').selection.set([P.yEnd1 P.yEnd2]);
 model.component('comp1').physics('ewfd').prop('components').set('components', 'inplane');
 model.component('comp1').physics('ewfd').feature('pc1').set('PeriodicType', 'Floquet');
 model.component('comp1').physics('ewfd').feature('pc1').set('kFloquet', {'kx'; 'ky'; '0'});

@@ -6,9 +6,9 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang_lower';                   % specify the cell type
 P.unitcell = 'square';                  % specify the shape of the unit cell
-P.a = 350e-9;              % lattice constant 
-P.w = 75e-9;              % unit cell width (along x)
-P.r = 140e-9;              % unit cell height (along y)
+P.a = 400e-9;              % lattice constant 
+P.w = 86e-9;              % unit cell width (along x)
+P.r = 160e-9;              % unit cell height (along y)
 P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.h = 120e-9;           % the height of the hole in the lower portion
@@ -38,7 +38,7 @@ P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
-P.meshSize = 4;                         % mesh quality for mechanical simulations
+P.meshSize = 3;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
 P.anisoMat = 1;
@@ -63,6 +63,7 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % 
 % buildLowerBoomerangUnitCell(model,P);
 % mphlaunch(model);
+
 %% Single solve
 datLoc = '.\test\boomerang_lower\072724\';
 P.datLoc = datLoc;

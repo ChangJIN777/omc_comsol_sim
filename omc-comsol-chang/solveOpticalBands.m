@@ -76,7 +76,7 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
         figure; hold on
         maxFreqs = [0 0 0 0];
 
-        p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'-k','linewidth',2,'DisplayName','sym');
+        p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'ko','linewidth',2,'DisplayName','sym','MarkerSize',5);
 
         
         % plot optical bandgaps

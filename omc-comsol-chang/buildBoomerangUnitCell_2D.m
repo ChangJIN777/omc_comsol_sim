@@ -64,6 +64,15 @@ holeplane.set('source', 'table');
 holeplane.set('table', [0 0; a/2 (a/2)*sqrt(3); a*(3/2) (a/2)*sqrt(3); a 0; 0 0]);
 ucellgeom.runAll;
 
+%% Making selections (manual)
+mphgeom(model);
+P.xEnd1 = 1;
+P.xEnd2 = 13;
+
+P.yEnd1 = 2;
+P.yEnd2 = 7;
+% Note that this will return no indices if there is no boundary at z=0
+
 % % debugging
 % mphplot(model);
 disp(P) % debugging
