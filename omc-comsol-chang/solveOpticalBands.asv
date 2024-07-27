@@ -1,6 +1,6 @@
-function ds = solveBands(P)
-%SOLVEBANDS Summary of this function goes here
-%   Detailed explanation goes here
+function ds = solveOpticalBands(P)
+
+%% make the file directory
 if ~strcmp(P.datLoc(end),'\')
     datLoc = [P.datLoc,'\'];
 else
@@ -14,11 +14,10 @@ end
 % create base folder name (TODO: need to update)
 if ~isfield(P,'fileBase')
     if strcmp(P.celltype,'2D_ribs')
-        fBase = ['2D_ribs_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
+        fBase = ['optical_2D_ribs_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
             'w_',num2str(P.w*1e9,'%.0f'),'nm',...
             'hi_',num2str(P.hi*1e9,'%.0f'),'nm_', ...
             'wi_',num2str(P.wi*1e9,'%.0f'),'nm_', ...
-            'th_',num2str(P.th*1e9,'%.0f'),'nm_', ...
             'ho_',num2str(P.ho*1e9,'%.0f'),'nm_',...
             'wo_',num2str(P.wo*1e9,'%.0f'),'nm_',...
             'ai_',num2str(P.ai*1e9,'%.0f'),'nm_'];
@@ -27,10 +26,9 @@ if ~isfield(P,'fileBase')
         end
         P.fileBase = fBase;
     elseif strcmp(P.celltype,'cross')
-        fBase = ['cross_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
+        fBase = ['optical_cross_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
             'hc_',num2str(P.hc*1e9,'%.0f'),'nm',...
             'wc_',num2str(P.wc*1e9,'%.0f'),'nm_', ...
-            'th_',num2str(P.th*1e9,'%.0f'),'nm_', ...
             'r1_',num2str(P.r1*1e9,'%.0f'),'nm_', ...
             'r2_',num2str(P.r2*1e9,'%.0f'),'nm_'];
         if isfield(P,'prefname')
@@ -38,10 +36,9 @@ if ~isfield(P,'fileBase')
         end
         P.fileBase = fBase;
     elseif strcmp(P.celltype,'boomerang')
-        fBase = ['boomerang_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
+        fBase = ['optical_boomerang_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
             'r_',num2str(P.r*1e9,'%.0f'),'nm',...
             'w_',num2str(P.w*1e9,'%.0f'),'nm_', ...
-            'th_',num2str(P.th*1e9,'%.0f'),'nm_', ...
             'r1_',num2str(P.r1*1e9,'%.0f'),'nm_', ...
             'r2_',num2str(P.r2*1e9,'%.0f'),'nm_'];
         if isfield(P,'prefname')
@@ -49,12 +46,11 @@ if ~isfield(P,'fileBase')
         end
         P.fileBase = fBase;
     elseif strcmp(P.celltype,'boomerang_lower')
-        fBase = ['boomerang_lower_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
+        fBase = ['optical_boomerang_lower_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
             'r_',num2str(P.r*1e9,'%.0f'),'nm',...
             'w_',num2str(P.w*1e9,'%.0f'),'nm_', ...
             'd_',num2str(P.d*1e9,'%.0f'),'nm_', ...
             'h_',num2str(P.h*1e9,'%.0f'),'nm_', ...
-            'th_',num2str(P.th*1e9,'%.0f'),'nm_', ...
             'r1_',num2str(P.r1*1e9,'%.0f'),'nm_', ...
             'r2_',num2str(P.r2*1e9,'%.0f'),'nm_'];
         if isfield(P,'prefname')
@@ -64,96 +60,40 @@ if ~isfield(P,'fileBase')
     end
 end
 fBase = P.fileBase;
+
+%% solve the optical band structure
 if isempty(dir([datLoc,fBase,'_bds.mat']))
     tStart = tic;
-    disp('Solving with symmetric boundary condition');
-    P.mbevenz = 1;
-    if P.bandStruct_2D
-        sym = runBands_2D(P);
-    else 
-        sym = runBands(P);
-    end
-    
-    %find gaps
-    [sym.midGap,sym.gapSize] = findGaps(sym);
-    
-    disp('Solving with anti-symmetric boundary condition');
-    P.mbevenz = -1;
-    if P.bandStruct_2D
-        asym = runBands_2D(P);
-    else 
-        asym = runBands(P);
-    end
-    
-    %find gaps
-    [asym.midGap,asym.gapSize] = findGaps(asym);
-    %% test
-    % write to data structure
-    ds.sym = sym;
-    ds.asym = asym;
-    
-    %% find complete bandgaps
 
-    full.F = [sym.F,asym.F];
+    OpticalBand = runOpticalBand_2D(P);
+    % find gaps 
+    [OpticalBand.midGap,OpticalBand.gapSize] = findGaps(OpticalBand);
+    % write to data structure 
+    ds.opticalBand = OpticalBand;
 
-    [full.midGap,full.gapSize] = findGaps(full);
-    ds.full = full;
-    
-    % save data structures
-    if P.savedat
-        fname_mat = [fBase,'_bds.mat'];
-        pathMat = [P.datLoc,fname_mat];
-        save(pathMat,'ds');
-    end
-    
-    %% plot bandstructure
+%% plot bandstructure
     if P.savebndplot
         figure; hold on
         maxFreqs = [0 0 0 0];
 
-        p1 = plot(sym.k_norm,sym.F*1e-9,'-k','linewidth',2,'DisplayName','sym');
-        p2 = plot(asym.k_norm,asym.F*1e-9,'--b','linewidth',2,'DisplayName','asym');
+        p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'-k','linewidth',2,'DisplayName','sym');
 
         
-        % plot symmetric bandgaps
-        for k = 1:length(sym.gapSize)
-            bgp = patch([0 3 3 0],1e-9.*(sym.midGap(k) + 0.5*[sym.gapSize(k) ...
-                sym.gapSize(k) -sym.gapSize(k) -sym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+        % plot optical bandgaps
+        for k = 1:length(OpticalBand.gapSize)
+            bgp = patch([0 3 3 0],(1e-12)*(OpticalBand.midGap(k) + 0.5*[OpticalBand.gapSize(k) ...
+                OpticalBand.gapSize(k) -OpticalBand.gapSize(k) -OpticalBand.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
             alpha(bgp,0.5);
         end
         
-        % plot asymmetric bandgaps
-        for k = 1:length(asym.gapSize)
-            bgp = patch([0 3 3 0],1e-9.*(asym.
-Gap(k) + 0.5*[asym.gapSize(k) ...
-                asym.gapSize(k) -asym.gapSize(k) -asym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
-            alpha(bgp,0.2);
-        end
-        
-        % plot full bandgaps
-        if ~isempty(full.midGap)
-            for k = 1:length(full.gapSize)
-                bgp = patch([0 3 3 0],1e-9.*(full.midGap(k) + 0.5*[full.gapSize(k) ...
-                    full.gapSize(k) -full.gapSize(k) -full.gapSize(k)]),180/255*[1 0 0],'EdgeColor','none');
-                alpha(bgp,0.2);
-            end
-        end
-        
         % plot symmetric midgap frequencies
-        for k = 1:length(sym.midGap)
-            midfreqs = sym.midGap(k)*ones(length(sym.k_norm),1);
-            plot(sym.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+        for k = 1:length(OpticalBand.midGap)
+            midfreqs = OpticalBand.midGap(k)*ones(length(OpticalBand.k_norm),1);
+            plot(OpticalBand.k_norm,midfreqs*1e-12,'.--r','linewidth',0.5);
         end
-        
-        % plot complete midgap frequencies
-        for k = 1:length(full.midGap)
-            midfreqs = full.midGap(k)*ones(length(sym.k_norm),1);
-            plot(sym.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
-        end
-        
+      
         xlabel('k','FontSize',12);
-        ylabel('Frequency (GHz)','FontSize',12);
-        amax = max([sym.F(:);asym.F(:)])*1e-9;
+        ylabel('Frequency (THz)','FontSize',12);
         axis([0 3 0 amax]);
         %         axis tight
         set(gca,'XTick',[0; 1]);
@@ -167,22 +107,19 @@ Gap(k) + 0.5*[asym.gapSize(k) ...
                 'wi = ',num2str(P.wi*1e9,'%.0f'),'nm',...
                 'ho = ',num2str(P.ho*1e9,'%.0f'),'nm, ',...
                 'wo = ',num2str(P.wo*1e9,'%.0f'),'nm',...
-                'ai = ',num2str(P.ai*1e9,'%.0f'),'nm'];
-                ['th = ',num2str(P.th*1e9,'%.0f'),'nm']};
+                'ai = ',num2str(P.ai*1e9,'%.0f'),'nm']};
         elseif strcmp(P.celltype,'cross')
             bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
                 'hc = ',num2str(P.hc*1e9,'%.0f'),'nm, ',...
                 'wc = ',num2str(P.wc*1e9,'%.0f'),'nm',...
                 'r1 = ',num2str(P.r1*1e9,'%.0f'),'nm',...
-                'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm'];
-                ['th = ',num2str(P.th*1e9,'%.0f'),'nm']};
+                'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm']};
         elseif strcmp(P.celltype,'boomerang')
             bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
                 'w = ',num2str(P.w*1e9,'%.0f'),'nm, ',...
                 'r = ',num2str(P.r*1e9,'%.0f'),'nm',...
                 'r1 = ',num2str(P.r1*1e9,'%.0f'),'nm',...
-                'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm'];
-                ['th = ',num2str(P.th*1e9,'%.0f'),'nm']};
+                'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm']};
         elseif strcmp(P.celltype,'boomerang_lower')
             bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
                 'w = ',num2str(P.w*1e9,'%.0f'),'nm, ',...
@@ -190,8 +127,7 @@ Gap(k) + 0.5*[asym.gapSize(k) ...
                 'd = ',num2str(P.d*1e9,'%.0f'),'nm',...
                 'h = ',num2str(P.h*1e9,'%.0f'),'nm',...
                 'r1 = ',num2str(P.r1*1e9,'%.0f'),'nm',...
-                'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm'];
-                ['th = ',num2str(P.th*1e9,'%.0f'),'nm']};
+                'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm']};
         end
         title(bandtitle);
         box on
@@ -206,10 +142,6 @@ Gap(k) + 0.5*[asym.gapSize(k) ...
     disp(['Simulation time = ',num2str(tEnd/60,'%.2f'),'mins'])
 else
     disp('Data folder exists in working directory')
-    ds.sym = [];
-    ds.asym = [];
+    ds.OpticalBand = [];
     
 end
-
-end
-

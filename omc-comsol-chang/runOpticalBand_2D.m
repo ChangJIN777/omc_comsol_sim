@@ -1,0 +1,286 @@
+function ds = runOpticalBand_2D(P)
+
+% import COMSOL class
+import com.comsol.model.*
+import com.comsol.model.util.*
+
+ModelUtil.showProgress(true);
+
+ModelUtil.clear();
+clear model     
+model = ModelUtil.create('model');
+
+beamMat = P.beamMat;
+a = P.a;
+
+kpts = P.kpts;
+nbands = P.nbands;
+freq = P.optical_freq;
+max_dof = P.max_dof;
+meshSize = P.meshSize;
+holeatedge = P.holeatedge; % 1/0 if unit cell terminates in middle of hole/dielectric
+
+
+%% Define k-points for sweep over wavevectors (2D band structure)
+% adapted from phononic crystal model on COMSOL
+
+% parameter node for COMSOL model
+% k runs from 0 to 3: 0-->1 for Gamma-X, 1-->2 for X-->M, 2-->3 for
+% M-Gamma
+model.param.set('k', '0');
+model.param.set('a', [num2str(a),'[m]']);
+
+if strcmp(P.unitcell,'hexagonal')
+    model.param.set('kx', 'if(k<1,(pi/a)*k*(sqrt(3)/2),if(k<2,(sqrt(3)/2)*pi/a,(sqrt(3)/2)*(3-k)*pi/a))');
+    model.param.set('ky', 'if(k<1,(pi/a)*k*(-1/2),if(k<2,(k-1-1/2)*pi/a,(1/2)*(3-k)*pi/a))');
+    
+    for ki = 0:3*kpts-1
+        ds.k_norm(ki+1,1) = ki/kpts;
+        ds.kx_norm(ki+1,1) = (((sqrt(3)/2)*ki/kpts)*(ki<kpts)+...                  % Gamma-X
+                            (sqrt(3)/2)*(ki>=kpts && ki<2*kpts)+...              % X-M
+                            (sqrt(3)/2)*(3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+        ds.ky_norm(ki+1,1) = ((-1/2)*(ki<kpts)+...                          % Gamma-X
+                            ((ki-kpts)/kpts-1/2)*(ki>=kpts && ki<2*kpts)+... % X-M
+                            (1/2)*(3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+    end
+    
+    % compile expressions for input to COMSOL model
+    kliststr = ['range(0,1/',num2str(kpts),',3-1/',num2str(kpts),')'];
+    for ki = 1:3*kpts
+        kparamstr{ki} = ['"k", "',num2str((ki-1)/kpts),'"'];
+    end
+else
+    model.param.set('kx', 'if(k<1,pi/a*k,if(k<2,pi/a,(3-k)*pi/a))');
+    model.param.set('ky', 'if(k<1,0,if(k<2,(k-1)*pi/a,(3-k)*pi/a))');
+    
+    for ki = 0:3*kpts-1
+        ds.k_norm(ki+1,1) = ki/kpts;
+        ds.kx_norm(ki+1,1) = ((ki/kpts)*(ki<kpts)+...                  % Gamma-X
+                            1*(ki>=kpts && ki<2*kpts)+...              % X-M
+                            (3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+        ds.ky_norm(ki+1,1) = (0*(ki<kpts)+...                          % Gamma-X
+                            (ki-kpts)/kpts*(ki>=kpts && ki<2*kpts)+... % X-M
+                            (3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+    end
+    % compile expressions for input to COMSOL model
+    kliststr = ['range(0,1/',num2str(kpts),',3-1/',num2str(kpts),')'];
+    for ki = 1:3*kpts
+        kparamstr{ki} = ['"k", "',num2str((ki-1)/kpts),'"'];
+    end
+end 
+
+%% Set up the geometry
+if strcmp(P.celltype,'cross')
+    [model,P] = DrawCrossUnitCell(model,P);
+elseif strcmp(P.celltype,'boomerang')
+    [model,P] = buildBoomerangUnitCell_2D(model,P);
+elseif strcmp(P.celltype,'boomerang_lower')
+    [model,P] = buildLowerBoomerangUnitCell(model,P);
+end
+
+if P.plotgeom
+    figure;
+    mphgeom(model)
+    pathFig = [P.datLoc,'\',P.fileBase,'_geom'];
+    saveas(gcf,[pathFig,'.fig']);
+    saveas(gcf,[pathFig,'.png']);
+end
+
+%% Define material and properties
+model.component('comp1').material.create('mat1', 'Common');
+model.component('comp1').material.create('mat2', 'Common');
+model.component('comp1').material('mat1').selection.set([1]);
+model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
+model.component('comp1').material('mat2').selection.set([2]);
+model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
+model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4' '0' '0' '0' '2.4' '0' '0' '0' '2.4'});
+model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
+
+%% setup the physics and the boundary conditions
+model.component('comp1').physics.create('ewfd', 'ElectromagneticWavesFrequencyDomain', 'geom1');
+model.component('comp1').physics('ewfd').create('pc1', 'PeriodicCondition', 1);
+model.component('comp1').physics('ewfd').feature('pc1').selection.set([1 12]);
+model.component('comp1').physics('ewfd').create('pc2', 'PeriodicCondition', 1);
+model.component('comp1').physics('ewfd').feature('pc2').selection.set([2 7]);
+model.component('comp1').physics('ewfd').prop('components').set('components', 'inplane');
+model.component('comp1').physics('ewfd').feature('pc1').set('PeriodicType', 'Floquet');
+model.component('comp1').physics('ewfd').feature('pc1').set('kFloquet', {'kx'; 'ky'; '0'});
+model.component('comp1').physics('ewfd').feature('pc1').label('Periodic Condition x direction');
+model.component('comp1').physics('ewfd').feature('pc2').set('PeriodicType', 'Floquet');
+model.component('comp1').physics('ewfd').feature('pc2').set('kFloquet', {'kx'; 'ky'; '0'});
+model.component('comp1').physics('ewfd').feature('pc2').label('Periodic Condition y direction');
+
+%% Add the solver and solver sequences 
+study = model.study.create('std1');
+std_param = study.create('param', 'Parametric');
+std_eigv = study.create('eig', 'Eigenfrequency');
+std_param.set('pname', 'k');
+std_param.set('plistarr', kliststr);
+std_param.set('punit', '');
+std_eigv.set('neigsactive',true).set('neigs',nbands);
+std_eigv.set('shiftactive',true).set('shift',num2str(freq));
+
+solv = model.sol.create('solv');
+solv.study('std1');           % connect solver sequence to study node
+solv.attach('std1');         % comes from .m saved from GUI - needed?
+
+solv_stdstep = solv.create('st1', 'StudyStep'); % define study step, vars, solver node
+solv_vars = solv.create('v1', 'Variables');
+solv_eigv = solv.create('e1', 'Eigenvalue');
+solv_eigv.create('d1','Direct');
+study.label('Compile Equations: Eigenfrequency');
+solv_vars.label('Dependent Variables 1.1');
+solv_eigv.label('Eigenvalue Solver 1.1');
+
+solv_eigv.set('transform','eigenfrequency');
+solv_eigv.set('shift',num2str(freq));
+solv_eigv.feature('dDef').label('Direct 2');
+solv_eigv.feature('aDef').label('Advanced 1');
+solv_eigv.feature('aDef').set('complexfun', true);
+solv_eigv.feature('d1').label('Suggested Direct Solver (ewfd)');
+
+
+% solv_eigv.set('transform', 'eigenfrequency');
+% solv_eigv.set('control','std_eigv');
+% solv_eigv.feature('dDef').set('linsolver', 'spooles');
+% solv_eigv.feature('aDef').set('complexfun', 'off');
+
+psolv = model.sol.create('psolv');
+psolv.study('std1');
+psolv.label('Parametric Solutions 2');
+
+% add batch job configuration for parameter sweep
+pbatch = model.batch.create('p1', 'Parametric');
+pbatch_solseq = pbatch.create('so1', 'Solutionseq');
+pbatch.study('std1');
+pbatch.attach('std1');
+pbatch.set('control', 'param');
+pbatch.set('pname', 'k');
+pbatch.set('plistarr', kliststr);
+pbatch.set('punit', '');
+pbatch.set('err', true);
+pbatch_solseq.set('seq', 'solv');
+pbatch_solseq.set('psol', 'psolv');
+pbatch_solseq.set('param', kparamstr);
+
+disp('Study, solver, sweep and batch nodes added');
+
+%% Add Mesh
+mesh_quality = meshSize;
+mesh = model.mesh.create('mesh', 'geom1');
+display(['Meshing with quality: ' num2str(mesh_quality)]);
+mesh.autoMeshSize(mesh_quality).run;
+
+%% Solve for bands
+solv.runAll;
+pbatch.run;
+
+%% set up results node 
+model.result.table.create('tbl1', 'Table');
+model.result.table.create('tbl2', 'Table');
+model.result.table.create('tbl3', 'Table');
+model.result.table.create('tbl4', 'Table');
+model.result.table.create('tbl5', 'Table');
+model.result.table.create('tbl6', 'Table');
+model.result.table.create('tbl7', 'Table');
+model.result.table.create('tbl8', 'Table');
+model.result.table.create('tbl9', 'Table');
+model.result.table.create('tbl10', 'Table');
+model.result.table.create('tbl11', 'Table');
+model.result.table.create('tbl12', 'Table');
+model.result.table.create('tbl13', 'Table');
+model.result.table.create('tbl14', 'Table');
+
+
+model.result.numerical.create('gev1', 'EvalGlobal');
+model.result.numerical.create('gev2', 'EvalGlobal');
+model.result.numerical('gev1').set('probetag', 'none');
+model.result.numerical('gev2').set('data', 'dset2');
+model.result.numerical('gev2').set('probetag', 'none');
+model.result.create('pg1', 'PlotGroup2D');
+model.result.create('pg2', 'PlotGroup2D');
+model.result.create('pg3', 'PlotGroup1D');
+model.result('pg1').create('surf1', 'Surface');
+model.result('pg2').set('data', 'dset2');
+model.result('pg2').create('surf1', 'Surface');
+model.result('pg3').set('data', 'dset2');
+model.result('pg3').create('glob1', 'Global');
+
+model.result.numerical('gev1').label('Eigenfrequencies (ewfd)');
+model.result.numerical('gev1').set('table', 'tbl13');
+model.result.numerical('gev1').set('expr', {'ewfd.freq' 'ewfd.Qfactor'});
+model.result.numerical('gev1').set('unit', {'THz' '1'});
+model.result.numerical('gev1').set('descr', {'Frequency' 'Quality factor'});
+model.result.numerical('gev2').label('Eigenfrequencies (ewfd) 1');
+model.result.numerical('gev2').set('table', 'tbl14');
+model.result.numerical('gev2').set('expr', {'ewfd.freq' 'ewfd.Qfactor'});
+model.result.numerical('gev2').set('unit', {'THz' '1'});
+model.result.numerical('gev2').set('descr', {'Frequency' 'Quality factor'});
+model.result.numerical('gev1').setResult;
+model.result.numerical('gev2').setResult;
+model.result('pg1').label('Electric Field (ewfd)');
+model.result('pg1').set('frametype', 'spatial');
+model.result('pg1').feature('surf1').set('smooth', 'internal');
+model.result('pg1').feature('surf1').set('resolution', 'normal');
+model.result('pg2').label('Electric Field (ewfd) 1');
+model.result('pg2').set('frametype', 'spatial');
+model.result('pg2').feature('surf1').set('smooth', 'internal');
+model.result('pg2').feature('surf1').set('resolution', 'normal');
+model.result('pg3').set('xlabel', 'k');
+model.result('pg3').set('ylabel', 'Frequency (THz)');
+model.result('pg3').set('xlabelactive', false);
+model.result('pg3').set('ylabelactive', false);
+model.result('pg3').feature('glob1').set('expr', {'ewfd.freq'});
+model.result('pg3').feature('glob1').set('unit', {'THz'});
+model.result('pg3').feature('glob1').set('descr', {'Frequency'});
+model.result('pg3').feature('glob1').set('xdatasolnumtype', 'outer');
+model.result('pg3').feature('glob1').set('linewidth', 'preference');
+
+%% Save data and plots
+if ~exist([P.datLoc,P.fileBase],'dir') && P.saveplots
+    mkdir([P.datLoc,P.fileBase])
+end
+
+% extract solution info from parameter sweep
+sols = mphsolutioninfo(model);
+lambda_inds = find(strcmp(sols.psolv.mapheaders,'lambda'));
+k_inds = find(strcmp(sols.psolv.mapheaders,'kx'));
+inner_inds = find(strcmp(sols.psolv.mapheaders,'Inner'));
+outer_inds = find(strcmp(sols.psolv.mapheaders,'Outer'));
+
+% assemble solutions
+for ki = 0:3*kpts-1
+%     fem = mbfem;
+    % assemble eigenvalues and eigenfrequencies
+    lambda_ki = find(sols.psolv.map(:,outer_inds)==ki+1);
+    fem.sol.lambda = sols.psolv.map(lambda_ki,lambda_inds);
+    fem.sol.freqs = abs(fem.sol.lambda)/(2*pi);
+    for nb = 1:nbands
+        ds.F(ki+1,nb) = fem.sol.freqs(nb);
+    end
+end
+
+% postprocess F and k
+% append results from Gamma-point simulations to end of array
+ds.F(end+1,1:nbands) = ds.F(1,1:nbands);
+
+if P.bandStruct_2D
+    % for 2D band structure
+    ds.k_norm(end+1) = 3;
+    ds.kx_norm(end+1) = ds.kx_norm(1);
+    ds.ky_norm(end+1) = ds.ky_norm(1); 
+else
+    % for 1D band structures
+    ds.kx_norm(end+1) = ds.kx_norm(1);
+    ds.k_norm = ds.kx_norm;     
+end
+
+%% saving the mph files for debugging purposes 
+if P.saveMPH
+    path_mph = [P.datLoc,P.fileBase,'\bands_',txt_zsym,'.mph'];
+    mphsave(model, path_mph);
+end
+
+ds.P = P; 
+
+end 
