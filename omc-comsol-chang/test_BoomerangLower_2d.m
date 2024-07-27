@@ -23,6 +23,7 @@ P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
 P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 9;                           % no. of bands to solve for
+P.bandStructureDim = 1;                 % 1D vs 2D band structure
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)

@@ -19,6 +19,7 @@ P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
+P.bandStructureDim = 2;                 % 1D vs 2D band structure
 P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 9;                           % no. of bands to solve for
 

@@ -64,15 +64,19 @@ fBase = P.fileBase;
 %% solve the optical band structure
 if isempty(dir([datLoc,fBase,'_bds.mat']))
     tStart = tic;
-
-    OpticalBand = runOpticalBand_2D(P);
+    if P.bandStructureDim==2
+        OpticalBand = runOpticalBand_2D(P);
+    elseif P.bandStructureDim==1
+        OpticalBand = runOpticalBand_1D(P);
+    end
     % find gaps 
     [OpticalBand.midGap,OpticalBand.gapSize] = findGaps(OpticalBand);
     % write to data structure 
     ds.opticalBand = OpticalBand;
 
 %% plot bandstructure
-    if P.savebndplot
+if P.savebndplot
+    if P.bandStructureDim==2
         figure; hold on
         maxFreqs = [0 0 0 0];
 
@@ -138,7 +142,74 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
         pathFig = [P.datLoc,fBase,'_fullBands'];
         saveas(gcf,[pathFig,'.png']);
         saveas(gcf,[pathFig,'.fig']);
-    end
+    else 
+        figure; hold on
+        maxFreqs = [0 0 0 0];
+
+        p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'ko','linewidth',2,'DisplayName','sym','MarkerSize',5);
+
+        
+        % plot optical bandgaps
+        for k = 1:length(OpticalBand.gapSize)
+            bgp = patch([0 1 1 0],(1e-12)*(OpticalBand.midGap(k) + 0.5*[OpticalBand.gapSize(k) ...
+                OpticalBand.gapSize(k) -OpticalBand.gapSize(k) -OpticalBand.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+            alpha(bgp,0.5);
+        end
+        
+        % plot symmetric midgap frequencies
+        for k = 1:length(OpticalBand.midGap)
+            midfreqs = OpticalBand.midGap(k)*ones(length(OpticalBand.k_norm),1);
+            plot(OpticalBand.k_norm,midfreqs*1e-12,'.--r','linewidth',0.5);
+        end
+      
+        xlabel('k','FontSize',12);
+        ylabel('Frequency (THz)','FontSize',12);
+        amax = max([OpticalBand.F(:)])*1e-12;
+        axis([0 1 0 amax]);
+        %         axis tight
+        set(gca,'XTick',[0; 1]);
+        %         set(gca,'XTickLabel',{'G','C'},'fontname','symbol','fontsize',16)
+        set(gca,'XTickLabel',{'\Gamma','X','M','\Gamma'},'fontsize',12)
+        
+        if strcmp(P.celltype,'2D_ribs')
+            bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
+                'w = ',num2str(P.w*1e9,'%.0f'),'nm',...
+                'hi = ',num2str(P.hi*1e9,'%.0f'),'nm, ',...
+                'wi = ',num2str(P.wi*1e9,'%.0f'),'nm',...
+                'ho = ',num2str(P.ho*1e9,'%.0f'),'nm, ',...
+                'wo = ',num2str(P.wo*1e9,'%.0f'),'nm',...
+                'ai = ',num2str(P.ai*1e9,'%.0f'),'nm']};
+        elseif strcmp(P.celltype,'cross')
+            bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
+                'hc = ',num2str(P.hc*1e9,'%.0f'),'nm, ',...
+                'wc = ',num2str(P.wc*1e9,'%.0f'),'nm',...
+                'r1 = ',num2str(P.r1*1e9,'%.0f'),'nm',...
+                'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm']};
+        elseif strcmp(P.celltype,'boomerang')
+            bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
+                'w = ',num2str(P.w*1e9,'%.0f'),'nm, ',...
+                'r = ',num2str(P.r*1e9,'%.0f'),'nm',...
+                'r1 = ',num2str(P.r1*1e9,'%.0f'),'nm',...
+                'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm']};
+        elseif strcmp(P.celltype,'boomerang_lower')
+            bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
+                'w = ',num2str(P.w*1e9,'%.0f'),'nm, ',...
+                'r = ',num2str(P.r*1e9,'%.0f'),'nm',...
+                'd = ',num2str(P.d*1e9,'%.0f'),'nm',...
+                'h = ',num2str(P.h*1e9,'%.0f'),'nm',...
+                'r1 = ',num2str(P.r1*1e9,'%.0f'),'nm',...
+                'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm']};
+        end
+        title(bandtitle);
+        box on
+        hold off
+        
+        % save band diagram as .png and .fig
+        pathFig = [P.datLoc,fBase,'_fullBands'];
+        saveas(gcf,[pathFig,'.png']);
+        saveas(gcf,[pathFig,'.fig']);
+end
+end
     tEnd = toc(tStart);
     disp(['Simulation time = ',num2str(tEnd/60,'%.2f'),'mins'])
 else
