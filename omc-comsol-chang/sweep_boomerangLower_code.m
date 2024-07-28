@@ -26,7 +26,7 @@ function sweep_boomerang_lower(P,h,d)
     P.h = h;           % the height of the hole in the lower portion
     P.d = d;           % the width of the hole in the lower portion
     P.w = 86e-9;              % unit cell width (along x)
-    P.r = 140e-9;              % unit cell height (along y)
+    P.r = 160e-9;              % unit cell height (along y)
     P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
     P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')

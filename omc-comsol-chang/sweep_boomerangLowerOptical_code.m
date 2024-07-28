@@ -26,7 +26,7 @@ function sweep_boomerang_lower_optical(P,h,d)
     P.h = h;           % the height of the hole in the lower portion
     P.d = d;           % the width of the hole in the lower portion
     P.w = 86e-9;              % unit cell width (along x)
-    P.r = 140e-9;              % unit cell height (along y)
+    P.r = 160e-9;              % unit cell height (along y)
     P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
     P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -37,7 +37,7 @@ function sweep_boomerang_lower_optical(P,h,d)
     P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
     P.mbevenz = 1;      % 1 to find even mechanical mode about z
     
-    P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
+    P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
     P.nbands = 9;                           % no. of bands to solve for
     P.bandStructureDim = 1;                 % 1D vs 2D band structure
 
@@ -69,7 +69,7 @@ function sweep_boomerang_lower_optical(P,h,d)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang_lower\072724_optical_sweep2\';
+    datLoc = '.\test\boomerang_lower\072824_optical_sweep\';
     P.datLoc = datLoc;
     bds = solveOpticalBands(P);
 end 
