@@ -39,7 +39,7 @@ a_list = geom(:,6)';
 % if strcmp(P.xsect,'rect')
 %     thi = P.th/2;
 % end
-thi - P.th;
+thi = P.th;
 
 %% Create component
 comp = model.modelNode.create('comp');
@@ -68,6 +68,7 @@ beamgeom.label('Nanobeam geometry');
     
 holeList = {};
 holeFormula = [];
+extrude_labels = {};
 for k = 1:nholes
     h = h_list(k);
     d = d_list(k);
@@ -129,9 +130,11 @@ for k = 1:nholes
     fillet2.selection('point').set(fillet1_label, [4 8 9 12 14 17 21]);
     % holeList = [holeList,holeID];
     % holeFormula = [holeFormula,' + ',holeID];
-    extrude = model.component('comp').geom(P.geomname).feature.create([workplaneID 'ext1'], 'Extrude');
+    extrude_label = [workplaneID 'ext1'];
+    extrude = model.component('comp').geom(P.geomname).feature.create(extrude_label, 'Extrude');
     extrude.setIndex('distance', thi, 0);
     extrude.selection('input').set({workplaneID});
+    extrude_labels = [extrude_labels,extrude_label];
 end
 beamgeom.runCurrent;
     
@@ -147,7 +150,7 @@ beamgeom.runCurrent;
 % beamHoles = beamgeom.feature.create(finBeamTag, 'Extrude');
 % beamHoles.set('distance', thi);
 % beamgeom.runCurrent;  
-% displayBeamStr = 'Nanobeam, rectangular cross-section';
+displayBeamStr = 'Nanobeam, rectangular cross-section';
 
 % % track max dimensions for selections
 % totLen = beamLen;
@@ -167,7 +170,7 @@ beamgeom.run;
 % then update total length
 
 % %% Create air cylinder around beam
-% displayCylStr = '';
+displayCylStr = '';
 % if isfield(P,'airrad') && P.solveOpt
 %     cyl_cut_wp = beamgeom.feature.create('cyl_cut_wp', 'WorkPlane');
 %     cyl_cut_wp.set('planetype', 'quick').set('quickplane', 'xz');
@@ -248,6 +251,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
 end
 
 %% Symmetry in z
+finBeamTag = [];
 symZOn = strcmp(P.xsect,'rect') && ...
         ((P.solveMech && ~P.solveOpt && abs(P.mevenz)) || ...
          (P.solveOpt && ~P.solveMech && abs(P.oevenz)) || ...
@@ -268,7 +272,7 @@ if symZOn
     symZWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -maxThi/2);
     symZPlane = symZWP.geom.feature.create('symZPlane', 'Rectangle');
     symZPlane.set('type', 'solid').set('base', 'corner');
-    symZPlane.set('pos', [xL 0]).set('size', [totLen maxWid/2]);
+    symZPlane.set('pos', [xL -maxWid/2]).set('size', [totLen maxWid]);
     
     % extrude symmetry block
     beamgeom.runCurrent;
@@ -277,7 +281,11 @@ if symZOn
     
     % compose: unit cell - symmetry block
     symZComp = beamgeom.feature.create('symZComp', 'Compose');
-    symZComp.selection('input').set(finBeamTag);
+    for k=1:length(extrude_labels)
+        symZComp.selection('input').set(extrude_labels{k});
+        finBeamTag = [extrude_labels{k},'+',finBeamTag];
+    end
+    finBeamTag = finBeamTag(1:end-1);
     symZComp.selection('input').set('symZPlaneExt');
     symZComp.set('formula', [finBeamTag,' - symZPlaneExt']);
     beamgeom.run;
