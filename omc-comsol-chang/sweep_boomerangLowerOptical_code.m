@@ -5,18 +5,18 @@ a = 480e-9; % lattice constant
 h_min = 110e-9;
 h_max = 140e-9;
 d_min = 86e-9;
-d_max = 140e-9;
+d_max = 150e-9;
 h_list = linspace(h_min,h_max,5);
 d_list = linspace(d_min,d_max,5);
 
 %% run the sweep
 for i=1:length(h_list)
     for j=1:length(d_list)
-        sweep_boomerang_lower(P,h_list(i),d_list(j));
+        sweep_boomerang_lower_optical(P,h_list(i),d_list(j));
     end
 end
 
-function sweep_boomerang_lower(P,h,d)    
+function sweep_boomerang_lower_optical(P,h,d)    
     %% unit cell params 
     P.xsect = 'rect'; 
     P.beamMat = 'diamond';                  % beam material name
@@ -39,6 +39,8 @@ function sweep_boomerang_lower(P,h,d)
     
     P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
     P.nbands = 9;                           % no. of bands to solve for
+    P.bandStructureDim = 1;                 % 1D vs 2D band structure
+
     
     P.solveasym = 1;                        % 1 to solve for antisymmetric bands
     P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -49,13 +51,15 @@ function sweep_boomerang_lower(P,h,d)
     P.saveMPH = 0; 
     P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
     
-    %% mechanical simulation parameters 
+    %% optical simulation parameters 
     % solid mechanics solver parameters
     P.mbeveny = 0;                          % 1 to find even mechanical mode about y
     P.mbevenz = 1;                          % 1 to find even mechanical mode about z
     P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
     P.meshSize = 4;                         % mesh quality for mechanical simulations
     P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
+    P.optical_freq = 220;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
+
     
     P.anisoMat = 1;
     P.rxtal = 45;                           % ccw rotation of elasticity matrix in deg 
@@ -65,7 +69,7 @@ function sweep_boomerang_lower(P,h,d)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang_lower\072824_sweep1\';
+    datLoc = '.\test\boomerang_lower\072724_optical_sweep2\';
     P.datLoc = datLoc;
-    bds = solveBands(P);
+    bds = solveOpticalBands(P);
 end 

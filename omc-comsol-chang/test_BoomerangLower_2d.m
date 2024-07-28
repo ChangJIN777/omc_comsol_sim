@@ -16,7 +16,7 @@ P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
 P.r2 = 40e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
                             % or of outer fins (for celltype = 'solid')
 P.h = 140e-9;           % the height of the hole in the lower portion
-P.d = 86e-9;           % the width of the hole in the lower portion
+P.d = 150e-9;           % the width of the hole in the lower portion
 P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
@@ -34,7 +34,7 @@ P.saveplots = 1;                        % 1 to save displacement and strain prof
 P.saveMPH = 0; 
 P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 
-%% mechanical simulation parameters 
+%% optical simulation parameters 
 % solid mechanics solver parameters
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
