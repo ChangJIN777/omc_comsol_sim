@@ -2,8 +2,8 @@
 P.celltype = 'boomerang_lower';                   % specify the cell type
 
 a = 480e-9; % lattice constant
-h_min = 0.8*180e-9;
-h_max = 1.2*180e-9;
+h_min = 0.8*160e-9;
+h_max = 1.2*160e-9;
 d=100e-9;
 h_list = linspace(h_min,h_max,5);
 d_list = linspace(d_min,d_max,3);
@@ -62,7 +62,7 @@ function sweep_boomerang_lower(P,h,d)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang\072424_sweep2\';
+    datLoc = '.\test\boomerang_lower\072724_sweep1\';
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 

@@ -4,8 +4,12 @@ P.celltype = 'boomerang';                   % specify the cell type
 a = 350e-9; % lattice constant
 a_min = 350e-9; % minimum lattice constant 
 a_max = 500e-9; % maximum lattice constant 
+w = 86e-9; 
+r = 160
+r_min = r*0.7;
+r_max = r;
 % w_list = linspace(w_min,w_max,3);
-% r_list = linspace(w_min,w_max,5);
+r_list = linspace(w_min,w_max,5);
 a_list = linspace(a_min,a_max,10);
 
 %% run the lattice constatn sweep

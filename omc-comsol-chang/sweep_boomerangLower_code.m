@@ -2,15 +2,18 @@
 P.celltype = 'boomerang_lower';                   % specify the cell type
 
 a = 480e-9; % lattice constant
-h_min = 0.8*180e-9;
-h_max = 1.2*180e-9;
-d=100e-9;
+h_min = 110e-9;
+h_max = 140e-9;
+d_min = 86e-9;
+d_max = 110e-9;
 h_list = linspace(h_min,h_max,5);
-d_list = linspace(d_min,d_max,3);
+d_list = linspace(d_min,d_max,5);
 
 %% run the sweep
 for i=1:length(h_list)
-   sweep_boomerang_lower(P,h_list(i),d)
+    for i=1:length(d_list)
+        sweep_boomerang_lower(P,h_list(i),d_list(i));
+    end
 end
 
 function sweep_boomerang_lower(P,h,d)    
@@ -19,11 +22,11 @@ function sweep_boomerang_lower(P,h,d)
     P.beamMat = 'diamond';                  % beam material name
     P.celltype = 'boomerang_lower';                   % specify the cell type
     P.unitcell = 'square';                  % specify the shape of the unit cell
-    P.a = 480e-9;              % lattice constant 
+    P.a = 400e-9;              % lattice constant 
     P.h = h;           % the height of the hole in the lower portion
     P.d = d;           % the width of the hole in the lower portion
-    P.w = 144e-9;              % unit cell width (along x)
-    P.r = 144e-9;              % unit cell height (along y)
+    P.w = 86e-9;              % unit cell width (along x)
+    P.r = 140e-9;              % unit cell height (along y)
     P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
     P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -35,7 +38,7 @@ function sweep_boomerang_lower(P,h,d)
     P.mbevenz = 1;      % 1 to find even mechanical mode about z
     
     P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 8;                           % no. of bands to solve for
+    P.nbands = 9;                           % no. of bands to solve for
     
     P.solveasym = 1;                        % 1 to solve for antisymmetric bands
     P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -62,7 +65,7 @@ function sweep_boomerang_lower(P,h,d)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang\072424_sweep2\';
+    datLoc = '.\test\boomerang_lower\072724_sweep1\';
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 

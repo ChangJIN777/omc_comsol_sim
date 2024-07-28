@@ -4,21 +4,23 @@ P.celltype = 'boomerang';                   % specify the cell type
 a = 350e-9; % lattice constant
 a_min = 350e-9; % minimum lattice constant 
 a_max = 500e-9; % maximum lattice constant 
+w = 86e-9; 
+r = 160e-9;
+r_min = r*0.7;
+r_max = r;
 % w_list = linspace(w_min,w_max,3);
-% r_list = linspace(w_min,w_max,5);
+r_list = linspace(r_min,r_max,5);
 a_list = linspace(a_min,a_max,10);
 
 %% run the lattice constatn sweep
-for i=1:length(a_list)
-   sweep_boomerang_lattice(P,a_list(i))
-end
-% 
-% %% run the hole size sweep
-% for i=1:length(w_list)
-%     for j=1:length(r_list)
-%         sweep_boomerang(P,w_list(i),r_list(j))
-%     end
+% for i=1:length(a_list)
+%    sweep_boomerang_lattice(P,a_list(i))
 % end
+% 
+%% run the hole size sweep
+for j=1:length(r_list)
+    sweep_boomerang_holeSize(P,w,r_list(j))
+end
 
 function sweep_boomerang_lattice(P,a)    
     %% unit cell params 
@@ -94,7 +96,7 @@ function sweep_boomerang_holeSize(P,w,r)
     P.mbevenz = 1;      % 1 to find even mechanical mode about z
     
     P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 30;                           % no. of bands to solve for
+    P.nbands = 9;                           % no. of bands to solve for
     
     P.solveasym = 1;                        % 1 to solve for antisymmetric bands
     P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -121,7 +123,7 @@ function sweep_boomerang_holeSize(P,w,r)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang\072424_sweep1\';
+    datLoc = '.\test\boomerang\072724_sweep1\';
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 
