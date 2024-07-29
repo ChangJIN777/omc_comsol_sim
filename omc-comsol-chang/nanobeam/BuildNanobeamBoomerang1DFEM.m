@@ -59,8 +59,8 @@ beamgeom.label('Nanobeam geometry');
 %% Create beam with rectangular cross-section
 % beamWP = beamgeom.feature.create('beamWP', 'WorkPlane');
 % beamWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -thi/2);
-
-
+% 
+% 
 % beamplane = beamWP.geom.feature.create('beamplane', 'Rectangle');
 % beamplane.set('type', 'solid').set('base', 'corner');
 % beamplane.set('pos', [0 0]).set('size', [beamLen P.a]);
@@ -77,7 +77,7 @@ for k = 1:nholes
     % hole = beamWP.geom.feature.create(holeID, 'Square');
     % hole.set('type', 'solid').set('base', 'corner');
     hole_corner_x = xpos(k);
-    hole_corner_y = 0;
+    hole_corner_y = a/2;
     workplaneID = [holeID '_wp'];
     ucellWP = beamgeom.create(workplaneID, 'WorkPlane');
     ucellWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -thi/2);
@@ -88,34 +88,34 @@ for k = 1:nholes
     % build the boomerang shaped hole 
     rec1_label = [workplaneID 'r1'];
     rec1 = ucellWP.geom.feature.create(rec1_label, 'Rectangle');
-    rec1.set('pos', [a/2-a/2+hole_corner_x r/2+a/2+sqrt(3)*w/4-a/2]);
+    rec1.set('pos', [a/2-a/2+hole_corner_x r/2+a/2+sqrt(3)*w/4-a/2+hole_corner_y]);
     rec1.set('base', 'center');
     rec1.set('size', [w r]);
     rec2_label = [workplaneID 'r2'];
     rec2 = ucellWP.geom.feature.create(rec2_label, 'Rectangle');
-    rec2.set('pos', [a/2-a/2+hole_corner_x a/2-sqrt(3)*w/2+sqrt(3)*w/4-a/2]);
+    rec2.set('pos', [a/2-a/2+hole_corner_x a/2-sqrt(3)*w/2+sqrt(3)*w/4-a/2+hole_corner_y]);
     rec2.set('rot', 120);
     rec2.set('size', [w r]);
     rec3_label = [workplaneID 'r3'];
     rec3 = ucellWP.geom.feature.create(rec3_label, 'Rectangle');
-    rec3.set('pos', [a/2+w/2-a/2+hole_corner_x a/2+sqrt(3)*w/4-a/2]);
+    rec3.set('pos', [a/2+w/2-a/2+hole_corner_x a/2+sqrt(3)*w/4-a/2+hole_corner_y]);
     rec3.set('rot', 240);
     rec3.set('size', [w r]);
     rec4_label = [workplaneID 'r4'];
     rec4 = ucellWP.geom.feature.create(rec4_label, 'Rectangle');
-    rec4.set('pos', [w/2+sqrt(3)*r/2+a/2-a/2+hole_corner_x a/2-r/2+sqrt(3)*w/4-a/2]);
+    rec4.set('pos', [w/2+sqrt(3)*r/2+a/2-a/2+hole_corner_x a/2-r/2+sqrt(3)*w/4-a/2+hole_corner_y]);
     rec4.set('rot', 180);
     rec4.set('size', [d h]);
     rec5_label = [workplaneID 'r5'];
     rec5 = ucellWP.geom.feature.create(rec5_label, 'Rectangle');
-    rec5.set('pos', [-w/2-sqrt(3)*r/2+a/2+d-a/2+hole_corner_x a/2-r/2+sqrt(3)*w/4-a/2]);
+    rec5.set('pos', [-w/2-sqrt(3)*r/2+a/2+d-a/2+hole_corner_x a/2-r/2+sqrt(3)*w/4-a/2+hole_corner_y]);
     rec5.set('rot', 180);
     rec5.set('size', [d h]);
     pol1_label = [workplaneID 'pol1'];
     pol1 = ucellWP.geom.feature.create(pol1_label, 'Polygon');
     pol1.set('tableconstr', {'off' 'off'});
     pol1.set('source', 'table');
-    pol1.set('table', [-w/2+a/2-a/2+hole_corner_x a/2+sqrt(3)*w/4-a/2; w/2+a/2-a/2+hole_corner_x a/2+sqrt(3)*w/4-a/2; a/2-a/2+hole_corner_x a/2-sqrt(3)*w/4-a/2; -w/2+a/2-a/2+hole_corner_x a/2+sqrt(3)*w/4-a/2]);
+    pol1.set('table', [-w/2+a/2-a/2+hole_corner_x a/2+sqrt(3)*w/4-a/2+hole_corner_y; w/2+a/2-a/2+hole_corner_x a/2+sqrt(3)*w/4-a/2+hole_corner_y; a/2-a/2+hole_corner_x a/2-sqrt(3)*w/4-a/2+hole_corner_y; -w/2+a/2-a/2+hole_corner_x a/2+sqrt(3)*w/4-a/2+hole_corner_y]);
     compose1_label = [workplaneID 'co1'];
     compose1 = ucellWP.geom.feature.create(compose1_label, 'Compose');
     compose1_formula = [ucellplane_label,'-',rec1_label,'-',rec2_label,'-',rec3_label,'-',rec4_label,'-',rec5_label,'-',pol1_label];
@@ -130,6 +130,14 @@ for k = 1:nholes
     fillet2.selection('point').set(fillet1_label, [4 8 9 12 14 17 21]);
     % holeList = [holeList,holeID];
     % holeFormula = [holeFormula,' + ',holeID];
+    beamplane_label = [workplaneID 'beamplane'];
+    beamplane = ucellWP.geom.feature.create(beamplane_label, 'Rectangle');
+    beamplane.set('type', 'solid').set('base', 'corner');
+    beamplane.set('pos', [0 0]).set('size', [beamLen P.a]);
+    compose2_label = [workplaneID 'co2'];
+    compose2 = ucellWP.geom.feature.create(compose2_label, 'Compose');
+    compose2_formula = [beamplane_label,'*',fillet2_label];
+    compose2.set('formula', compose2_formula);
     extrude_label = [workplaneID 'ext1'];
     extrude = model.component('comp').geom(P.geomname).feature.create(extrude_label, 'Extrude');
     extrude.setIndex('distance', thi, 0);
@@ -169,34 +177,6 @@ beamgeom.run;
 % use createNanobeamGeom
 % then update total length
 
-% %% Create air cylinder around beam
-displayCylStr = '';
-% if isfield(P,'airrad') && P.solveOpt
-%     cyl_cut_wp = beamgeom.feature.create('cyl_cut_wp', 'WorkPlane');
-%     cyl_cut_wp.set('planetype', 'quick').set('quickplane', 'xz');
-%     cyl_cut = cyl_cut_wp.geom.feature.create('cyl_cut','Rectangle');
-%     cyl_cut.set('type','solid').set('pos',[0,0]).set('size',[totLen,P.airrad]);
-% 
-%     air_cyl = beamgeom.feature.create('air_cyl', 'Revolve');
-%     air_cyl.selection('input').set('cyl_cut_wp');
-% 
-%     air_cyl.set('angle1','-180');
-%     air_cyl.set('axis',[1,0]).set('pos',[0,0]).set('angle2','0');
-% 
-%     % Compose final geometry
-%     beamHolesAir = beamgeom.feature.create('beamHolesAir', 'Compose');
-%     beamHolesAir.selection('input').set(finBeamTag);
-%     beamHolesAir.selection('input').set('air_cyl');
-%     beamHolesAir.set('formula', [finBeamTag,' + air_cyl']);
-%     beamgeom.run;
-%     displayCylStr = ', air cylinder';
-%     finBeamTag = 'beamHolesAir';
-% 
-%     % track max dimensions for selections
-%     totLen = beamLen;
-%     maxWid = max(maxWid,2*P.airrad);
-%     maxThi = max(maxThi,2*P.airrad);
-% end
 
 
 
@@ -272,7 +252,7 @@ if symZOn
     symZWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -maxThi/2);
     symZPlane = symZWP.geom.feature.create('symZPlane', 'Rectangle');
     symZPlane.set('type', 'solid').set('base', 'corner');
-    symZPlane.set('pos', [xL -maxWid/2]).set('size', [totLen maxWid]);
+    symZPlane.set('pos', [0 0]).set('size', [totLen maxWid]);
     
     % extrude symmetry block
     beamgeom.runCurrent;
@@ -293,7 +273,34 @@ if symZOn
     maxThi = maxThi/2;
 end
     
+%% Create air cylinder around beam
+displayCylStr = '';
+if isfield(P,'airrad') && P.solveOpt
+    cyl_cut_wp = beamgeom.feature.create('cyl_cut_wp', 'WorkPlane');
+    cyl_cut_wp.set('planetype', 'quick').set('quickplane', 'xz');
+    cyl_cut = cyl_cut_wp.geom.feature.create('cyl_cut','Rectangle');
+    cyl_cut.set('type','solid').set('pos',[0,0]).set('size',[totLen,P.airrad]);
 
+    air_cyl = beamgeom.feature.create('air_cyl', 'Revolve');
+    air_cyl.selection('input').set('cyl_cut_wp');
+
+    air_cyl.set('angle1','-180');
+    air_cyl.set('axis',[1,0]).set('pos',[0,0]).set('angle2','0');
+
+    % Compose final geometry
+    beamHolesAir = beamgeom.feature.create('beamHolesAir', 'Compose');
+    beamHolesAir.selection('input').set('symZComp');
+    beamHolesAir.selection('input').set('air_cyl');
+    beamHolesAir.set('formula', ['air_cyl-','symZComp']);
+    beamgeom.run;
+    displayCylStr = ', air cylinder';
+    finBeamTag = 'beamHolesAir';
+
+    % track max dimensions for selections
+    totLen = beamLen;
+    maxWid = max(maxWid,2*P.airrad);
+    maxThi = max(maxThi,2*P.airrad);
+end
 
 display(['Geometry created - ',displayBeamStr,displayCylStr,displayPMLStr]);
 
@@ -305,7 +312,7 @@ display(['Geometry created - ',displayBeamStr,displayCylStr,displayPMLStr]);
 delta = 10e-9; 
 beamSel = beamgeom.create('beamSel', 'BoxSelection');
 beamSel.set('xmin', -delta).set('xmax', beamLen + delta);
-beamSel.set('ymin', -delta).set('ymax', max(w)/2 + delta);
+beamSel.set('ymin', -delta).set('ymax', max(a) + delta);
 beamSel.set('zmin', -thi/2-delta).set('zmax', thi/2 + delta);
 beamSel.set('entitydim', 3).set('condition', 'inside');
 beamgeom.runCurrent;
@@ -350,11 +357,6 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     P.domSel.PML = inds';
 end
 
-
-
-
-
-
 %% Create boundary selections after full geometry is constructed
 % flat planes: use box selection with condition that all vertices are in box
 % curved planes: use box selection with condition that box intersects plane
@@ -364,7 +366,7 @@ delta = 5e-9;
 % beam x-symmetry plane
 beamXsymSel = beamgeom.create('beamXsymSel', 'BoxSelection');
 beamXsymSel.set('xmin', -delta).set('xmax', delta);
-beamXsymSel.set('ymin', -delta).set('ymax', max(w)/2+delta);
+beamXsymSel.set('ymin', -delta).set('ymax', max(a)+delta);
 beamXsymSel.set('zmin', -thi/2*(1-symZOn)-delta).set('zmax', thi/2+delta);
 beamXsymSel.set('entitydim', 2).set('condition', 'allvertices');
 beamgeom.runCurrent;
@@ -374,7 +376,7 @@ P.bndSel.beamXsym = inds';
 % beam x-end plane
 beamXendSel = beamgeom.create('beamXendSel', 'BoxSelection');
 beamXendSel.set('xmin', beamLen-delta).set('xmax', beamLen+delta);
-beamXendSel.set('ymin', -delta).set('ymax', max(w)/2+delta);
+beamXendSel.set('ymin', -delta).set('ymax', max(a)+delta);
 beamXendSel.set('zmin', -thi/2*(1-symZOn)-delta).set('zmax', thi/2+delta);
 beamXendSel.set('entitydim', 2).set('condition', 'allvertices');
 beamgeom.runCurrent;
@@ -393,10 +395,10 @@ P.bndSel.beamYsym = inds';
 
 % beam z-symmetry plane
 beamZsymSel = beamgeom.create('beamZsymSel', 'BoxSelection');
-beamZsymSel.set('xmin', delta).set('xmax', 2*delta);
+beamZsymSel.set('xmin', -delta).set('xmax', beamLen+delta);
 beamZsymSel.set('ymin', min(w)/2-2*delta).set('ymax', min(w)/2-delta);
 beamZsymSel.set('zmin', -delta).set('zmax', delta);
-beamZsymSel.set('entitydim', 2).set('condition', 'intersects'); % only want beam surface, exclude air holes
+beamZsymSel.set('entitydim', 2).set('condition', 'somevertex'); % only want beam surface, exclude air holes
 beamgeom.runCurrent;
 inds = model.selection([P.geomname,'_beamZsymSel']).inputEntities();
 P.bndSel.beamZsym = inds';

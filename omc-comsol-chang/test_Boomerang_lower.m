@@ -65,6 +65,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 
 %% Single solve
-datLoc = '.\test\boomerang_lower\072724\';
+datLoc = '.\test\boomerang_lower\072924\';
 P.datLoc = datLoc;
 bds = solveBands(P);

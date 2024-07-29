@@ -93,7 +93,11 @@ try
         P = LoadMaterialParams(P);
 
         %% Run simulations
-        [model,P] = BuildNanobeamFEM(model,P);              % generates nanobeam in COMSOL
+        if isfield(P,'celltype') && strcmp(P.celltype,'boomerang')
+            [model,P] = BuildNanobeamBoomerang1DFEM(model,P);
+        else
+            [model,P] = BuildNanobeamFEM(model,P);              % generates nanobeam in COMSOL
+        end
 
         % optional - plot geometry
         if P.plotgeom
@@ -102,10 +106,14 @@ try
     %         title(P.fileBase)
             saveas(gcf,[datLoc,P.fileBase,'_mphgeom.png']);
         end
-
-        [model,ds] = SetupNanobeamFEM(model,P);         % set up nanobeam FEM simulations
-        [model,ds] = SolveNanobeamFEM(model,ds);        % solve and postprocess FEM simulations
         
+        if isfield(P,'celltype') && strcmp(P.celltype,'boomerang')
+            [model,ds] = SetupNanobeamBoomerangFEM(model,P);         % set up nanobeam FEM simulations
+            [model,ds] = SolveNanobeamBoomerangFEM(model,ds);        % solve and postprocess FEM simulations
+        else
+            [model,ds] = SetupNanobeamFEM(model,P);         % set up nanobeam FEM simulations
+            [model,ds] = SolveNanobeamFEM(model,ds);        % solve and postprocess FEM simulations
+        end
     elseif ~isempty(matFile) && ~isempty(mphFile)
         disp('loading existing simulation results...')
         load([datLoc,matFile(1).name])

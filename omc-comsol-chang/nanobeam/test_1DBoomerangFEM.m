@@ -12,7 +12,7 @@ P.anisoMat = 1;
 % unit cell geometry
 P.a = 400e-9;              % lattice constant 
 P.w = 86e-9;              % unit cell width (along x)
-P.r = 160e-9;              % unit cell height (along y)
+P.r = 140e-9;              % unit cell height (along y)
 P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.h = 120e-9;           % the height of the hole in the lower portion
@@ -32,8 +32,8 @@ P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
 P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
 P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
 P.a_ctr = 400e-9;                     % for taperTo = 'custom': lattice constant of center hole
-P.h_ctr = 120e-9;                    % for taperTo = 'custom': hole height of center hole
-P.d_ctr = 160e-9;                    % for taperTo = 'custom': hole width of center hole
+P.h_ctr = 110e-9;                    % for taperTo = 'custom': hole height of center hole
+P.d_ctr = 86e-9;                    % for taperTo = 'custom': hole width of center hole
 % P.cavlen = 0e-9;                      % custom cavity length between two center holes; disable if not used
 
 % end waveguide mirror taper params
@@ -81,7 +81,7 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 5e9;                           % target mechanical frequency
+P.freq = 10e9;                           % target mechanical frequency
 P.mneigs = 10;                          % # of eignevalues to find
 P.mMesh = 3;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
@@ -99,7 +99,7 @@ P.oevenz = 1;                           % +/-1 to find even/odd optical mode abo
 P.oneigs = 1;                           % # of eigenvalues to find
 P.oMesh = 4;                            % mesh quality for optical simulations
 P.oAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
-P.airrad = 2*P.lambda+P.w/2;            % radius of air cylinder surrounding nanobeam
+P.airrad = 2*P.lambda+P.a/2;            % radius of air cylinder surrounding nanobeam
 
 %% OM coupling parameters
 P.g0min = 80e3;                         % min g0 above which to save plots for
@@ -133,24 +133,24 @@ P.max_dof = 5e6;                        % max # of degrees of freedom
 
 %% single run
 % data location to save files in
-datLoc = 'D:\Files\OMC-SiV\45oOMC\original\'; 
-% [ds,model] = RunNanobeamFEM(P,datLoc);
+datLoc = '.\testing'; 
+[ds,model] = RunNanobeamFEM(P,datLoc);
 % testing the create nanobeam geom function 
-%% test the model building function 
-% import COMSOL class
-import com.comsol.model.*
-import com.comsol.model.util.*
-
-ModelUtil.showProgress(true);
-
-ModelUtil.clear();
-clear ds model
-
-ds = [];
-model = [];
-
-% create COMSOL model named 'model' from which COMSOL methods can be called, 
-% e.g. model.save
-model = ModelUtil.create('model');
-P = CreateNanobeamGeomBoomerang1D(P);
-BuildNanobeamBoomerang1DFEM(model,P);
+% %% test the model building function 
+% % import COMSOL class
+% import com.comsol.model.*
+% import com.comsol.model.util.*
+% 
+% ModelUtil.showProgress(true);
+% 
+% ModelUtil.clear();
+% clear ds model
+% 
+% ds = [];
+% model = [];
+% 
+% % create COMSOL model named 'model' from which COMSOL methods can be called, 
+% % e.g. model.save
+% model = ModelUtil.create('model');
+% P = CreateNanobeamGeomBoomerang1D(P);
+% BuildNanobeamBoomerang1DFEM(model,P);
