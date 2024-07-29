@@ -12,7 +12,7 @@ P.r = 160e-9;              % unit cell height (along y)
 P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.h = 120e-9;           % the height of the hole in the lower portion
-P.d = 75e-9;           % the width of the hole in the lower portion
+P.d = 86e-9;           % the width of the hole in the lower portion
 P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r2 = 40e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')

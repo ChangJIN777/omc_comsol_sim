@@ -2,10 +2,10 @@
 P.celltype = 'boomerang_lower';                   % specify the cell type
 
 a = 480e-9; % lattice constant
-h_min = 110e-9;
-h_max = 140e-9;
+h_min = 100e-9;
+h_max = 180e-9;
 d_min = 86e-9;
-d_max = 140e-9;
+d_max = 180e-9;
 h_list = linspace(h_min,h_max,5);
 d_list = linspace(d_min,d_max,5);
 
@@ -22,16 +22,16 @@ function sweep_boomerang_lower(P,h,d)
     P.beamMat = 'diamond';                  % beam material name
     P.celltype = 'boomerang_lower';                   % specify the cell type
     P.unitcell = 'square';                  % specify the shape of the unit cell
-    P.a = 400e-9;              % lattice constant 
+    P.a = 500e-9;              % lattice constant 
     P.h = h;           % the height of the hole in the lower portion
     P.d = d;           % the width of the hole in the lower portion
     P.w = 86e-9;              % unit cell width (along x)
-    P.r = 160e-9;              % unit cell height (along y)
+    P.r = 200e-9;              % unit cell height (along y)
     P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
-    P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
+    P.r1 = 20e-9;             % width (along y) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
-    P.r2 = 40e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
+    P.r2 = 20e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
                                 % or of outer fins (for celltype = 'solid')
     P.nperiod = 1;  % no. of periods to simulate for
     P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell

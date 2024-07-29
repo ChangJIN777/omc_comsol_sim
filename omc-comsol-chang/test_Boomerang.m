@@ -6,9 +6,9 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 350e-9;              % lattice constant 
-P.w = 75e-9;              % unit cell width (along x)
-P.r = 140e-9;              % unit cell height (along y)
+P.a = 500e-9;              % lattice constant 
+P.w = 86e-9;              % unit cell width (along x)
+P.r = 180e-9;              % unit cell height (along y)
 P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -20,7 +20,7 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
 P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 18;                           % no. of bands to solve for
+P.nbands = 7;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -36,7 +36,7 @@ P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
-P.meshSize = 3;                         % mesh quality for mechanical simulations
+P.meshSize = 4;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
 P.anisoMat = 1;
@@ -62,6 +62,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildBoomerangUnitCell(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\boomerang\072724\';
+datLoc = '.\test\boomerang\072924\';
 P.datLoc = datLoc;
 bds = solveBands(P);
