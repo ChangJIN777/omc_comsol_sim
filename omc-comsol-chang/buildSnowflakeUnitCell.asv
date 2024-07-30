@@ -1,0 +1,77 @@
+function [model,P] = buildSnowflakeUnitCell(model,P)
+%
+% snowFlakeBuildUnitCellCode.m
+%
+% Model exported on Jul 29 2024, 18:17 by COMSOL 6.1.0.357.
+
+%% read the input parameters 
+a = P.a;        % lattice constant 
+w = P.w;        % the width of the hole 
+th = P.th;        % the height of the hole
+r = P.r;        % the height of the hole 
+r1 = P.r1;      % the fillet radius of the edges of the hole 
+r2 = P.r2;      % the fillet radius of the center of the hole 
+abssym = abs(P.mbevenz);    % symmetry in the z direction 
+
+%% Create component 
+ucellcomp = model.modelNode.create('comp1');
+ucellcomp.label('Unit cell FEM simulation');
+ucelllabel = 'Unit Cell';
+ucellname = 'geom1';
+ucellgeom = model.geom.create(ucellname, 3);
+ucellgeom.label(ucelllabel);
+
+%% create unit cell with boomerang geometry
+ucellWP = ucellgeom.feature.create('wp1', 'WorkPlane');
+ucellWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
+% ucellWP.set('unite', true);
+
+ucellplane = ucellWP.geom.feature.create('pol1', 'Polygon');
+ucellplane.label('Base plane');
+ucellplane.set('source', 'table');
+ucellplane.set('table', [0 0; a/2 (a/2)*sqrt(3); a*(3/2) (a/2)*sqrt(3); a 0; 0 0]);
+
+rec_1 = ucellWP.geom.feature.create('r1', 'Rectangle');
+rec_1.set('pos', [a*(1/2+1/4) a*sqrt(3)/4]);
+rec_1.set('base', 'center');
+rec_1.set('size', [2*r w]);
+
+rec_2 = ucellWP.geom.feature.create('r2', 'Rectangle');
+rec_2.set('pos', [a*(1/2+1/4) a*sqrt(3)/4]);
+rec_2.set
+rec_2.set('base', 'center');
+rec_2.set('size', [2*r w]);
+
+
+model.component('comp1').geom('geom1').feature('wp1').geom.feature('r2').set('rot', 60);
+model.component('comp1').geom('geom1').feature('wp1').geom.feature('r2').set('base', 'center');
+model.component('comp1').geom('geom1').feature('wp1').geom.feature('r2').set('size', {'2*r' 'w'});
+model.component('comp1').geom('geom1').feature('wp1').geom.create('r3', 'Rectangle');
+model.component('comp1').geom('geom1').feature('wp1').geom.feature('r3').set('pos', {'a*(1/2+1/4)' 'a*sqrt(3)/4'});
+model.component('comp1').geom('geom1').feature('wp1').geom.feature('r3').set('rot', 120);
+model.component('comp1').geom('geom1').feature('wp1').geom.feature('r3').set('base', 'center');
+model.component('comp1').geom('geom1').feature('wp1').geom.feature('r3').set('size', {'2*r' 'w'});
+model.component('comp1').geom('geom1').feature('wp1').geom.create('co1', 'Compose');
+model.component('comp1').geom('geom1').feature('wp1').geom.feature('co1').set('formula', 'pol1-r1-r2-r3');
+model.component('comp1').geom('geom1').feature('wp1').geom.create('fil1', 'Fillet');
+model.component('comp1').geom('geom1').feature('wp1').geom.feature('fil1').set('radius', 'r1');
+model.component('comp1').geom('geom1').feature('wp1').geom.feature('fil1').selection('point').set('co1(1)', [2 3 4 5 7 8 15 16 18 19 20 21]);
+model.component('comp1').geom('geom1').feature('wp1').geom.create('fil2', 'Fillet');
+model.component('comp1').geom('geom1').feature('wp1').geom.feature('fil2').set('radius', 'r2');
+model.component('comp1').geom('geom1').feature('wp1').geom.feature('fil2').selection('point').set('fil1(1)', [15 16 17 18 19 20]);
+
+model.component('comp1').view('view2').axis.set('xmin', -4.015503805021581E-7);
+model.component('comp1').view('view2').axis.set('xmax', 1.0651169759512413E-6);
+model.component('comp1').view('view2').axis.set('ymin', -1.9445377574811573E-7);
+model.component('comp1').view('view2').axis.set('ymax', 7.197817808446416E-7);
+
+model.component('comp1').geom('geom1').run('wp1');
+model.component('comp1').geom('geom1').feature.create('ext1', 'Extrude');
+
+model.param.set('th', '180[nm]');
+
+model.component('comp1').geom('geom1').feature('ext1').setIndex('distance', 'th', 0);
+model.component('comp1').geom('geom1').feature('wp1').set('quickz', '-th/2');
+model.component('comp1').geom('geom1').runPre('fin');
+
+out = model;
