@@ -37,8 +37,8 @@ function sweep_boomerang_lower(P,h,d)
     P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
     P.mbevenz = 1;      % 1 to find even mechanical mode about z
     
-    P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 9;                           % no. of bands to solve for
+    P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
+    P.nbands = 7;                           % no. of bands to solve for
     
     P.solveasym = 1;                        % 1 to solve for antisymmetric bands
     P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -65,7 +65,7 @@ function sweep_boomerang_lower(P,h,d)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang_lower\072824_sweep1\';
+    datLoc = '.\test\boomerang_lower\072924_sweep1\';
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 
