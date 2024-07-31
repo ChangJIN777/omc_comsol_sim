@@ -49,16 +49,21 @@ rec_3.set('rot', 120);
 rec_3.set('base', 'center');
 rec_3.set('size', [2*r w]);
 
-composit_geom = ucellWP.geom.feature.create('co1', 'Compose');
-composit_geom.set('formula', 'pol1-r1-r2-r3');
+
 
 
 fillet_1 = ucellWP.geom.feature.create('fil1', 'Fillet');
 fillet_1.set('radius', r1);
-fillet_1.selection('point').set('co1(1)', [2 3 4 5 7 8 15 16 18 19 20 21]);
+fillet_1.selection('point').set('r1', [1 2 3 4]);
+fillet_1.selection('point').set('r2', [1 2 3 4]);
+fillet_1.selection('point').set('r3', [1 2 3 4]);
+
+composit_geom = ucellWP.geom.feature.create('co1', 'Compose');
+composit_geom.set('formula', 'pol1-fil1(1)-fil1(2)-fil1(3)');
+
 fillet_2 = ucellWP.geom.create('fil2', 'Fillet');
 fillet_2.set('radius', r2);
-fillet_2.selection('point').set('fil1(1)', [15 16 17 18 19 20]);
+fillet_2.selection('point').set('co1(1)', [13 14 17 18 21 22]);
 
 extrude = ucellgeom.feature.create('ext1', 'Extrude');
 extrude.setIndex('distance', th, 0);

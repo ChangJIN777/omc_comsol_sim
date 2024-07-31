@@ -76,6 +76,8 @@ elseif strcmp(P.celltype,'boomerang')
     [model,P] = buildBoomerangUnitCell_2D(model,P);
 elseif strcmp(P.celltype,'boomerang_lower')
     [model,P] = buildLowerBoomerangUnitCell_2D(model,P);
+elseif strcmp(P.celltype,'snowflake')
+    [model,P] = buildSnowflakeUnitCell_2D(model,P);
 end
 
 if P.plotgeom
