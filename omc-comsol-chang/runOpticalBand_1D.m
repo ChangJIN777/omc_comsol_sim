@@ -69,6 +69,8 @@ elseif strcmp(P.celltype,'boomerang')
     [model,P] = buildBoomerangUnitCell_2D(model,P);
 elseif strcmp(P.celltype,'boomerang_lower')
     [model,P] = buildLowerBoomerangUnitCell_2D(model,P);
+elseif strcmp(P.celltype,'hole_strip')
+    [model,P] = buildHoleStrip_2D(model,P);
 end
 
 if P.plotgeom
@@ -80,21 +82,27 @@ if P.plotgeom
 end
 
 %% Define material and properties
-model.component('comp1').material.create('mat1', 'Common');
 model.component('comp1').material.create('mat2', 'Common');
+model.component('comp1').material('mat2').selection.all;
+model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
+model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
+
+model.component('comp1').material.create('mat1', 'Common');
 model.component('comp1').material('mat1').selection.set([1]);
 model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
-model.component('comp1').material('mat2').selection.set([2]);
-model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
-model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4' '0' '0' '0' '2.4' '0' '0' '0' '2.4'});
-model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
+if strcmp(P.beamMat,'diamond')
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4' '0' '0' '0' '2.4' '0' '0' '0' '2.4'});
+else 
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'3.5' '0' '0' '0' '3.5' '0' '0' '0' '3.5'});
+end
 
 %% setup the physics and the boundary conditions
 model.component('comp1').physics.create('ewfd', 'ElectromagneticWavesFrequencyDomain', 'geom1');
 model.component('comp1').physics('ewfd').create('pc1', 'PeriodicCondition', 1);
-model.component('comp1').physics('ewfd').feature('pc1').selection.set([P.xEnd1 P.xEnd2]);
+% periodic boudaries
+model.component('comp1').physics('ewfd').feature('pc1').selection.set([1 3 4 5 6 7 8 9 10 16 17 18 19 20 21 22 23 24]);
 model.component('comp1').physics('ewfd').create('pc2', 'PeriodicCondition', 1);
-model.component('comp1').physics('ewfd').feature('pc2').selection.set([P.yEnd1 P.yEnd2]);
+model.component('comp1').physics('ewfd').feature('pc2').selection.set([2 12 14 11 13 15]);
 model.component('comp1').physics('ewfd').prop('components').set('components', 'inplane');
 model.component('comp1').physics('ewfd').feature('pc1').set('PeriodicType', 'Floquet');
 model.component('comp1').physics('ewfd').feature('pc1').set('kFloquet', {'kx'; 'ky'; '0'});
