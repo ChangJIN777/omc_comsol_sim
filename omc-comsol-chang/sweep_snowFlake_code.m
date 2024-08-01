@@ -47,8 +47,8 @@ function sweep_snowFlake(P,a,w,r)
     P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
     P.mbevenz = 1;      % 1 to find even mechanical mode about z
     
-    P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 9;                           % no. of bands to solve for
+    P.kpts = 7;                             % no. of k-points, EXCLUDING gamma point
+    P.nbands = 11;                           % no. of bands to solve for
     
     P.solveasym = 1;                        % 1 to solve for antisymmetric bands
     P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
