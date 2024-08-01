@@ -78,6 +78,8 @@ elseif strcmp(P.celltype,'boomerang_lower')
     [model,P] = buildLowerBoomerangUnitCell_2D(model,P);
 elseif strcmp(P.celltype,'snowflake')
     [model,P] = buildSnowflakeUnitCell_2D(model,P);
+elseif strcmp(P.celltype,'hole')
+    [model,P] = buildHoleUnitCell_2D(model,P);
 end
 
 if P.plotgeom
@@ -95,7 +97,12 @@ model.component('comp1').material('mat1').selection.set([1]);
 model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
 model.component('comp1').material('mat2').selection.set([2]);
 model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
-model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4' '0' '0' '0' '2.4' '0' '0' '0' '2.4'});
+
+if strcmp(P.beamMat,'diamond')
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4' '0' '0' '0' '2.4' '0' '0' '0' '2.4'});
+else
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'3.5' '0' '0' '0' '3.5' '0' '0' '0' '3.5'});
+end
 model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
 
 %% setup the physics and the boundary conditions

@@ -67,6 +67,23 @@ if ~isfield(P,'fileBase')
             fBase = [P.prefname,'_',fBase];
         end
         P.fileBase = fBase;
+        
+    elseif strcmp(P.celltype,'hole')
+        fBase = ['optical_hole_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
+            'r_',num2str(P.r*1e9,'%.0f'),'nm',...
+            'b_',num2str(P.b*1e9,'%.0f'),'nm'];
+        if isfield(P,'prefname')
+            fBase = [P.prefname,'_',fBase];
+        end
+        P.fileBase = fBase;
+    elseif strcmp(P.celltype,'hole_strip')
+        fBase = ['optical_holeStrip_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
+            'r_',num2str(P.r*1e9,'%.0f'),'nm',...
+            'b_',num2str(P.b*1e9,'%.0f'),'nm'];
+        if isfield(P,'prefname')
+            fBase = [P.prefname,'_',fBase];
+        end
+        P.fileBase = fBase;
     end
 end
 fBase = P.fileBase;
@@ -149,6 +166,14 @@ if P.savebndplot
                 'r = ',num2str(P.r*1e9,'%.0f'),'nm',...
                 'r1 = ',num2str(P.r1*1e9,'%.0f'),'nm',...
                 'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm']};
+        elseif strcmp(P.celltype,'hole')
+            bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
+                'r = ',num2str(P.r*1e9,'%.0f'),'nm, ',...
+                'b = ',num2str(P.b*1e9,'%.0f'),'nm']};
+        elseif strcmp(P.celltype,'hole_strip')
+            bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
+                'r = ',num2str(P.r*1e9,'%.0f'),'nm, ',...
+                'b = ',num2str(P.b*1e9,'%.0f'),'nm']};
         end
         title(bandtitle);
         box on
@@ -221,6 +246,14 @@ if P.savebndplot
                 'h = ',num2str(P.h*1e9,'%.0f'),'nm',...
                 'r1 = ',num2str(P.r1*1e9,'%.0f'),'nm',...
                 'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm']};
+        elseif strcmp(P.celltype,'hole')
+            bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
+                'r = ',num2str(P.r*1e9,'%.0f'),'nm, ',...
+                'b = ',num2str(P.b*1e9,'%.0f'),'nm']};
+        elseif strcmp(P.celltype,'hole_strip')
+            bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
+                'r = ',num2str(P.r*1e9,'%.0f'),'nm, ',...
+                'b = ',num2str(P.b*1e9,'%.0f'),'nm']};
         end
         title(bandtitle);
         box on
