@@ -8,7 +8,7 @@ P.celltype = 'boomerang';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
 P.a = 450e-9;              % lattice constant 
 P.w = 86e-9;              % unit cell width (along x)
-P.r = 190e-9;              % unit cell height (along y)
+P.r = 180e-9;              % unit cell height (along y)
 P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')

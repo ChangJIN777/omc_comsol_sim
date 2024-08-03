@@ -1,4 +1,4 @@
-function [model,P] = buildBoomerangUnitCell(model,P)
+function [model,P] = buildBoomerangUnitCell_2D(model,P)
 %
 % buildBoomerangUnitCell.m
 %
@@ -67,7 +67,7 @@ ucellgeom.runAll;
 %% Making selections (manual)
 mphgeom(model);
 P.xEnd1 = 1;
-P.xEnd2 = 13;
+P.xEnd2 = 12;
 
 P.yEnd1 = 2;
 P.yEnd2 = 7;
