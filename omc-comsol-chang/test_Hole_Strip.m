@@ -4,10 +4,11 @@ clear P;
 %% unit cell params 
 P.xsect = 'rect'; 
 P.beamMat = 'silicon';                  % beam material name
-P.celltype = 'hole_strip';                   % specify the cell type
+P.celltype = 'hole_strip_wvg';                   % specify the cell type
 P.unitcell = 'strip';                  % specify the shape of the unit cell
 P.a = 342e-9;              % lattice constant 
-P.b = 10e-9;              % unit cell shift in the y direction
+P.b = 5e-9;              % unit cell shift in the y direction
+P.b_wvg = 203.8e-9;           % unit cell shift in the y direction (wvg region)
 P.r = 110e-9;              % radius of the unit cell
 P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -60,10 +61,10 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % % e.g. model.save
 % model = ModelUtil.create('model');
 % 
-% buildHoleStrip_2D(model,P);
+% buildHoleStrip_withWg_2D(model,P);
 % mphlaunch(model);
 
-% buildBoomerangUnitCell_2D(model,P);
+%% run the simulation
 datLoc = '.\test\holeStrip\080124_optical\';
 P.datLoc = datLoc;
 solveOpticalBands(P);

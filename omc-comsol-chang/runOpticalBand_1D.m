@@ -71,6 +71,8 @@ elseif strcmp(P.celltype,'boomerang_lower')
     [model,P] = buildLowerBoomerangUnitCell_2D(model,P);
 elseif strcmp(P.celltype,'hole_strip')
     [model,P] = buildHoleStrip_2D(model,P);
+elseif strcmp(P.celltype,'hole_strip_wvg')
+    [model,P] = buildHoleStrip_withWg_2D(model,P);
 end
 
 if P.plotgeom
@@ -88,7 +90,11 @@ model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex'
 model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
 
 model.component('comp1').material.create('mat1', 'Common');
-model.component('comp1').material('mat1').selection.set([1]);
+if strcmp(P.celltype,'hole_strip_wvg')
+    model.component('comp1').material('mat1').selection.set([1 6 7]);
+else
+    model.component('comp1').material('mat1').selection.set([1]);
+end
 model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
 if strcmp(P.beamMat,'diamond')
     model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4' '0' '0' '0' '2.4' '0' '0' '0' '2.4'});
@@ -100,16 +106,22 @@ end
 model.component('comp1').physics.create('ewfd', 'ElectromagneticWavesFrequencyDomain', 'geom1');
 model.component('comp1').physics('ewfd').create('pc1', 'PeriodicCondition', 1);
 % periodic boudaries
-model.component('comp1').physics('ewfd').feature('pc1').selection.set([1 3 4 5 6 7 8 9 10 16 17 18 19 20 21 22 23 24]);
-model.component('comp1').physics('ewfd').create('pc2', 'PeriodicCondition', 1);
-model.component('comp1').physics('ewfd').feature('pc2').selection.set([2 12 14 11 13 15]);
+boundaries_x = cat(2,P.xEnd1,P.xEnd2);
+boundaries_y = cat(2,P.yEnd1,P.yEnd2);
+model.component('comp1').physics('ewfd').feature('pc1').selection.set(boundaries_x);
+if ~strcmp(P.celltype,'hole_strip_wvg')
+    model.component('comp1').physics('ewfd').create('pc2', 'PeriodicCondition', 1);
+    model.component('comp1').physics('ewfd').feature('pc2').selection.set(boundaries_y);
+end
 model.component('comp1').physics('ewfd').prop('components').set('components', 'inplane');
 model.component('comp1').physics('ewfd').feature('pc1').set('PeriodicType', 'Floquet');
 model.component('comp1').physics('ewfd').feature('pc1').set('kFloquet', {'kx'; 'ky'; '0'});
 model.component('comp1').physics('ewfd').feature('pc1').label('Periodic Condition x direction');
-model.component('comp1').physics('ewfd').feature('pc2').set('PeriodicType', 'Floquet');
-model.component('comp1').physics('ewfd').feature('pc2').set('kFloquet', {'kx'; 'ky'; '0'});
-model.component('comp1').physics('ewfd').feature('pc2').label('Periodic Condition y direction');
+if ~strcmp(P.celltype,'hole_strip_wvg')
+    model.component('comp1').physics('ewfd').feature('pc2').set('PeriodicType', 'Floquet');
+    model.component('comp1').physics('ewfd').feature('pc2').set('kFloquet', {'kx'; 'ky'; '0'});
+    model.component('comp1').physics('ewfd').feature('pc2').label('Periodic Condition y direction');
+end
 
 %% Add the solver and solver sequences 
 study = model.study.create('std1');

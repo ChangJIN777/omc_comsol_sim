@@ -1,4 +1,4 @@
-function [model,P] = buildHoleStrip_2D(model,P)
+function [model,P] = buildHoleStrip_withWg_2D(model,P)
 %
 % buildBoomerangUnitCell.m
 %
@@ -7,6 +7,7 @@ function [model,P] = buildHoleStrip_2D(model,P)
 %% read the input parameters 
 a = P.a;        % lattice constant 
 b = P.b;        % the width of the hole 
+b_wvg = P.b_wvg;    % unit cell shift in the y direction (wvg region)
 th = P.th;        % the height of the hole
 r = P.r;        % the height of the hole 
 r1 = P.r1;      % the fillet radius of the edges of the hole 
@@ -28,9 +29,9 @@ ucellgeom.label(ucelllabel);
 
 ucellplane = ucellgeom.feature.create('r1', 'Rectangle');
 ucellplane.label('Base plane');
-ucellplane.set('pos', [0 0]);
 ucellplane.set('base','center');
-ucellplane.set('size',[a sqrt(3)*5*a]);
+ucellplane.set('pos', [0 b_wvg/2]);
+ucellplane.set('size',[a sqrt(3)*5*a+b_wvg]);
 
 airHole1 = ucellgeom.feature.create('c1','Circle');
 airHole1.set('r',r);
@@ -46,11 +47,11 @@ airHole3 = ucellgeom.feature.create('c3','Circle');
 airHole3.set('r',r);
 airHole3.set('pos', [0 a*sqrt(3)/2+sqrt(3)*a]);
 airHole3.set('base', 'center');
-
-airHole4 = ucellgeom.feature.create('c4','Circle');
-airHole4.set('r',r);
-airHole4.set('pos', [0 a*sqrt(3)/2+2*sqrt(3)*a]);
-airHole4.set('base', 'center');
+% 
+% airHole4 = ucellgeom.feature.create('c4','Circle');
+% airHole4.set('r',r);
+% airHole4.set('pos', [0 a*sqrt(3)/2+2*sqrt(3)*a]);
+% airHole4.set('base', 'center');
 
 airHole5 = ucellgeom.feature.create('c5','Circle');
 airHole5.set('r',r);
@@ -102,8 +103,14 @@ airHole14.set('r',r);
 airHole14.set('pos', [-a/2 -sqrt(3)*a-a*sqrt(3)]);
 airHole14.set('base', 'center');
 
+% add the gap 
+ucellplane = ucellgeom.feature.create('gap1', 'Rectangle');
+ucellplane.set('pos', [0 sqrt(3)*a+a*sqrt(3)]);
+ucellplane.set('base','center');
+ucellplane.set('size',[a 50e-9]);
+
 compose1 = ucellgeom.feature.create('co1', 'Compose');
-compose1.set('formula', 'r1-c1-c2-c3-c4-c5-c6-c7-c8-c9-c10-c11-c12-c13-c14');
+compose1.set('formula', 'r1-c1-c2-c3-c5-c6-c7-c8-c9-c10-c11-c12-c13-c14-gap1');
 
 holeplane = ucellgeom.feature.create('r2', 'Rectangle');
 holeplane.label('Air plane');
@@ -115,8 +122,8 @@ ucellgeom.runAll;
 
 %% Making selections (with box select)
 mphgeom(model);
-P.xEnd1 = [1 3 4 5 6 7 8 9 10];
-P.xEnd2 = [16 17 18 19 20 21 22 23 24];
+P.xEnd1 = [1 3 4 5 6 7 8 9 10 11];
+P.xEnd2 = [18 19 20 21 22 23 24 25 26 27];
 
 P.yEnd1 = [2 12 14];
 P.yEnd2 = [11 13 15];

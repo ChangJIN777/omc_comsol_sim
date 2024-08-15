@@ -84,6 +84,14 @@ if ~isfield(P,'fileBase')
             fBase = [P.prefname,'_',fBase];
         end
         P.fileBase = fBase;
+    elseif strcmp(P.celltype,'hole_strip_wvg')
+        fBase = ['optical_holeStrip_wvg_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
+            'r_',num2str(P.r*1e9,'%.0f'),'nm',...
+            'b_',num2str(P.b*1e9,'%.0f'),'nm'];
+        if isfield(P,'prefname')
+            fBase = [P.prefname,'_',fBase];
+        end
+        P.fileBase = fBase;
     end
 end
 fBase = P.fileBase;
@@ -254,6 +262,12 @@ if P.savebndplot
             bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
                 'r = ',num2str(P.r*1e9,'%.0f'),'nm, ',...
                 'b = ',num2str(P.b*1e9,'%.0f'),'nm']};
+        elseif strcmp(P.celltype,'hole_strip_wvg')
+            bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
+                'r = ',num2str(P.r*1e9,'%.0f'),'nm, ',...
+                'b = ',num2str(P.b*1e9,'%.0f'),'nm']};
+        else 
+            bandtitle = 'blank title';
         end
         title(bandtitle);
         box on
