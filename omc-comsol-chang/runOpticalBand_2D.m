@@ -100,6 +100,8 @@ model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex'
 
 if strcmp(P.beamMat,'diamond')
     model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4' '0' '0' '0' '2.4' '0' '0' '0' '2.4'});
+elseif strcmp(P.beamMat,'SiC')
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.5' '0' '0' '0' '2.5' '0' '0' '0' '2.5'});
 else
     model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'3.5' '0' '0' '0' '3.5' '0' '0' '0' '3.5'});
 end

@@ -3,13 +3,13 @@ clear P;
 
 %% unit cell params 
 P.xsect = 'rect'; 
-P.beamMat = 'silicon';                  % beam material name
-P.celltype = 'hole_strip_wvg';                   % specify the cell type
+P.beamMat = 'SiC';                  % beam material name
+P.celltype = 'hole_strip';                   % specify the cell type
 P.unitcell = 'strip';                  % specify the shape of the unit cell
-P.a = 342e-9;              % lattice constant 
-P.b = 5e-9;              % unit cell shift in the y direction
-P.b_wvg = 203.8e-9;           % unit cell shift in the y direction (wvg region)
-P.r = 110e-9;              % radius of the unit cell
+P.a = 267e-9;              % lattice constant 
+P.b = 40e-9;              % unit cell shift in the y direction
+P.b_wvg = 0;           % unit cell shift in the y direction (wvg region)
+P.r = 0.28*P.a;              % radius of the unit cell
 P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -37,7 +37,7 @@ P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 % solid mechanics solver parameters
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
-P.optical_freq = 200;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
+P.optical_freq = 300;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 3;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
