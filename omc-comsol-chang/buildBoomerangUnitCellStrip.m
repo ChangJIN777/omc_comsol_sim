@@ -101,32 +101,33 @@ ucellWP_lower = ucellgeom.create('wp_lower', 'WorkPlane');
 ucellWP_lower.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
 ucellplane_lower = ucellWP_lower.geom.feature.create('r_base', 'Rectangle');
 ucellplane_lower.set('base', 'center');
-ucellplane_lower.set('pos', [0 -sqrt(3)*a*(3/8)+a/2]);
+base_offset = -sqrt(3)*a*(3/8)+a/2;
+ucellplane_lower.set('pos', [0 base_offset]);
 ucellplane_lower.set('size', [a a*sqrt(3)*(3/4)]);
 rec1 = ucellWP_lower.geom.feature.create('r1', 'Rectangle');
-rec1.set('pos', [0 r/2+sqrt(3)*w/4]);
+rec1.set('pos', [0 r/2+sqrt(3)*w/4+(a/2)/sqrt(3)-sqrt(3)*a/8+base_offset]);
 rec1.set('base', 'center');
 rec1.set('size', [w r]);
 rec2 = ucellWP_lower.geom.feature.create('r2', 'Rectangle');
-rec2.set('pos', [0 -sqrt(3)*w/2+sqrt(3)*w/4]);
+rec2.set('pos', [0 -sqrt(3)*w/2+sqrt(3)*w/4+(a/2)/sqrt(3)-sqrt(3)*a/8+base_offset]);
 rec2.set('rot', 120);
 rec2.set('size', [w r]);
 rec3 = ucellWP_lower.geom.feature.create('r3', 'Rectangle');
-rec3.set('pos', [w/2 sqrt(3)*w/4]);
+rec3.set('pos', [w/2 sqrt(3)*w/4+(a/2)/sqrt(3)-sqrt(3)*a/8+base_offset]);
 rec3.set('rot', 240);
 rec3.set('size', [w r]);
 rec4 = ucellWP_lower.geom.feature.create('r4', 'Rectangle');
-rec4.set('pos', [w/2+sqrt(3)*r/2 -r/2+sqrt(3)*w/4]);
+rec4.set('pos', [w/2+sqrt(3)*r/2 -r/2+sqrt(3)*w/4+(a/2)/sqrt(3)-sqrt(3)*a/8+base_offset]);
 rec4.set('rot', 180);
 rec4.set('size', [d h]);
 rec5 = ucellWP_lower.geom.feature.create('r5', 'Rectangle');
-rec5.set('pos', [-w/2-sqrt(3)*r/2+a/2+d-a/2 a/2-r/2+sqrt(3)*w/4-a/2]);
+rec5.set('pos', [-w/2-sqrt(3)*r/2+a/2+d-a/2 a/2-r/2+sqrt(3)*w/4-a/2+(a/2)/sqrt(3)-sqrt(3)*a/8+base_offset]);
 rec5.set('rot', 180);
 rec5.set('size', [d h]);
 pol1 = ucellWP_lower.geom.feature.create('pol1', 'Polygon');
 pol1.set('tableconstr', {'off' 'off'});
 pol1.set('source', 'table');
-pol1.set('table', [-w/2 sqrt(3)*w/4; w/2 sqrt(3)*w/4; 0 -sqrt(3)*w/4; -w/2 sqrt(3)*w/4]);
+pol1.set('table', [-w/2 sqrt(3)*w/4+(a/2)/sqrt(3)-sqrt(3)*a/8+base_offset; w/2 sqrt(3)*w/4+(a/2)/sqrt(3)-sqrt(3)*a/8+base_offset; 0 -sqrt(3)*w/4+(a/2)/sqrt(3)-sqrt(3)*a/8+base_offset; -w/2 sqrt(3)*w/4+(a/2)/sqrt(3)-sqrt(3)*a/8+base_offset]);
 compose1 = ucellWP_lower.geom.feature.create('co1', 'Compose');
 compose1.set('formula', 'r_base-r1-r2-r3-r4-r5-pol1');
 fillet1 = ucellWP_lower.geom.feature.create('fil1', 'Fillet');
@@ -145,19 +146,19 @@ rec_base = ucellWP11.geom.feature.create('r_base', 'Rectangle');
 rec_base.set('size',[a sqrt(3)*2*a]);
 rec_base.set('pos',[-a/2 0]);
 
-ucellWP12 = ucellgeom.feature.create('wp12', 'WorkPlane');
-ucellWP12.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
-rec_base2 = ucellWP12.geom.feature.create('r_base2', 'Rectangle');
-rec_base2.set('size',[a sqrt(3)*a/4]);
-rec_base2.set('pos',[-a/2 0]);
+% ucellWP12 = ucellgeom.feature.create('wp12', 'WorkPlane');
+% ucellWP12.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
+% rec_base2 = ucellWP12.geom.feature.create('r_base2', 'Rectangle');
+% rec_base2.set('size',[a sqrt(3)*a/4]);
+% rec_base2.set('pos',[-a/2 0]);
 ucellgeom.runAll;
 
 
 %% create the intersect
 compose2 = ucellgeom.feature.create('symZComp1', 'Compose');
 compose2.selection('input').set({'wp10' 'wp11' 'wp4' 'wp5' 'wp6' 'wp7' 'wp8' ...
-'wp9' 'wp10' 'wp11' 'wp12','wp_lower'});
-compose2.set('formula', 'wp11*(wp_lower+wp4+wp5+wp6+wp7+wp8+wp9+wp10+wp12)');
+'wp9' 'wp10' 'wp11' 'wp_lower'});
+compose2.set('formula', 'wp11*(wp_lower+wp4+wp5+wp6+wp7+wp8+wp9+wp10)');
 ucellgeom.runAll;
 
 % extrude 

@@ -83,7 +83,7 @@ for ki=0:kpts
 end
 
 %% Set up the geometry
-[model,P] = buildRibUnitCell(model,P);
+[model,P] = buildBoomerangUnitCellStrip(model,P);
 
 if P.plotgeom
     figure;
@@ -137,10 +137,11 @@ end
 % jagged_array = NET.createArray('System.Int32[]',1);
 % domain_num = [1];
 % jagged_array(1) = domain_num;
-mbfem.b_domind = 1;
+% mbfem.b_domind = 1;
 bMat.selection.geom('geom1', 3);
 model.component('comp1').geom('geom1').run;
-bMat.selection.set(mbfem.b_domind);
+% bMat.selection.set(mbfem.b_domind);
+bMat.selection.all;
 
 
 %% Setup the physics and boundary conditions
@@ -156,20 +157,21 @@ elseif (isfield(P,'E') && isfield(P,'nu'))
     smech.feature('lemm1').set('nu_mat', 'from_mat');
 end
 smech.feature('lemm1').set('rho_mat', 'from_mat');
-smech.selection.set(mbfem.b_domind);
+% smech.selection.set(mbfem.b_domind);
+smech.selection.all;
 % lem = linear elastic material
 
-% boundary conditions
+%% boundary conditions
 % all BCs set to free by default
 clear bnds
 bnds.pbc_inds = [];
 if P.fixed_bc
     bnds.fixed_inds = [];
     % fixed BCs for xz planes at y = +/- w/2
-    fixedBCs = smech.create('fix1', 'Fixed', 2);
+    fixedBCs = smech.feature.create('fix1', 'Fixed', 2);
     fixedY1 = P.yEnd1;
     fixedY2 = P.yEnd2;
-    fixedYinds = [fixedY1 fixedY2];
+    fixedYinds = [fixedY2];
     bnds.fixed_inds(end+1:end+length(fixedYinds)) = fixedYinds;
     
     % fixed BCs for xz planes at x = +/- w/2
@@ -180,7 +182,7 @@ if P.fixed_bc
     bnds.fixed_inds(end+1:end+length(fixedXinds)) = fixedXinds;
     
     % set the fixed BCs 
-    fixedBCs.selection.set(fixedXinds);
+    fixedBCs.selection.set(fixedYinds);
 end 
 
 % periodic BCs for yz planes at x = +/- a/2
@@ -213,7 +215,10 @@ pbcX.set('kFloquet', {'kx'; '0'; '0'});        %initialize Floquet vector (1D ba
 % symmetric BC for xy plane containing point (0,0,0)
 symBCs = smech.create('symBCs', 'SymmetrySolid', 2);
 symBCs.label('Symmetric BC');
-bnds.sym_inds = [];
+% even y symmetry 
+% bnds.sym_inds = [];
+bnds.sym_inds = P.yEnd1;
+
 if evenz == 1
     bndinds =P.zEnd;
     bnds.sym_inds(end+1:end+length(bndinds)) = bndinds;
@@ -237,6 +242,8 @@ if (~isempty(bnds.asym_inds))
 end
 
 mbfem.bnds = bnds;
+
+
 disp('Solid Mechanics added - boundary conditions done');
 
 %% Add the solver and the solver sequences
@@ -326,68 +333,68 @@ pdset = model.result.dataset('pdset');
 pdset.set('solution', 'psolv');
 
 if P.saveplots
-    % create sector dataset
-    xySymFac = 2^abs(eveny);
-    zSym = abs(evenz)*strcmp(P.xsect,'rect');
-    zSymFac = 2^zSym;
-    
-    dsetTags = mphmodel(model.result.dataset);
-    
-    if ~isfield(dsetTags,'pdset_sec')
-        pdset_sec = model.result.dataset.create('pdset_sec', 'Sector3D');
-    else
-        pdset_sec = model.result.dataset('pdset_sec');
-    end
+%     % create sector dataset
+%     xySymFac = 2^abs(eveny);
+%     zSym = abs(evenz)*strcmp(P.xsect,'rect');
+%     zSymFac = 2^zSym;
+%     
+%     dsetTags = mphmodel(model.result.dataset);
+%     
+%     if ~isfield(dsetTags,'pdset_sec')
+%         pdset_sec = model.result.dataset.create('pdset_sec', 'Sector3D');
+%     else
+%         pdset_sec = model.result.dataset('pdset_sec');
+%     end
+% 
+%     pdset_sec.label('M Sol Full Beam XY');
+%     pdset_sec.set('data', 'pdset');
+%     pdset_sec.set('method', 'twopoint');
+%     pdset_sec.setIndex('genpoints', '0', 0, 0); % set axis data
+%     pdset_sec.setIndex('genpoints', '0', 0, 1);
+%     pdset_sec.setIndex('genpoints', '0', 0, 2);
+%     pdset_sec.setIndex('genpoints', '0', 1, 0);
+%     pdset_sec.setIndex('genpoints', '0', 1, 1);
+%     pdset_sec.setIndex('genpoints', '1', 1, 2);
+%     pdset_sec.set('sectors', xySymFac);
+%     pdset_sec.set('trans', 'rotrefl');          % transformation: rotate and reflect
+%     pdset_sec.set('reflaxis', {'1' '0' '0'});   % reflection axis
 
-    pdset_sec.label('M Sol Full Beam XY');
-    pdset_sec.set('data', 'pdset');
-    pdset_sec.set('method', 'twopoint');
-    pdset_sec.setIndex('genpoints', '0', 0, 0); % set axis data
-    pdset_sec.setIndex('genpoints', '0', 0, 1);
-    pdset_sec.setIndex('genpoints', '0', 0, 2);
-    pdset_sec.setIndex('genpoints', '0', 1, 0);
-    pdset_sec.setIndex('genpoints', '0', 1, 1);
-    pdset_sec.setIndex('genpoints', '1', 1, 2);
-    pdset_sec.set('sectors', xySymFac);
-    pdset_sec.set('trans', 'rotrefl');          % transformation: rotate and reflect
-    pdset_sec.set('reflaxis', {'1' '0' '0'});   % reflection axis
-
-    % model.result.dataset.create('sec1', 'Sector3D');
-    % model.result.dataset('sec1').set('trans', 'rotrefl');
-    % model.result.dataset('sec1').set('pddir', {'1' '0' '0'});
-    % model.result.dataset('sec1').set('reflaxis', {'0' '1' '0'});
-    % model.result.dataset('sec1').set('data', 'pdset');
+    model.result.dataset.create('sec1', 'Sector3D');
+    model.result.dataset('sec1').set('trans', 'rotrefl');
+    model.result.dataset('sec1').set('pddir', {'1' '0' '0'});
+    model.result.dataset('sec1').set('reflaxis', {'0' '1' '0'});
+    model.result.dataset('sec1').set('data', 'pdset');
     if eveny==-1
-        pdset_sec.set('rotinv', 'on');  % odd symmetry about x-plane
-        pdset_sec.set('reflinv', 'on');
+%         pdset_sec.set('rotinv', 'on');  % odd symmetry about x-plane
+        model.result.dataset('sec1').set('reflinv', 'on');
     end
-    pdsetPlot = 'pdset_sec';
-
-    if zSym
-        if ~isfield(dsetTags,'pdset_secZ')
-            pdset_sec = model.result.dataset.create('pdset_secZ', 'Sector3D');
-        else
-            pdset_sec = model.result.dataset('pdset_secZ');
-        end
-        pdset_sec.label('M Sol Full Beam XYZ');
-        pdset_sec.set('data', 'pdset_sec');
-        pdset_sec.set('method', 'twopoint');
-        pdset_sec.setIndex('genpoints', '0', 0, 0); % set axis data
-        pdset_sec.setIndex('genpoints', '0', 0, 1);
-        pdset_sec.setIndex('genpoints', '0', 0, 2);
-        pdset_sec.setIndex('genpoints', '1', 1, 0);
-        pdset_sec.setIndex('genpoints', '0', 1, 1);
-        pdset_sec.setIndex('genpoints', '0', 1, 2);
-        pdset_sec.set('sectors', zSymFac);
-        pdset_sec.set('trans', 'rotrefl');          % transformation: rotate and reflect
-        pdset_sec.set('reflaxis', {'0' '1' '0'});   % reflection axis
-        if evenz==-1
-            pdset_sec.set('rotinv', 'on');  % odd symmetry about z-plane
-            pdset_sec.set('reflinv', 'on');
-        end
-        pdsetPlot = 'pdset_secZ';
-        
-    end
+%     pdsetPlot = 'pdset_sec';
+% 
+%     if zSym
+%         if ~isfield(dsetTags,'pdset_secZ')
+%             pdset_sec = model.result.dataset.create('pdset_secZ', 'Sector3D');
+%         else
+%             pdset_sec = model.result.dataset('pdset_secZ');
+%         end
+%         pdset_sec.label('M Sol Full Beam XYZ');
+%         pdset_sec.set('data', 'pdset_sec');
+%         pdset_sec.set('method', 'twopoint');
+%         pdset_sec.setIndex('genpoints', '0', 0, 0); % set axis data
+%         pdset_sec.setIndex('genpoints', '0', 0, 1);
+%         pdset_sec.setIndex('genpoints', '0', 0, 2);
+%         pdset_sec.setIndex('genpoints', '1', 1, 0);
+%         pdset_sec.setIndex('genpoints', '0', 1, 1);
+%         pdset_sec.setIndex('genpoints', '0', 1, 2);
+%         pdset_sec.set('sectors', zSymFac);
+%         pdset_sec.set('trans', 'rotrefl');          % transformation: rotate and reflect
+%         pdset_sec.set('reflaxis', {'0' '1' '0'});   % reflection axis
+%         if evenz==-1
+%             pdset_sec.set('rotinv', 'on');  % odd symmetry about z-plane
+%             pdset_sec.set('reflinv', 'on');
+%         end
+%         pdsetPlot = 'pdset_secZ';
+%         
+%     end
 
     % if evenz == -1
     %     model.result.dataset('sec1').set('reflinv', 'on');
@@ -395,7 +402,7 @@ if P.saveplots
     
     % create 3D plot group for displacement field
     dispplot = model.result.create('dispplot', 'PlotGroup3D');
-    dispplot.set('data',pdsetPlot);
+    dispplot.set('data','sec1');
     dispplot.set('solrepresentation', 'solutioninfo');
     dispplot.set('titletype', 'none');
     dispplot_vol = dispplot.create('dispplot_vol', 'Volume');
@@ -404,17 +411,17 @@ if P.saveplots
     dispplot_vol.set('data', 'parent');
     dispplot.run;
 
-    % create 3D plot group for strain profile
-    strplot = model.result.create('strplot', 'PlotGroup3D');
-    strplot.set('data',pdsetPlot);
-    strplot.set('solrepresentation', 'solutioninfo');
-    strplot.set('titletype', 'none');
-    strplot_slc = strplot.create('strplot_slc', 'Slice');
-    strplot_slc.set('planetype', 'quick');
-    strplot_slc.set('quickxmethod', 'coord').set('quickx', (1-holeatedge/2)*a);
-    strplot_slc.set('rangedataactive','on').set('rangecoloractive','on');
-    strplot_slc.set('data', 'parent');
-    strplot.run;
+%     % create 3D plot group for strain profile
+%     strplot = model.result.create('strplot', 'PlotGroup3D');
+%     strplot.set('data',pdsetPlot);
+%     strplot.set('solrepresentation', 'solutioninfo');
+%     strplot.set('titletype', 'none');
+%     strplot_slc = strplot.create('strplot_slc', 'Slice');
+%     strplot_slc.set('planetype', 'quick');
+%     strplot_slc.set('quickxmethod', 'coord').set('quickx', (1-holeatedge/2)*a);
+%     strplot_slc.set('rangedataactive','on').set('rangecoloractive','on');
+%     strplot_slc.set('data', 'parent');
+%     strplot.run;
     
 end
 
