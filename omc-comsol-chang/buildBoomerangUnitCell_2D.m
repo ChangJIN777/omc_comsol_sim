@@ -67,7 +67,7 @@ ucellgeom.runAll;
 %% Making selections (manual)
 mphgeom(model);
 P.xEnd1 = 1;
-P.xEnd2 = 12;
+P.xEnd2 = 13;
 
 P.yEnd1 = 2;
 P.yEnd2 = 7;

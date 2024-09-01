@@ -3,44 +3,37 @@ clear all; clc; close all;
 clear P;
 P = struct;
 
-P.celltype = 'boomerang_strip';                   % specify the cell type
-P.xsect = 'rect'; 
-P.beamMat = 'diamond';                  % beam material name
-P.celltype = 'boomerang_lower';                   % specify the cell type
-P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-
-a = 480e-9; % lattice constant
-a_min = 0.8*a;
-a_max = 1.2*a;
-h_min = 100e-9;
-h_max = 200e-9;
-d_min = 50e-9;
-d_max = 200e-9;
-h_list = linspace(h_min,h_max,5);
-d_list = linspace(d_min,d_max,5);
-a_list = linspace(a_min,a_max,5);
+w_ratio_min = 0.2;
+w_ratio_max = 0.8;
+h_ratio_min = 0.2;
+h_ratio_max = 0.8;
+w_ratio_list = linspace(w_ratio_min,w_ratio_max,10);
+h_ratio_list = linspace(h_ratio_min,h_ratio_max,5);
+h_ratio_list = [0.8];
 
 %% sweep the lattice
-for i=1:length(a_list)
-    sweep_boomerang_lower_v2(P,a_list(i));
+for i=1:length(w_ratio_list)
+    for j=1:length(h_ratio_list)
+        sweep_boomerang_lower(P,w_ratio_list(i),h_ratio_list(j));
+    end
 end
 
-% %% run the sweep
-% for i=1:length(h_list)
-%     for j=1:length(d_list)
-%         sweep_boomerang_lower(P,h_list(i),d_list(j));
-%     end
-% end
-
-function sweep_boomerang_lower(P,h,d)    
+function sweep_boomerang_lower(P,w_ratio,h_ratio) 
+    P.celltype = 'boomerang_strip_v2';                   % specify the cell type
+    P.xsect = 'rect'; 
+    P.beamMat = 'diamond';                  % beam material name
+    P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
     %% unit cell params 
-    P.a = 450e-9;              % lattice constant 
-    P.h = h;           % the height of the hole in the lower portion
-    P.d = d;           % the width of the hole in the lower portion
+    P.a = 400e-9;              % lattice constant 
     P.w = 86e-9;              % unit cell width (along x)
-    P.r = 180e-9;              % unit cell height (along y)
+    P.r = 160e-9;              % unit cell height (along y)
+    P.b = sqrt(3)*P.a/4;        % removing one row of the 2D unit cells
     P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
+    P.wo = P.a*0.8;           % the height of the hole in the lower portion
+    P.wi = P.wo*w_ratio; 
+    P.ho = P.a*sqrt(3)/2;
+    P.hi = h_ratio*P.ho;
     P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
     P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
@@ -49,8 +42,8 @@ function sweep_boomerang_lower(P,h,d)
     P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
     P.mbevenz = 1;      % 1 to find even mechanical mode about z
     
-    P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 7;                           % no. of bands to solve for
+    P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
+    P.nbands = 20;                           % no. of bands to solve for
     
     P.solveasym = 1;                        % 1 to solve for antisymmetric bands
     P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -77,7 +70,7 @@ function sweep_boomerang_lower(P,h,d)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang_lower\081924_sweep1\';
+    datLoc = '.\test\boomerang_strip_v2\082124_sweep2\';
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 

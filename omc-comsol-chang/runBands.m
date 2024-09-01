@@ -83,7 +83,11 @@ for ki=0:kpts
 end
 
 %% Set up the geometry
-[model,P] = buildBoomerangUnitCellStrip(model,P);
+if strcmp(P.celltype,'boomerang_strip_v2')
+    [model,P] = buildBoomerangUnitCellStrip_v2(model,P);
+else
+    [model,P] = buildBoomerangUnitCellStrip(model,P);
+end
 
 if P.plotgeom
     figure;

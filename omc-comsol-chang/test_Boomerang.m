@@ -6,9 +6,9 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 400e-9;              % lattice constant 
+P.a = 580e-9;              % lattice constant 
 P.w = 86e-9;              % unit cell width (along x)
-P.r = 160e-9;              % unit cell height (along y)
+P.r = 200e-9;              % unit cell height (along y)
 P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 

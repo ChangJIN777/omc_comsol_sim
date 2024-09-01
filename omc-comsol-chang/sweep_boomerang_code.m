@@ -1,12 +1,12 @@
 %% sweeping code 
 P.celltype = 'boomerang';                   % specify the cell type
 
-a = 350e-9; % lattice constant
+a = 450e-9; % lattice constant
 a_min = 350e-9; % minimum lattice constant 
 a_max = 500e-9; % maximum lattice constant 
 w = 86e-9; 
-r = 160e-9;
-r_min = r*0.7;
+r = 200e-9;
+r_min = r*0.6;
 r_max = r;
 % w_list = linspace(w_min,w_max,3);
 r_list = linspace(r_min,r_max,5);
@@ -87,9 +87,9 @@ function sweep_boomerang_holeSize(P,w,r)
     P.r = r;              % unit cell height (along y)
     P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
-    P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
+    P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
-    P.r2 = 40e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
+    P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
                                 % or of outer fins (for celltype = 'solid')
     P.nperiod = 1;  % no. of periods to simulate for
     P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
@@ -103,7 +103,7 @@ function sweep_boomerang_holeSize(P,w,r)
     P.plotgeom = 1;                         % 1 to plot the geometry
     P.savedat = 1;                          % 1 to save data structures
     P.savebndplot = 1;                      % 1 to save bandstructure plot
-    P.saveplots = 0;                        % 1 to save displacement and strain profiles
+    P.saveplots = 1;                        % 1 to save displacement and strain profiles
     P.saveMPH = 0; 
     P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
     
@@ -123,7 +123,7 @@ function sweep_boomerang_holeSize(P,w,r)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang\072724_sweep1\';
+    datLoc = '.\test\boomerang\081924_sweep2\';
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 
