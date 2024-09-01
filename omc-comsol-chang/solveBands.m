@@ -307,12 +307,12 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
         title(bandtitle);
         box on
         hold off
-        
+       
+        end
         % save band diagram as .png and .fig
         pathFig = [P.datLoc,fBase,'_fullBands'];
         saveas(gcf,[pathFig,'.png']);
         saveas(gcf,[pathFig,'.fig']);
-        end
     end
     tEnd = toc(tStart);
     disp(['Simulation time = ',num2str(tEnd/60,'%.2f'),'mins'])

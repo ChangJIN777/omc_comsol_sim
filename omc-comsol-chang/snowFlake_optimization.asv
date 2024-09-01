@@ -2,7 +2,7 @@ clear, clc;
 % initial parameters
 a0 = 220e-9;
 w0 = 40e-9;
-r0 = 100e-9;
+r0 = 95e-9;
 params0 = [a0,w0,r0];
 lower_bound = [200e-9,30e-9,40e-9];
 upper_bound = [300e-9,80e-9,120e-9];
@@ -58,8 +58,10 @@ function [fullMidBand, fullGapSize] = run_snowFlake(P,a,w,r)
     %% define the maximum number of degree of freedom to limit the simulation time
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
+    
+    
     %% run the simluation and save the data
-    datLoc = '.\test\snowflake\090124_sweep1\';
+    datLoc = '.\test\snowflake\083124_sweep1\';
     P.datLoc = datLoc;
     bds = solveBands(P);
     
@@ -82,14 +84,7 @@ function fitness = runOptimization(params)
     a = params(1);
     w = params(2);
     r = params(3);
-    
-    %% account for any fabrication intolerance 
-    smallestFeature = (a/2-r)-(w/2)/sqrt(3);
-    if smallestFeature < 10e-9
-        fitness = 0;
-    else
-        [fullMidBand, fullGapSize] = run_snowFlake(P,a,w,r);
-        fitness_list = calFitnessSnow(fullMidBand,fullGapSize);
-        fitness = min(fitness_list);
-    end
+    [fullMidBand, fullGapSize] = run_snowFlake(P,a,w,r);
+    fitness_list = calFitnessSnow(fullMidBand,fullGapSize);
+    fitness = min(fitness_list);
 end

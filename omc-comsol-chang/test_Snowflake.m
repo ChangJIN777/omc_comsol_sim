@@ -8,8 +8,8 @@ P.celltype = 'snowflake';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
 P.a = 220e-9;              % lattice constant 
 P.w = 40e-9;              % unit cell width (along x)
-P.r = 95e-9;              % unit cell height (along y)
-P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.r = 100e-9;              % unit cell height (along y)
+P.th = 200e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -24,7 +24,7 @@ P.nbands = 18;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
-P.plotgeom = 1;                         % 1 to plot the geometry
+P.plotgeom = 0;                         % 1 to plot the geometry
 P.savedat = 1;                          % 1 to save data structures
 P.savebndplot = 1;                      % 1 to save bandstructure plot
 P.saveplots = 0;                        % 1 to save displacement and strain profiles
@@ -62,6 +62,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildBoomerangUnitCell(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\snowflake\080224\';
+datLoc = '.\test\snowflake\090124\';
 P.datLoc = datLoc;
 bds = solveBands(P);
