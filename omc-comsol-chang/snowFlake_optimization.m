@@ -2,7 +2,7 @@ clear, clc;
 % initial parameters
 a0 = 220e-9;
 w0 = 40e-9;
-r0 = 100e-9;
+r0 = 90e-9;
 params0 = [a0,w0,r0];
 lower_bound = [200e-9,30e-9,40e-9];
 upper_bound = [300e-9,80e-9,120e-9];
@@ -21,7 +21,7 @@ function [fullMidBand, fullGapSize] = run_snowFlake(P,a,w,r)
     P.a = a;              % lattice constant 
     P.w = w;              % unit cell width (along x)
     P.r = r;              % unit cell height (along y)
-    P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
+    P.th = 100e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
     P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
@@ -59,7 +59,7 @@ function [fullMidBand, fullGapSize] = run_snowFlake(P,a,w,r)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\snowflake\090124_sweep1\';
+    datLoc = '.\test\snowflake\090224_sweep1\';
     P.datLoc = datLoc;
     bds = solveBands(P);
     
