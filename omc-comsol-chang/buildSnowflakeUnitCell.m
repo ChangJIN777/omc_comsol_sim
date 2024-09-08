@@ -50,8 +50,6 @@ rec_3.set('base', 'center');
 rec_3.set('size', [2*r w]);
 
 
-
-
 fillet_1 = ucellWP.geom.feature.create('fil1', 'Fillet');
 fillet_1.set('radius', r1);
 fillet_1.selection('point').set('r1', [1 2 3 4]);

@@ -73,6 +73,8 @@ elseif strcmp(P.celltype,'hole_strip')
     [model,P] = buildHoleStrip_2D(model,P);
 elseif strcmp(P.celltype,'hole_strip_wvg')
     [model,P] = buildHoleStrip_withWg_2D(model,P);
+elseif strcmp(P.celltype,'Snowflake_strip_2d')
+    [model,P] = buildSnowflakeStrip_2D(model,P);
 end
 
 if P.plotgeom
@@ -97,7 +99,7 @@ else
 end
 model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
 if strcmp(P.beamMat,'diamond')
-    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4' '0' '0' '0' '2.4' '0' '0' '0' '2.4'});
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4064' '0' '0' '0' '2.4064' '0' '0' '0' '2.4064'});
 elseif strcmp(P.beamMat,'SiC')
     model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.5' '0' '0' '0' '2.5' '0' '0' '0' '2.5'});
 else 
@@ -110,10 +112,11 @@ model.component('comp1').physics('ewfd').create('pc1', 'PeriodicCondition', 1);
 % periodic boudaries
 boundaries_x = cat(2,P.xEnd1,P.xEnd2);
 boundaries_y = cat(2,P.yEnd1,P.yEnd2);
-model.component('comp1').physics('ewfd').feature('pc1').selection.set(boundaries_x);
+model.component('comp1').physics('ewfd').feature('pc1').selection.named('geom1_xboundaries_bnd');
 if ~strcmp(P.celltype,'hole_strip_wvg')
     model.component('comp1').physics('ewfd').create('pc2', 'PeriodicCondition', 1);
-    model.component('comp1').physics('ewfd').feature('pc2').selection.set(boundaries_y);
+%     model.component('comp1').physics('ewfd').feature('pc2').selection.set(boundaries_y);
+    model.component('comp1').physics('ewfd').feature('pc2').selection.named('geom1_yboundaries_bnd');
 end
 model.component('comp1').physics('ewfd').prop('components').set('components', 'inplane');
 model.component('comp1').physics('ewfd').feature('pc1').set('PeriodicType', 'Floquet');
@@ -124,6 +127,7 @@ if ~strcmp(P.celltype,'hole_strip_wvg')
     model.component('comp1').physics('ewfd').feature('pc2').set('kFloquet', {'kx'; 'ky'; '0'});
     model.component('comp1').physics('ewfd').feature('pc2').label('Periodic Condition y direction');
 end
+model.component('comp1').geom('geom1').run;
 
 %% Add the solver and solver sequences 
 study = model.study.create('std1');

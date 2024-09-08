@@ -74,7 +74,7 @@ P.xEnd1 = 1;
 P.xEnd2 = 21;
 
 P.yEnd1 = 2;
-P.yEnd2 = 10;
+P.yEnd2 = 6;
 % Note that this will return no indices if there is no boundary at z=0
 
 % % debugging
