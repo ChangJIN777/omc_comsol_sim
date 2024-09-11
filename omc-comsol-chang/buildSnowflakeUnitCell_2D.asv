@@ -111,10 +111,15 @@ x_boundary_disksel_l.set('ymax', a/4*sqrt(3)+selection_width/2);
 x_boundary_disksel_l.set('inputent', 'all');
 x_boundary_disksel_l.set('condition', 'intersects');
 
+ucellgeom.selection.create('xboundaries','CumulativeSelection');
+ucellgeom.selection('xboundaries').label('Cumulative Selection x boundaries');
+x_boundary_disksel_r.set('contributeto','xboundaries');
+x_boundary_disksel_l.set('contributeto','xboundaries');
+
 y_boundary_disksel_t = ucellgeom.feature.create('y_boundary_boxsel_t', 'BoxSelection');
 y_boundary_disksel_t.set('entitydim', 1);
-y_boundary_disksel_t.set('xmin', a-selection_width/2);
-y_boundary_disksel_t.set('xmax', a+selection_width/2);
+y_boundary_disksel_t.set('xmin', a/2-selection_width/2);
+y_boundary_disksel_t.set('xmax', a/2+selection_width/2);
 y_boundary_disksel_t.set('ymin', a/2*sqrt(3)-selection_width/2);
 y_boundary_disksel_t.set('ymax', a/2*sqrt(3)+selection_width/2);
 y_boundary_disksel_t.set('inputent', 'all');
@@ -128,13 +133,6 @@ y_boundary_disksel_b.set('ymin', 0);
 y_boundary_disksel_b.set('ymax', 0);
 y_boundary_disksel_b.set('inputent', 'all');
 y_boundary_disksel_b.set('condition', 'intersects');
-
-ucellgeom.runAll;
-
-ucellgeom.selection.create('xboundaries','CumulativeSelection');
-ucellgeom.selection('xboundaries').label('Cumulative Selection x boundaries');
-x_boundary_disksel_r.set('contributeto','xboundaries');
-x_boundary_disksel_l.set('contributeto','xboundaries');
 
 ucellgeom.selection.create('yboundaries','CumulativeSelection');
 ucellgeom.selection('yboundaries').label('Cumulative Selection y boundaries');

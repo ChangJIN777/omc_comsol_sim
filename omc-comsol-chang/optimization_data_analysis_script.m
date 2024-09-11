@@ -1,5 +1,5 @@
 clc, clear;
-data_path = '.\test\snowflake\083124_sweep1\';
+data_path = '.\test\snowflake\090224_sweep1\';
 matfiles = dir(fullfile([data_path,'*.mat']));
 for i=1:length(matfiles)
     filename = matfiles(i).name;

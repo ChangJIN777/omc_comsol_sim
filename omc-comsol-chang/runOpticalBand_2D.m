@@ -99,7 +99,7 @@ model.component('comp1').material('mat2').selection.set([2]);
 model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
 
 if strcmp(P.beamMat,'diamond')
-    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4' '0' '0' '0' '2.4' '0' '0' '0' '2.4'});
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.406' '0' '0' '0' '2.406' '0' '0' '0' '2.406'});
 elseif strcmp(P.beamMat,'SiC')
     model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.5' '0' '0' '0' '2.5' '0' '0' '0' '2.5'});
 else
@@ -110,9 +110,11 @@ model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('
 %% setup the physics and the boundary conditions
 model.component('comp1').physics.create('ewfd', 'ElectromagneticWavesFrequencyDomain', 'geom1');
 model.component('comp1').physics('ewfd').create('pc1', 'PeriodicCondition', 1);
-model.component('comp1').physics('ewfd').feature('pc1').selection.set([P.xEnd1 P.xEnd2]);
+% model.component('comp1').physics('ewfd').feature('pc1').selection.set([P.xEnd1 P.xEnd2]);
+model.component('comp1').physics('ewfd').feature('pc1').selection.named('geom1_xboundaries_bnd');
 model.component('comp1').physics('ewfd').create('pc2', 'PeriodicCondition', 1);
-model.component('comp1').physics('ewfd').feature('pc2').selection.set([P.yEnd1 P.yEnd2]);
+model.component('comp1').physics('ewfd').feature('pc2').selection.named('geom1_yboundaries_bnd');
+% model.component('comp1').physics('ewfd').feature('pc2').selection.set([P.yEnd1 P.yEnd2]);
 model.component('comp1').physics('ewfd').prop('components').set('components', 'inplane');
 model.component('comp1').physics('ewfd').feature('pc1').set('PeriodicType', 'Floquet');
 model.component('comp1').physics('ewfd').feature('pc1').set('kFloquet', {'kx'; 'ky'; '0'});

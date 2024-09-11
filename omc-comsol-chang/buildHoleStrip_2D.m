@@ -115,6 +115,47 @@ ucellgeom.runAll;
 
 %% Making selections (with box select)
 mphgeom(model);
+selection_width = 10e-9;
+
+% box selection for the boundary condition 
+x_boundary_disksel_r = ucellgeom.feature.create('x_boundary_boxsel_r', 'BoxSelection');
+x_boundary_disksel_r.set('entitydim', 1);
+x_boundary_disksel_r.set('xmin', a/2-selection_width/2);
+x_boundary_disksel_r.set('xmax', a/2+selection_width/2);
+x_boundary_disksel_r.set('inputent', 'all');
+x_boundary_disksel_r.set('condition', 'inside');
+
+x_boundary_disksel_l = ucellgeom.feature.create('x_boundary_boxsel_l', 'BoxSelection');
+x_boundary_disksel_l.set('entitydim', 1);
+x_boundary_disksel_l.set('xmin', -a/2-selection_width/2);
+x_boundary_disksel_l.set('xmax', -a/2+selection_width/2);
+x_boundary_disksel_l.set('inputent', 'all');
+x_boundary_disksel_l.set('condition', 'inside');
+
+ucellgeom.selection.create('xboundaries','CumulativeSelection');
+ucellgeom.selection('xboundaries').label('Cumulative Selection x boundaries');
+x_boundary_disksel_r.set('contributeto','xboundaries');
+x_boundary_disksel_l.set('contributeto','xboundaries');
+
+y_boundary_disksel_t = ucellgeom.feature.create('y_boundary_boxsel_t', 'BoxSelection');
+y_boundary_disksel_t.set('entitydim', 1);
+y_boundary_disksel_t.set('ymin', sqrt(3)*5*a/2-selection_width/2);
+y_boundary_disksel_t.set('ymax', sqrt(3)*5*a/2+selection_width/2);
+y_boundary_disksel_t.set('inputent', 'all');
+y_boundary_disksel_t.set('condition', 'inside');
+
+y_boundary_disksel_b = ucellgeom.feature.create('y_boundary_boxsel_b', 'BoxSelection');
+y_boundary_disksel_b.set('entitydim', 1);
+y_boundary_disksel_b.set('ymin', -sqrt(3)*5*a/2-selection_width/2);
+y_boundary_disksel_b.set('ymax', -sqrt(3)*5*a/2+selection_width/2);
+y_boundary_disksel_b.set('inputent', 'all');
+y_boundary_disksel_b.set('condition', 'inside');
+
+ucellgeom.selection.create('yboundaries','CumulativeSelection');
+ucellgeom.selection('yboundaries').label('Cumulative Selection y boundaries');
+y_boundary_disksel_t.set('contributeto','yboundaries');
+y_boundary_disksel_b.set('contributeto','yboundaries');
+
 P.xEnd1 = [1 3 4 5 6 7 8 9 10];
 P.xEnd2 = [16 17 18 19 20 21 22 23 24];
 

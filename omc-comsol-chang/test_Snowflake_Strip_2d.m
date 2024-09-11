@@ -3,15 +3,15 @@ clear P;
 
 %% unit cell params 
 P.xsect = 'rect'; 
-P.beamMat = 'Si';                  % beam material name
+P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'Snowflake_strip_2d';                   % specify the cell type
 P.unitcell = 'strip';                  % specify the shape of the unit cell
-P.a = 267e-9;              % lattice constant 
-P.w = 40e-9;        % the width of the hole 
-P.b = 40e-9;              % unit cell shift in the y direction
+P.a = 231e-9;              % lattice constant 
+P.w = 50e-9;        % the width of the hole 
+P.b = -40e-9;              % unit cell shift in the y direction
 P.b_wvg = 0;           % unit cell shift in the y direction (wvg region)
-P.r = 0.28*P.a;              % radius of the unit cell
-P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.r = 90e-9;              % radius of the unit cell
+P.th = 100e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -38,7 +38,7 @@ P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 % solid mechanics solver parameters
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
-P.optical_freq = 300;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
+P.optical_freq = 406;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 3;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
@@ -66,6 +66,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 
 %% run the simulation
-datLoc = '.\test\holeStrip\080124_optical\';
+datLoc = '.\test\holeStrip\091024_optical\';
 P.datLoc = datLoc;
 solveOpticalBands(P);
