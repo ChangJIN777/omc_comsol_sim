@@ -6,37 +6,37 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'cross';                   % specify the cell type
 P.unitcell = 'square';                  % specify the shape of the unit cell
-P.a = 481e-9;              % lattice constant (along x)
-P.hc = 417e-9;              % unit cell width (along y)
-P.wc = 170e-9;              % unit cell thickness (along z)
-P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.a = 160e-9;              % lattice constant (along x)
+P.h = 140e-9;              % unit cell width (along y)
+P.w = 50e-9;              % unit cell thickness (along z)
+P.th = 120e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
+P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-P.r2 = 40e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
+P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
                             % or of outer fins (for celltype = 'solid')
 P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
-P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 9;                           % no. of bands to solve for
+P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 18;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
 P.plotgeom = 1;                         % 1 to plot the geometry
 P.savedat = 1;                          % 1 to save data structures
 P.savebndplot = 1;                      % 1 to save bandstructure plot
-P.saveplots = 1;                        % 1 to save displacement and strain profiles
-P.saveMPH = 1; 
+P.saveplots = 0;                        % 1 to save displacement and strain profiles
+P.saveMPH = 0; 
 P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
-P.mbeveny = 1;                          % 1 to find even mechanical mode about y
+P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
-P.meshSize = 3;                         % mesh quality for mechanical simulations
+P.meshSize = 4;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
 P.anisoMat = 1;
@@ -59,9 +59,9 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % % e.g. model.save
 % model = ModelUtil.create('model');
 % 
-% DrawCrossUnitCell(model,P);
+% buildCrossUnitCell(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\cross\072224\';
+datLoc = '.\test\cross\092524\';
 P.datLoc = datLoc;
 bds = solveBands(P);

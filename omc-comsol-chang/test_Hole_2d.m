@@ -3,12 +3,12 @@ clear P;
 
 %% unit cell params 
 P.xsect = 'rect'; 
-P.beamMat = 'SiC';                  % beam material name
+P.beamMat = 'silicon';                  % beam material name
 P.celltype = 'hole';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 273e-9;              % lattice constant 
+P.a = 416e-9;              % lattice constant 
 P.b = 0;              % unit cell shift in the y direction
-P.r = 81e-9;              % radius of the unit cell
+P.r = 105e-9;              % radius of the unit cell
 P.th = 0.58*P.a;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -64,6 +64,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 
 % buildBoomerangUnitCell_2D(model,P);
-datLoc = '.\test\hole\081624_optical\';
+datLoc = '.\test\hole\091124_optical\';
 P.datLoc = datLoc;
 solveOpticalBands(P);

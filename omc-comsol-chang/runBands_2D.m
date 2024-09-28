@@ -87,7 +87,7 @@ end
 
 %% Set up the geometry
 if strcmp(P.celltype,'cross')
-    [model,P] = DrawCrossUnitCell(model,P);
+    [model,P] = buildCrossUnitCell(model,P);
 elseif strcmp(P.celltype,'boomerang')
     [model,P] = buildBoomerangUnitCell(model,P);
 elseif strcmp(P.celltype,'boomerang_lower')

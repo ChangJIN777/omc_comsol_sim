@@ -6,9 +6,9 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'snowflake';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 231e-9;              % lattice constant 
-P.w = 50e-9;              % unit cell width (along x)
-P.r = 90e-9;              % unit cell height (along y)
+P.a = 255e-9;              % lattice constant 
+P.w = 40e-9;              % unit cell width (along x)
+P.r = 80e-9;              % unit cell height (along y)
 P.th = 100e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -21,7 +21,7 @@ P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
 P.bandStructureDim = 2;                 % 1D vs 2D band structure
 P.kpts = 7;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 10;                           % no. of bands to solve for
+P.nbands = 18;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)

@@ -102,6 +102,7 @@ airHole14.set('r',r);
 airHole14.set('pos', [-a/2 -sqrt(3)*a-a*sqrt(3)]);
 airHole14.set('base', 'center');
 
+
 compose1 = ucellgeom.feature.create('co1', 'Compose');
 compose1.set('formula', 'r1-c1-c2-c3-c4-c5-c6-c7-c8-c9-c10-c11-c12-c13-c14');
 
@@ -111,7 +112,25 @@ holeplane.set('pos', [0 0]);
 holeplane.set('base','center');
 holeplane.set('size',[a sqrt(3)*5*a]);
 
+PML_length = 1e-6;
+top_PML = ucellgeom.feature.create('r_PML_top', 'Rectangle');
+top_PML.label('PML_plane_top');
+top_PML.set('pos', [0 (PML_length+sqrt(3)*5*a)/2]);
+top_PML.set('base','center');
+top_PML.set('size',[a PML_length]);
+
+bottom_PML = ucellgeom.feature.create('r_PML_bottom', 'Rectangle');
+bottom_PML.label('PML_plane_bottom');
+bottom_PML.set('pos', [0 -(PML_length+sqrt(3)*5*a)/2]);
+bottom_PML.set('base','center');
+bottom_PML.set('size',[a PML_length]);
+
 ucellgeom.runAll;
+
+%% add the PML regions
+model.component('comp1').coordSystem.create('pml1', 'PML');
+model.component('comp1').geom('geom1').run;
+model.component('comp1').coordSystem('pml1').selection.set([1 7]);
 
 %% Making selections (with box select)
 mphgeom(model);

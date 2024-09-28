@@ -7,7 +7,7 @@ P.beamMat = 'silicon';                  % beam material name
 P.celltype = 'hole_strip';                   % specify the cell type
 P.unitcell = 'strip';                  % specify the shape of the unit cell
 P.a = 342e-9;              % lattice constant 
-P.b = 5e-9;              % unit cell shift in the y direction
+P.b = 0e-9;              % unit cell shift in the y direction
 P.b_wvg = 0;           % unit cell shift in the y direction (wvg region)
 P.r = 110e-9;              % radius of the unit cell
 P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
@@ -21,8 +21,8 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
 P.bandStructureDim = 1;                 % 1D vs 2D band structure
-P.kpts = 20;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 20;                           % no. of bands to solve for
+P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 25;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -37,7 +37,7 @@ P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 % solid mechanics solver parameters
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
-P.optical_freq = 220;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
+P.optical_freq = 200;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 3;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
@@ -65,6 +65,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 
 %% run the simulation
-datLoc = '.\test\holeStrip\091024_optical\';
+datLoc = '.\test\holeStrip\091124_optical\';
 P.datLoc = datLoc;
 solveOpticalBands(P);

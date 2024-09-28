@@ -95,7 +95,7 @@ model.component('comp1').material.create('mat1', 'Common');
 if strcmp(P.celltype,'hole_strip_wvg')
     model.component('comp1').material('mat1').selection.set([1 6 7]);
 else
-    model.component('comp1').material('mat1').selection.set([1]);
+    model.component('comp1').material('mat1').selection.set([2]);
 end
 model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
 if strcmp(P.beamMat,'diamond')

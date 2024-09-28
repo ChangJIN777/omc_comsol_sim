@@ -111,7 +111,7 @@ fBase = P.fileBase;
 if isempty(dir([datLoc,fBase,'_bds.mat']))
     tStart = tic;
     if P.bandStructureDim==2
-        OpticalBand = runOpticalBand_2D(P);
+        OpticalBand = runOpticalBand_3D(P);
     elseif P.bandStructureDim==1
         OpticalBand = runOpticalBand_1D(P);
     end
