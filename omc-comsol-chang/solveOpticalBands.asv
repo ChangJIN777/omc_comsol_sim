@@ -128,14 +128,14 @@ if P.savebndplot
 
         p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'ko','linewidth',2,'DisplayName','sym','MarkerSize',5);
         % plot the light lines 
-        lightx = linspace(0,0.5,100);
+        lightx = linspace(0,1,100);
         lighty1 = lightx*(3e8)/(P.a*(1e12));
         lighty2 = sqrt(1/4+(lightx./sqrt(3)).^2).*3e8./(P.a*(1e12));
         lighty3 = sqrt((0.5-lightx).^2 + (0.5/sqrt(3)-(lightx./sqrt(3))).^2)*(3e8)/(P.a*(1e12));
         hold on;
-        light1 = plot(2*lightx,lighty1,'b-','linewidth',1);
-        light2 = plot(1+2*lightx,lighty2,'b-','linewidth',1);
-        light3 = plot(2+2*lightx,lighty3,'b-','linewidth',1);
+        light1 = plot(lightx,lighty1,'linewidth',1,'b-');
+        light2 = plot((0.5+lightx),lighty2,'linewidth',1,'b-');
+        light3 = plot((1+lightx),lighty3,'linewidth',1,'b-');
         
         % plot optical bandgaps
         for k = 1:length(OpticalBand.gapSize)

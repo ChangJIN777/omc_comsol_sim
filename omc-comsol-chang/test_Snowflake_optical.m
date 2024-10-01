@@ -6,9 +6,9 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'snowflake';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 300e-9;              % lattice constant 
-P.w = 58e-9;              % unit cell width (along x)
-P.r = 129e-9;              % unit cell height (along y)
+P.a = 311e-9;              % lattice constant 
+P.w = 50e-9;              % unit cell width (along x)
+P.r = 100e-9;              % unit cell height (along y)
 P.th = 120e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -20,8 +20,8 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
 P.bandStructureDim = 2;                 % 1D vs 2D band structure
-P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 9;                           % no. of bands to solve for
+P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 12;                           % no. of bands to solve for
 
 P.solveasym = 0;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -37,7 +37,7 @@ P.bandStructureDim = 2;
 % solid mechanics solver parameters
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
-P.optical_freq = 220;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
+P.optical_freq = 406;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 4;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 

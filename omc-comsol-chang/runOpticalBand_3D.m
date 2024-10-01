@@ -148,6 +148,7 @@ std_param.set('pname', 'k');
 std_param.set('plistarr', kliststr);
 std_param.set('punit', []);
 std_eigv.set('neigsactive',true).set('neigs',nbands);
+std_eigv.set('eigunit', 'THz');
 std_eigv.set('shiftactive',true).set('shift',num2str(freq));
 
 solv = model.sol.create('solv');
