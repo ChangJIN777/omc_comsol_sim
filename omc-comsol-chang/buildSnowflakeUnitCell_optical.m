@@ -61,7 +61,7 @@ extrude.selection('input').set({'wp1'});
 ucellgeom.runAll;
 
 %% add the air block
-airZth = 0.5e-6;
+airZth = 1e-6;
 symW = a;
 % create symmetry block
 airWP = ucellgeom.feature.create('airWP', 'WorkPlane');
@@ -89,7 +89,7 @@ inds = model.selection([ucellname,'_ZsymSel']).inputEntities();
 P.bndSel.Zsym = inds';
 
 %% add the pml block
-pmlZth = 0.1e-6;
+pmlZth = 0.5e-6;
 % create symmetry block
 pmlWP = ucellgeom.feature.create('pmlWP', 'WorkPlane');
 pmlWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', airZth);
@@ -137,17 +137,25 @@ x_boundary_disksel_l.set('contributeto','xboundaries');
 
 y_boundary_disksel_t = ucellgeom.feature.create('y_boundary_boxsel_t', 'BoxSelection');
 y_boundary_disksel_t.set('entitydim', 2);
+y_boundary_disksel_t.set('xmin', 3*a/4-selection_width);
+y_boundary_disksel_t.set('xmax', 3*a/4+selection_width);
 y_boundary_disksel_t.set('ymin', sqrt(3)*a/2-selection_width/2);
 y_boundary_disksel_t.set('ymax', sqrt(3)*a/2+selection_width/2);
+y_boundary_disksel_t.set('zmin', th/2-selection_width);
+y_boundary_disksel_t.set('zmax', airZth-selection_width);
 y_boundary_disksel_t.set('inputent', 'all');
-y_boundary_disksel_t.set('condition', 'inside');
+y_boundary_disksel_t.set('condition', 'intersects');
 
 y_boundary_disksel_b = ucellgeom.feature.create('y_boundary_boxsel_b', 'BoxSelection');
 y_boundary_disksel_b.set('entitydim', 2);
+y_boundary_disksel_b.set('xmin', a/4-selection_width);
+y_boundary_disksel_b.set('xmax', a/4+selection_width);
 y_boundary_disksel_b.set('ymin', -selection_width/2);
 y_boundary_disksel_b.set('ymax', selection_width/2);
+y_boundary_disksel_b.set('zmin', th/2-selection_width);
+y_boundary_disksel_b.set('zmax', airZth-selection_width);
 y_boundary_disksel_b.set('inputent', 'all');
-y_boundary_disksel_b.set('condition', 'inside');
+y_boundary_disksel_b.set('condition', 'intersects');
 
 ucellgeom.selection.create('yboundaries','CumulativeSelection');
 ucellgeom.selection('yboundaries').label('Cumulative Selection y boundaries');

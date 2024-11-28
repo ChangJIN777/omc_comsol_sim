@@ -7,6 +7,7 @@ function [model,P] = buildHoleStrip_2D(model,P)
 %% read the input parameters 
 a = P.a;        % lattice constant 
 b = P.b;        % the width of the hole 
+b_wvg = P.b_wvg;    % modulating the wvg width of the unit cell 
 th = P.th;        % the height of the hole
 r = P.r;        % the height of the hole 
 r1 = P.r1;      % the fillet radius of the edges of the hole 
@@ -30,76 +31,76 @@ ucellplane = ucellgeom.feature.create('r1', 'Rectangle');
 ucellplane.label('Base plane');
 ucellplane.set('pos', [0 0]);
 ucellplane.set('base','center');
-ucellplane.set('size',[a sqrt(3)*5*a]);
+ucellplane.set('size',[a sqrt(3)*5*a+2*b_wvg]);
 
 airHole1 = ucellgeom.feature.create('c1','Circle');
 airHole1.set('r',r);
-airHole1.set('pos', [0 a*sqrt(3)/2+b]);
+airHole1.set('pos', [0 a*sqrt(3)/2+b+b_wvg]);
 airHole1.set('base', 'center');
 
 airHole2 = ucellgeom.feature.create('c2','Circle');
 airHole2.set('r',r);
-airHole2.set('pos', [0 -(a*sqrt(3)/2+b)]);
+airHole2.set('pos', [0 -(a*sqrt(3)/2+b+b_wvg)]);
 airHole2.set('base', 'center');
 
 airHole3 = ucellgeom.feature.create('c3','Circle');
 airHole3.set('r',r);
-airHole3.set('pos', [0 a*sqrt(3)/2+sqrt(3)*a]);
+airHole3.set('pos', [0 a*sqrt(3)/2+sqrt(3)*a+b_wvg]);
 airHole3.set('base', 'center');
 
 airHole4 = ucellgeom.feature.create('c4','Circle');
 airHole4.set('r',r);
-airHole4.set('pos', [0 a*sqrt(3)/2+2*sqrt(3)*a]);
+airHole4.set('pos', [0 a*sqrt(3)/2+2*sqrt(3)*a+b_wvg]);
 airHole4.set('base', 'center');
 
 airHole5 = ucellgeom.feature.create('c5','Circle');
 airHole5.set('r',r);
-airHole5.set('pos', [0 -(a*sqrt(3)/2+sqrt(3)*a)]);
+airHole5.set('pos', [0 -(a*sqrt(3)/2+sqrt(3)*a)-b_wvg]);
 airHole5.set('base', 'center');
 
 airHole6 = ucellgeom.feature.create('c6','Circle');
 airHole6.set('r',r);
-airHole6.set('pos', [0 -(a*sqrt(3)/2+2*sqrt(3)*a)]);
+airHole6.set('pos', [0 -(a*sqrt(3)/2+2*sqrt(3)*a)-b_wvg]);
 airHole6.set('base', 'center');
 
 airHole7 = ucellgeom.feature.create('c7','Circle');
 airHole7.set('r',r);
-airHole7.set('pos', [a/2 sqrt(3)*a]);
+airHole7.set('pos', [a/2 sqrt(3)*a+b_wvg]);
 airHole7.set('base', 'center');
 
 airHole8 = ucellgeom.feature.create('c8','Circle');
 airHole8.set('r',r);
-airHole8.set('pos', [-a/2 sqrt(3)*a]);
+airHole8.set('pos', [-a/2 sqrt(3)*a+b_wvg]);
 airHole8.set('base', 'center');
 
 airHole9 = ucellgeom.feature.create('c9','Circle');
 airHole9.set('r',r);
-airHole9.set('pos', [a/2 -sqrt(3)*a]);
+airHole9.set('pos', [a/2 -sqrt(3)*a-b_wvg]);
 airHole9.set('base', 'center');
 
 airHole10 = ucellgeom.feature.create('c10','Circle');
 airHole10.set('r',r);
-airHole10.set('pos', [-a/2 -sqrt(3)*a]);
+airHole10.set('pos', [-a/2 -sqrt(3)*a-b_wvg]);
 airHole10.set('base', 'center');
 
 airHole11 = ucellgeom.feature.create('c11','Circle');
 airHole11.set('r',r);
-airHole11.set('pos', [a/2 sqrt(3)*a+a*sqrt(3)]);
+airHole11.set('pos', [a/2 sqrt(3)*a+a*sqrt(3)+b_wvg]);
 airHole11.set('base', 'center');
 
 airHole12 = ucellgeom.feature.create('c12','Circle');
 airHole12.set('r',r);
-airHole12.set('pos', [-a/2 sqrt(3)*a+a*sqrt(3)]);
+airHole12.set('pos', [-a/2 sqrt(3)*a+a*sqrt(3)+b_wvg]);
 airHole12.set('base', 'center');
 
 airHole13 = ucellgeom.feature.create('c13','Circle');
 airHole13.set('r',r);
-airHole13.set('pos', [a/2 -sqrt(3)*a-a*sqrt(3)]);
+airHole13.set('pos', [a/2 -sqrt(3)*a-a*sqrt(3)-b_wvg]);
 airHole13.set('base', 'center');
 
 airHole14 = ucellgeom.feature.create('c14','Circle');
 airHole14.set('r',r);
-airHole14.set('pos', [-a/2 -sqrt(3)*a-a*sqrt(3)]);
+airHole14.set('pos', [-a/2 -sqrt(3)*a-a*sqrt(3)-b_wvg]);
 airHole14.set('base', 'center');
 
 
@@ -110,27 +111,27 @@ holeplane = ucellgeom.feature.create('r2', 'Rectangle');
 holeplane.label('Air plane');
 holeplane.set('pos', [0 0]);
 holeplane.set('base','center');
-holeplane.set('size',[a sqrt(3)*5*a]);
-
-PML_length = 1e-6;
-top_PML = ucellgeom.feature.create('r_PML_top', 'Rectangle');
-top_PML.label('PML_plane_top');
-top_PML.set('pos', [0 (PML_length+sqrt(3)*5*a)/2]);
-top_PML.set('base','center');
-top_PML.set('size',[a PML_length]);
-
-bottom_PML = ucellgeom.feature.create('r_PML_bottom', 'Rectangle');
-bottom_PML.label('PML_plane_bottom');
-bottom_PML.set('pos', [0 -(PML_length+sqrt(3)*5*a)/2]);
-bottom_PML.set('base','center');
-bottom_PML.set('size',[a PML_length]);
+holeplane.set('size',[a sqrt(3)*5*a+2*b_wvg]);
+% 
+% PML_length = 1e-6;
+% top_PML = ucellgeom.feature.create('r_PML_top', 'Rectangle');
+% top_PML.label('PML_plane_top');
+% top_PML.set('pos', [0 (PML_length+sqrt(3)*5*a)/2]);
+% top_PML.set('base','center');
+% top_PML.set('size',[a PML_length]);
+% 
+% bottom_PML = ucellgeom.feature.create('r_PML_bottom', 'Rectangle');
+% bottom_PML.label('PML_plane_bottom');
+% bottom_PML.set('pos', [0 -(PML_length+sqrt(3)*5*a)/2]);
+% bottom_PML.set('base','center');
+% bottom_PML.set('size',[a PML_length]);
 
 ucellgeom.runAll;
-
-%% add the PML regions
-model.component('comp1').coordSystem.create('pml1', 'PML');
-model.component('comp1').geom('geom1').run;
-model.component('comp1').coordSystem('pml1').selection.set([1 7]);
+% 
+% %% add the PML regions
+% model.component('comp1').coordSystem.create('pml1', 'PML');
+% model.component('comp1').geom('geom1').run;
+% model.component('comp1').coordSystem('pml1').selection.set([1 7]);
 
 %% Making selections (with box select)
 mphgeom(model);
@@ -158,15 +159,15 @@ x_boundary_disksel_l.set('contributeto','xboundaries');
 
 y_boundary_disksel_t = ucellgeom.feature.create('y_boundary_boxsel_t', 'BoxSelection');
 y_boundary_disksel_t.set('entitydim', 1);
-y_boundary_disksel_t.set('ymin', sqrt(3)*5*a/2-selection_width/2);
-y_boundary_disksel_t.set('ymax', sqrt(3)*5*a/2+selection_width/2);
+y_boundary_disksel_t.set('ymin', sqrt(3)*5*a/2+b_wvg-selection_width/2);
+y_boundary_disksel_t.set('ymax', sqrt(3)*5*a/2+b_wvg+selection_width/2);
 y_boundary_disksel_t.set('inputent', 'all');
 y_boundary_disksel_t.set('condition', 'inside');
 
 y_boundary_disksel_b = ucellgeom.feature.create('y_boundary_boxsel_b', 'BoxSelection');
 y_boundary_disksel_b.set('entitydim', 1);
-y_boundary_disksel_b.set('ymin', -sqrt(3)*5*a/2-selection_width/2);
-y_boundary_disksel_b.set('ymax', -sqrt(3)*5*a/2+selection_width/2);
+y_boundary_disksel_b.set('ymin', -sqrt(3)*5*a/2-b_wvg-selection_width/2);
+y_boundary_disksel_b.set('ymax', -sqrt(3)*5*a/2-b_wvg+selection_width/2);
 y_boundary_disksel_b.set('inputent', 'all');
 y_boundary_disksel_b.set('condition', 'inside');
 

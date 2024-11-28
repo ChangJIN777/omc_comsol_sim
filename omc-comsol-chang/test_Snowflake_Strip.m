@@ -6,12 +6,12 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'Snowflake_strip_2d';                   % specify the cell type
 P.unitcell = 'strip';                  % specify the shape of the unit cell
-P.a = 240e-9;              % lattice constant 
+P.a = 230e-9;              % lattice constant 
 P.w = 40e-9;        % the width of the hole 
 P.b = 0e-9;              % unit cell shift in the y direction
 P.b_wvg = 0;           % unit cell shift in the y direction (wvg region)
 P.r = 90e-9;              % radius of the unit cell
-P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.th = 100e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -23,7 +23,7 @@ P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
 P.bandStructureDim = 1;                 % 1D vs 2D band structure
 P.kpts = 15;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 20;                           % no. of bands to solve for
+P.nbands = 25;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -66,6 +66,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 
 %% run the simulation
-datLoc = '.\test\holeStrip\090624_optical\';
+datLoc = '.\test\holeStrip\110524_optical\';
 P.datLoc = datLoc;
 solveOpticalBands(P);

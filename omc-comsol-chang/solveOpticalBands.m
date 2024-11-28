@@ -95,10 +95,12 @@ if ~isfield(P,'fileBase')
     elseif strcmp(P.celltype,'Snowflake_strip_2d')
         fBase = ['optical_snowflake_strip_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
             'b_',num2str(P.b*1e9,'%.0f'),'nm_',...
+            'bbase_',num2str(P.b_base*1e9,'%.0f'),'nm_',...
             'r_',num2str(P.r*1e9,'%.0f'),'nm_',...
             'w_',num2str(P.w*1e9,'%.0f'),'nm_', ...
             'r1_',num2str(P.r1*1e9,'%.0f'),'nm_', ...
-            'r2_',num2str(P.r2*1e9,'%.0f'),'nm_'];
+            'r2_',num2str(P.r2*1e9,'%.0f'),'nm_', ...
+            'th_',num2str(P.th*1e9,'%.0f'),'nm_'];
         if isfield(P,'prefname')
             fBase = [P.prefname,'_',fBase];
         end
@@ -110,8 +112,10 @@ fBase = P.fileBase;
 %% solve the optical band structure
 if isempty(dir([datLoc,fBase,'_bds.mat']))
     tStart = tic;
-    if P.bandStructureDim==2
+    if P.bandStructureDim==3
         OpticalBand = runOpticalBand_3D(P);
+    elseif P.bandStructureDim==2
+        OpticalBand = runOpticalBand_2D(P);
     elseif P.bandStructureDim==1
         OpticalBand = runOpticalBand_1D(P);
     end
@@ -222,7 +226,12 @@ if P.savebndplot
         maxFreqs = [0 0 0 0];
 
         p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'ko','linewidth',2,'DisplayName','sym','MarkerSize',5);
-
+        
+        % plot the light line 
+        hold on;
+        lightx = linspace(0,1,100);
+        lighty1 = lightx*(3e8)/(2*P.a*(1e12));
+        light1 = plot(lightx,lighty1,'b-','linewidth',1);
         
         % plot optical bandgaps
         for k = 1:length(OpticalBand.gapSize)
@@ -295,10 +304,12 @@ if P.savebndplot
         elseif strcmp(P.celltype,'Snowflake_strip_2d')
             bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
                 'b = ',num2str(P.b*1e9,'%.0f'),'nm, ',...
+                'bbase = ',num2str(P.b_base*1e9,'%.0f'),'nm, ',...
                 'w = ',num2str(P.w*1e9,'%.0f'),'nm, ',...
                 'r = ',num2str(P.r*1e9,'%.0f'),'nm',...
                 'r1 = ',num2str(P.r1*1e9,'%.0f'),'nm',...
-                'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm']};
+                'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm',...
+                'th = ',num2str(P.th*1e9,'%.0f'),'nm']};
         else 
             bandtitle = 'blank title';
         end

@@ -33,7 +33,7 @@ ucellplane = ucellgeom.feature.create('r_base', 'Rectangle');
 ucellplane.label('Base plane');
 ucellplane.set('pos', [0 0]);
 ucellplane.set('base','center');
-ucellplane.set('size',[a sqrt(3)*5*a+b_base*2+b*2]);
+ucellplane.set('size',[a sqrt(3)*5*a]);
 
 % add the holes for the strip
 % hole #1 
@@ -292,13 +292,13 @@ composit_geom = ucellgeom.feature.create('co1', 'Compose');
 composit_geom.set('formula', 'r_base-(c1_r1 + c1_r2 + c1_r3 + c2_r1 + c2_r2 + c2_r3 + c3_r1 + c3_r2 + c3_r3 + c4_r1 + c4_r2 + c4_r3 + c5_r1 + c5_r2 + c5_r3 + c6_r1 + c6_r2 + c6_r3 + c7_r1 + c7_r2 + c7_r3 + c8_r1 + c8_r2 + c8_r3 + c9_r1 + c9_r2 + c9_r3 + c10_r1 + c10_r2 + c10_r3 + c11_r1 + c11_r2 + c11_r3 + c12_r1 + c12_r2 + c12_r3 + c13_r1 + c13_r2 + c13_r3 + c14_r1 + c14_r2 + c14_r3)');
 
 % the position of all the holes 
-hole_pos = [0 a*sqrt(3)/2+b+b_base; 0 -(a*sqrt(3)/2+b+b_base); 0 a*sqrt(3)/2+sqrt(3)*a+b_base;
-    0 a*sqrt(3)/2+2*sqrt(3)*a+b_base; 0 -(a*sqrt(3)/2+sqrt(3)*a+b_base);0 -(a*sqrt(3)/2+2*sqrt(3)*a+b_base);
-    a/2 sqrt(3)*a+b_base; -a/2 sqrt(3)*a+b_base; a/2 -sqrt(3)*a-b_base; -a/2 -sqrt(3)*a-b_base;
-    a/2 sqrt(3)*a+a*sqrt(3)+b_base; -a/2 sqrt(3)*a+a*sqrt(3)+b_base; a/2 -sqrt(3)*a-a*sqrt(3)-b_base;
-    -a/2 -sqrt(3)*a-a*sqrt(3)-b_base];
+hole_pos = [0 a*sqrt(3)/2+b+b_base; 0 -(a*sqrt(3)/2+b); 0 a*sqrt(3)/2+sqrt(3)*a;
+    0 a*sqrt(3)/2+2*sqrt(3)*a; 0 -(a*sqrt(3)/2+sqrt(3)*a);0 -(a*sqrt(3)/2+2*sqrt(3)*a);
+    a/2 sqrt(3)*a; -a/2 sqrt(3)*a; a/2 -sqrt(3)*a; -a/2 -sqrt(3)*a;
+    a/2 sqrt(3)*a+a*sqrt(3); -a/2 sqrt(3)*a+a*sqrt(3); a/2 -sqrt(3)*a-a*sqrt(3);
+    -a/2 -sqrt(3)*a-a*sqrt(3)];
 
-selection_width = 3e-9;
+selection_width = 2e-9;
 for i=1:14
     addFillet(P,ucellgeom,i,hole_pos(i,:),selection_width);
 end
@@ -307,7 +307,7 @@ holeplane = ucellgeom.feature.create('r_air', 'Rectangle');
 holeplane.label('Air plane');
 holeplane.set('pos', [0 0]);
 holeplane.set('base','center');
-holeplane.set('size',[a sqrt(3)*5*a+b*2+b_base*2]);
+holeplane.set('size',[a sqrt(3)*5*a]);
 
 ucellgeom.runAll;
 
@@ -336,15 +336,15 @@ x_boundary_disksel_l.set('contributeto','xboundaries');
 
 y_boundary_disksel_t = ucellgeom.feature.create('y_boundary_boxsel_t', 'BoxSelection');
 y_boundary_disksel_t.set('entitydim', 1);
-y_boundary_disksel_t.set('ymin', sqrt(3)*5*a/2+b+b_base-selection_width/2);
-y_boundary_disksel_t.set('ymax', sqrt(3)*5*a/2+b+b_base+selection_width/2);
+y_boundary_disksel_t.set('ymin', sqrt(3)*5*a/2-selection_width/2);
+y_boundary_disksel_t.set('ymax', sqrt(3)*5*a/2+selection_width/2);
 y_boundary_disksel_t.set('inputent', 'all');
 y_boundary_disksel_t.set('condition', 'inside');
 
 y_boundary_disksel_b = ucellgeom.feature.create('y_boundary_boxsel_b', 'BoxSelection');
 y_boundary_disksel_b.set('entitydim', 1);
-y_boundary_disksel_b.set('ymin', -sqrt(3)*5*a/2-b-b_base-selection_width/2);
-y_boundary_disksel_b.set('ymax', -sqrt(3)*5*a/2-b-b_base+selection_width/2);
+y_boundary_disksel_b.set('ymin', -sqrt(3)*5*a/2-selection_width/2);
+y_boundary_disksel_b.set('ymax', -sqrt(3)*5*a/2+selection_width/2);
 y_boundary_disksel_b.set('inputent', 'all');
 y_boundary_disksel_b.set('condition', 'inside');
 

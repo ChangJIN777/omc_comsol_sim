@@ -91,7 +91,6 @@ if abs(P.mbevenz)
     symZComp.set('formula', ['ext1 - symZPlaneExt']);
     ucellgeom.runCurrent;
 
-
     % beam z-symmetry plane
     delta = 10e-9;
     ZsymSel = ucellgeom.create('ZsymSel', 'BoxSelection');
@@ -104,6 +103,7 @@ if abs(P.mbevenz)
     P.bndSel.Zsym = inds';
 
 end
+
 %% Making selections (manual)
 mphgeom(model);
 P.xEnd1 =  bndindex(ucellgeom, [0 0 0], [sqrt(3)*a/2 -a/2 0]);

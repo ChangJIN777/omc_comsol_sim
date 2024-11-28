@@ -1,4 +1,4 @@
-function ds = runOpticalBand_3D(P)
+function ds = runOpticalBand_2D(P)
 
 % import COMSOL class
 import com.comsol.model.*
@@ -12,7 +12,6 @@ model = ModelUtil.create('model');
 
 beamMat = P.beamMat;
 a = P.a;
-th = P.th;
 
 kpts = P.kpts;
 nbands = P.nbands;
@@ -78,11 +77,9 @@ elseif strcmp(P.celltype,'boomerang')
 elseif strcmp(P.celltype,'boomerang_lower')
     [model,P] = buildLowerBoomerangUnitCell_2D(model,P);
 elseif strcmp(P.celltype,'snowflake')
-    [model,P] = buildSnowflakeUnitCell_optical(model,P);
+    [model,P] = buildSnowflakeUnitCell_2D(model,P);
 elseif strcmp(P.celltype,'hole')
     [model,P] = buildHoleUnitCell_2D(model,P);
-elseif strcmp(P.celltype,'hole_strip')
-    [model,P] = buildHoleStrip_3D(model,P);
 end
 
 if P.plotgeom
@@ -98,49 +95,33 @@ model.component('comp1').material.create('mat1', 'Common');
 model.component('comp1').material.create('mat2', 'Common');
 model.component('comp1').material('mat1').selection.set([1]);
 model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
-model.component('comp1').material('mat2').selection.set([2 3]);
+model.component('comp1').material('mat2').selection.set([2]);
 model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
 
-model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
-model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'1e-12[S/m]' '0' '0' '0' '1e-12[S/m]' '0' '0' '0' '1e-12[S/m]'});
-model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.406' '0' '0' '0' '2.406' '0' '0' '0' '2.406'});
-model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
-model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', {'1e-12[S/m]' '0' '0' '0' '1e-12[S/m]' '0' '0' '0' '1e-12[S/m]'});
-model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
-
 if strcmp(P.beamMat,'diamond')
-    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.406' '0' '0' '0' '2.406' '0' '0' '0' '2.406'});
-    model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
-    model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'1e-12[S/m]' '0' '0' '0' '1e-12[S/m]' '0' '0' '0' '1e-12[S/m]'});
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'' '0' '0' '0' '1.88' '0' '0' '0' '1.88'});
 elseif strcmp(P.beamMat,'SiC')
     model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.5' '0' '0' '0' '2.5' '0' '0' '0' '2.5'});
 else
     model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'3.5' '0' '0' '0' '3.5' '0' '0' '0' '3.5'});
 end
 model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
-model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
-model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', {'1e-12[S/m]' '0' '0' '0' '1e-12[S/m]' '0' '0' '0' '1e-12[S/m]'});
 
 %% setup the physics and the boundary conditions
-model.component('comp1').coordSystem.create('pml1', 'PML');
-model.component('comp1').coordSystem('pml1').selection.set([3]);
-model.component('comp1').physics.create('emw', 'ElectromagneticWaves', 'geom1');
-model.component('comp1').physics('emw').create('pc1', 'PeriodicCondition', 2);
-model.component('comp1').physics('emw').feature('pc1').selection.named('geom1_xboundaries_bnd');
-model.component('comp1').physics('emw').create('pc2', 'PeriodicCondition', 2);
-model.component('comp1').physics('emw').feature('pc2').selection.named('geom1_yboundaries_bnd');
-% model.component('comp1').physics('emw').create('sctr1', 'Scattering', 2);
-% model.component('comp1').physics('emw').feature('sctr1').selection.set(P.zEnd2);
-model.component('comp1').physics('emw').create('symp1', 'SymmetryPlane', 2);
-model.component('comp1').physics('emw').feature('symp1').selection.set(P.zEnd);
-model.component('comp1').physics('emw').feature('pc1').set('PeriodicType', 'Floquet');
-model.component('comp1').physics('emw').feature('pc1').set('kFloquet', {'kx'; 'ky'; '0'});
-model.component('comp1').physics('emw').feature('pc1').label('Periodic Condition x direction');
-model.component('comp1').physics('emw').feature('pc2').set('PeriodicType', 'Floquet');
-model.component('comp1').physics('emw').feature('pc2').set('kFloquet', {'kx'; 'ky'; '0'});
-model.component('comp1').physics('emw').feature('pc2').label('Periodic Condition y direction');
-
-% model.component('comp1').physics('emw').prop('components').set('components', 'inplane');
+model.component('comp1').physics.create('ewfd', 'ElectromagneticWavesFrequencyDomain', 'geom1');
+model.component('comp1').physics('ewfd').create('pc1', 'PeriodicCondition', 1);
+% model.component('comp1').physics('ewfd').feature('pc1').selection.set([P.xEnd1 P.xEnd2]);
+model.component('comp1').physics('ewfd').feature('pc1').selection.named('geom1_xboundaries_bnd');
+model.component('comp1').physics('ewfd').create('pc2', 'PeriodicCondition', 1);
+model.component('comp1').physics('ewfd').feature('pc2').selection.named('geom1_yboundaries_bnd');
+% model.component('comp1').physics('ewfd').feature('pc2').selection.set([P.yEnd1 P.yEnd2]);
+model.component('comp1').physics('ewfd').prop('components').set('components', 'inplane');
+model.component('comp1').physics('ewfd').feature('pc1').set('PeriodicType', 'Floquet');
+model.component('comp1').physics('ewfd').feature('pc1').set('kFloquet', {'kx'; 'ky'; '0'});
+model.component('comp1').physics('ewfd').feature('pc1').label('Periodic Condition x direction');
+model.component('comp1').physics('ewfd').feature('pc2').set('PeriodicType', 'Floquet');
+model.component('comp1').physics('ewfd').feature('pc2').set('kFloquet', {'kx'; 'ky'; '0'});
+model.component('comp1').physics('ewfd').feature('pc2').label('Periodic Condition y direction');
 
 %% Add the solver and solver sequences 
 study = model.study.create('std1');
@@ -148,9 +129,8 @@ std_param = study.create('param', 'Parametric');
 std_eigv = study.create('eig', 'Eigenfrequency');
 std_param.set('pname', 'k');
 std_param.set('plistarr', kliststr);
-std_param.set('punit', []);
+std_param.set('punit', '');
 std_eigv.set('neigsactive',true).set('neigs',nbands);
-std_eigv.set('eigunit', 'THz');
 std_eigv.set('shiftactive',true).set('shift',num2str(freq));
 
 solv = model.sol.create('solv');
@@ -170,7 +150,8 @@ solv_eigv.set('shift',num2str(freq));
 solv_eigv.feature('dDef').label('Direct 2');
 solv_eigv.feature('aDef').label('Advanced 1');
 solv_eigv.feature('aDef').set('complexfun', true);
-solv_eigv.feature('d1').label('Suggested Direct Solver (emw)');
+solv_eigv.feature('d1').label('Suggested Direct Solver (ewfd)');
+
 
 % solv_eigv.set('transform', 'eigenfrequency');
 % solv_eigv.set('control','std_eigv');
@@ -189,7 +170,7 @@ pbatch.attach('std1');
 pbatch.set('control', 'param');
 pbatch.set('pname', 'k');
 pbatch.set('plistarr', kliststr);
-pbatch.set('punit', []);
+pbatch.set('punit', '');
 pbatch.set('err', true);
 pbatch_solseq.set('seq', 'solv');
 pbatch_solseq.set('psol', 'psolv');
@@ -229,38 +210,44 @@ model.result.numerical.create('gev2', 'EvalGlobal');
 model.result.numerical('gev1').set('probetag', 'none');
 model.result.numerical('gev2').set('data', 'dset2');
 model.result.numerical('gev2').set('probetag', 'none');
-model.result.create('pg1', 'PlotGroup3D');
-% model.result.create('pg2', 'PlotGroup2D');
-% model.result.create('pg3', 'PlotGroup1D');
-% model.result('pg1').create('surf1', 'Surface');
-% model.result('pg2').set('data', 'dset2');
-% model.result('pg2').create('surf1', 'Surface');
-% model.result('pg3').set('data', 'dset2');
-% model.result('pg3').create('glob1', 'Global');
+model.result.create('pg1', 'PlotGroup2D');
+model.result.create('pg2', 'PlotGroup2D');
+model.result.create('pg3', 'PlotGroup1D');
+model.result('pg1').create('surf1', 'Surface');
+model.result('pg2').set('data', 'dset2');
+model.result('pg2').create('surf1', 'Surface');
+model.result('pg3').set('data', 'dset2');
+model.result('pg3').create('glob1', 'Global');
 
-model.result.numerical('gev1').label('Eigenfrequencies (emw)');
+model.result.numerical('gev1').label('Eigenfrequencies (ewfd)');
 model.result.numerical('gev1').set('table', 'tbl13');
-model.result.numerical('gev1').set('expr', {'emw.freq' 'emw.Qfactor'});
+model.result.numerical('gev1').set('expr', {'ewfd.freq' 'ewfd.Qfactor'});
 model.result.numerical('gev1').set('unit', {'THz' '1'});
 model.result.numerical('gev1').set('descr', {'Frequency' 'Quality factor'});
-model.result.numerical('gev2').label('Eigenfrequencies (emw) 1');
+model.result.numerical('gev2').label('Eigenfrequencies (ewfd) 1');
 model.result.numerical('gev2').set('table', 'tbl14');
-model.result.numerical('gev2').set('expr', {'emw.freq' 'emw.Qfactor'});
+model.result.numerical('gev2').set('expr', {'ewfd.freq' 'ewfd.Qfactor'});
 model.result.numerical('gev2').set('unit', {'THz' '1'});
 model.result.numerical('gev2').set('descr', {'Frequency' 'Quality factor'});
 model.result.numerical('gev1').setResult;
 model.result.numerical('gev2').setResult;
-% model.result('pg1').label('Electric Field (emw)');
-% model.result('pg1').set('frametype', 'spatial');
-% model.result('pg1').set('showlegendsmaxmin', true);
-model.result('pg1').create('slc1', 'Slice');
-model.result('pg1').label('Electric Field (emw)');
+model.result('pg1').label('Electric Field (ewfd)');
 model.result('pg1').set('frametype', 'spatial');
-model.result('pg1').set('showlegendsmaxmin', true);
-model.result('pg1').feature('slc1').set('quickplane', 'xy');
-model.result('pg1').feature('slc1').set('quickzmethod', 'coord');
-model.result('pg1').feature('slc1').set('quickz', 0);
-model.result('pg1').feature('slc1').set('resolution', 'normal');
+model.result('pg1').feature('surf1').set('smooth', 'internal');
+model.result('pg1').feature('surf1').set('resolution', 'normal');
+model.result('pg2').label('Electric Field (ewfd) 1');
+model.result('pg2').set('frametype', 'spatial');
+model.result('pg2').feature('surf1').set('smooth', 'internal');
+model.result('pg2').feature('surf1').set('resolution', 'normal');
+model.result('pg3').set('xlabel', 'k');
+model.result('pg3').set('ylabel', 'Frequency (THz)');
+model.result('pg3').set('xlabelactive', false);
+model.result('pg3').set('ylabelactive', false);
+model.result('pg3').feature('glob1').set('expr', {'ewfd.freq'});
+model.result('pg3').feature('glob1').set('unit', {'THz'});
+model.result('pg3').feature('glob1').set('descr', {'Frequency'});
+model.result('pg3').feature('glob1').set('xdatasolnumtype', 'outer');
+model.result('pg3').feature('glob1').set('linewidth', 'preference');
 
 %% Save data and plots
 if ~exist([P.datLoc,P.fileBase],'dir') && P.saveplots

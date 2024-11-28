@@ -7,9 +7,9 @@ P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'snowflake';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
 P.a = 311e-9;              % lattice constant 
-P.w = 50e-9;              % unit cell width (along x)
-P.r = 100e-9;              % unit cell height (along y)
-P.th = 120e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.w = 55e-9;              % unit cell width (along x)
+P.r = 138e-9;              % unit cell height (along y)
+P.th = 140e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -19,9 +19,9 @@ P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
-P.bandStructureDim = 2;                 % 1D vs 2D band structure
+P.bandStructureDim = 3;                 % 1D vs 2D band structure
 P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 12;                           % no. of bands to solve for
+P.nbands = 20;                           % no. of bands to solve for
 
 P.solveasym = 0;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -31,13 +31,12 @@ P.savebndplot = 1;                      % 1 to save bandstructure plot
 P.saveplots = 0;                        % 1 to save displacement and strain profiles
 P.saveMPH = 0; 
 P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
-P.bandStructureDim = 2;
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
-P.optical_freq = 406;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
+P.optical_freq = 200;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 4;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
@@ -48,22 +47,22 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 %% define the maximum number of degree of freedom to limit the simulation time
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
-%% debugging the unit cells 
-% % import COMSOL class
-% import com.comsol.model.*
-% import com.comsol.model.util.*
-% 
-% ModelUtil.showProgress(true);
-% ModelUtil.clear();
-% clear model
-% 
-% % create COMSOL model named 'model' from which COMSOL methods can be called, 
-% % e.g. model.save
-% model = ModelUtil.create('model');
-% 
-% buildSnowflakeUnitCell_optical(model,P);
-% mphlaunch(model);
-%% Single solve
-datLoc = '.\test\snowflake\092324\';
-P.datLoc = datLoc;
-bds = solveOpticalBands(P);
+% debugging the unit cells 
+% import COMSOL class
+import com.comsol.model.*
+import com.comsol.model.util.*
+
+ModelUtil.showProgress(true);
+ModelUtil.clear();
+clear model
+
+% create COMSOL model named 'model' from which COMSOL methods can be called, 
+% e.g. model.save
+model = ModelUtil.create('model');
+
+buildHoleStrip_2D(model,P);
+mphlaunch(model);
+% %% Single solve
+% datLoc = '.\test\snowflake\110724\';
+% P.datLoc = datLoc;
+% bds = solveOpticalBands(P);

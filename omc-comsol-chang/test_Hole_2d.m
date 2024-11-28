@@ -3,13 +3,13 @@ clear P;
 
 %% unit cell params 
 P.xsect = 'rect'; 
-P.beamMat = 'silicon';                  % beam material name
+P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'hole';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 416e-9;              % lattice constant 
+P.a = 250e-9;              % lattice constant 
 P.b = 0;              % unit cell shift in the y direction
-P.r = 105e-9;              % radius of the unit cell
-P.th = 0.58*P.a;             % height (along x) of cross (for celltype = 'hollow')
+P.r = 60e-9;              % radius of the unit cell
+P.th = 160e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -20,8 +20,8 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
 P.bandStructureDim = 2;                 % 1D vs 2D band structure
-P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 9;                           % no. of bands to solve for
+P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 12;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -36,7 +36,7 @@ P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 % solid mechanics solver parameters
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
-P.optical_freq = 220;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
+P.optical_freq = 400;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 3;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
@@ -64,6 +64,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 
 % buildBoomerangUnitCell_2D(model,P);
-datLoc = '.\test\hole\091124_optical\';
+datLoc = '.\test\hole\101424_optical\';
 P.datLoc = datLoc;
 solveOpticalBands(P);

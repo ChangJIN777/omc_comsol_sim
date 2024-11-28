@@ -1,32 +1,32 @@
 %% sweeping code 
 P.celltype = 'snowflake';                   % specify the cell type
 
-a = 2200e-9; % lattice constant
-a_min = 220e-9; % minimum lattice constant 
-a_max = 250e-9; % maximum lattice constant 
-w = 86e-9; 
-w_min = 40e-9;
-w_max = 80e-9;
-r = 100e-9;
-r_min = 80e-9;
-r_max = 100e-9;
-w_list = linspace(w_min,w_max,3);
-r_list = linspace(r_min,r_max,3);
+a = 311e-9; % lattice constant
+a_min = a; % minimum lattice constant 
+a_max = a*1.1; % maximum lattice constant 
+w = 55e-9; 
+w_min = w*0.95;
+w_max = w*1.05;
+r = 138e-9;
+r_min = r*0.95;
+r_max = r*1.05;
+w_list = linspace(w_min,w_max,5);
+r_list = linspace(r_min,r_max,5);
 a_list = linspace(a_min,a_max,5);
 
-%% run the lattice constatn sweep
-% for i=1:length(a_list)
-%    sweep_boomerang_lattice(P,a_list(i))
-% end
-% 
-%% run the hole size sweep
-for j=1:length(r_list)
-    for k=1:length(a_list)
-        for i=1:length(w_list)
-            sweep_snowFlake(P,a_list(k),w_list(i),r_list(j));
-        end
-    end
+% run the lattice constatn sweep
+for i=1:length(w_list)
+   sweep_snowFlake(P,a,w_list(i),r);
 end
+
+% %% run the hole size sweep
+% for j=1:length(r_list)
+%     for k=1:length(a_list)
+%         for i=1:length(w_list)
+%             sweep_snowFlake(P,a_list(k),w_list(i),r_list(j));
+%         end
+%     end
+% end
 
 function sweep_snowFlake(P,a,w,r)    
     %% unit cell params 
@@ -37,7 +37,7 @@ function sweep_snowFlake(P,a,w,r)
     P.a = a;              % lattice constant 
     P.w = w;              % unit cell width (along x)
     P.r = r;              % unit cell height (along y)
-    P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
+    P.th = 140e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
     P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
@@ -47,12 +47,12 @@ function sweep_snowFlake(P,a,w,r)
     P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
     P.mbevenz = 1;      % 1 to find even mechanical mode about z
     
-    P.kpts = 7;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 11;                           % no. of bands to solve for
+    P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
+    P.nbands = 25;                           % no. of bands to solve for
     
     P.solveasym = 1;                        % 1 to solve for antisymmetric bands
     P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
-    P.plotgeom = 0;                         % 1 to plot the geometry
+    P.plotgeom = 1;                         % 1 to plot the geometry
     P.savedat = 1;                          % 1 to save data structures
     P.savebndplot = 1;                      % 1 to save bandstructure plot
     P.saveplots = 0;                        % 1 to save displacement and strain profiles
@@ -75,7 +75,7 @@ function sweep_snowFlake(P,a,w,r)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\snowflake\073124_sweep1\';
+    datLoc = '.\test\snowflake\100924_sweep1\';
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 

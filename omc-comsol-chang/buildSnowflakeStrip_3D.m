@@ -1,4 +1,4 @@
-function [model,P] = buildSnowflakeStrip_2D(model,P)
+function [model,P] = buildSnowflakeStrip_3D(model,P)
 %
 % buildBoomerangUnitCell.m
 %
@@ -31,9 +31,9 @@ ucellgeom.label(ucelllabel);
 % build the base plate for the strip
 ucellplane = ucellgeom.feature.create('r_base', 'Rectangle');
 ucellplane.label('Base plane');
-ucellplane.set('pos', [0 0]);
-ucellplane.set('base','center');
-ucellplane.set('size',[a sqrt(3)*5*a+b_base*2+b*2]);
+ucellplane.set('pos', [-a/2 0]);
+ucellplane.set('base','corner');
+ucellplane.set('size',[a sqrt(3)*(4+1/2)*a+b_base+b]);
 
 % add the holes for the strip
 % hole #1 

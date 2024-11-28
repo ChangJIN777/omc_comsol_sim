@@ -6,9 +6,9 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'snowflake';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 300e-9;              % lattice constant 
-P.w = 60e-9;              % unit cell width (along x)
-P.r = 135e-9;              % unit cell height (along y)
+P.a = 340e-9;              % lattice constant 
+P.w = 59e-9;              % unit cell width (along x)
+P.r = 120e-9;              % unit cell height (along y)
 P.th = 120e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -62,6 +62,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildBoomerangUnitCell(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\snowflake\092324\';
+datLoc = '.\test\snowflake\100724\';
 P.datLoc = datLoc;
 bds = solveBands(P);
