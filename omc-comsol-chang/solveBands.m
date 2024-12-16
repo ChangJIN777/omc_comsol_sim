@@ -196,7 +196,7 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
             amax = max([sym.F(:);asym.F(:)])*1e-9;
             axis([0 3 0 amax]);
             %         axis tight
-            set(gca,'XTick',[0; 1]);
+            set(gca,'XTick',[0; 1; 2; 3]);
             %         set(gca,'XTickLabel',{'G','C'},'fontname','symbol','fontsize',16)
             set(gca,'XTickLabel',{'\Gamma','X','M','\Gamma'},'fontsize',12)
         else 

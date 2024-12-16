@@ -230,7 +230,7 @@ if P.savebndplot
         % plot the light line 
         hold on;
         lightx = linspace(0,1,100);
-        lighty1 = lightx*(3e8)/(2*P.a*(1e12));
+        lighty1 = lightx*(3e8)/(P.a*(1e12));
         light1 = plot(lightx,lighty1,'b-','linewidth',1);
         
         % plot optical bandgaps

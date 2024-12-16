@@ -6,9 +6,9 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'snowflake';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 340e-9;              % lattice constant 
+P.a =340e-9;              % lattice constant 
 P.w = 59e-9;              % unit cell width (along x)
-P.r = 120e-9;              % unit cell height (along y)
+P.r = 126e-9;              % unit cell height (along y)
 P.th = 120e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -19,7 +19,7 @@ P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
-P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
+P.kpts = 7;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 25;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
@@ -62,6 +62,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildBoomerangUnitCell(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\snowflake\100724\';
+datLoc = '.\test\snowflake\121124\';
 P.datLoc = datLoc;
 bds = solveBands(P);
