@@ -47,17 +47,17 @@ model.param.set('k', '0');
 model.param.set('a', [num2str(a),'[m]']);
 
 if strcmp(P.unitcell,'hexagonal')
-    model.param.set('kx', 'if(k<1,0,if(k<2,(2/3)*pi/a*(k-1),(2/3)*(3-k)*pi/a))');
-    model.param.set('ky', 'if(k<1,(pi/a)*k,if(k<2,(1-k)*2*pi/(3*a),(3-k)*pi/(3*a)))');
+    model.param.set('kx', 'if(k<1,(-1/sqrt(3))*k*(pi/a),if(k<2,(1/sqrt(3))*pi/a*(k-2),0))');
+    model.param.set('ky', 'if(k<1,(pi/a)*k,if(k<2,(k+2)*pi/(3*a),(3-k)*4*pi/(3*a)))');
     
     for ki = 0:3*kpts-1
         ds.k_norm(ki+1,1) = ki/kpts;
-        ds.kx_norm(ki+1,1) = (0*(ki<kpts)+...                  % Gamma-M
-                            ((2/3)*(ki-kpts)/kpts)*(ki>=kpts && ki<2*kpts)+...              % X-M
-                            (2/3)*(3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
+        ds.kx_norm(ki+1,1) = ((-1/sqrt(3))*(ki/kpts)*(ki<kpts)+...                  % Gamma-M
+                            (1/sqrt(3))*(ki/kpts-2)*(ki>=kpts && ki<2*kpts)+...              % M-K
+                            0*(ki>=2*kpts));            % K-Gamma
         ds.ky_norm(ki+1,1) = ((ki/kpts)*(ki<kpts)+...                          % Gamma-M
-                            ((2/3)*(kpts-ki)/kpts)*(ki>=kpts && ki<2*kpts)+... % X-M
-                            (3*kpts-ki)/(3*kpts)*(ki>=2*kpts));            % M-Gamma
+                            (ki+2*kpts)/(3*kpts)*(ki>=kpts && ki<2*kpts)+... % M-K
+                            (3*ki-kpts)*4/(3*kpts)*(ki>=2*kpts));            % K-Gamma
     end
     
     % compile expressions for input to COMSOL model
