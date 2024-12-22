@@ -4,7 +4,7 @@ clear P;
 %% unit cell params 
 P.xsect = 'rect'; 
 P.beamMat = 'diamond';                  % beam material name
-P.celltype = 'Snowflake_strip_1d';                   % specify the cell type
+P.celltype = 'Snowflake_strip_2d';                   % specify the cell type
 P.unitcell = 'strip';                  % specify the shape of the unit cell
 P.a = 311e-9;              % lattice constant 
 P.w = 50e-9;        % the width of the hole 
