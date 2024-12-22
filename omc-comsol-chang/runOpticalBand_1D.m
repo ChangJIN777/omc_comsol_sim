@@ -436,7 +436,7 @@ end
 
 % postprocess F and k
 % append results from Gamma-point simulations to end of array
-ds.F(end+1,1:nbands) = ds.F(1,1:nbands);
+% ds.F(end+1,1:nbands) = ds.F(1,1:nbands);
 
 % ds.k_norm(end+1) = ds.k_norm(1);
 ds.kx_norm(end+1) = 1;

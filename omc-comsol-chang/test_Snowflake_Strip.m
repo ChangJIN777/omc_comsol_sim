@@ -4,14 +4,14 @@ clear P;
 %% unit cell params 
 P.xsect = 'rect'; 
 P.beamMat = 'diamond';                  % beam material name
-P.celltype = 'Snowflake_strip_2d';                   % specify the cell type
+P.celltype = 'Snowflake_strip_1d';                   % specify the cell type
 P.unitcell = 'strip';                  % specify the shape of the unit cell
-P.a = 230e-9;              % lattice constant 
-P.w = 40e-9;        % the width of the hole 
+P.a = 311e-9;              % lattice constant 
+P.w = 50e-9;        % the width of the hole 
 P.b = 0e-9;              % unit cell shift in the y direction
 P.b_wvg = 0;           % unit cell shift in the y direction (wvg region)
-P.r = 90e-9;              % radius of the unit cell
-P.th = 100e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.r = 138e-9;              % radius of the unit cell
+P.th = 140e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -22,8 +22,8 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
 P.bandStructureDim = 1;                 % 1D vs 2D band structure
-P.kpts = 15;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 25;                           % no. of bands to solve for
+P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 20;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -66,6 +66,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 
 %% run the simulation
-datLoc = '.\test\holeStrip\110524_optical\';
+datLoc = '.\test\snowflake_optical\122124_optical\';
 P.datLoc = datLoc;
 solveOpticalBands(P);
