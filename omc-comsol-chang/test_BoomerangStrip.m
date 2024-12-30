@@ -6,14 +6,22 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang_strip';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 580e-9;              % lattice constant 
-P.w = 86e-9;              % unit cell width (along x)
-P.r = 232e-9;              % unit cell height (along y)
-P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.a = 600e-9;              % lattice constant 
+P.w = 120e-9;              % unit cell width (along x)
+P.r = 250e-9;              % unit cell height (along y)
+P.th = 200e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
+P.wo = 500e-9;
+P.wi = 200e-9;
+P.ho = 250e-9;
+P.hi = 120e-9;
+P.d = sqrt(3)*P.a/2;
+% center unit cell parameters
 
-P.h = 250e-9;           % the height of the hole in the lower portion
-P.d = 86e-9;           % the width of the hole in the lower portion                            
+% for the center unit cells v2 
+P.h = 250e-9;
+P.d1 = 120e-9;
+
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
@@ -22,7 +30,7 @@ P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
-P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
+P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 15;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
@@ -34,13 +42,17 @@ P.saveplots = 1;                        % 1 to save displacement and strain prof
 P.saveMPH = 0; 
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
 
+% for the optical bandgap 
+P.add_airDisk = 0;
+P.airDiskH = 4000e-9;
+
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 10e9;                             % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 4;                         % mesh quality for mechanical simulations
-P.fixed_bc = 1;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
+P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
 P.anisoMat = 1;
 P.rxtal = 45;                           % ccw rotation of elasticity matrix in deg 
@@ -62,9 +74,9 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % % e.g. model.save
 % model = ModelUtil.create('model');
 % 
-% buildBoomerangUnitCellStrip(model,P);
+% buildBoomerangStrip_3D(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\boomerang_strip\082024\';
+datLoc = '.\test\boomerang_strip\122724\';
 P.datLoc = datLoc;
 bds = solveBands(P);

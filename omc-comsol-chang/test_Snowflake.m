@@ -6,10 +6,10 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'snowflake';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a =311e-9;              % lattice constant 
-P.w = 50e-9;              % unit cell width (along x)
+P.a =320e-9;              % lattice constant 
+P.w = 50e-9;              % unit  cell width (along x)
 P.r = 138e-9;              % unit cell height (along y)
-P.th = 160e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.th = 140e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')

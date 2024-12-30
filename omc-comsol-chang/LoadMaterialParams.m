@@ -69,15 +69,34 @@ elseif strcmp(P.beamMat,'silicon') || strcmp(P.beamMat,'Si')
     P.p12 = 0.017;
     P.p44 = -0.051;
     
-    
-    
+elseif strcmp(P.beamMat,'LN') || strcmp(P.beamMat,'lithium niobate')
+    P.beamMat = 'LN';
+    % material properties 
+    % Anisotropic elasticity matrix elements (units:Pa)
+    c11 = 200e9;
+    c12 = 55e9;
+    c13 = 70e9;
+    c14 = 7.9e9;
+    c33 = 240e9;
+    c44 = 60e9;
+    c66 = 72e9;
+    % material properties
+    P.E = 170e9;                          % Young's modulus (Pa)
+    P.rho = 4650;                           % density (kg/m3)
+    P.nu = 0.28;                            % Poisson ratio
+    % index of refraction in material
+    P.nbeam = 3.493;
 end
 
 % Anisotropic elasticity matrix (units: Pa) - COMSOL v4+ ordering: 
 % 11, 12,22, 13,23,33, 14,24,34,44, 15,25,35,45,55, 16,26,36,46,56,66
 % disable P.D if using isotropic material (defined by E, nu, rho)
 if isfield(P,'anisoMat') && P.anisoMat
-    P.D = [c11, c12,c11, c12,c12,c11, 0,0,0,c44, 0,0,0,0,c44, 0,0,0,0,0,c44];
+    if strcmp(P.beamMat,'LN')
+        P.D = [c11, c12,c11, c13,c13,c33, c14,-c14,0,c44, 0,0,0,0,c44, 0,0,0,0,c14,c66];
+    else
+        P.D = [c11, c12,c11, c12,c12,c11, 0,0,0,c44, 0,0,0,0,c44, 0,0,0,0,0,c44];
+    end
 end
 
 

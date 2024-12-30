@@ -35,6 +35,9 @@ if evenz == 1
 elseif evenz == -1
     txt_zsym = 'oddz';
     txt_sol = 'odd z';
+else 
+    txt_zsym = 'no_zsym';
+    txt_sol = 'no z';
 end
 
 % %% Define k-points for sweep over wavevectors (2D band structure)
@@ -70,23 +73,39 @@ end
 % parameter node for COMSOL model
 % k runs from 0 to 3: 0-->1 for Gamma-X, 1-->2 for X-->M, 2-->3 for
 % M-Gamma
-model.param.set('kx', '0');
+model.param.set('k', '1');
+model.param.set('a', [num2str(a),'[m]']);
 
 % define k-points
-kliststr = ['0'];
-for ki=0:kpts
-    ds.kx(ki+1) = 0 + (pi/P.a)*ki/kpts;
-    if ki > 0
-        kliststr = [kliststr,', ',num2str(ds.kx(ki+1))];
-    end
-    kparamstr{ki+1} = ['"k", "',num2str(ds.kx(ki+1)),'"'];
+model.param.set('kx', 'pi/a*k');
+model.param.set('ky', '0');
+
+for ki = 0:kpts
+    ds.k_norm(ki+1,1) = ki/kpts;
+    ds.kx_norm(ki+1,1) = (ki/kpts)*(ki<=kpts);                  % Gamma-X
+    ds.ky_norm(ki+1,1) = 0;                         % Gamma-X
 end
+% compile expressions for input to COMSOL model
+kliststr = ['range(0,1/',num2str(kpts),',1)'];
+for ki = 1:kpts
+    kparamstr{ki} = ['"k", "',num2str((ki-1)/kpts),'"'];
+end
+% kliststr = ['0'];
+% for ki=0:kpts
+%     ds.kx(ki+1) = 0 + (pi/P.a)*ki/kpts;
+%     if ki > 0
+%         kliststr = [kliststr,', ',num2str(ds.kx(ki+1))];
+%     end
+%     kparamstr{ki+1} = ['"k", "',num2str(ds.kx(ki+1)),'"'];
+% end
 
 %% Set up the geometry
 if strcmp(P.celltype,'boomerang_strip_v2')
     [model,P] = buildBoomerangUnitCellStrip_v2(model,P);
+elseif strcmp(P.celltype,'hole_unitCell')
+    [model,P] = buildHoleUnitCell(model,P);
 else
-    [model,P] = buildBoomerangUnitCellStrip(model,P);
+    [model,P] = buildBoomerangStrip_3D(model,P);
 end
 
 if P.plotgeom
@@ -193,60 +212,48 @@ end
 pbcX = smech.create('pbcX', 'PeriodicCondition', 2);
 pbcX.label('Periodic BC, x-direction');
 pbcX.set('PeriodicType', 'Floquet');
-pbcX1 = P.xEnd1;
-pbcX2 = P.xEnd2;
-pbcXinds = [pbcX1 pbcX2];
-bnds.pbc_inds(end+1:end+length(pbcXinds)) = pbcXinds;
-pbcX.selection.set(pbcXinds);
-pbcX.set('manualDestinationSelection', true);
-pbcX.selection('destinationDomains').set(pbcX2);
+pbcX.selection.named('geom1_xboundaries_bnd');
 pbcX.set('kFloquet', {'kx'; '0'; '0'});        %initialize Floquet vector (1D band structures)
-% pbcX.set('kFloquet', {'kx'; 'ky'; '0'});        %initialize Floquet vector (2D band structures)
 
-% % periodic BCs for xz planes at y = +/- w/2 (used to simulate 2D band structures)
-% pbcY = smech.create('pbcY', 'PeriodicCondition', 2);
-% pbcY.label('Periodic BC, y-direction');
-% pbcY.set('PeriodicType', 'Floquet');
-% pbcY1 = P.yEnd1;
-% pbcY2 = P.yEnd2;
-% pbcYinds = [pbcY1 pbcY2];
-% bnds.pbc_inds(end+1:end+length(pbcYinds)) = pbcYinds;
-% pbcY.selection.set(pbcYinds);
-% pbcY.set('manualDestinationSelection', true);
-% pbcY.selection('destinationDomains').set(pbcY2);
-% pbcY.set('kFloquet', {'kx'; 'ky'; '0'});        %initialize Floquet vector
+% even y symmetry 
+if eveny
+symY = smech.create('sympy', 'SymmetrySolid', 2);
+symY.selection.named('geom1_yboundaries_bnd');
+end
 
 % symmetric BC for xy plane containing point (0,0,0)
 symBCs = smech.create('symBCs', 'SymmetrySolid', 2);
 symBCs.label('Symmetric BC');
-% even y symmetry 
-% bnds.sym_inds = [];
-bnds.sym_inds = P.yEnd1;
 
-if evenz == 1
-    bndinds =P.zEnd;
-    bnds.sym_inds(end+1:end+length(bndinds)) = bndinds;
-    clear bndinds
-end
-if (~isempty(bnds.sym_inds))
-    symBCs.selection.set(bnds.sym_inds);
-end
+
+% if (~isempty(bnds.sym_inds))
+%     symBCs.selection.set(bnds.sym_inds);
+% end
 
 % anti-symmetric BC for xy plane containing point (0,0,0)
 asymBCs = smech.create('asymBCs', 'Antisymmetry', 2);
 asymBCs.label('Anti-symmetric BC');
 bnds.asym_inds = [];
+if evenz == 1
+    symBCs.active(true);
+    asymBCs.active(false);
+    symBCs.selection.named('geom1_ZsymSel');
+end
 if evenz == -1 
-    bndinds = P.zEnd;
-    bnds.asym_inds(end+1:end+length(bndinds)) = bndinds;
-    clear bndinds
+    symBCs.active(false);
+    asymBCs.active(true);
+    asymBCs.selection.named('geom1_ZsymSel');
 end
-if (~isempty(bnds.asym_inds))
-    asymBCs.selection.set(bnds.asym_inds);
+if evenz == 0
+    symBCs.active(false);
+    asymBCs.active(false);
 end
+    
+% if (~isempty(bnds.asym_inds))
+%     asymBCs.selection.set(bnds.asym_inds);
+% end
 
 mbfem.bnds = bnds;
-
 
 disp('Solid Mechanics added - boundary conditions done');
 
@@ -254,7 +261,7 @@ disp('Solid Mechanics added - boundary conditions done');
 % add parametric and eigenfrequency study
 study = model.study.create('study');
 std_param = study.create('std_param', 'Parametric');
-std_param.set('pname', 'kx');
+std_param.set('pname', 'k');
 std_param.set('plistarr', kliststr);
 std_param.set('punit', '');
 std_eigv = study.create('std_eigv','Eigenfrequency');
@@ -283,7 +290,7 @@ pbatch = model.batch.create('pbatch', 'Parametric');
 pbatch_solseq = pbatch.create('pbatch_solseq', 'Solutionseq');
 pbatch.study('study');
 pbatch.attach('study');
-pbatch.set('pname', 'kx');
+pbatch.set('pname', 'k');
 pbatch.set('plistarr', kliststr);
 pbatch.set('punit', '');
 pbatch.set('err', true);
@@ -320,7 +327,7 @@ while (~mesh_ok) && (mesh_quality < 10)
     end
     mesh_ok = 1;
 end
-mphsave('test_geom')
+% mphsave('test_geom')
 % debugging 
 % mphlaunch(model);
 %% Solve for bands
@@ -364,9 +371,11 @@ if P.saveplots
 %     pdset_sec.set('reflaxis', {'1' '0' '0'});   % reflection axis
 
     model.result.dataset.create('sec1', 'Sector3D');
+    if ~evenz==0
     model.result.dataset('sec1').set('trans', 'rotrefl');
     model.result.dataset('sec1').set('pddir', {'1' '0' '0'});
     model.result.dataset('sec1').set('reflaxis', {'0' '1' '0'});
+    end
     model.result.dataset('sec1').set('data', 'pdset');
     if eveny==-1
 %         pdset_sec.set('rotinv', 'on');  % odd symmetry about x-plane
@@ -434,7 +443,6 @@ if ~exist([P.datLoc,P.fileBase],'dir') && P.saveplots
     mkdir([P.datLoc,P.fileBase])
 end
 
-
 % extract solution info from parameter sweep
 sols = mphsolutioninfo(model);
 lambda_inds = find(strcmp(sols.psolv.mapheaders,'lambda'));
@@ -452,7 +460,7 @@ for ki = 0:kpts
     for nb = 1:nbands
         ds.F(ki+1,nb) = fem.sol.freqs(nb);
     end
-    ds.kx_norm = transpose(ds.kx/(pi/P.a));
+%     ds.kx_norm = transpose(ds.kx/(pi/P.a));
     
     % save displacement and strain profile for all bands at 
     % high symmetry points (Gamma, X, M)
@@ -509,9 +517,9 @@ end
 
 % postprocess F and k
 % append results from Gamma-point simulations to end of array
-ds.F(end+1,1:nbands) = ds.F(1,1:nbands);
-ds.kx_norm(end+1) = ds.kx_norm(1);
-ds.k_norm = ds.kx_norm;     % for 1D band structures
+% ds.F(end+1,1:nbands) = ds.F(1,1:nbands);
+% ds.kx_norm(end+1) = ds.kx_norm(1);
+% ds.k_norm = ds.kx_norm;     % for 1D band structures
 
 %% saving the mph files for debugging purposes 
 if P.saveMPH

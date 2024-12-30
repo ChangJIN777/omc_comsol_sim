@@ -1,25 +1,29 @@
 %% sweeping code 
 P.celltype = 'boomerang';                   % specify the cell type
 
-a = 450e-9; % lattice constant
-a_min = 350e-9; % minimum lattice constant 
-a_max = 500e-9; % maximum lattice constant 
-w = 86e-9; 
-r = 200e-9;
+a = 600e-9; % lattice constant
+a_min = 300e-9; % minimum lattice constant 
+a_max = 600e-9; % maximum lattice constant 
+w = 90e-9; 
+r = 250e-9;
 r_min = r*0.6;
 r_max = r;
-% w_list = linspace(w_min,w_max,3);
+w_min = 50e-9;
+w_max = 120e-9;
+w_list = linspace(w_min,w_max,5);
 r_list = linspace(r_min,r_max,5);
 a_list = linspace(a_min,a_max,10);
 
-%% run the lattice constatn sweep
+% % run the lattice constatn sweep
 % for i=1:length(a_list)
 %    sweep_boomerang_lattice(P,a_list(i))
 % end
 % 
 %% run the hole size sweep
 for j=1:length(r_list)
-    sweep_boomerang_holeSize(P,w,r_list(j))
+    for k = 1:length(w_list)
+        sweep_boomerang_holeSize(P,w_list(k),r_list(j))
+    end
 end
 
 function sweep_boomerang_lattice(P,a)    
@@ -29,20 +33,20 @@ function sweep_boomerang_lattice(P,a)
     P.celltype = 'boomerang';                   % specify the cell type
     P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
     P.a = a;              % lattice constant 
-    P.w = a*(75/350);              % unit cell width (along x)
-    P.r = a*(140/350);              % unit cell height (along y)
-    P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
+    P.w = a*(75/500);              % unit cell width (along x)
+    P.r = a*(205/500);              % unit cell height (along y)
+    P.th = 160e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
-    P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
+    P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
-    P.r2 = 40e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
+    P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
                                 % or of outer fins (for celltype = 'solid')
     P.nperiod = 1;  % no. of periods to simulate for
     P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
     P.mbevenz = 1;      % 1 to find even mechanical mode about z
     
     P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 9;                           % no. of bands to solve for
+    P.nbands = 15;                           % no. of bands to solve for
     
     P.solveasym = 1;                        % 1 to solve for antisymmetric bands
     P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -69,7 +73,7 @@ function sweep_boomerang_lattice(P,a)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang\072624_sweep1\';
+    datLoc = '.\test\boomerang\122524_sweep1\';
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 
@@ -80,12 +84,12 @@ function sweep_boomerang_holeSize(P,w,r)
     P.beamMat = 'diamond';                  % beam material name
     P.celltype = 'boomerang';                   % specify the cell type
     P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-    P.a = 480e-9;              % lattice constant 
+    P.a = 600e-9;              % lattice constant 
     % P.w = 93e-9;              % unit cell width (along x)
     % P.r = 172e-9;              % unit cell height (along y)
     P.w = w;              % unit cell width (along x)
     P.r = r;              % unit cell height (along y)
-    P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
+    P.th = 200e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
     P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
@@ -96,14 +100,14 @@ function sweep_boomerang_holeSize(P,w,r)
     P.mbevenz = 1;      % 1 to find even mechanical mode about z
     
     P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 9;                           % no. of bands to solve for
+    P.nbands = 15;                           % no. of bands to solve for
     
     P.solveasym = 1;                        % 1 to solve for antisymmetric bands
     P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
     P.plotgeom = 1;                         % 1 to plot the geometry
     P.savedat = 1;                          % 1 to save data structures
     P.savebndplot = 1;                      % 1 to save bandstructure plot
-    P.saveplots = 1;                        % 1 to save displacement and strain profiles
+    P.saveplots = 0;                        % 1 to save displacement and strain profiles
     P.saveMPH = 0; 
     P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
     
@@ -123,7 +127,7 @@ function sweep_boomerang_holeSize(P,w,r)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang\081924_sweep2\';
+    datLoc = '.\test\boomerang\122524_sweep2\';
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 

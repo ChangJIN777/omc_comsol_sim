@@ -31,31 +31,35 @@ ucellplane.label('Base plane');
 ucellplane.set('source', 'table');
 ucellplane.set('table', [0 0; a/2 (a/2)*sqrt(3); a*(3/2) (a/2)*sqrt(3); a 0; 0 0]);
 rec_1 = ucellWP.geom.feature.create('r1', 'Rectangle');
-rec_1.set('pos', [a/2+w/2 r/2+(w/4)*sqrt(3)+(a/2)/sqrt(3)]);
+rec_1.set('pos', [a*(1/2+1/4) a*sqrt(3)/4+r/2]);
 rec_1.set('base', 'center');
 rec_1.set('size', [w r]);
 rec_2 = ucellWP.geom.feature.create('r2', 'Rectangle');
-rec_2.set('pos', [-a*(3/4)+a/2+a*(3/4)-a/2+w/2+a/2 -(w/4)*sqrt(3)+(a/2)/sqrt(3)]);
+rec_2.set('pos', [a*(1/2+1/4)-sqrt(3)*r/4 a*sqrt(3)/4-r/4]);
+rec_2.set('base', 'center');
 rec_2.set('rot', 120);
 rec_2.set('size', [w r]);
 rec_3 = ucellWP.geom.feature.create('r3', 'Rectangle');
-rec_3.set('pos', [-a*(3/4)+a/2+w/2+a*(3/4)-a/2+w/2+a/2 (w/4)*sqrt(3)+(a/2)/sqrt(3)]);
+rec_3.set('pos', [a*(1/2+1/4)+sqrt(3)*r/4 a*sqrt(3)/4-r/4]);
+rec_3.set('base', 'center');
 rec_3.set('rot', 240);
 rec_3.set('size', [w r]);
-
-ucellWP.geom.create('fil1', 'Fillet');
-ucellWP.geom.feature('fil1').set('radius', r1);
-ucellWP.geom.feature('fil1').selection('point').set('r1(1)', [3 4]);
-ucellWP.geom.feature('fil1').selection('point').set('r3(1)', [3 4]);
-ucellWP.geom.feature('fil1').selection('point').set('r2(1)', [3 4]);
-centerTriangle = ucellWP.geom.feature.create('pol2', 'Polygon');
-centerTriangle.set('source', 'table');
-centerTriangle.set('table', [a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3); w+a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3); a/2+w/2 -(w/2)*sqrt(3)/2+(a/2)/sqrt(3); a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3)]);
 composit_geom = ucellWP.geom.feature.create('co1', 'Compose');
-composit_geom.set('formula', 'pol1-fil1(1)-fil1(2)-fil1(3)-pol2');
-ucellWP.geom.create('fil2', 'Fillet');
-ucellWP.geom.feature('fil2').set('radius', r2);
-ucellWP.geom.feature('fil2').selection('point').set('co1(1)', [6 9 12]);
+composit_geom.set('formula', 'pol1-r1-r2-r3');
+
+% add fillets 
+hole_pos = [a*(1/2+1/4) a*sqrt(3)/4];
+selection_width = 50e-9;
+addFillet(P,ucellWP.geom,hole_pos,selection_width)
+% ucellWP.geom.create('fil1', 'Fillet');
+% ucellWP.geom.feature('fil1').set('radius', r1);
+% ucellWP.geom.feature('fil1').selection('point').set('r1(1)', [3 4]);
+% ucellWP.geom.feature('fil1').selection('point').set('r3(1)', [3 4]);
+% ucellWP.geom.feature('fil1').selection('point').set('r2(1)', [3 4]);
+% centerTriangle = ucellWP.geom.feature.create('pol2', 'Polygon');
+% centerTriangle.set('source', 'table');
+% centerTriangle.set('table', [a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3); w+a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3); a/2+w/2 -(w/2)*sqrt(3)/2+(a/2)/sqrt(3); a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3)]);
+
 extrude = ucellgeom.feature.create('ext1', 'Extrude');
 extrude.setIndex('distance', th, 0);
 extrude.selection('input').set({'wp1'});
@@ -112,5 +116,36 @@ disp(P) % debugging
 out = model;
 end
 
+function addFillet(P,ucellgeom,hole_pos,selection_width)
+    w = P.w;
+    r = P.r;
+    r1 = P.r1;
+    r2 = P.r2;
+    disksel1_label = sprintf('h_disksel1');
+    disksel2_label = sprintf('h_disksel2');
+    fillet1_label = sprintf('h_fil1');
+    fillet2_label = sprintf('h_fil2');
+    % hole 
+    disksel1 = ucellgeom.feature.create(disksel1_label, 'DiskSelection');
+    disksel1.set('entitydim', 0);
+    disksel1.set('posx', hole_pos(1));
+    disksel1.set('posy', hole_pos(2));
+    disksel1.set('r', w);
+    disksel1.set('rin', w/(2*sqrt(2)));
+    disksel1.set('condition', 'allvertices');
+    fil1 = ucellgeom.feature.create(fillet1_label, 'Fillet');
+    fil1.set('radius', r1);
+    fil1.selection('point').named(disksel1_label);
+    disksel2 = ucellgeom.feature.create(disksel2_label, 'DiskSelection');
+    disksel2.set('entitydim', 0);
+    disksel2.set('posy', hole_pos(2));
+    disksel2.set('posx', hole_pos(1));
+    disksel2.set('r', r+selection_width/2);
+    disksel2.set('rin', r-selection_width/2);
+    disksel2.set('condition', 'allvertices');
+    fil2 = ucellgeom.feature.create(fillet2_label, 'Fillet');
+    fil2.set('radius', r2);
+    fil2.selection('point').named(disksel2_label);
+end
 
 
