@@ -1,4 +1,4 @@
-function ds = runBands(P)
+function ds = runBands_noSym(P)
 %RUNBANDS Summary of this function goes here
 %   Detailed explanation goes here
 % import COMSOL class
@@ -40,32 +40,6 @@ else
     txt_sol = 'no z';
 end
 
-% %% Define k-points for sweep over wavevectors (2D band structure)
-% % adapted from phononic crystal model on COMSOL
-% 
-% % parameter node for COMSOL model
-% % k runs from 0 to 3: 0-->1 for Gamma-X, 1-->2 for X-->M, 2-->3 for
-% % M-Gamma
-% model.param.set('k', '0');
-% model.param.set('a', [num2str(a),'[m]']);
-% model.param.set('kx', 'if(k<1,pi/a*k,if(k<2,pi/a,(3-k)*pi/a))');
-% model.param.set('ky', 'if(k<1,0,if(k<2,(k-1)*pi/a,(3-k)*pi/a))');
-% 
-% for ki = 0:3*kpts-1
-%     ds.k_norm(ki+1,1) = ki/kpts;
-%     ds.kx_norm(ki+1,1) = ((ki/kpts)*(ki<kpts)+...                  % Gamma-X
-%                         1*(ki>=kpts && ki<2*kpts)+...              % X-M
-%                         (3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
-%     ds.ky_norm(ki+1,1) = (0*(ki<kpts)+...                          % Gamma-X
-%                         (ki-kpts)/kpts*(ki>=kpts && ki<2*kpts)+... % X-M
-%                         (3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
-% end
-% 
-% % compile expressions for input to COMSOL model
-% kliststr = ['range(0,1/',num2str(kpts),',3-1/',num2str(kpts),')'];
-% for ki = 1:3*kpts
-%     kparamstr{ki} = ['"k", "',num2str((ki-1)/kpts),'"'];
-% end
 
 %% Define k-points for sweep over wavevectors (1D band structure)
 % adapted from phononic crystal model on COMSOL
@@ -90,14 +64,7 @@ kliststr = ['range(0,1/',num2str(kpts),',1)'];
 for ki = 1:kpts
     kparamstr{ki} = ['"k", "',num2str((ki-1)/kpts),'"'];
 end
-% kliststr = ['0'];
-% for ki=0:kpts
-%     ds.kx(ki+1) = 0 + (pi/P.a)*ki/kpts;
-%     if ki > 0
-%         kliststr = [kliststr,', ',num2str(ds.kx(ki+1))];
-%     end
-%     kparamstr{ki+1} = ['"k", "',num2str(ds.kx(ki+1)),'"'];
-% end
+
 
 %% Set up the geometry
 if strcmp(P.celltype,'boomerang_strip_v2')
@@ -190,25 +157,6 @@ smech.selection.all;
 % all BCs set to free by default
 clear bnds
 bnds.pbc_inds = [];
-if P.fixed_bc
-    bnds.fixed_inds = [];
-    % fixed BCs for xz planes at y = +/- w/2
-    fixedBCs = smech.feature.create('fix1', 'Fixed', 2);
-    fixedY1 = P.yEnd1;
-    fixedY2 = P.yEnd2;
-    fixedYinds = [fixedY2];
-    bnds.fixed_inds(end+1:end+length(fixedYinds)) = fixedYinds;
-    
-    % fixed BCs for xz planes at x = +/- w/2
-    fixedX1 = P.xEnd1;
-    fixedX2 = P.xEnd2;
-    % fixedXinds = [fixedX1 fixedX2];
-    fixedXinds = [];
-    bnds.fixed_inds(end+1:end+length(fixedXinds)) = fixedXinds;
-    
-    % set the fixed BCs 
-    fixedBCs.selection.set(fixedYinds);
-end 
 
 % periodic BCs for yz planes at x = +/- a/2
 pbcX = smech.create('pbcX', 'PeriodicCondition', 2);
@@ -219,40 +167,9 @@ pbcX.set('kFloquet', {'kx'; '0'; '0'});        %initialize Floquet vector (1D ba
 
 % even y symmetry 
 if eveny
-symY = smech.create('sympy', 'SymmetrySolid', 2);
-symY.selection.named('geom1_yboundaries_bnd');
+    symY = smech.create('sympy', 'SymmetrySolid', 2);
+    symY.selection.named('geom1_yboundaries_bnd');
 end
-
-% symmetric BC for xy plane containing point (0,0,0)
-symBCs = smech.create('symBCs', 'SymmetrySolid', 2);
-symBCs.label('Symmetric BC');
-
-% if (~isempty(bnds.sym_inds))
-%     symBCs.selection.set(bnds.sym_inds);
-% end
-
-% anti-symmetric BC for xy plane containing point (0,0,0)
-asymBCs = smech.create('asymBCs', 'Antisymmetry', 2);
-asymBCs.label('Anti-symmetric BC');
-bnds.asym_inds = [];
-if evenz == 1
-    symBCs.active(true);
-    asymBCs.active(false);
-    symBCs.selection.named('geom1_ZsymSel');
-end
-if evenz == -1 
-    symBCs.active(false);
-    asymBCs.active(true);
-    asymBCs.selection.named('geom1_ZsymSel');
-end
-if evenz == 0
-    symBCs.active(false);
-    asymBCs.active(false);
-end
-    
-% if (~isempty(bnds.asym_inds))
-%     asymBCs.selection.set(bnds.asym_inds);
-% end
 
 mbfem.bnds = bnds;
 
@@ -424,18 +341,6 @@ if P.saveplots
     dispplot_def = dispplot_vol.create('dispplot_def', 'Deform');
     dispplot_vol.set('data', 'parent');
     dispplot.run;
-
-%     % create 3D plot group for strain profile
-%     strplot = model.result.create('strplot', 'PlotGroup3D');
-%     strplot.set('data',pdsetPlot);
-%     strplot.set('solrepresentation', 'solutioninfo');
-%     strplot.set('titletype', 'none');
-%     strplot_slc = strplot.create('strplot_slc', 'Slice');
-%     strplot_slc.set('planetype', 'quick');
-%     strplot_slc.set('quickxmethod', 'coord').set('quickx', (1-holeatedge/2)*a);
-%     strplot_slc.set('rangedataactive','on').set('rangecoloractive','on');
-%     strplot_slc.set('data', 'parent');
-%     strplot.run;
     
 end
 

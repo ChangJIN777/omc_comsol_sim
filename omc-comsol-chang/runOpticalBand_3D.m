@@ -83,6 +83,8 @@ elseif strcmp(P.celltype,'hole')
     [model,P] = buildHoleUnitCell_2D(model,P);
 elseif strcmp(P.celltype,'hole_strip')
     [model,P] = buildHoleStrip_3D(model,P);
+elseif strcmp(P.celltype,'rib')
+    [model,P] = buildRibUnitCell_LN(model,P);
 end
 
 if P.plotgeom
@@ -100,6 +102,10 @@ model.component('comp1').material('mat1').selection.set([1]);
 model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
 model.component('comp1').material('mat2').selection.set([2 3]);
 model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
+if strcmp(P.celltype,'rib')
+    model.component('comp1').material('mat2').selection.set([1]);
+    model.component('comp1').material('mat1').selection.set([2 3 4 5 6 7 8 9 10]);
+end
 
 model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
 model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'1e-12[S/m]' '0' '0' '0' '1e-12[S/m]' '0' '0' '0' '1e-12[S/m]'});
@@ -114,6 +120,28 @@ if strcmp(P.beamMat,'diamond')
     model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'1e-12[S/m]' '0' '0' '0' '1e-12[S/m]' '0' '0' '0' '1e-12[S/m]'});
 elseif strcmp(P.beamMat,'SiC')
     model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.5' '0' '0' '0' '2.5' '0' '0' '0' '2.5'});
+elseif strcmp(P.beamMat,'LN')
+    model.component('comp1').material('mat1').label('LiNbO3 (Lithium niobate) (Zelmon et al. 1997: n(o) 0.4-5.0 um)');
+    model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', '');
+    model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', '');
+    model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
+    model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'0' '0' '0' '0' '0' '0' '0' '0' '0'});
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func.create('an1', 'Analytic');
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func.create('an2', 'Analytic');
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func('an1').label('Sellmeyer formula - extraordinary refractive index');
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func('an1').set('funcname', 'neref_sel');
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func('an1').set('expr', '(1 + ((lambda0^(2))*2.9804e12)/((lambda0^(2))*1e12 - 0.02047) + ((lambda0^(2))*0.5981e12)/((lambda0^(2))*1e12 - 0.0666) + ((lambda0^(2))*8.9543e12)/((lambda0^(2))*1e12 - 416.08))^(1./2.)');
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func('an1').set('args', {'lambda0'});
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func('an1').set('argunit', {'m'});
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func('an1').set('plotargs', {'lambda0' '0.4[um]' '5[um]'});
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func('an2').label('Sellmeyer formula - ordinary refractive index');
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func('an2').set('funcname', 'noref_sel');
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func('an2').set('expr', '(1 + ((lambda0^(2))*2.6734e12)/((lambda0^(2))*1e12 - 0.01764) + ((lambda0^(2))*1.22901e12)/((lambda0^(2))*1e12 - 0.05914) + ((lambda0^(2))*12.614e12)/((lambda0^(2))*1e12 - 474.60))^(1./2.)');
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func('an2').set('args', {'lambda0'});
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func('an2').set('argunit', {'m'});
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').func('an2').set('plotargs', {'lambda0' '0.4[um]' '5[um]'});
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'neref_sel(lbd0)' '0' '0' '0' 'noref_sel(lbd0)' '0' '0' '0' 'noref_sel(lbd0)'});
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').addInput('frequency');
 else
     model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'3.5' '0' '0' '0' '3.5' '0' '0' '0' '3.5'});
 end
@@ -131,8 +159,10 @@ model.component('comp1').physics('emw').create('pc2', 'PeriodicCondition', 2);
 model.component('comp1').physics('emw').feature('pc2').selection.named('geom1_yboundaries_bnd');
 % model.component('comp1').physics('emw').create('sctr1', 'Scattering', 2);
 % model.component('comp1').physics('emw').feature('sctr1').selection.set(P.zEnd2);
-model.component('comp1').physics('emw').create('symp1', 'SymmetryPlane', 2);
-model.component('comp1').physics('emw').feature('symp1').selection.set(P.zEnd);
+if ~strcmp(P.celltype,'rib')
+    model.component('comp1').physics('emw').create('symp1', 'SymmetryPlane', 2);
+    model.component('comp1').physics('emw').feature('symp1').selection.set(P.zEnd);
+end
 model.component('comp1').physics('emw').feature('pc1').set('PeriodicType', 'Floquet');
 model.component('comp1').physics('emw').feature('pc1').set('kFloquet', {'kx'; 'ky'; '0'});
 model.component('comp1').physics('emw').feature('pc1').label('Periodic Condition x direction');

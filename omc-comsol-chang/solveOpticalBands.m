@@ -105,6 +105,17 @@ if ~isfield(P,'fileBase')
             fBase = [P.prefname,'_',fBase];
         end
         P.fileBase = fBase;
+    elseif strcmp(P.celltype,'rib')
+        fBase = ['optical_rib_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
+            's_',num2str(P.s*1e9,'%.0f'),'nm',...
+            'w_',num2str(P.w*1e9,'%.0f'),'nm_', ...
+            't_',num2str(P.t*1e9,'%.0f'),'nm_', ...
+            'th_',num2str(P.th*1e9,'%.0f'),'nm_', ...
+            'd_',num2str(P.d*180/pi,'%.0f'),'deg'];
+        if isfield(P,'prefname')
+            fBase = [P.prefname,'_',fBase];
+        end
+        P.fileBase = fBase;
     end
 end
 fBase = P.fileBase;
@@ -116,14 +127,22 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
         OpticalBand = runOpticalBand_3D(P);
     elseif P.bandStructureDim==2
         OpticalBand = runOpticalBand_2D(P);
-    elseif P.bandStructureDim==1
+    else 
         OpticalBand = runOpticalBand_1D(P);
     end
+    
+    % filter data below light line 
+    c = 299792458;
+    lightline = c*OpticalBand.kx_norm/2/P.a; % factor of 2 such that kx_norm runs from 0 to 0.5 * (2*pi/a)
+    TE.F0 = OpticalBand.F;
+    TEbelow = OpticalBand.F < lightline;    % check which bands are below lightline
+    TE.F = OpticalBand.F.*TEbelow;        % filter out data below lightline
+    TE.F(TE.F==0) = NaN;      % replace zeros with NaN so they don't get plotted
+
     % find gaps 
-    [OpticalBand.midGap,OpticalBand.gapSize] = findGaps(OpticalBand);
+    [OpticalBand.midGap,OpticalBand.gapSize] = findGaps_optical(TE);
     % write to data structure 
     ds.opticalBand = OpticalBand;
-
 %% plot bandstructure
 if P.savebndplot
     if P.bandStructureDim==2
@@ -205,13 +224,13 @@ if P.savebndplot
             bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
                 'r = ',num2str(P.r*1e9,'%.0f'),'nm, ',...
                 'b = ',num2str(P.b*1e9,'%.0f'),'nm']};
-        elseif strcmp(P.celltype,'Snowflake_strip_2d')
+        elseif strcmp(P.celltype,'rib')
             bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
-                'b = ',num2str(P.b*1e9,'%.0f'),'nm, ',...
-                'w = ',num2str(P.w*1e9,'%.0f'),'nm, ',...
-                'r = ',num2str(P.r*1e9,'%.0f'),'nm',...
-                'r1 = ',num2str(P.r1*1e9,'%.0f'),'nm',...
-                'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm']};
+                's_',num2str(P.s*1e9,'%.0f'),'nm',...
+                'w_',num2str(P.w*1e9,'%.0f'),'nm_', ...
+                't_',num2str(P.t*1e9,'%.0f'),'nm_', ...
+                'th_',num2str(P.th*1e9,'%.0f'),'nm_', ...
+                'd_',num2str(P.d*180/pi,'%.0f'),'deg']}; 
         end
         title(bandtitle);
         box on
@@ -230,7 +249,7 @@ if P.savebndplot
         % plot the light line 
         hold on;
         lightx = linspace(0,1,100);
-        lighty1 = lightx*(3e8)/(P.a*(1e12));
+        lighty1 = lightx*(3e8)/(P.a*(1e12))/2;
         light1 = plot(lightx,lighty1,'b-','linewidth',1);
         
         % plot optical bandgaps
@@ -310,6 +329,13 @@ if P.savebndplot
                 'r1 = ',num2str(P.r1*1e9,'%.0f'),'nm',...
                 'r2 = ',num2str(P.r2*1e9,'%.0f'),'nm',...
                 'th = ',num2str(P.th*1e9,'%.0f'),'nm']};
+        elseif strcmp(P.celltype,'rib')
+            bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
+                's_',num2str(P.s*1e9,'%.0f'),'nm',...
+                'w_',num2str(P.w*1e9,'%.0f'),'nm_', ...
+                't_',num2str(P.t*1e9,'%.0f'),'nm_', ...
+                'th_',num2str(P.th*1e9,'%.0f'),'nm_', ...
+                'd_',num2str(P.d*180/pi,'%.0f'),'deg']}; 
         else 
             bandtitle = 'blank title';
         end
@@ -328,5 +354,5 @@ end
 else
     disp('Data folder exists in working directory')
     ds.OpticalBand = [];
-    
+ 
 end

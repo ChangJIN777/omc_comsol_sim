@@ -29,20 +29,13 @@ P.savebndplot = 1;                      % 1 to save bandstructure plot
 P.saveplots = 1;                        % 1 to save displacement and strain profiles
 P.saveMPH = 0; 
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
-P.bandStructureDim = 1;     % Optical band only: 3 to simulate 3d structures 
-
-% for the optical bandgap 
-P.run_optical = 1;
-
-% if we are going to save the raw data files 
-P.saveRawData = 1;
+P.bandStructureDim = 3;         % 3 to simulate the band structure in 3D 
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 0;                          % 1 to find even mechanical mode about z
-P.freq = 3e9;                             % Mechanical target frequency - set to 0 for bandstructure simulations
-P.optical_freq = 100;           % optical target frequency - in THz 
+P.freq = 3e9;                             % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 4;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
@@ -69,13 +62,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildRibUnitCell_LN(model,P);
 % mphlaunch(model);
 %% Single solve
-
-if P.run_optical
-    datLoc = '.\test\LN_holeUnitCell_optical\011425\';
-    P.datLoc = datLoc;
-    bds = solveOpticalBands(P);
-else
-    datLoc = '.\test\LN_holeUnitCell\011425\';
-    P.datLoc = datLoc;
-    bds = solveBands_noSym(P);
-end
+datLoc = '.\test\LN_holeUnitCell_optical\011425\';
+P.datLoc = datLoc;
+bds = solveOpticalBands(P);
