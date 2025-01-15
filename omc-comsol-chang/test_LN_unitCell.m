@@ -18,7 +18,7 @@ P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 0;      % 1 to find even mechanical mode about z
 
-P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
+P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 25;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
@@ -69,7 +69,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildRibUnitCell_LN(model,P);
 % mphlaunch(model);
 %% Single solve
-
 if P.run_optical
     datLoc = '.\test\LN_holeUnitCell_optical\011425\';
     P.datLoc = datLoc;
