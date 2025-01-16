@@ -109,6 +109,9 @@ function fitness = rib_optimize(params)
     P.nbands = 25;                           % no. of bands to solve for
     bds_mechanical_struct = solveBands_noSym(P);
     bds_mechanical = bds_mechanical_struct.full;
+    % filter mechanical bandgaps
+    gapAbove = bds_mechanical.midGap > 3e9;
+    bds_mechanical.gapSize = bds_mechanical.gapSize*gapAbove;
     if length(bds_mechanical.gapSize) == 0
         gapSize_mechanical = 0;
         midGap_mechanical = 10e9;
@@ -122,7 +125,7 @@ function fitness = rib_optimize(params)
     % save the data file 
     datLoc = ['.\test\LN_ribUnitCell_optimize\',currentDate,'\'];
     itrPath = [datLoc,...
-                'optimization_SP_',currentDate,'.txt'];
+                'optimization_SP_trail2_',currentDate,'.txt'];
     itr = fopen(itrPath,'at+');
     fprintf(itr,'%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\r\n',...
         P.a,P.th,P.s,P.w,P.t,P.d,midGap_optical,gapSize_optical,gapRat_optical,midGap_mechanical,gapSize_mechanical,gapRat_mechanical,fitness);
