@@ -250,7 +250,7 @@ if P.savebndplot
         hold on;
         lightx = linspace(0,1,100);
         lighty1 = lightx*(3e8)/(P.a*(1e12))/2;
-        light1 = plot(lightx,lighty1,'b-','linewidth',1);
+        light1 = plot(OpticalBand.kx_norm,lightline*1e-12,'b-','linewidth',1);
         
         % plot optical bandgaps
         for k = 1:length(OpticalBand.gapSize)

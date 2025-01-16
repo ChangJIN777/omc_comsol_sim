@@ -100,6 +100,7 @@ if strcmp(P.celltype,'rib')
     model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'10e-12' '0' '0' '0' '10e-12' '0' '0' '0' '10e-12'});
     model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
     model.component('comp1').material('mat2').label('LiNbO3 (Lithium niobate)');
+    model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index')
     model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', '');
     model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', '');
     model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
@@ -126,12 +127,6 @@ else
     model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
     model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', {'10e-12' '0' '0' '0' '10e-12' '0' '0' '0' '10e-12'});
     model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
-
-    % if strcmp(P.celltype,'hole_strip_wvg')
-    %     model.component('comp1').material('mat1').selection.set([1 6 7]);
-    % else
-    %     model.component('comp1').material('mat1').selection.set([1]);
-    % end
     model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
     if strcmp(P.beamMat,'diamond')
         model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.406' '0' '0' '0' '2.406' '0' '0' '0' '2.406'});
@@ -397,10 +392,10 @@ solv.runAll;
 pbatch.run;
 
 %% set up results node 
-model.result.table.create('tbl1', 'Table');
-model.result.table.create('tbl2', 'Table');
-model.result.table.create('tbl3', 'Table');
-model.result.table.create('tbl4', 'Table');
+% model.result.table.create('tbl1', 'Table');
+% model.result.table.create('tbl2', 'Table');
+% model.result.table.create('tbl3', 'Table');
+% model.result.table.create('tbl4', 'Table');
 model.result.table.create('tbl5', 'Table');
 model.result.table.create('tbl6', 'Table');
 model.result.table.create('tbl7', 'Table');
@@ -485,10 +480,13 @@ end
 
 %% export the raw data 
 if P.saveRawData
-    model.result.export.create('tbl1', 'Table');
-    model.result.export('tbl1').label('bandStruct');
-    model.result.export('tbl1').set('table', 'tbl14');
-    model.result.export('tbl1').set('filename', '.\bandStruct_data\BandStruct_test2.txt');
+    model.result.export.create('tbl_exp', 'Table');
+    model.result.export('tbl_exp').label('bandStruct');
+    model.result.export('tbl_exp').set('table', 'tbl14');
+    model.result.export('tbl_exp').set('filename', '.\bandStruct_data\BandStruct.txt');
+    model.result.export('tbl_exp').set('header', false);
+    model.result.export('tbl_exp').set('notation', 'scientific');
+    model.result.export('tbl_exp').run;
 end 
 
 ds.P = P; 

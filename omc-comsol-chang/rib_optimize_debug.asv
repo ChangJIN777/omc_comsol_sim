@@ -68,15 +68,38 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % 
 % buildRibUnitCell_LN(model,P);
 % mphlaunch(model);
+%% Create .txt file to assemble iteration result
+% txt file name
+currentDate = datestr(now,'mmddyyyy');
+itrPath = [datLoc,...
+        'optimization_SP_',currentDate,'.txt'];
+itr = fopen(itrPath,'wt+');
+txtToPrint = ['a th s w t d', ...
+        'midGap gapSize gapFrac\r\n'];
+fprintf(itr,txtToPrint);
+fclose(itr);
 %% Single solve
-if P.run_optical
-    currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\LN_holeUnitCell_optical\',currentDate,'\'];
-    P.datLoc = datLoc;
-    bds = solveOpticalBands(P);
-else
-    currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\LN_holeUnitCell\',currentDate,'\'];
-    P.datLoc = datLoc;
-    bds = solveBands_noSym(P);
-end
+% optical band sim 
+P.run_optical = 1;
+P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 15;                           % no. of bands to solve for
+datLoc = ['.\test\LN_holeUnitCell_optical\',currentDate,'\'];
+P.datLoc = datLoc;
+bds_optical = solveOpticalBands(P);
+OpticalBands = bds_optical.opticalBand;
+midGap_optical = OpticalBands.midGap(1);
+gapSize_optical = OpticalBands.gapSize(1);
+gapRat_optical = gapSize_optical./midGap_optical;
+% mechanical band sim 
+datLoc = ['.\test\LN_holeUnitCell\',currentDate,'\'];
+P.datLoc = datLoc;
+P.run_optical=0;
+P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 15;                           % no. of bands to solve for
+bds_mechanical = solveBands_noSym(P);
+% save the data file 
+itr = fopen(itrPath,'at+');
+fprintf(itr,'%.4e %.4e %.4e %.4e %.4e %.4e %.4e %.4e \r\n',...
+    P.a,P.th,P.s,P.w,P.t,P.d,midGap_optical,gapSize_optical,gapRat_optical);
+fclose(itr);
+

@@ -480,10 +480,13 @@ end
 
 %% export the raw data 
 if P.saveRawData
-    model.result.export.create('tbl1', 'Table');
-    model.result.export('tbl1').label('bandStruct');
-    model.result.export('tbl1').set('table', 'tbl14');
-    model.result.export('tbl1').set('filename', '.\bandStruct_data\BandStruct_test2.txt');
+    model.result.export.create('tbl_exp', 'Table');
+    model.result.export('tbl_exp').label('bandStruct');
+    model.result.export('tbl_exp').set('table', 'tbl14');
+    model.result.export('tbl_exp').set('filename', '.\bandStruct_data\BandStruct.txt');
+    model.result.export('tbl_exp').set('header', false);
+    model.result.export('tbl_exp').set('notation', 'scientific');
+    model.result.export('tbl_exp').run;
 end 
 
 ds.P = P; 

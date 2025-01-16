@@ -68,15 +68,46 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % 
 % buildRibUnitCell_LN(model,P);
 % mphlaunch(model);
-%% Single solve
-if P.run_optical
-    currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\LN_holeUnitCell_optical\',currentDate,'\'];
-    P.datLoc = datLoc;
-    bds = solveOpticalBands(P);
-else
-    currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\LN_holeUnitCell\',currentDate,'\'];
-    P.datLoc = datLoc;
-    bds = solveBands_noSym(P);
+%% Create .txt file to assemble iteration result
+% txt file name
+currentDate = datestr(now,'mmddyyyy');
+datLoc = ['.\test\LN_holeUnitCell_optimize\',currentDate,'\'];
+itrPath = [datLoc,...
+        'optimization_SP_',currentDate,'.txt'];
+% create directory to save files
+if ~exist(datLoc,'dir')
+    mkdir(datLoc)
 end
+itr = fopen(itrPath,'wt+');
+txtToPrint = ['a th s w t d', ...
+        'midGapOptical gapSizeOptical gapFracOptical midGapMech gapSizeMech gapFracMech \r\n'];
+fprintf(itr,txtToPrint);
+fclose(itr);
+%% Single solve
+% optical band sim 
+P.run_optical = 1;
+P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 15;                           % no. of bands to solve for
+datLoc = ['.\test\LN_holeUnitCell_optical\',currentDate,'\'];
+P.datLoc = datLoc;
+bds_optical = solveOpticalBands(P);
+OpticalBands = bds_optical.opticalBand;
+midGap_optical = OpticalBands.midGap(1);
+gapSize_optical = OpticalBands.gapSize(1);
+gapRat_optical = gapSize_optical./midGap_optical;
+% mechanical band sim 
+datLoc = ['.\test\LN_holeUnitCell\',currentDate,'\'];
+P.datLoc = datLoc;
+P.run_optical=0;
+P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 25;                           % no. of bands to solve for
+bds_mechanical_struct = solveBands_noSym(P);
+bds_mechanical = bds_mechanical_struct.full;
+[gapSize_mechanical,I] = max(bds_mechanical.gapSize);
+midGap_mechanical = bds_mechanical.midGap(I);
+gapRat_mechanical = gapSize_mechanical./midGap_mechanical;
+% save the data file 
+itr = fopen(itrPath,'at+');
+fprintf(itr,'%.4e %.4e %.4e %.4e %.4e %.4e %.4e %.4e \r\n',...
+    P.a,P.th,P.s,P.w,P.t,P.d,midGap_optical,gapSize_optical,gapRat_optical,midGap_mechanical,gapSize_mechanical,gapRat_mechanical);
+fclose(itr);

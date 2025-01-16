@@ -19,6 +19,8 @@ bMaxTrueIdx = find(~isnan(bMax));
 bTrueIdx = intersect(bMinTrueIdx,bMaxTrueIdx);
 bMin = bMin(bTrueIdx);
 bMax = bMax(bTrueIdx);
+% bMin = sort(bMin);
+% bMax = sort(bMax);
 
 % 
 % bMinTmp = sortBands(1,:);
