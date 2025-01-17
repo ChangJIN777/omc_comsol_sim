@@ -10,7 +10,7 @@ t0 = 400e-9;       % the rib width
 currentDate = datestr(now,'mmddyyyy');
 datLoc = ['.\test\LN_ribUnitCell_optimize\',currentDate,'\'];
 itrPath = [datLoc,...
-            'optimization_SP_',currentDate,'.txt'];
+            'optimization_SP_trail2_',currentDate,'.txt'];
 % create directory to save files
 if ~exist(datLoc,'dir')
     mkdir(datLoc)
@@ -111,7 +111,7 @@ function fitness = rib_optimize(params)
     bds_mechanical = bds_mechanical_struct.full;
     % filter mechanical bandgaps
     gapAbove = bds_mechanical.midGap > 3e9;
-    bds_mechanical.gapSize = bds_mechanical.gapSize*gapAbove;
+    bds_mechanical.gapSize = bds_mechanical.gapSize.*gapAbove;
     if length(bds_mechanical.gapSize) == 0
         gapSize_mechanical = 0;
         midGap_mechanical = 10e9;

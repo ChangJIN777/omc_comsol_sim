@@ -458,7 +458,7 @@ for ki = 0:kpts
     lambda_ki = find(sols.psolv.map(:,outer_inds)==ki+1);
     fem.sol.lambda = sols.psolv.map(lambda_ki,lambda_inds);
     fem.sol.freqs = abs(fem.sol.lambda)/(2*pi);
-    for nb = 1:nbands
+    for nb = 1:nbands*2
         ds.F(ki+1,nb) = fem.sol.freqs(nb);
     end
 %     ds.kx_norm = transpose(ds.kx/(pi/P.a));
@@ -466,7 +466,7 @@ for ki = 0:kpts
     % save displacement and strain profile for all bands at 
     % high symmetry points (Gamma, X, M)
     if P.saveplots && mod(ki,kpts) == 0
-        for nb = 1:nbands
+        for nb = 1:nbands*2
             
             % text strings for k-points
             kpt_txts = {'G','X','M'};

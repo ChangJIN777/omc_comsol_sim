@@ -49,23 +49,23 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 %% define the maximum number of degree of freedom to limit the simulation time
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
-% %% debugging the unit cells 
-% % import COMSOL class
-% import com.comsol.model.*
-% import com.comsol.model.util.*
-% 
-% ModelUtil.showProgress(true);
-% ModelUtil.clear();
-% clear model
-% 
-% % create COMSOL model named 'model' from which COMSOL methods can be called, 
-% % e.g. model.save
-% model = ModelUtil.create('model');
-% 
-% buildSnowflakeStrip_2D(model,P);
-% mphlaunch(model);
+%% debugging the unit cells 
+% import COMSOL class
+import com.comsol.model.*
+import com.comsol.model.util.*
 
-%% run the simulation
-datLoc = '.\test\snowflake_optical\122124_optical\';
-P.datLoc = datLoc;
-solveOpticalBands(P);
+ModelUtil.showProgress(true);
+ModelUtil.clear();
+clear model
+
+% create COMSOL model named 'model' from which COMSOL methods can be called, 
+% e.g. model.save
+model = ModelUtil.create('model');
+
+buildSnowflakeStrip_2D(model,P);
+mphlaunch(model);
+
+% %% run the simulation
+% datLoc = '.\test\snowflake_optical\122124_optical\';
+% P.datLoc = datLoc;
+% solveOpticalBands(P);

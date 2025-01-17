@@ -30,15 +30,15 @@ P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
-P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 15;                           % no. of bands to solve for
+P.kpts = 15;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 20;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
 P.plotgeom = 1;                         % 1 to plot the geometry
 P.savedat = 1;                          % 1 to save data structures
 P.savebndplot = 1;                      % 1 to save bandstructure plot
-P.saveplots = 1;                        % 1 to save displacement and strain profiles
+P.saveplots = 0;                        % 1 to save displacement and strain profiles
 P.saveMPH = 0; 
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
 
@@ -50,7 +50,7 @@ P.airDiskH = 4000e-9;
 % solid mechanics solver parameters
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
-P.freq = 10e9;                             % target frequency - set to 0 for bandstructure simulations
+P.freq = 15e9;                             % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 4;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
@@ -77,6 +77,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildBoomerangStrip_3D(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\boomerang_strip\122724\';
+datLoc = '.\test\boomerang_strip\11625\';
 P.datLoc = datLoc;
 bds = solveBands(P);
