@@ -99,8 +99,9 @@ if strcmp(P.celltype,'rib')
     model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
     model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'10e-12' '0' '0' '0' '10e-12' '0' '0' '0' '10e-12'});
     model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
+    if strcmp(P.beamMat,'LN')
     model.component('comp1').material('mat2').label('LiNbO3 (Lithium niobate)');
-    model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index')
+    model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
     model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', '');
     model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', '');
     model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
@@ -121,6 +122,13 @@ if strcmp(P.celltype,'rib')
     model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').func('an2').set('plotargs', {'lambda0' '0.4[um]' '5[um]'});
     model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'neref_sel(lbd0)' '0' '0' '0' 'noref_sel(lbd0)' '0' '0' '0' 'noref_sel(lbd0)'});
     model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').addInput('frequency');
+    elseif strcmp(P.beamMat,'diamond')
+        model.component('comp1').material('mat2').label('diamond');
+    model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
+        model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'2.4028' '0' '0' '0' '2.4022' '0' '0' '0' '2.4028'});
+        model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', {'0.001' '0' '0' '0' '0.001' '0' '0' '0' '0.001'});
+        model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'5.7734' '0' '0' '0' '5.7734' '0' '0' '0' '5.7734'});
+    end
 else
     model.component('comp1').material('mat2').label('Air');
     model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
@@ -129,9 +137,9 @@ else
     model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
     model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
     if strcmp(P.beamMat,'diamond')
-        model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.406' '0' '0' '0' '2.406' '0' '0' '0' '2.406'});
+        model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4028' '0' '0' '0' '2.4022' '0' '0' '0' '2.4028'});
         model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'0.001' '0' '0' '0' '0.001' '0' '0' '0' '0.001'});
-        model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'5.788836' '0' '0' '0' '5.788836' '0' '0' '0' '5.788836'});
+        model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'5.7734' '0' '0' '0' '5.7734' '0' '0' '0' '5.7734'});
     elseif strcmp(P.beamMat,'SiC')
         model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.5' '0' '0' '0' '2.5' '0' '0' '0' '2.5'});
     else 

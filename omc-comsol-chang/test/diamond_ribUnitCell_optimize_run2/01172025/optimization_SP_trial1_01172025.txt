@@ -1,0 +1,3 @@
+a	th	s	w	t	d	midGapOptical	gapSizeOptical	gapFracOptical	midGapMech	gapSizeMech	gapFracMech	fitness
+2.5000e-07	2.0000e-07	1.0000e-07	8.0000e-07	1.0000e-07	0.0000e+00	3.9655e+14	1.4364e+12	3.6223e-031.0564e+10	1.2067e+09	1.1423e-01	-2.7829e-04	
+2.6250e-07	2.0000e-07	1.0000e-07	8.0000e-07	1.0000e-07	0.0000e+00	0.0000e+00	2.0000e+14	Inf1.0505e+10	1.2538e+09	1.1935e-01	-Inf	
