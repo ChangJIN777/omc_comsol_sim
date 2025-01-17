@@ -1,1 +1,0 @@
-a	th	s	w	t	d	midGapOptical	gapSizeOptical	gapFracOptical	midGapMech	gapSizeMech	gapFracMech	fitness
