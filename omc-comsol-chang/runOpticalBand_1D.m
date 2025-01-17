@@ -467,7 +467,7 @@ for ki = 1:kpts
     lambda_ki = find(sols.sol1.map(:,outer_inds)==ki+1);
     fem.sol.lambda = sols.sol1.map(lambda_ki,lambda_inds);
     fem.sol.freqs = abs(fem.sol.lambda)/(2*pi);
-    for nb = 1:nbands
+    for nb = 1:nbands*2
         ds.F(ki+1,nb) = fem.sol.freqs(nb);
     end
 end

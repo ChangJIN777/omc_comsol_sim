@@ -1,7 +1,7 @@
 %% testing optimization 
 a0 = 250e-9;              % lattice constant 
 s0 = 100e-9;              % unit cell spine width 
-w0 = 800e-9;              % the beam width 
+w0 = 500e-9;              % the beam width 
 th0 = 200e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 t0 = 100e-9;       % the rib width 
@@ -10,7 +10,7 @@ t0 = 100e-9;       % the rib width
 currentDate = datestr(now,'mmddyyyy');
 datLoc = ['.\test\diamond_ribUnitCell_optimize_run2\',currentDate,'\'];
 itrPath = [datLoc,...
-            'optimization_SP_trial1_',currentDate,'.txt'];
+            'optimization_SP_trial3_',currentDate,'.txt'];
 % create directory to save files
 if ~exist(datLoc,'dir')
     mkdir(datLoc)
@@ -22,12 +22,12 @@ if ~exist(datLoc,'dir')
 end
 params0 = [a0,s0,w0,th0,t0];
 options = optimset('PlotFcns',@optimplotfval);
-% %% debug the optimization code 
-% fitness = rib_optimize(params0);
+%% debug the optimization code 
+fitness = rib_optimize(params0);
 
-%% run the optimization code
-fun = @(x) rib_optimize(x);
-x = fminsearch(fun,params0,options);
+% %% run the optimization code
+% fun = @(x) rib_optimize(x);
+% x = fminsearch(fun,params0,options);
 
 function fitness = rib_optimize(params)
     P.a = params(1);              % lattice constant 
@@ -47,7 +47,7 @@ function fitness = rib_optimize(params)
     P.mbevenz = 0;      % 1 to find even mechanical mode about z
     
     P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 15;                           % no. of bands to solve for
+    P.nbands = 20;                           % no. of bands to solve for
     
     P.solveasym = 1;                        % 1 to solve for antisymmetric bands
     P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -70,7 +70,7 @@ function fitness = rib_optimize(params)
     P.mbeveny = 0;                          % 1 to find even mechanical mode about y
     P.mbevenz = 0;                          % 1 to find even mechanical mode about z
     P.freq = 3e9;                             % Mechanical target frequency - set to 0 for bandstructure simulations
-    P.optical_freq = 400;           % optical target frequency - in THz 
+    P.optical_freq = 200;           % optical target frequency - in THz 
     P.meshSize = 4;                         % mesh quality for mechanical simulations
     P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
     
@@ -96,7 +96,7 @@ function fitness = rib_optimize(params)
     OpticalBands = bds_optical.opticalBand;
     if length(OpticalBands.gapSize) == 0
         midGap_optical = 0;
-        gapSize_optical = 200e12;
+        gapSize_optical = 2e12;
     else
         midGap_optical = OpticalBands.midGap(1);
         gapSize_optical = OpticalBands.gapSize(1);
@@ -126,7 +126,7 @@ function fitness = rib_optimize(params)
     % save the data file 
     datLoc = ['.\test\diamond_ribUnitCell_optimize_run2\',currentDate,'\'];
     itrPath = [datLoc,...
-                'optimization_SP_trial1_',currentDate,'.txt'];
+                'optimization_SP_trial3_',currentDate,'.txt'];
     itr = fopen(itrPath,'at+');
     fprintf(itr,'%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t\r\n',...
         P.a,P.th,P.s,P.w,P.t,P.d,midGap_optical,gapSize_optical,gapRat_optical,midGap_mechanical,gapSize_mechanical,gapRat_mechanical,fitness);
