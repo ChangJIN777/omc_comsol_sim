@@ -2,7 +2,7 @@
 a0 = 550e-9;              % lattice constant 
 s0 = 300e-9;              % unit cell spine width 
 w0 = 1600e-9;              % the beam width 
-th0 = 260e-9;             % height (along x) of cross (for celltype = 'hollow')
+th0 = 400e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 t0 = 400e-9;       % the rib width 
 %% Create .txt file to assemble iteration result
@@ -10,7 +10,7 @@ t0 = 400e-9;       % the rib width
 currentDate = datestr(now,'mmddyyyy');
 datLoc = ['.\test\LN_ribUnitCell_optimize\',currentDate,'\'];
 itrPath = [datLoc,...
-            'optimization_SP_trail2_',currentDate,'.txt'];
+            'optimization_SP_trial2_',currentDate,'.txt'];
 % create directory to save files
 if ~exist(datLoc,'dir')
     mkdir(datLoc)
@@ -89,7 +89,7 @@ function fitness = rib_optimize(params)
     P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
     P.nbands = 15;                           % no. of bands to solve for
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\LN_ribUnitCell_optical\',currentDate,'\'];
+    datLoc = ['.\test\LN_ribUnitCell_optical_trial2\',currentDate,'\'];
     P.datLoc = datLoc;
     bds_optical = solveOpticalBands(P);
     OpticalBands = bds_optical.opticalBand;
@@ -102,7 +102,7 @@ function fitness = rib_optimize(params)
     end
     gapRat_optical = gapSize_optical./midGap_optical;
     % mechanical band sim 
-    datLoc = ['.\test\LN_ribUnitCell\',currentDate,'\'];
+    datLoc = ['.\test\LN_ribUnitCell_trial2\',currentDate,'\'];
     P.datLoc = datLoc;
     P.run_optical=0;
     P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
@@ -125,7 +125,7 @@ function fitness = rib_optimize(params)
     % save the data file 
     datLoc = ['.\test\LN_ribUnitCell_optimize\',currentDate,'\'];
     itrPath = [datLoc,...
-                'optimization_SP_trail2_',currentDate,'.txt'];
+                'optimization_SP_trial2_',currentDate,'.txt'];
     itr = fopen(itrPath,'at+');
     fprintf(itr,'%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\r\n',...
         P.a,P.th,P.s,P.w,P.t,P.d,midGap_optical,gapSize_optical,gapRat_optical,midGap_mechanical,gapSize_mechanical,gapRat_mechanical,fitness);
