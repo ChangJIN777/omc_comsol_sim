@@ -1,10 +1,10 @@
 %% testing optimization 
-a0 = 550e-9;              % lattice constant 
-s0 = 300e-9;              % unit cell spine width 
-w0 = 1600e-9;              % the beam width 
-th0 = 400e-9;             % height (along x) of cross (for celltype = 'hollow')
+a0 = 615e-9;              % lattice constant 
+s0 = 278e-9;              % unit cell spine width 
+w0 = 1630e-9;              % the beam width 
+th0 = 200e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-t0 = 400e-9;       % the rib width 
+t0 = 375e-9;       % the rib width 
 %% Create .txt file to assemble iteration result
 % txt file name
 currentDate = datestr(now,'mmddyyyy');
@@ -20,7 +20,7 @@ txtToPrint = ['a','\t','th','\t','s','\t','w','\t','t','\t','d', ...
             '\t','midGapOptical','\t','gapSizeOptical','\t','gapFracOptical','\t','midGapMech','\t','gapSizeMech','\t','gapFracMech','\t','fitness\r\n'];
 fprintf(itr,txtToPrint);
 fclose(itr);
-params0 = [a0,s0,w0,th0,t0];
+params0 = [a0,s0,w0,t0];
 options = optimset('PlotFcns',@optimplotfval);
 
 %% run the optimization code
@@ -31,9 +31,9 @@ function fitness = rib_optimize(params)
     P.a = params(1);              % lattice constant 
     P.s = params(2);              % unit cell spine width 
     P.w = params(3);              % the beam width 
-    P.th = params(4);             % height (along x) of cross (for celltype = 'hollow')
+    P.th = 400e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
-    P.t = params(5);       % the rib width 
+    P.t = params(4);       % the rib width 
     P.d = 15*pi/180; 
     P.xsect = 'rect'; 
     P.beamMat = 'LN';                  % beam material name
