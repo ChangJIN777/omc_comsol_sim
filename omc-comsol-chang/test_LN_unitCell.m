@@ -6,12 +6,12 @@ P.xsect = 'rect';
 P.beamMat = 'LN';                  % beam material name
 P.celltype = 'rib';                   % specify the cell type
 P.unitcell = 'rectrangular';                  % specify the shape of the unit cell
-P.a = 550e-9;              % lattice constant 
-P.s = 300e-9;              % unit cell spine width 
-P.w = 1600e-9;              % the beam width 
-P.th = 260e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.a = 0.88*570e-9;              % lattice constant 
+P.s = 254e-9;              % unit cell spine width 
+P.w = 1747e-9;              % the beam width 
+P.th = 283e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-P.t = 400e-9;       % the rib width 
+P.t = 391e-9;       % the rib width 
 P.d = 15*pi/180; 
 
 P.nperiod = 1;  % no. of periods to simulate for
@@ -19,7 +19,7 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 0;      % 1 to find even mechanical mode about z
 
 P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 15;                           % no. of bands to solve for
+P.nbands = 30;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -31,8 +31,8 @@ P.saveMPH = 0;
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
 P.bandStructureDim = 1;     % Optical band only: 3 to simulate 3d structures 
 
-% for the optical bandgap 
-P.run_optical = 1;
+% for choosing between the optical and the mechanical band structure
+P.run_optical = 0;
 
 % if we are going to save the raw data files 
 P.saveRawData = 1;
@@ -71,12 +71,12 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 %% Single solve
 if P.run_optical
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\LN_holeUnitCell_optical\',currentDate,'\'];
+    datLoc = ['.\test\LN_ribUnitCell_optical\',currentDate,'\'];
     P.datLoc = datLoc;
     bds = solveOpticalBands(P);
 else
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\LN_holeUnitCell\',currentDate,'\'];
+    datLoc = ['.\test\LN_ribUnitCell\',currentDate,'\'];
     P.datLoc = datLoc;
     bds = solveBands_noSym(P);
 end

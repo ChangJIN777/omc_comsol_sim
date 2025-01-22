@@ -67,8 +67,8 @@ if strcmp(P.celltype,'cross')
     [model,P] = DrawCrossUnitCell(model,P);
 elseif strcmp(P.celltype,'boomerang')
     [model,P] = buildBoomerangUnitCell_2D(model,P);
-elseif strcmp(P.celltype,'boomerang_lower')
-    [model,P] = buildLowerBoomerangUnitCell_2D(model,P);
+elseif strcmp(P.celltype,'boomerang_strip')
+    [model,P] = buildBoomerangStrip_3D(model,P);
 elseif strcmp(P.celltype,'hole_strip')
     [model,P] = buildHoleStrip_3D(model,P);
 elseif strcmp(P.celltype,'hole_strip_wvg')
@@ -99,8 +99,9 @@ if strcmp(P.celltype,'rib')
     model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
     model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'10e-12' '0' '0' '0' '10e-12' '0' '0' '0' '10e-12'});
     model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
+    if strcmp(P.beamMat,'LN')
     model.component('comp1').material('mat2').label('LiNbO3 (Lithium niobate)');
-    model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index')
+    model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
     model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', '');
     model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', '');
     model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
@@ -121,6 +122,13 @@ if strcmp(P.celltype,'rib')
     model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').func('an2').set('plotargs', {'lambda0' '0.4[um]' '5[um]'});
     model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'neref_sel(lbd0)' '0' '0' '0' 'noref_sel(lbd0)' '0' '0' '0' 'noref_sel(lbd0)'});
     model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').addInput('frequency');
+    elseif strcmp(P.beamMat,'diamond')
+        model.component('comp1').material('mat2').label('diamond');
+    model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
+        model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'2.4028' '0' '0' '0' '2.4022' '0' '0' '0' '2.4028'});
+        model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', {'0.001' '0' '0' '0' '0.001' '0' '0' '0' '0.001'});
+        model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'5.7734' '0' '0' '0' '5.7734' '0' '0' '0' '5.7734'});
+    end
 else
     model.component('comp1').material('mat2').label('Air');
     model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
@@ -129,9 +137,9 @@ else
     model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
     model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
     if strcmp(P.beamMat,'diamond')
-        model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.406' '0' '0' '0' '2.406' '0' '0' '0' '2.406'});
+        model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4028' '0' '0' '0' '2.4022' '0' '0' '0' '2.4028'});
         model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'0.001' '0' '0' '0' '0.001' '0' '0' '0' '0.001'});
-        model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'5.788836' '0' '0' '0' '5.788836' '0' '0' '0' '5.788836'});
+        model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'5.7734' '0' '0' '0' '5.7734' '0' '0' '0' '5.7734'});
     elseif strcmp(P.beamMat,'SiC')
         model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.5' '0' '0' '0' '2.5' '0' '0' '0' '2.5'});
     else 
@@ -145,23 +153,23 @@ end
 model.component('comp1').physics.create('emw', 'ElectromagneticWaves', 'geom1');
 model.component('comp1').physics('emw').create('pc1', 'PeriodicCondition', 2);
 model.component('comp1').physics('emw').feature('pc1').selection.named('geom1_xboundaries_bnd');
-if ~strcmp(P.celltype,'hole_strip') && ~strcmp(P.celltype,'rib')
-    model.component('comp1').physics('emw').create('pc2', 'PeriodicCondition', 2);
-    model.component('comp1').physics('emw').feature('pc2').selection.named('geom1_yboundaries_bnd');
-else
+if P.bandStructureDim == 1
     % for TE mode (PEC in the y direction)
     model.component('comp1').physics('emw').create('sympy', 'SymmetryPlane', 2);
     model.component('comp1').physics('emw').feature('sympy').selection.named('geom1_yboundaries_bnd');
     model.component('comp1').physics('emw').feature('sympy').set('Symmetry_type', 'pec');
+else
+    model.component('comp1').physics('emw').create('pc2', 'PeriodicCondition', 2);
+    model.component('comp1').physics('emw').feature('pc2').selection.named('geom1_yboundaries_bnd');
 end
-if ~strcmp(P.celltype,'rib')
+if ~strcmp(P.celltype,'rib') && P.mbevenz   
     model.component('comp1').physics('emw').create('symp1', 'SymmetryPlane', 2);
     model.component('comp1').physics('emw').feature('symp1').selection.named('geom1_ZsymSel');
 end
 model.component('comp1').physics('emw').feature('pc1').set('PeriodicType', 'Floquet');
 model.component('comp1').physics('emw').feature('pc1').set('kFloquet', {'kx'; 'ky'; '0'});
 model.component('comp1').physics('emw').feature('pc1').label('Periodic Condition x direction');
-if ~strcmp(P.celltype,'hole_strip') && ~strcmp(P.celltype,'rib')
+if P.bandStructureDim ~= 1
     model.component('comp1').physics('emw').feature('pc2').set('PeriodicType', 'Floquet');
     model.component('comp1').physics('emw').feature('pc2').set('kFloquet', {'kx'; 'ky'; '0'});
     model.component('comp1').physics('emw').feature('pc2').label('Periodic Condition y direction');
@@ -459,7 +467,7 @@ for ki = 1:kpts
     lambda_ki = find(sols.sol1.map(:,outer_inds)==ki+1);
     fem.sol.lambda = sols.sol1.map(lambda_ki,lambda_inds);
     fem.sol.freqs = abs(fem.sol.lambda)/(2*pi);
-    for nb = 1:nbands
+    for nb = 1:nbands*2
         ds.F(ki+1,nb) = fem.sol.freqs(nb);
     end
 end

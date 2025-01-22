@@ -1,5 +1,5 @@
 %% testing optimization 
-a0 = 550e-9;              % lattice constant 
+a0 = 570e-9;              % lattice constant 
 s0 = 300e-9;              % unit cell spine width 
 w0 = 1600e-9;              % the beam width 
 th0 = 260e-9;             % height (along x) of cross (for celltype = 'hollow')
@@ -10,7 +10,7 @@ t0 = 400e-9;       % the rib width
 currentDate = datestr(now,'mmddyyyy');
 datLoc = ['.\test\LN_ribUnitCell_optimize\',currentDate,'\'];
 itrPath = [datLoc,...
-            'optimization_SP_trail2_',currentDate,'.txt'];
+            'optimization_SP_trial2_',currentDate,'.txt'];
 % create directory to save files
 if ~exist(datLoc,'dir')
     mkdir(datLoc)
@@ -20,20 +20,23 @@ txtToPrint = ['a','\t','th','\t','s','\t','w','\t','t','\t','d', ...
             '\t','midGapOptical','\t','gapSizeOptical','\t','gapFracOptical','\t','midGapMech','\t','gapSizeMech','\t','gapFracMech','\t','fitness\r\n'];
 fprintf(itr,txtToPrint);
 fclose(itr);
-params0 = [a0,s0,w0,th0,t0];
+params0 = [a0,s0,w0,t0];
 options = optimset('PlotFcns',@optimplotfval);
 
-%% run the optimization code
-fun = @(x) rib_optimize(x);
-x = fminsearch(fun,params0,options);
+%% single run
+fitness = rib_optimize(params0);
+
+% %% run the optimization code
+% fun = @(x) rib_optimize(x);
+% x = fminsearch(fun,params0,options);
 
 function fitness = rib_optimize(params)
     P.a = params(1);              % lattice constant 
     P.s = params(2);              % unit cell spine width 
     P.w = params(3);              % the beam width 
-    P.th = params(4);             % height (along x) of cross (for celltype = 'hollow')
+    P.th = 400e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
-    P.t = params(5);       % the rib width 
+    P.t = params(4);       % the rib width 
     P.d = 15*pi/180; 
     P.xsect = 'rect'; 
     P.beamMat = 'LN';                  % beam material name
@@ -89,7 +92,7 @@ function fitness = rib_optimize(params)
     P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
     P.nbands = 15;                           % no. of bands to solve for
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\LN_ribUnitCell_optical\',currentDate,'\'];
+    datLoc = ['.\test\LN_ribUnitCell_optical_trial2\',currentDate,'\'];
     P.datLoc = datLoc;
     bds_optical = solveOpticalBands(P);
     OpticalBands = bds_optical.opticalBand;
@@ -102,11 +105,11 @@ function fitness = rib_optimize(params)
     end
     gapRat_optical = gapSize_optical./midGap_optical;
     % mechanical band sim 
-    datLoc = ['.\test\LN_ribUnitCell\',currentDate,'\'];
+    datLoc = ['.\test\LN_ribUnitCell_trial2\',currentDate,'\'];
     P.datLoc = datLoc;
     P.run_optical=0;
     P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 25;                           % no. of bands to solve for
+    P.nbands = 30;                           % no. of bands to solve for
     bds_mechanical_struct = solveBands_noSym(P);
     bds_mechanical = bds_mechanical_struct.full;
     % filter mechanical bandgaps
@@ -125,9 +128,9 @@ function fitness = rib_optimize(params)
     % save the data file 
     datLoc = ['.\test\LN_ribUnitCell_optimize\',currentDate,'\'];
     itrPath = [datLoc,...
-                'optimization_SP_trail2_',currentDate,'.txt'];
+                'optimization_SP_trial2_',currentDate,'.txt'];
     itr = fopen(itrPath,'at+');
-    fprintf(itr,'%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\r\n',...
+    fprintf(itr,'%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\r\n',...
         P.a,P.th,P.s,P.w,P.t,P.d,midGap_optical,gapSize_optical,gapRat_optical,midGap_mechanical,gapSize_mechanical,gapRat_mechanical,fitness);
     fclose(itr);
     disp(fitness);

@@ -155,8 +155,8 @@ end
 model.component('comp1').geom('geom1').feature('wp7').set('quickplane', 'xz');
 model.component('comp1').geom('geom1').feature('wp7').set('unite', true);
 model.component('comp1').geom('geom1').feature('wp7').geom.create('r1', 'Rectangle');
-model.component('comp1').geom('geom1').feature('wp7').geom.feature('r1').set('size', {'w' 'th'});
-model.component('comp1').geom('geom1').feature('wp7').geom.feature('r1').set('pos', {'-w/2' '-th/2'});
+model.component('comp1').geom('geom1').feature('wp7').geom.feature('r1').set('size', {'a' 'th'});
+model.component('comp1').geom('geom1').feature('wp7').geom.feature('r1').set('pos', {'-a/2' '-th/2'});
 model.component('comp1').geom('geom1').create('ext8', 'Extrude');
 if ~P.run_optical
     model.component('comp1').geom('geom1').feature('ext8').active(false);
