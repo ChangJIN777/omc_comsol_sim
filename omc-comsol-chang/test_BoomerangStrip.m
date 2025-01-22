@@ -41,15 +41,19 @@ P.savebndplot = 1;                      % 1 to save bandstructure plot
 P.saveplots = 0;                        % 1 to save displacement and strain profiles
 P.saveMPH = 0; 
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
+% for optical simulation
+P.bandStructureDim=1;           % specify the dimension of the band structure 
+P.optical_freq = 100;       % specify the target frequency (THz)
 
 % for the optical bandgap 
-P.add_airDisk = 0;
+P.add_airDisk = 1;
 P.airDiskH = 4000e-9;
+P.mbevenz = 0;
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
-P.mbevenz = 1;                          % 1 to find even mechanical mode about z
+% P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 15e9;                             % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 4;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
@@ -77,6 +81,7 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildBoomerangStrip_3D(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\boomerang_strip\11625\';
+currentDate = datestr(now,'mmddyyyy');
+datLoc = ['.\test\boomerang_strip\',currentDate,'\'];
 P.datLoc = datLoc;
-bds = solveBands(P);
+bds = solveOpticalBands(P);

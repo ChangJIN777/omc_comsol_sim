@@ -1,10 +1,10 @@
 %% testing optimization 
-a0 = 570e-9;              % lattice constant 
-s0 = 300e-9;              % unit cell spine width 
-w0 = 1600e-9;              % the beam width 
-th0 = 260e-9;             % height (along x) of cross (for celltype = 'hollow')
+a0 = 558e-9;              % lattice constant 
+s0 = 288e-9;              % unit cell spine width 
+w0 = 1620e-9;              % the beam width 
+th0 = 400e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-t0 = 400e-9;       % the rib width 
+t0 = 300e-9;       % the rib width 
 %% Create .txt file to assemble iteration result
 % txt file name
 currentDate = datestr(now,'mmddyyyy');

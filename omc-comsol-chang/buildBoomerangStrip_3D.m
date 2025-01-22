@@ -142,7 +142,7 @@ if P.add_airDisk
     diskBase.set('pos', [0 -a/2]);
     diskBase.set('size', [airDiskH a]);
     revolve = ucellgeom.feature.create('rev1', 'Revolve');
-    revolve.set('angle2', -90);
+    revolve.set('angle2', -180);
     revolve.selection('input').set({'wpair'});
 end
 

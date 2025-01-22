@@ -67,8 +67,8 @@ if strcmp(P.celltype,'cross')
     [model,P] = DrawCrossUnitCell(model,P);
 elseif strcmp(P.celltype,'boomerang')
     [model,P] = buildBoomerangUnitCell_2D(model,P);
-elseif strcmp(P.celltype,'boomerang_lower')
-    [model,P] = buildLowerBoomerangUnitCell_2D(model,P);
+elseif strcmp(P.celltype,'boomerang_strip')
+    [model,P] = buildBoomerangStrip_3D(model,P);
 elseif strcmp(P.celltype,'hole_strip')
     [model,P] = buildHoleStrip_3D(model,P);
 elseif strcmp(P.celltype,'hole_strip_wvg')
@@ -153,23 +153,23 @@ end
 model.component('comp1').physics.create('emw', 'ElectromagneticWaves', 'geom1');
 model.component('comp1').physics('emw').create('pc1', 'PeriodicCondition', 2);
 model.component('comp1').physics('emw').feature('pc1').selection.named('geom1_xboundaries_bnd');
-if ~strcmp(P.celltype,'hole_strip') && ~strcmp(P.celltype,'rib')
-    model.component('comp1').physics('emw').create('pc2', 'PeriodicCondition', 2);
-    model.component('comp1').physics('emw').feature('pc2').selection.named('geom1_yboundaries_bnd');
-else
+if P.bandStructureDim == 1
     % for TE mode (PEC in the y direction)
     model.component('comp1').physics('emw').create('sympy', 'SymmetryPlane', 2);
     model.component('comp1').physics('emw').feature('sympy').selection.named('geom1_yboundaries_bnd');
     model.component('comp1').physics('emw').feature('sympy').set('Symmetry_type', 'pec');
+else
+    model.component('comp1').physics('emw').create('pc2', 'PeriodicCondition', 2);
+    model.component('comp1').physics('emw').feature('pc2').selection.named('geom1_yboundaries_bnd');
 end
-if ~strcmp(P.celltype,'rib')
+if ~strcmp(P.celltype,'rib') && P.mbevenz   
     model.component('comp1').physics('emw').create('symp1', 'SymmetryPlane', 2);
     model.component('comp1').physics('emw').feature('symp1').selection.named('geom1_ZsymSel');
 end
 model.component('comp1').physics('emw').feature('pc1').set('PeriodicType', 'Floquet');
 model.component('comp1').physics('emw').feature('pc1').set('kFloquet', {'kx'; 'ky'; '0'});
 model.component('comp1').physics('emw').feature('pc1').label('Periodic Condition x direction');
-if ~strcmp(P.celltype,'hole_strip') && ~strcmp(P.celltype,'rib')
+if P.bandStructureDim ~= 1
     model.component('comp1').physics('emw').feature('pc2').set('PeriodicType', 'Floquet');
     model.component('comp1').physics('emw').feature('pc2').set('kFloquet', {'kx'; 'ky'; '0'});
     model.component('comp1').physics('emw').feature('pc2').label('Periodic Condition y direction');
