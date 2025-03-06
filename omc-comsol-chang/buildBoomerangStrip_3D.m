@@ -15,7 +15,7 @@ wo = P.wo;
 wi = P.wi;
 ho = P.ho;
 hi = P.hi; 
-% P.d = sqrt(3)*a/4;
+P.d = sqrt(3)*a/4;
 b_wvg = 0;
 % fillet radius
 r1 = P.r1;      % the fillet radius of the edges of the hole 
