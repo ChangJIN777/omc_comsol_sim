@@ -219,8 +219,8 @@ pbcX.set('kFloquet', {'kx'; '0'; '0'});        %initialize Floquet vector (1D ba
 
 % even y symmetry 
 if eveny
-symY = smech.create('sympy', 'SymmetrySolid', 2);
-symY.selection.named('geom1_yboundaries_bnd');
+    symY = smech.create('sympy', 'SymmetrySolid', 2);
+    symY.selection.named('geom1_yboundaries_bnd');
 end
 
 % symmetric BC for xy plane containing point (0,0,0)
@@ -458,7 +458,7 @@ for ki = 0:kpts
     lambda_ki = find(sols.psolv.map(:,outer_inds)==ki+1);
     fem.sol.lambda = sols.psolv.map(lambda_ki,lambda_inds);
     fem.sol.freqs = abs(fem.sol.lambda)/(2*pi);
-    for nb = 1:nbands*2
+    for nb = 1:nbands
         ds.F(ki+1,nb) = fem.sol.freqs(nb);
     end
 %     ds.kx_norm = transpose(ds.kx/(pi/P.a));
@@ -466,7 +466,7 @@ for ki = 0:kpts
     % save displacement and strain profile for all bands at 
     % high symmetry points (Gamma, X, M)
     if P.saveplots && mod(ki,kpts) == 0
-        for nb = 1:nbands*2
+        for nb = 1:nbands
             
             % text strings for k-points
             kpt_txts = {'G','X','M'};

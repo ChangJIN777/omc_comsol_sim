@@ -6,10 +6,10 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 600e-9;              % lattice constant 
-P.w = 90e-9;              % unit cell width (along x)
-P.r = 250e-9;              % unit cell height (along y)
-P.th = 200e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.a = 400e-9;              % lattice constant 
+P.w = 86e-9;              % unit cell width (along x)
+P.r = 160e-9;              % unit cell height (along y)
+P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 
 P.h = 120e-9;           % the height of the hole in the lower portion
@@ -22,8 +22,8 @@ P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
-P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 15;                           % no. of bands to solve for
+P.kpts = 9;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 25;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -65,6 +65,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildBoomerangUnitCellStrip(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\boomerang\122524\';
+datLoc = '.\test\boomerang\022524\';
 P.datLoc = datLoc;
 bds = solveBands(P);

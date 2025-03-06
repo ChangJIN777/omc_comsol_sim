@@ -6,7 +6,7 @@ P.xsect = 'rect';
 P.beamMat = 'LN';                  % beam material name
 P.celltype = 'rib';                   % specify the cell type
 P.unitcell = 'rectrangular';                  % specify the shape of the unit cell
-P.a = 0.88*570e-9;              % lattice constant 
+P.a = 570e-9;              % lattice constant 
 P.s = 254e-9;              % unit cell spine width 
 P.w = 1747e-9;              % the beam width 
 P.th = 283e-9;             % height (along x) of cross (for celltype = 'hollow')

@@ -6,10 +6,10 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang_strip';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 600e-9;              % lattice constant 
-P.w = 120e-9;              % unit cell width (along x)
-P.r = 250e-9;              % unit cell height (along y)
-P.th = 200e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.a = 400e-9;              % lattice constant 
+P.w = 86e-9;              % unit cell width (along x)
+P.r = 160e-9;              % unit cell height (along y)
+P.th = 160e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.wo = 500e-9;
 P.wi = 200e-9;
@@ -84,4 +84,8 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 currentDate = datestr(now,'mmddyyyy');
 datLoc = ['.\test\boomerang_strip\',currentDate,'\'];
 P.datLoc = datLoc;
-bds = solveOpticalBands(P);
+% optical band
+% bds = solveOpticalBands(P);
+% mechanical band 
+P.add_airDisk = 0;
+bds = solveBands(P);

@@ -4,14 +4,14 @@ clear P;
 %% unit cell params 
 P.xsect = 'rect'; 
 P.beamMat = 'diamond';                  % beam material name
-P.celltype = 'Snowflake_strip_2d';                   % specify the cell type
+P.celltype = 'Snowflake_strip_3d';                   % specify the cell type
 P.unitcell = 'strip';                  % specify the shape of the unit cell
 P.a = 311e-9;              % lattice constant 
 P.w = 50e-9;        % the width of the hole 
 P.b = 0e-9;              % unit cell shift in the y direction
 P.b_wvg = 0;           % unit cell shift in the y direction (wvg region)
 P.r = 138e-9;              % radius of the unit cell
-P.th = 140e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.th = 160e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -62,7 +62,7 @@ clear model
 % e.g. model.save
 model = ModelUtil.create('model');
 
-buildSnowflakeStrip_2D(model,P);
+buildSnowflakeStrip_3D(model,P);
 mphlaunch(model);
 
 % %% run the simulation

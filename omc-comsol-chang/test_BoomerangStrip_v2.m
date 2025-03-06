@@ -17,6 +17,7 @@ P.wi = P.a*0.6;           % the width of the hole in the lower portion
 P.ho = P.a*sqrt(3)/2;
 P.hi = P.a*sqrt(3)/2*0.8;
 P.b = sqrt(3)*P.a/4;
+
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
@@ -33,17 +34,17 @@ P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across al
 P.plotgeom = 1;                         % 1 to plot the geometry
 P.savedat = 1;                          % 1 to save data structures
 P.savebndplot = 1;                      % 1 to save bandstructure plot
-P.saveplots = 1;                        % 1 to save displacement and strain profiles
+P.saveplots = 0;                        % 1 to save displacement and strain profiles
 P.saveMPH = 0; 
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
-P.mbeveny = 0;                          % 1 to find even mechanical mode about y
+P.mbeveny = 1;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 10e9;                             % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 4;                         % mesh quality for mechanical simulations
-P.fixed_bc = 1;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
+P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
 P.anisoMat = 1;
 P.rxtal = 45;                           % ccw rotation of elasticity matrix in deg 
@@ -53,21 +54,21 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
 %% debugging the unit cells 
-% import COMSOL class
-import com.comsol.model.*
-import com.comsol.model.util.*
+% % import COMSOL class
+% import com.comsol.model.*
+% import com.comsol.model.util.*
+% 
+% ModelUtil.showProgress(true);
+% ModelUtil.clear();
+% clear model
 
-ModelUtil.showProgress(true);
-ModelUtil.clear();
-clear model
-
-% create COMSOL model named 'model' from which COMSOL methods can be called, 
-% e.g. model.save
-model = ModelUtil.create('model');
-
-buildBoomerangUnitCellStrip_v2(model,P);
-mphlaunch(model);
+% % create COMSOL model named 'model' from which COMSOL methods can be called, 
+% % e.g. model.save
+% model = ModelUtil.create('model');
+% 
+% buildBoomerangUnitCellStrip_v2(model,P);
+% mphlaunch(model);
 %% Single solve
-datLoc = '.\test\boomerang_strip_v2\082124_sweep2\';
+datLoc = '.\test\boomerang_strip\022525\';
 P.datLoc = datLoc;
 bds = solveBands(P);
