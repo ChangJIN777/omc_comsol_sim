@@ -13,6 +13,7 @@ wo = P.wo;        % the height of the hole in the lower portion
 wi = P.wi;        % the width of the hole in the lower portion
 ho = P.ho;
 hi = P.hi;
+b_wvg = 0;
 b = P.b;
 r1 = P.r1;      % the fillet radius of the edges of the hole 
 r2 = P.r2;      % the fillet radius of the center of the hole 
@@ -195,7 +196,7 @@ if abs(P.mbevenz)
     delta = 10e-9;
     ZsymSel = ucellgeom.create('ZsymSel', 'BoxSelection');
     ZsymSel.set('xmin', -a/2-delta).set('xmax', a/2+delta);
-    ZsymSel.set('ymin', -a/2-delta).set('ymax', a/2+delta);
+    ZsymSel.set('ymin', -delta).set('ymax', (sqrt(3)*(4+1/2)*a+b_wvg)+delta);
     ZsymSel.set('zmin', -delta).set('zmax', delta);
     ZsymSel.set('entitydim', 2).set('condition', 'allvertices'); % only want beam surface, exclude air holes
     ucellgeom.runCurrent;
@@ -203,6 +204,42 @@ if abs(P.mbevenz)
     P.bndSel.Zsym = inds';
 
 end
+
+%% Making selections (with box select)
+% mphgeom(model);
+selection_width = 10e-9;
+
+% box selection for the boundary condition 
+x_boundary_disksel_r = ucellgeom.feature.create('x_boundary_boxsel_r', 'BoxSelection');
+x_boundary_disksel_r.set('entitydim', 2);
+x_boundary_disksel_r.set('xmin', a/2-selection_width/2);
+x_boundary_disksel_r.set('xmax', a/2+selection_width/2);
+x_boundary_disksel_r.set('inputent', 'all');
+x_boundary_disksel_r.set('condition', 'inside');
+
+x_boundary_disksel_l = ucellgeom.feature.create('x_boundary_boxsel_l', 'BoxSelection');
+x_boundary_disksel_l.set('entitydim', 2);
+x_boundary_disksel_l.set('xmin', -a/2-selection_width/2);
+x_boundary_disksel_l.set('xmax', -a/2+selection_width/2);
+x_boundary_disksel_l.set('inputent', 'all');
+x_boundary_disksel_l.set('condition', 'inside');
+
+ucellgeom.selection.create('xboundaries','CumulativeSelection');
+ucellgeom.selection('xboundaries').label('Cumulative Selection x boundaries');
+x_boundary_disksel_r.set('contributeto','xboundaries');
+x_boundary_disksel_l.set('contributeto','xboundaries');
+
+y_boundary_symmetry = ucellgeom.feature.create('y_boundary_symmetry', 'BoxSelection');
+y_boundary_symmetry.set('entitydim', 2);
+y_boundary_symmetry.set('ymin', -selection_width/2);
+y_boundary_symmetry.set('ymax', selection_width/2);
+y_boundary_symmetry.set('inputent', 'all');
+y_boundary_symmetry.set('condition', 'inside');
+
+ucellgeom.selection.create('yboundaries','CumulativeSelection');
+ucellgeom.selection('yboundaries').label('Cumulative Selection y boundaries');
+y_boundary_symmetry.set('contributeto','yboundaries');
+
 %% Making selections (manual)
 mphgeom(model);
 P.xEnd1 =  bndindex(ucellgeom, [-a/2 0 0], [-1 0 0]);

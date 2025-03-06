@@ -1,10 +1,10 @@
 %% testing optimization 
 a0 = 570e-9;              % lattice constant 
-s0 = 300e-9;              % unit cell spine width 
-w0 = 1600e-9;              % the beam width 
-th0 = 260e-9;             % height (along x) of cross (for celltype = 'hollow')
+s0 = 254e-9;              % unit cell spine width 
+w0 = 1747e-9;              % the beam width 
+th0 = 283e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-t0 = 400e-9;       % the rib width 
+t0 = 391e-9;       % the rib width 
 %% Create .txt file to assemble iteration result
 % txt file name
 currentDate = datestr(now,'mmddyyyy');
@@ -23,13 +23,145 @@ fclose(itr);
 params0 = [a0,s0,w0,t0];
 options = optimset('PlotFcns',@optimplotfval);
 
-%% single run
-fitness = rib_optimize(params0);
+% %% single run
+% fitness = rib_optimize(params0);
+%% sweeping parameters 
+sweeping_num = 3;
+w_list = linspace(0.9*w0,1.1*w0,sweeping_num);
+t_list = linspace(0.9*t0,1.1*t0,sweeping_num);
+s_list = linspace(0.9*s0,1.1*s0,sweeping_num);
+th_list = linspace(0.9*th0,1.1*th0,sweeping_num);
+% sweeping the parameters to test the fab tolerance
+% sweeping s
+for j=1:sweeping_num
+    s = s_list(j);
+    params0 = [a0,s,w0,t0,th0];
+    fitness = rib_optimize_v2(params0);
+end
+for j=1:sweeping_num
+    w = w_list(j);
+    params0 = [a0,s0,w,t0,th0];
+    fitness = rib_optimize_v2(params0);
+end
+for j=1:sweeping_num
+    t = t_list(j);
+    params0 = [a0,s0,w0,t,th0];
+    fitness = rib_optimize_v2(params0);
+end
+for j=1:sweeping_num
+    th = s_list(j);
+    params0 = [a0,s0,w0,t0,th];
+    fitness = rib_optimize_v2(params0);
+end
 
 % %% run the optimization code
 % fun = @(x) rib_optimize(x);
 % x = fminsearch(fun,params0,options);
+function fitness = rib_optimize_v2(params)
+    P.a = params(1);              % lattice constant 
+    P.s = params(2);              % unit cell spine width 
+    P.w = params(3);              % the beam width 
+    P.th = params(5);             % height (along x) of cross (for celltype = 'hollow')
+    P.t = params(4);       % the rib width 
+    P.d = 15*pi/180; 
+    P.xsect = 'rect'; 
+    P.beamMat = 'LN';                  % beam material name
+    P.celltype = 'rib';                   % specify the cell type
+    P.unitcell = 'rectrangular';                  % specify the shape of the unit cell
 
+    P.nperiod = 1;  % no. of periods to simulate for
+    P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
+    P.mbevenz = 0;      % 1 to find even mechanical mode about z
+    
+    P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
+    P.nbands = 15;                           % no. of bands to solve for
+    
+    P.solveasym = 1;                        % 1 to solve for antisymmetric bands
+    P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
+    P.plotgeom = 1;                         % 1 to plot the geometry
+    P.savedat = 1;                          % 1 to save data structures
+    P.savebndplot = 1;                      % 1 to save bandstructure plot
+    P.saveplots = 0;                        % 1 to save displacement and strain profiles
+    P.saveMPH = 0; 
+    P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
+    P.bandStructureDim = 1;     % Optical band only: 3 to simulate 3d structures 
+    
+    % for the optical bandgap 
+    P.run_optical = 1;
+    
+    % if we are going to save the raw data files 
+    P.saveRawData = 1;
+    
+    %% mechanical simulation parameters 
+    % solid mechanics solver parameters
+    P.mbeveny = 0;                          % 1 to find even mechanical mode about y
+    P.mbevenz = 0;                          % 1 to find even mechanical mode about z
+    P.freq = 3e9;                             % Mechanical target frequency - set to 0 for bandstructure simulations
+    P.optical_freq = 200;           % optical target frequency - in THz 
+    P.meshSize = 4;                         % mesh quality for mechanical simulations
+    P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
+    
+    P.anisoMat = 1;
+    P.rxtal = 45;                           % ccw rotation of elasticity matrix in deg 
+                                            % from <100> inplane direction about <100> surface normal
+    
+    %% define the maximum number of degree of freedom to limit the simulation time
+    P.max_dof = 3e6;                        % max # of degrees of freedom
+    %% check for fab tolerance 
+    if min(P.a-P.t,min(P.s,P.th)) < 100e-9
+        disp('Fabrication intolerant');
+        fitness = 100;
+    end
+    %% Single solve
+    % optical band sim 
+    P.run_optical = 1;
+    P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
+    P.nbands = 15;                           % no. of bands to solve for
+    currentDate = datestr(now,'mmddyyyy');
+    datLoc = ['.\test\LN_ribUnitCell_optical_trial2\',currentDate,'\'];
+    P.datLoc = datLoc;
+    bds_optical = solveOpticalBands(P);
+    OpticalBands = bds_optical.opticalBand;
+    if length(OpticalBands.gapSize) == 0
+        midGap_optical = 0;
+        gapSize_optical = 200e12;
+    else
+        midGap_optical = OpticalBands.midGap(1);
+        gapSize_optical = OpticalBands.gapSize(1);
+    end
+    gapRat_optical = gapSize_optical./midGap_optical;
+    % mechanical band sim 
+    datLoc = ['.\test\LN_ribUnitCell_trial2\',currentDate,'\'];
+    P.datLoc = datLoc;
+    P.run_optical=0;
+    P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
+    P.nbands = 30;                           % no. of bands to solve for
+    bds_mechanical_struct = solveBands_noSym(P);
+    bds_mechanical = bds_mechanical_struct.full;
+    % filter mechanical bandgaps
+    gapAbove = bds_mechanical.midGap > 3e9;
+    bds_mechanical.gapSize = bds_mechanical.gapSize.*gapAbove;
+    if length(bds_mechanical.gapSize) == 0
+        gapSize_mechanical = 0;
+        midGap_mechanical = 10e9;
+    else
+        [gapSize_mechanical,I] = max(bds_mechanical.gapSize);
+        midGap_mechanical = bds_mechanical.midGap(I);
+    end
+    gapRat_mechanical = gapSize_mechanical./midGap_mechanical;
+    % calculate the fitness function
+    fitness = calFitness(midGap_optical,gapRat_optical,gapRat_mechanical);
+    % save the data file 
+    datLoc = ['.\test\LN_ribUnitCell_optimize\',currentDate,'\'];
+    itrPath = [datLoc,...
+                'optimization_SP_trial2_',currentDate,'.txt'];
+    itr = fopen(itrPath,'at+');
+    fprintf(itr,'%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\t%.4e\r\n',...
+        P.a,P.th,P.s,P.w,P.t,P.d,midGap_optical,gapSize_optical,gapRat_optical,midGap_mechanical,gapSize_mechanical,gapRat_mechanical,fitness);
+    fclose(itr);
+    disp(fitness);
+    disp('-----');
+end
 function fitness = rib_optimize(params)
     P.a = params(1);              % lattice constant 
     P.s = params(2);              % unit cell spine width 

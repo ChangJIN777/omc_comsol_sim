@@ -1,7 +1,7 @@
 %% testing optimization 
 a0 = 250e-9;              % lattice constant 
 s0 = 100e-9;              % unit cell spine width 
-w0 = 500e-9;              % the beam width 
+w0 = 600e-9;              % the beam width 
 th0 = 200e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 t0 = 100e-9;       % the rib width 
@@ -70,7 +70,7 @@ function fitness = rib_optimize(params)
     P.mbeveny = 0;                          % 1 to find even mechanical mode about y
     P.mbevenz = 0;                          % 1 to find even mechanical mode about z
     P.freq = 3e9;                             % Mechanical target frequency - set to 0 for bandstructure simulations
-    P.optical_freq = 200;           % optical target frequency - in THz 
+    P.optical_freq = 400;           % optical target frequency - in THz 
     P.meshSize = 4;                         % mesh quality for mechanical simulations
     P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
     
@@ -107,7 +107,7 @@ function fitness = rib_optimize(params)
     P.datLoc = datLoc;
     P.run_optical=0;
     P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 25;                           % no. of bands to solve for
+    P.nbands = 30;                           % no. of bands to solve for
     bds_mechanical_struct = solveBands_noSym(P);
     bds_mechanical = bds_mechanical_struct.full;
     % filter mechanical bandgaps
