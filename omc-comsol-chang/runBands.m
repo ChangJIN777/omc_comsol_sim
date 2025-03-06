@@ -106,6 +106,8 @@ elseif strcmp(P.celltype,'hole_unitCell')
     [model,P] = buildHoleUnitCell(model,P);
 elseif strcmp(P.celltype,'rib')
     [model,P] = buildRibUnitCell_LN(model,P);
+elseif strcmp(P.celltype,'Snowflake_strip')
+    [model,P] = buildSnowflakeStrip_3D(model,P);
 else
     [model,P] = buildBoomerangStrip_3D(model,P);
 end
