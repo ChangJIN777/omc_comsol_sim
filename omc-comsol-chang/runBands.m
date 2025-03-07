@@ -219,12 +219,6 @@ pbcX.set('PeriodicType', 'Floquet');
 pbcX.selection.named('geom1_xboundaries_bnd');
 pbcX.set('kFloquet', {'kx'; '0'; '0'});        %initialize Floquet vector (1D band structures)
 
-% even y symmetry 
-if eveny
-    symY = smech.create('sympy', 'SymmetrySolid', 2);
-    symY.selection.named('geom1_yboundaries_bnd');
-end
-
 % symmetric BC for xy plane containing point (0,0,0)
 symBCs = smech.create('symBCs', 'SymmetrySolid', 2);
 symBCs.label('Symmetric BC');
@@ -237,6 +231,18 @@ symBCs.label('Symmetric BC');
 asymBCs = smech.create('asymBCs', 'Antisymmetry', 2);
 asymBCs.label('Anti-symmetric BC');
 bnds.asym_inds = [];
+
+if eveny==1
+    symBCs.active(true);
+    asymBCs.active(false);
+    symBCs.selection.named('geom1_yboundaries_bnd');
+end
+if eveny==-1
+    symBCs.active(false);
+    asymBCs.active(true);
+    asymBCs.selection.named('geom1_yboundaries_bnd');
+end
+
 if evenz == 1
     symBCs.active(true);
     asymBCs.active(false);
@@ -247,7 +253,8 @@ if evenz == -1
     asymBCs.active(true);
     asymBCs.selection.named('geom1_ZsymSel');
 end
-if evenz == 0
+
+if evenz == 0 && eveny==0
     symBCs.active(false);
     asymBCs.active(false);
 end
