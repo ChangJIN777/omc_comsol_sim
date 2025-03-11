@@ -120,6 +120,7 @@ if ~isfield(P,'fileBase')
 end
 fBase = P.fileBase;
 if isempty(dir([datLoc,fBase,'_bds.mat']))
+    
     tStart = tic;
     disp('Solving with symmetric boundary condition');
     P.mbevenz = 1;

@@ -39,6 +39,17 @@ else
     txt_zsym = 'no_zsym';
     txt_sol = 'no z';
 end
+% prefixes for filenames
+if eveny == 1
+    txt_ysym = 'eveny';
+    txt_sol_y = 'even y';
+elseif eveny == -1
+    txt_ysym = 'oddy';
+    txt_sol_y = 'odd y';
+else 
+    txt_ysym = 'no_ysym';
+    txt_sol_y = 'no y';
+end
 
 % %% Define k-points for sweep over wavevectors (2D band structure)
 % % adapted from phononic crystal model on COMSOL
@@ -493,7 +504,7 @@ for ki = 0:kpts
             
             figure;
             mphplot(model,'dispplot');
-            title(['Displacement, ',txt_sol,', ',kpt_ttls{ki/kpts+1},'-point, ',...
+            title(['Displacement, ',txt_sol,txt_sol_y,', ',kpt_ttls{ki/kpts+1},'-point, ',...
                    'band no. ',num2str(nb),', ',...
                    '\omega_m = ' num2str(ds.F(ki+1,nb)/1e9) ' GHz']);
             %title(['Displacement at ' kpt_txt '-point, band no. ' num2str(nb) ', eigenfreq = ' num2str(ds.F(ki+1,nb)/1e9) ' GHz']);
@@ -506,7 +517,7 @@ for ki = 0:kpts
             axis off
             
             % filenames of displacement plots
-            fname_fig = [txt_zsym,'_disp_',kpt_txts{ki/kpts+1},'_band_',num2str(nb),'.png'];
+            fname_fig = [txt_zsym,txt_ysym,'_disp_',kpt_txts{ki/kpts+1},'_band_',num2str(nb),'.png'];
             pathFig = [P.datLoc,P.fileBase,'\',fname_fig];
             saveas(gcf,pathFig);
             close all;
