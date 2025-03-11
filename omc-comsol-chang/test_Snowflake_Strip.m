@@ -37,7 +37,7 @@ P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
 % solid mechanics solver parameters
 P.mbeveny = 1;                          % 1 to find even mechanical mode about y
 P.mbevenz = 0;                          % 1 to find even mechanical mode about z
-P.zOrySym = 0;                     % 1 to 
+P.zSymCondition = 0;                     % 1 to setup symmetry in the z direction and 0 in the y direction
 P.freq = 10e9;                             % target frequency - set to 0 for bandstructure simulations
 P.optical_freq = 300;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 4;                         % mesh quality for mechanical simulations
@@ -69,6 +69,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 %% run the simulation
 % datLoc = '.\test\snowflake_optical\122124_optical\';
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\snowflake_strip_trial2\',currentDate,'\'];
+datLoc = ['.\test\snowflake_strip\',currentDate,'\'];
 P.datLoc = datLoc;
 solveBands(P);

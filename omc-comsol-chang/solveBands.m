@@ -120,10 +120,13 @@ if ~isfield(P,'fileBase')
 end
 fBase = P.fileBase;
 if isempty(dir([datLoc,fBase,'_bds.mat']))
-    
     tStart = tic;
     disp('Solving with symmetric boundary condition');
-    P.mbevenz = 1;
+    if P.zSymCondition
+        P.mbevenz = 1;
+    else 
+        P.mbeveny = 1;
+    end
     if P.bandStruct_2D
         sym = runBands_2D(P);
     else 
@@ -134,7 +137,11 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
     [sym.midGap,sym.gapSize] = findGaps(sym);
     
     disp('Solving with anti-symmetric boundary condition');
-    P.mbevenz = -1;
+    if P.zSymCondition
+        P.mbevenz = -1;
+    else 
+        P.mbeveny = -1;
+    end
     if P.bandStruct_2D
         asym = runBands_2D(P);
     else 
