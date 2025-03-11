@@ -22,7 +22,7 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 
 P.bandStructureDim = 1;                 % 1D vs 2D band structure
 P.kpts = 7;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 60;                           % no. of bands to solve for
+P.nbands = 30;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
