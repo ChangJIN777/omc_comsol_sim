@@ -22,14 +22,14 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 
 P.bandStructureDim = 1;                 % 1D vs 2D band structure
 P.kpts = 7;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 30;                           % no. of bands to solve for
+P.nbands = 20;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
 P.plotgeom = 0;                         % 1 to plot the geometry
 P.savedat = 1;                          % 1 to save data structures
 P.savebndplot = 1;                      % 1 to save bandstructure plot
-P.saveplots = 0;                        % 1 to save displacement and strain profiles
+P.saveplots = 1;                        % 1 to save displacement and strain profiles
 P.saveMPH = 0; 
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
 
@@ -38,7 +38,7 @@ P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
 P.mbeveny = 1;                          % 1 to find even mechanical mode about y
 P.mbevenz = 0;                          % 1 to find even mechanical mode about z
 P.zSymCondition = 0;                     % 1 to setup symmetry in the z direction and 0 in the y direction
-P.freq = 10e9;                             % target frequency - set to 0 for bandstructure simulations
+P.freq = 50e9;                             % target frequency - set to 0 for bandstructure simulations
 P.optical_freq = 300;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 4;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
@@ -69,6 +69,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 %% run the simulation
 % datLoc = '.\test\snowflake_optical\122124_optical\';
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\snowflake_strip\',currentDate,'\'];
+datLoc = ['.\test\snowflake_strip_medFreq\',currentDate,'\'];
 P.datLoc = datLoc;
 solveBands(P);
