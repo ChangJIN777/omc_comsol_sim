@@ -1,0 +1,124 @@
+function fullBandGap = analyzeGapData(folderPath,bandStruct_2D)
+% this function is used to analyze and plot the band structure from the
+% existing mat files 
+    
+    fileList = dir(fullfile(folderPath, '*.mat'));
+    for k = 1:length(fileList)
+        fileName = fileList(k).name;
+        disp(['Loaded: ' fileName]);
+        filePath = fullfile(folderPath, fileName);
+        % plot the bandstructure 
+        data = plotBandStructure(filePath,bandStruct_2D);
+        % Optionally store each in a cell array or struct array
+        fullBandGap{k} = data.ds.full;
+    end 
+
+end
+function data = plotBandStructure(filePath,bandStruct_2D)
+%% plot bandstructure
+    % load the data 
+    data = load(filePath);  % loads .mat file into a struct
+    sym = data.ds.sym; 
+    asym = data.ds.asym;
+    full = data.ds.full;
+    % create the figure
+    figure; hold on
+    maxFreqs = [0 0 0 0];
+
+    p1 = plot(sym.k_norm,sym.F*1e-9,'-k','linewidth',2,'DisplayName','sym');
+    p2 = plot(asym.k_norm,asym.F*1e-9,'--b','linewidth',2,'DisplayName','asym');
+
+    if bandStruct_2D
+        % plot symmetric bandgaps
+        for k = 1:length(sym.gapSize)
+            bgp = patch([0 3 3 0],1e-9.*(sym.midGap(k) + 0.5*[sym.gapSize(k) ...
+                    sym.gapSize(k) -sym.gapSize(k) -sym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+            alpha(bgp,0.5);
+        end
+    
+        % plot asymmetric bandgaps
+        for k = 1:length(asym.gapSize)
+            bgp = patch([0 3 3 0],1e-9.*(asym.midGap(k) + 0.5*[asym.gapSize(k) ...
+                    asym.gapSize(k) -asym.gapSize(k) -asym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+            alpha(bgp,0.2);
+        end
+    
+        % plot full bandgaps
+        if ~isempty(full.midGap)
+            for k = 1:length(full.gapSize)
+                bgp = patch([0 3 3 0],1e-9.*(full.midGap(k) + 0.5*[full.gapSize(k) ...
+                    full.gapSize(k) -full.gapSize(k) -full.gapSize(k)]),180/255*[1 0 0],'EdgeColor','none');
+                alpha(bgp,0.2);
+            end
+        end
+
+            % plot symmetric midgap frequencies
+        for k = 1:length(sym.midGap)
+            midfreqs = sym.midGap(k)*ones(length(sym.k_norm),1);
+            plot(sym.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+        end
+        % plot complete midgap frequencies
+        for k = 1:length(full.midGap)
+            midfreqs = full.midGap(k)*ones(length(sym.k_norm),1);
+            plot(sym.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+        end
+
+        xlabel('k','FontSize',12);
+        ylabel('Frequency (GHz)','FontSize',12);
+        amax = max([sym.F(:);asym.F(:)])*1e-9;
+        axis([0 3 0 amax]);
+        %         axis tight
+        set(gca,'XTick',[0; 1; 2; 3]);
+        %         set(gca,'XTickLabel',{'G','C'},'fontname','symbol','fontsize',16)
+        set(gca,'XTickLabel',{'\Gamma','X','M','\Gamma'},'fontsize',12)
+    else 
+            % plot symmetric bandgaps
+        for k = 1:length(sym.gapSize)
+            bgp = patch([0 1 1 0],1e-9.*(sym.midGap(k) + 0.5*[sym.gapSize(k) ...
+                sym.gapSize(k) -sym.gapSize(k) -sym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+            alpha(bgp,0.5);
+        end
+
+            % plot asymmetric bandgaps
+            for k = 1:length(asym.gapSize)
+                bgp = patch([0 1 1 0],1e-9.*(asym.midGap(k) + 0.5*[asym.gapSize(k) ...
+                    asym.gapSize(k) -asym.gapSize(k) -asym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+                alpha(bgp,0.2);
+            end
+
+            % plot full bandgaps
+            if ~isempty(full.midGap)
+                for k = 1:length(full.gapSize)
+                    bgp = patch([0 1 1 0],1e-9.*(full.midGap(k) + 0.5*[full.gapSize(k) ...
+                        full.gapSize(k) -full.gapSize(k) -full.gapSize(k)]),180/255*[1 0 0],'EdgeColor','none');
+                    alpha(bgp,0.2);
+                end
+            end
+
+            % plot symmetric midgap frequencies
+            for k = 1:length(sym.midGap)
+                midfreqs = sym.midGap(k)*ones(length(sym.k_norm),1);
+                plot(sym.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+            end
+
+            % plot complete midgap frequencies
+            for k = 1:length(full.midGap)
+                midfreqs = full.midGap(k)*ones(length(sym.k_norm),1);
+                plot(sym.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+            end
+
+            xlabel('k','FontSize',12);
+            ylabel('Frequency (GHz)','FontSize',12);
+            amax = max([sym.F(:);asym.F(:)])*1e-9;
+            axis([0 1 0 amax]);
+            %         axis tight
+            set(gca,'XTick',[0; 1]);
+            %         set(gca,'XTickLabel',{'G','C'},'fontname','symbol','fontsize',16)
+            set(gca,'XTickLabel',{'\Gamma','X'},'fontsize',12)
+    end   
+        bandtitle = strrep(erase(erase(filePath,'./'),'__bds.mat'),'_',' '); 
+
+        title(bandtitle);
+        box on
+        hold off
+end
