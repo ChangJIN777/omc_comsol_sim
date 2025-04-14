@@ -77,6 +77,8 @@ elseif strcmp(P.celltype,'Snowflake_strip_2d')
     [model,P] = buildSnowflakeStrip_2D(model,P);
 elseif strcmp(P.celltype,'rib')
     [model,P] = buildRibUnitCell_LN(model,P);
+elseif strcmp(P.celltype,'hole')
+    [model,P] = buildHoleUnitCell(model,P);
 end
 
 if P.plotgeom

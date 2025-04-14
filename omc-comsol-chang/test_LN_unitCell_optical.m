@@ -29,7 +29,7 @@ P.savebndplot = 1;                      % 1 to save bandstructure plot
 P.saveplots = 1;                        % 1 to save displacement and strain profiles
 P.saveMPH = 0; 
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
-P.bandStructureDim = 3;         % 3 to simulate the band structure in 3D 
+P.bandStructureDim = 1;         % 3 to simulate the band structure in 3D 
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters

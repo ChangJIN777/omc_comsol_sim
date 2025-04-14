@@ -84,33 +84,47 @@ if abs(P.mbevenz)
 
 end 
 
-
-% holeplane = ucellWP.geom.feature.create('r2', 'Rectangle');
-% holeplane.label('Air plane');
-% holeplane.set('pos', [0 0]);
-% holeplane.set('base','center');
-% holeplane.set('size',[a sqrt(3)*5*a+2*b_wvg]);
-
-% 
-% PML_length = 1e-6;
-% top_PML = ucellgeom.feature.create('r_PML_top', 'Rectangle');
-% top_PML.label('PML_plane_top');
-% top_PML.set('pos', [0 (PML_length+sqrt(3)*5*a)/2]);
-% top_PML.set('base','center');
-% top_PML.set('size',[a PML_length]);
-% 
-% bottom_PML = ucellgeom.feature.create('r_PML_bottom', 'Rectangle');
-% bottom_PML.label('PML_plane_bottom');
-% bottom_PML.set('pos', [0 -(PML_length+sqrt(3)*5*a)/2]);
-% bottom_PML.set('base','center');
-% bottom_PML.set('size',[a PML_length]);
-
 ucellgeom.runAll;
-% 
-% %% add the PML regions
-% model.component('comp1').coordSystem.create('pml1', 'PML');
-% model.component('comp1').geom('geom1').run;
-% model.component('comp1').coordSystem('pml1').selection.set([1 7]);
+
+model.component('comp1').geom('geom1').create('wp7', 'WorkPlane');
+if ~P.run_optical
+    model.component('comp1').geom('geom1').feature('wp7').active(false);
+end
+model.component('comp1').geom('geom1').feature('wp7').set('quickplane', 'xz');
+model.component('comp1').geom('geom1').feature('wp7').set('unite', true);
+model.component('comp1').geom('geom1').feature('wp7').geom.create('r1', 'Rectangle');
+model.component('comp1').geom('geom1').feature('wp7').geom.feature('r1').set('size', [a th]);
+model.component('comp1').geom('geom1').feature('wp7').geom.feature('r1').set('pos', [-a/2 -th/2]);
+model.component('comp1').geom('geom1').create('ext8', 'Extrude');
+if ~P.run_optical
+    model.component('comp1').geom('geom1').feature('ext8').active(false);
+end
+model.component('comp1').geom('geom1').feature('ext8').setIndex('distance', beam_width/2, 0);
+model.component('comp1').geom('geom1').feature('ext8').selection('input').set({'wp7'});
+model.component('comp1').geom('geom1').create('co2', 'Compose');
+if ~P.run_optical
+    model.component('comp1').geom('geom1').feature('co2').active(false);
+end
+model.component('comp1').geom('geom1').feature('co2').set('formula', 'co1-ext8');
+model.component('comp1').geom('geom1').create('wp8', 'WorkPlane');
+if ~P.run_optical
+    model.component('comp1').geom('geom1').feature('wp8').active(false);
+end
+model.component('comp1').geom('geom1').feature('wp8').set('quickplane', 'xz');
+model.component('comp1').geom('geom1').feature('wp8').set('unite', true);
+model.component('comp1').geom('geom1').feature('wp8').geom.create('r1', 'Rectangle');
+model.component('comp1').geom('geom1').feature('wp8').geom.feature('r1').set('size', [a airDiskH]);
+model.component('comp1').geom('geom1').feature('wp8').geom.feature('r1').set('pos', [-a/2 0]);
+model.component('comp1').geom('geom1').create('rev1', 'Revolve');
+if ~P.run_optical
+    model.component('comp1').geom('geom1').feature('rev1').active(false);
+end
+model.component('comp1').geom('geom1').feature('rev1').set('angle2', 180);
+model.component('comp1').geom('geom1').feature('rev1').set('axis', [-1 0]);
+model.component('comp1').geom('geom1').feature('rev1').selection('input').set({'wp8'});
+model.component('comp1').geom('geom1').run;
+model.component('comp1').geom('geom1').run('fin');
+
 
 % %% Making selections (with box select)
 % mphgeom(model);
@@ -135,6 +149,20 @@ ucellgeom.selection.create('xboundaries','CumulativeSelection');
 ucellgeom.selection('xboundaries').label('Cumulative Selection x boundaries');
 x_boundary_disksel_r.set('contributeto','xboundaries');
 x_boundary_disksel_l.set('contributeto','xboundaries');
+
+if P.run_optical    
+    y_boundary_symmetry = ucellgeom.feature.create('y_boundary_symmetry', 'BoxSelection');
+    y_boundary_symmetry.set('entitydim', 2);
+    y_boundary_symmetry.set('ymin', -selection_width/2);
+    y_boundary_symmetry.set('ymax', selection_width/2);
+    y_boundary_symmetry.set('inputent', 'all');
+    y_boundary_symmetry.set('condition', 'inside');
+    ucellgeom.selection.create('yboundaries','CumulativeSelection');
+    ucellgeom.selection('yboundaries').label('Cumulative Selection y boundaries');
+    y_boundary_symmetry.set('contributeto','yboundaries');
+end
+
+model.component('comp1').geom('geom1').run;
 
 % Note that this will return no indices if there is no boundary at z=0
 
