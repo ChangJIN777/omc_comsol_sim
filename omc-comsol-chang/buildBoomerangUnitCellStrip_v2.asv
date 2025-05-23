@@ -75,30 +75,28 @@ ucellWP3 = ucellgeom.feature.duplicate('wp3', 'wp1');
 ucellWP3.set('displ', [-a-(a/2+w/2) b]);
 
 ucellWP4 = ucellgeom.feature.duplicate('wp4', 'wp1');
-ucellWP4.set('displ', [a/2-(a/2+w/2) b]);
+ucellWP4.set('displ', [a/2-(a/2+w/2) b+a*sqrt(3)/2]);
 
 ucellWP5 = ucellgeom.feature.duplicate('wp5', 'wp1');
-ucellWP5.set('displ', [a/2-a-(a/2+w/2) b]);
+ucellWP5.set('displ', [a/2-a-(a/2+w/2) b+a*sqrt(3)/2]);
 
 ucellWP6 = ucellgeom.feature.duplicate('wp6', 'wp1');
-ucellWP6.set('displ', [-(a/2+w/2) b+sqrt(3)*a/2]);
+ucellWP6.set('displ', [-(a/2+w/2) b+sqrt(3)*a]);
 
 ucellWP7 = ucellgeom.feature.duplicate('wp7', 'wp1');
-ucellWP7.set('displ', [a-(a/2+w/2) b+sqrt(3)*a/2]);
+ucellWP7.set('displ', [a-(a/2+w/2) b+sqrt(3)*a]);
 
 ucellWP8 = ucellgeom.feature.duplicate('wp8', 'wp1');
-ucellWP8.set('displ', [-a-(a/2+w/2) b+sqrt(3)*a/2]);
+ucellWP8.set('displ', [-a-(a/2+w/2) b+sqrt(3)*a]);
 
 ucellWP9 = ucellgeom.feature.duplicate('wp9', 'wp1');
-ucellWP9.set('displ', [a/2-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2]);
+ucellWP9.set('displ', [a/2-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a]);
 
 ucellWP10 = ucellgeom.feature.duplicate('wp10', 'wp1');
-ucellWP10.set('displ', [a/2-a-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2]);
+ucellWP10.set('displ', [a/2-a-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a]);
 
 % deactivate unused planes 
-ucellWP.active(false);
-ucellWP2.active(false);
-ucellWP3.active(false);
+ucellWP.actR
 
 
 %% create unit cell with boomerang geometry in the lower cavity
@@ -126,14 +124,14 @@ rec3.set('size', [(wo-wi)/2 ho]);
 compose1 = ucellWP_lower.geom.feature.create('co1', 'Compose');
 compose1.set('formula', 'r_base-r1-r2-r3');
 
-fillet1 = ucellWP_lower.geom.feature.create('fil1', 'Fillet');
-fillet1.set('radius', r1);
-fillet1.selection('point').set('co1(1)', [3 4 6 9 13 14]);
-fillet2 = ucellWP_lower.geom.feature.create('fil2', 'Fillet');
-fillet2.set('radius', r2);
-fillet2.selection('point').set('fil1(1)', [10 13]);
+% fillet1 = ucellWP_lower.geom.feature.create('fil1', 'Fillet');
+% fillet1.set('radius', r1);
+% fillet1.selection('point').set('co1(1)', [3 4 6 9 13 14]);
+% fillet2 = ucellWP_lower.geom.feature.create('fil2', 'Fillet');
+% fillet2.set('radius', r2);
+% fillet2.selection('point').set('fil1(1)', [10 13]);
 
-% ucellWP_lower.set('displ', [0 a*sqrt(3)*(3/4)-a/2]);
+ucellWP_lower.set('displ', [0 a*sqrt(3)*(3/4)-a/2]);
 
 %% the strip work plane 
 ucellWP11 = ucellgeom.feature.create('wp11', 'WorkPlane');
@@ -205,7 +203,7 @@ end
 
 %% Making selections (with box select)
 % mphgeom(model);
-selection_width = 2.5e-9;
+selection_width = 10e-9;
 
 % box selection for the boundary condition 
 x_boundary_disksel_r = ucellgeom.feature.create('x_boundary_boxsel_r', 'BoxSelection');

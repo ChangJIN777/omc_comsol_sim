@@ -11,14 +11,15 @@ P.w = 86e-9;              % unit cell width (along x)
 P.r = 160e-9;              % unit cell height (along y)
 P.th = 160e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-P.wo = 500e-9;
-P.wi = 200e-9;
-P.ho = 250e-9;
-P.hi = 120e-9;
+% for the center unit cells v2 
+P.wo = 320e-9;
+P.wi = 144e-9;
+P.ho = 170e-9;
+P.hi = 100e-9;
 P.d = sqrt(3)*P.a/2;
 % center unit cell parameters
 
-% for the center unit cells v2 
+% for the center unit cells v1 
 P.h = 250e-9;
 P.d1 = 120e-9;
 
@@ -41,6 +42,9 @@ P.savebndplot = 1;                      % 1 to save bandstructure plot
 P.saveplots = 0;                        % 1 to save displacement and strain profiles
 P.saveMPH = 0; 
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
+% the symmetry condition parameters 
+P.TwoSymPlanes = 1; % if we are solving for band structures with two symmetry planes
+P.zSymCondition = 0;
 % for optical simulation
 P.bandStructureDim=1;           % specify the dimension of the band structure 
 P.optical_freq = 100;       % specify the target frequency (THz)

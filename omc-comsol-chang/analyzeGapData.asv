@@ -1,18 +1,18 @@
-function analyzeGapData(folderPath)
+function analyzeGapData(folderPath,dataFilename)
 % this function is used to analyze and plot the band structure from the
 % existing mat files 
     fileList = dir(fullfile(folderPath, '*.mat'));
     bandStruct_2D = 1; % we are analyzing 2D band structures 
-    dataFilename = 'sweepSummary.csv';
     for k = 1:length(fileList)
         fileName = fileList(k).name;
         disp(['Loaded: ' fileName]);
         filePath = fullfile(folderPath, fileName);
         % plot the bandstructure 
         data = plotBandStructure(filePath,bandStruct_2D);
+        % Optionally store each in a cell array or struct array
+        % fullBandGap{k} = data.ds.full;
     end 
     % record the bandgap data 
-    maxFitnessList = [];
     for i=1:length(fileList)
         filename = fileList(i).name;
         fullpathname = fullfile([folderPath,filename]);
@@ -25,12 +25,10 @@ function analyzeGapData(folderPath)
         fprintf('fitness: %f \n', fitness);
         fprintf('midGap: %f GHz \n',midGap(fitness_idx)/(1e9));
         fprintf('gapSize: %f GHz \n',bandGapSize(fitness_idx)/(1e9));
-        bandGapData = {midGap(fitness_idx)/(1e9),bandGapSize(fitness_idx)/(1e9),fitness};
+        bandGapData = [midGap(fitness_idx)/(1e9),bandGapSize(fitness_idx)/(1e9),fitness];
         record_data(bandGapData,dataFilename);
-        maxFitnessList = [maxFitnessList,fitness];
     end
-    % plot the calculated fitness as a function of the runs 
-    plot(maxFitnessList);
+
 end
 function data = plotBandStructure(filePath,bandStruct_2D)
 %% plot bandstructure
@@ -149,12 +147,12 @@ function fitness = calFitnessBoomerang(fullMidBand,fullGapSize)
 end
 %% write the extracted data into a file 
 function record_data(data,dataFilename)
-    headers = {'midGap (Ghz)','bandGap (Ghz)','fitness'};
+    headers = {'midGap ','bandGap','fitness'};
     if ~exist(dataFilename,'file')
         fid = fopen(dataFilename,'w');
-        % fprintf(fid,'%s,%s,%s,%s',headers{:});
-        writecell(headers,dataFilename,'WriteMode','append');
+        fprintf(fid,'%s,%s,%s\n',headers{:});
         fclose(fid);
     end
-    writecell(data,dataFilename,'WriteMode','append');
+    writematrix(data,filename,'WriteMode','append');
+    
 end
