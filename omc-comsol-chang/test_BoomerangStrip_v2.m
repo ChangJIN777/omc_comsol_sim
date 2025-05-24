@@ -14,8 +14,8 @@ P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
 P.wo = 560e-9;           % the height of the hole in the lower portion
 P.wi = 252e-9;           % the width of the hole in the lower portion                            
 P.ho = 525e-9;
-P.hi = 450e-9;
-P.b = sqrt(3)*P.a/2;        % the 
+P.hi = 400e-9;
+P.b = sqrt(3)*P.a/2;        
 P.d = 200e-9;
 
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')

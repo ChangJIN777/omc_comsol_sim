@@ -64,7 +64,6 @@ ucellWP.geom.create('fil2', 'Fillet');
 ucellWP.geom.feature('fil2').set('radius', r2);
 ucellWP.geom.feature('fil2').selection('point').set('co1(1)', [6 10 12]);
 
-
 %% duplicate the unit cells 
 ucellWP.set('displ', [-(a/2+w/2) b]);
 

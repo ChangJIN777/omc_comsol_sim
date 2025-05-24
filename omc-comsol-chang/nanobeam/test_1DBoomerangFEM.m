@@ -6,22 +6,29 @@ clear all; close all; clc
 % unit cell params
 P.xsect = 'rect';                        % beam cross sectional shape - 'tri' or 'rect'
 P.beamMat = 'diamond';                  % beam material name
-P.celltype = 'boomerang';                   % specify the cell type
+P.celltype = 'boomerang_v2';                   % specify the cell type
 P.anisoMat = 1;
 
 % unit cell geometry
-P.a = 400e-9;              % lattice constant 
-P.w = 86e-9;              % unit cell width (along x)
-P.r = 140e-9;              % unit cell height (along y)
-P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.a = 700e-9;              % lattice constant 
+P.w = 100e-9;              % unit cell width (along x)
+P.r = 262e-9;              % unit cell height (along y)
+P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-P.h = 120e-9;           % the height of the hole in the lower portion
-P.d = 75e-9;           % the width of the hole in the lower portion
-P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
+P.wo = 560e-9;           % the height of the hole in the lower portion
+P.wi = 252e-9;           % the width of the hole in the lower portion                            
+P.ho = 525e-9;
+P.hi = 450e-9;
+P.d = 200e-9;    % 
+P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-P.r2 = 40e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
+P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
                             % or of outer fins (for celltype = 'solid')
 % hole params for symmetric cavity / right half of asymmetric cavity
+P.MN_left = 10;                         % # holes in the left mirror region 
+P.MN_right = 10;                        % # holes in the right mirror region 
+P.TN = 6;                               % # holes in the tapering defect region
+
 P.nholes = 19;                          % # holes in 1/2 beam length
 P.ndef = 9;                             % # of holes in 1/2 defect region
 P.maxdef = 0.15906;                     % defect percentage
@@ -40,9 +47,11 @@ P.d_ctr = 86e-9;                    % for taperTo = 'custom': hole width of cent
 P.wvgmir = 0;                           % no. of mirrors in end waveguide mirror taper
 P.wgmTaper.func = 'cubic';              % taper function - linear, quadratic, cubic
 P.wgmTaper.endtype = 'custom';          % taper to custom, maxdef, zero (or '') end hole
-P.wgmTaper.a_end = 400e-9;              % for endtype = 'custom': lattice constant of end hole
-P.wgmTaper.h_end = P.r1;             % for endtype = 'custom': hole height of end hole
-P.wgmTaper.d_end = P.w;             % for endtype = 'custom': hole width of end hole
+P.wgmTaper.a_end = 700e-9;              % for endtype = 'custom': lattice constant of end hole
+P.wgmTaper.wo_end = P.wo;             % for endtype = 'custom': hole height of end hole
+P.wgmTaper.wi_end = P.wi;             % for endtype = 'custom': hole width of end hole
+P.wgmTaper.ho_end = P.ho;             % for endtype = 'custom': hole height of end hole
+P.wgmTaper.hi_end = P.hi;             % for endtype = 'custom': hole width of end hole
 % P.wgmTaper.maxdef_end = 0.094932;     % defect percentage - for endtype = 'maxdef'
 % P.wgmTaper.oblong_end = 2.9172;       % oblong parameter (zero if holes are not changed) - for endtype = 'maxdef'
 
@@ -132,25 +141,25 @@ P.LStats.zmax = P.th/2;
 P.max_dof = 5e6;                        % max # of degrees of freedom
 
 %% single run
-% data location to save files in
-datLoc = '.\testing'; 
-[ds,model] = RunNanobeamFEM(P,datLoc);
-% testing the create nanobeam geom function 
-% %% test the model building function 
-% % import COMSOL class
-% import com.comsol.model.*
-% import com.comsol.model.util.*
-% 
-% ModelUtil.showProgress(true);
-% 
-% ModelUtil.clear();
-% clear ds model
-% 
-% ds = [];
-% model = [];
-% 
-% % create COMSOL model named 'model' from which COMSOL methods can be called, 
-% % e.g. model.save
-% model = ModelUtil.create('model');
-% P = CreateNanobeamGeomBoomerang1D(P);
-% BuildNanobeamBoomerang1DFEM(model,P);
+% % data location to save files in
+% datLoc = '.\testing'; 
+% [ds,model] = RunNanobeamFEM(P,datLoc);
+
+%% test the model building function 
+% import COMSOL class
+import com.comsol.model.*
+import com.comsol.model.util.*
+
+ModelUtil.showProgress(true);
+
+ModelUtil.clear();
+clear ds model
+
+ds = [];
+model = [];
+
+% create COMSOL model named 'model' from which COMSOL methods can be called, 
+% e.g. model.save
+model = ModelUtil.create('model');
+P = CreateNanobeamGeomBoomerang1D(P);
+BuildNanobeamBoomerang1DFEM(model,P);

@@ -4,13 +4,17 @@
 
 function [model,P] = BuildNanobeamBoomerang1DFEM(model,P)
 
-% extract geometry parameters from P
+%% extract geometry parameters from P
 a = P.a;        % lattice constant 
 w = P.w;        % the width of the hole 
 th = P.th;        % the height of the hole
 r = P.r;        % the height of the hole 
-h = P.h;        % the height of the hole in the lower portion
+wo = P.wo;        % the height of the hole in the lower portion
+wi = P.wi;      
+ho = P.ho;      
+hi = P.hi;
 d = P.d;        % the width of the hole in the lower portion
+b = P.b;        % 
 r1 = P.r1;      % the fillet radius of the edges of the hole 
 r2 = P.r2;      % the fillet radius of the center of the hole 
 % abssym = abs(P.mbevenz);    % symmetry in the z direction 
@@ -18,7 +22,7 @@ r2 = P.r2;      % the fillet radius of the center of the hole
 % asym = P.asym;
 
 if isfield(P,'asymCav') && P.asymCav
-    geom = P.geom;
+    geom = P.geom;      % the geometric parameters associated with the cavity
     beamLen = P.beamLen;
     P.xc = P.beamLenHalfL;
 else
@@ -26,20 +30,32 @@ else
     beamLen = P.beamLenHalf;
     P.xc = 0;
 end
-    
-nholes = size(geom,1);
-h_list = geom(:,1)';
-d_list = geom(:,2)';
-xpos = geom(:,3)';
-ypos = geom(:,4)';
-w_list = geom(:,5)';
-a_list = geom(:,6)';
 
-% % if using rectangular cross section, use half of height due to symmetry
-% if strcmp(P.xsect,'rect')
-%     thi = P.th/2;
-% end
-thi = P.th;
+% cavity geometries 
+MN_left = P.MN_left;
+MN_right = P.MN_right;
+TN = P.TN;
+% get the parameter lists of the cavity 
+nholes = size(geom,1); % the number of unit cells 
+wo_list = geom(:,1)';
+wi_list = geom(:,2)';
+ho_list = geom(:,3)';
+hi_list = geom(:,4)';
+a_list = geom(:,5)';
+% calculate the location of the center of each super unit cell
+xpos = zeros(1,nholes);
+cci = WN + MN_left + TN + 1;
+for index = cci+1:nholes
+    xpos(index) = xpos(index-1)+a_list(index-1)/2+a_list(index)/2;
+end
+for index = cci-1:1 
+    xpos(index) = xpos(index+1)-a_list(index-1)/2-a_list(index)/2;
+end
+
+% if using rectangular cross section, use half of height due to symmetry
+if strcmp(P.xsect,'rect')
+    thi = P.th/2;
+end
 
 %% Create component
 comp = model.modelNode.create('comp');
@@ -52,99 +68,30 @@ comp.label('Nanobeam FEM simulation');
 %     beamname = 'beam';
 % end
 
-P.geomname = 'beam';
-beamgeom = model.geom.create(P.geomname, 3);
-beamgeom.label('Nanobeam geometry');
+% do not worry about the optical mode for now 
+P.geomname = 'slab';
+slabgeom = model.geom.create(P.geomname, 3);
+slabgeom.label('slab');
 
 %% Create beam with rectangular cross-section
-% beamWP = beamgeom.feature.create('beamWP', 'WorkPlane');
-% beamWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -thi/2);
-% 
-% 
-% beamplane = beamWP.geom.feature.create('beamplane', 'Rectangle');
-% beamplane.set('type', 'solid').set('base', 'corner');
-% beamplane.set('pos', [0 0]).set('size', [beamLen P.a]);
-% beamgeom.runCurrent;
+slabWP = beamgeom.feature.create('slabWP', 'WorkPlane');
+slabWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', 0);
+
+slabplane = slabWP.geom.feature.create('slabplane', 'Rectangle');
+slabplane.set('type', 'solid').set('base', 'corner');
+slabplane.set('pos', [0 0]).set('size', [beamLen P.a]);
+slabgeom.runCurrent;
     
-holeList = {};
+holeList = [];
 holeFormula = [];
 extrude_labels = {};
+% add the supercells of the cavities one by one
 for k = 1:nholes
-    h = h_list(k);
-    d = d_list(k);
-    a = a_list(k);
-    holeID = ['block_' num2str(k)];
-    % hole = beamWP.geom.feature.create(holeID, 'Square');
-    % hole.set('type', 'solid').set('base', 'corner');
-    hole_corner_x = xpos(k);
-    hole_corner_y = a/2;
-    workplaneID = [holeID '_wp'];
-    ucellWP = beamgeom.create(workplaneID, 'WorkPlane');
-    ucellWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -thi/2);
-    ucellplane_label = [workplaneID 'sq1'];
-    ucellplane = ucellWP.geom.feature.create(ucellplane_label, 'Square');
-    ucellplane.set('pos', [-a/2+hole_corner_x -a/2+hole_corner_y]);
-    ucellplane.set('size', a);
-    % build the boomerang shaped hole 
-    rec1_label = [workplaneID 'r1'];
-    rec1 = ucellWP.geom.feature.create(rec1_label, 'Rectangle');
-    rec1.set('pos', [a/2-a/2+hole_corner_x r/2+a/2+sqrt(3)*w/4-a/2+hole_corner_y]);
-    rec1.set('base', 'center');
-    rec1.set('size', [w r]);
-    rec2_label = [workplaneID 'r2'];
-    rec2 = ucellWP.geom.feature.create(rec2_label, 'Rectangle');
-    rec2.set('pos', [a/2-a/2+hole_corner_x a/2-sqrt(3)*w/2+sqrt(3)*w/4-a/2+hole_corner_y]);
-    rec2.set('rot', 120);
-    rec2.set('size', [w r]);
-    rec3_label = [workplaneID 'r3'];
-    rec3 = ucellWP.geom.feature.create(rec3_label, 'Rectangle');
-    rec3.set('pos', [a/2+w/2-a/2+hole_corner_x a/2+sqrt(3)*w/4-a/2+hole_corner_y]);
-    rec3.set('rot', 240);
-    rec3.set('size', [w r]);
-    rec4_label = [workplaneID 'r4'];
-    rec4 = ucellWP.geom.feature.create(rec4_label, 'Rectangle');
-    rec4.set('pos', [w/2+sqrt(3)*r/2+a/2-a/2+hole_corner_x a/2-r/2+sqrt(3)*w/4-a/2+hole_corner_y]);
-    rec4.set('rot', 180);
-    rec4.set('size', [d h]);
-    rec5_label = [workplaneID 'r5'];
-    rec5 = ucellWP.geom.feature.create(rec5_label, 'Rectangle');
-    rec5.set('pos', [-w/2-sqrt(3)*r/2+a/2+d-a/2+hole_corner_x a/2-r/2+sqrt(3)*w/4-a/2+hole_corner_y]);
-    rec5.set('rot', 180);
-    rec5.set('size', [d h]);
-    pol1_label = [workplaneID 'pol1'];
-    pol1 = ucellWP.geom.feature.create(pol1_label, 'Polygon');
-    pol1.set('tableconstr', {'off' 'off'});
-    pol1.set('source', 'table');
-    pol1.set('table', [-w/2+a/2-a/2+hole_corner_x a/2+sqrt(3)*w/4-a/2+hole_corner_y; w/2+a/2-a/2+hole_corner_x a/2+sqrt(3)*w/4-a/2+hole_corner_y; a/2-a/2+hole_corner_x a/2-sqrt(3)*w/4-a/2+hole_corner_y; -w/2+a/2-a/2+hole_corner_x a/2+sqrt(3)*w/4-a/2+hole_corner_y]);
-    compose1_label = [workplaneID 'co1'];
-    compose1 = ucellWP.geom.feature.create(compose1_label, 'Compose');
-    compose1_formula = [ucellplane_label,'-',rec1_label,'-',rec2_label,'-',rec3_label,'-',rec4_label,'-',rec5_label,'-',pol1_label];
-    compose1.set('formula', compose1_formula);
-    fillet1_label = [workplaneID 'fil1'];
-    fillet1 = ucellWP.geom.feature.create(fillet1_label, 'Fillet');
-    fillet1.set('radius', r1);
-    fillet1.selection('point').set(compose1_label, [3 5 8 11 12 14]);
-    fillet2_label = [workplaneID 'fil2'];
-    fillet2 = ucellWP.geom.feature.create(fillet2_label, 'Fillet');
-    fillet2.set('radius', r2);
-    fillet2.selection('point').set(fillet1_label, [4 8 9 12 14 17 21]);
-    % holeList = [holeList,holeID];
-    % holeFormula = [holeFormula,' + ',holeID];
-    beamplane_label = [workplaneID 'beamplane'];
-    beamplane = ucellWP.geom.feature.create(beamplane_label, 'Rectangle');
-    beamplane.set('type', 'solid').set('base', 'corner');
-    beamplane.set('pos', [0 0]).set('size', [beamLen P.a]);
-    compose2_label = [workplaneID 'co2'];
-    compose2 = ucellWP.geom.feature.create(compose2_label, 'Compose');
-    compose2_formula = [beamplane_label,'*',fillet2_label];
-    compose2.set('formula', compose2_formula);
-    extrude_label = [workplaneID 'ext1'];
-    extrude = model.component('comp').geom(P.geomname).feature.create(extrude_label, 'Extrude');
-    extrude.setIndex('distance', thi, 0);
-    extrude.selection('input').set({workplaneID});
-    extrude_labels = [extrude_labels,extrude_label];
+    xloc = xpos(k);
+    label_list = buildBoomerangCells(slabgeom,xloc,k);
+    holeList = [holeList,label_list];
 end
-beamgeom.runCurrent;
+slabgeom.runCurrent;
     
 % % compose workplane
 % beamComp = beamWP.geom.feature.create('beamComp', 'Compose');
@@ -176,10 +123,6 @@ beamgeom.run;
 %% to implement: adding phononic mirrors
 % use createNanobeamGeom
 % then update total length
-
-
-
-
 %% Create mechanical PML
 xL = 0;
 displayPMLStr = '';
@@ -553,9 +496,227 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     inds = model.selection([P.geomname,'_PMLLCurSel']).inputEntities();
     P.bndSel.PMLcurv = [P.bndSel.PMLcurv, inds'];
 end
+end 
+
+%% define the subfunction for make variout unit cell geometries 
+function ucellWP = buildBoomerangCell(ucellgeom,workPlaneName, loc)
+    %% create unit cell with boomerang geometry
+    ucellWP = ucellgeom.feature.create(workPlaneName, 'WorkPlane');
+    ucellWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', 0);
+    
+    ucellplane = ucellWP.geom.feature.create('pol1', 'Polygon');
+    ucellplane.label('Base plane');
+    ucellplane.set('source', 'table');
+    ucellplane.set('table', [0 0; a/2 (a/2)*sqrt(3); a*(3/2) (a/2)*sqrt(3); a 0; 0 0]);
+    rec_1 = ucellWP.geom.feature.create('r1', 'Rectangle');
+    rec_1.set('pos', [a/2+w/2 r/2+(w/4)*sqrt(3)+(a/2)/sqrt(3)]);
+    rec_1.set('base', 'center');
+    rec_1.set('size', [w r]);
+    rec_2 = ucellWP.geom.feature.create('r2', 'Rectangle');
+    rec_2.set('pos', [-a*(3/4)+a/2+a*(3/4)-a/2+w/2+a/2 -(w/4)*sqrt(3)+(a/2)/sqrt(3)]);
+    rec_2.set('rot', 120);
+    rec_2.set('size', [w r]);
+    rec_3 = ucellWP.geom.feature.create('r3', 'Rectangle');
+    rec_3.set('pos', [-a*(3/4)+a/2+w/2+a*(3/4)-a/2+w/2+a/2 (w/4)*sqrt(3)+(a/2)/sqrt(3)]);
+    rec_3.set('rot', 240);
+    rec_3.set('size', [w r]);
+    
+    % implement functions to add fillets to the unit cells 
+    addFillets(ucellWP)
+    
+    % set the displacement of the unit cell 
+    ucellWP.set('displ', loc);
+end
+
+function ucellWP_dup = cellDuplicate(ucellgeom,workPlaneName,workPlaneName_dup,loc)
+    % this function duplicates the given unit cell geometry and displace
+    % them by loc 
+    ucellWP_dup = ucellgeom.feature.duplicate(workPlaneName_dup, workPlaneName);
+    ucellWP_dup.set('displ', loc);
+end
+
+function addFillets(ucellWP)
+    ucellWP.geom.create('fil1', 'Fillet');
+    ucellWP.geom.feature('fil1').set('radius', r1);
+    ucellWP.geom.feature('fil1').selection('point').set('r1(1)', [3 4]);
+    ucellWP.geom.feature('fil1').selection('point').set('r3(1)', [3 4]);
+    ucellWP.geom.feature('fil1').selection('point').set('r2(1)', [3 4]);
+    centerTriangle = ucellWP.geom.feature.create('pol2', 'Polygon');
+    centerTriangle.set('source', 'table');
+    centerTriangle.set('table', [a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3); w+a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3); a/2+w/2 -(w/2)*sqrt(3)/2+(a/2)/sqrt(3); a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3)]);
+    composit_geom = ucellWP.geom.feature.create('co1', 'Compose');
+    composit_geom.set('formula', 'pol1-fil1(1)-fil1(2)-fil1(3)-pol2');
+    ucellWP.geom.create('fil2', 'Fillet');
+    ucellWP.geom.feature('fil2').set('radius', r2);
+    ucellWP.geom.feature('fil2').selection('point').set('co1(1)', [6 10 12]);
+end 
+
+function label_list = buildBoomerangCells(ucellgeom,xloc,cell_num)
+    % buildSnowFlakeRegion: this function builds the boomerang cells that compose one
+    % super unit cell
+    %  xloc - specify the x location of the unit cell 
+    %  cell_num - keeping track of which unit cell in the cavity sequence we are adding 
+    
+    label_list = []; % list of labels corresponding to each boomerang unit cell
+    % adding the first unit cell 
+    loc1 = [xloc+a/2-(a/2+w/2) b];
+    workPlaneName = ['wp_',cell_num,'_cell_',1];
+    ucellWP = buildBoomerangCell(ucellgeom,workPlaneName, loc1);
+    list(end+1) = workPlaneName;
+    % duplicate the second unit cell 
+    loc2 = [xloc+a/2-a-(a/2+w/2) b];
+    workPlaneName2 = ['wp_',cell_num,'_cell_',2];
+    ucellWP2 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName2, loc2);
+    list(end+1) = workPlaneName2;
+    
+    loc3 = [xloc-(a/2+w/2) b+sqrt(3)*a/2];
+    workPlaneName3 = ['wp_',cell_num,'_cell_',3];
+    ucellWP3 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName3, loc3);
+    list(end+1) = workPlaneName3;
+    
+    loc4 = [xloc+a-(a/2+w/2) b+sqrt(3)*a/2];
+    workPlaneName4 = ['wp_',cell_num,'_cell_',4];
+    ucellWP4 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName4, loc4);
+    list(end+1) = workPlaneName4;
+    
+    loc5 = [xloc-a-(a/2+w/2) b+sqrt(3)*a/2];
+    workPlaneName5 = ['wp_',cell_num,'_cell_',5];
+    ucellWP5 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName5, loc5);
+    list(end+1) = workPlaneName5;
+    
+    loc6 = [xloc+a/2-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2];
+    workPlaneName6 = ['wp_',cell_num,'_cell_',6];
+    ucellWP6 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName6, loc6);
+    list(end+1) = workPlaneName6;
+    
+    loc7 = [xloc+a/2-a-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2];
+    workPlaneName7 = ['wp_',cell_num,'_cell_',7];
+    ucellWP7 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName7, loc7);
+    list(end+1) = workPlaneName7;
+    
+end
+
+function buildSuperCell(model,P)
+    %% create unit cell with boomerang geometry
+    ucellWP = ucellgeom.feature.create('wp1', 'WorkPlane');
+    ucellWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', 0);
+    % ucellWP.set('unite', true);
+
+    ucellplane = ucellWP.geom.feature.create('pol1', 'Polygon');
+    ucellplane.label('Base plane');
+    ucellplane.set('source', 'table');
+    ucellplane.set('table', [0 0; a/2 (a/2)*sqrt(3); a*(3/2) (a/2)*sqrt(3); a 0; 0 0]);
+    rec_1 = ucellWP.geom.feature.create('r1', 'Rectangle');
+    rec_1.set('pos', [a/2+w/2 r/2+(w/4)*sqrt(3)+(a/2)/sqrt(3)]);
+    rec_1.set('base', 'center');
+    rec_1.set('size', [w r]);
+    rec_2 = ucellWP.geom.feature.create('r2', 'Rectangle');
+    rec_2.set('pos', [-a*(3/4)+a/2+a*(3/4)-a/2+w/2+a/2 -(w/4)*sqrt(3)+(a/2)/sqrt(3)]);
+    rec_2.set('rot', 120);
+    rec_2.set('size', [w r]);
+    rec_3 = ucellWP.geom.feature.create('r3', 'Rectangle');
+    rec_3.set('pos', [-a*(3/4)+a/2+w/2+a*(3/4)-a/2+w/2+a/2 (w/4)*sqrt(3)+(a/2)/sqrt(3)]);
+    rec_3.set('rot', 240);
+    rec_3.set('size', [w r]);
+
+    ucellWP.geom.create('fil1', 'Fillet');
+    ucellWP.geom.feature('fil1').set('radius', r1);
+    ucellWP.geom.feature('fil1').selection('point').set('r1(1)', [3 4]);
+    ucellWP.geom.feature('fil1').selection('point').set('r3(1)', [3 4]);
+    ucellWP.geom.feature('fil1').selection('point').set('r2(1)', [3 4]);
+    centerTriangle = ucellWP.geom.feature.create('pol2', 'Polygon');
+    centerTriangle.set('source', 'table');
+    centerTriangle.set('table', [a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3); w+a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3); a/2+w/2 -(w/2)*sqrt(3)/2+(a/2)/sqrt(3); a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3)]);
+    composit_geom = ucellWP.geom.feature.create('co1', 'Compose');
+    composit_geom.set('formula', 'pol1-fil1(1)-fil1(2)-fil1(3)-pol2');
+    ucellWP.geom.create('fil2', 'Fillet');
+    ucellWP.geom.feature('fil2').set('radius', r2);
+    ucellWP.geom.feature('fil2').selection('point').set('co1(1)', [6 10 12]);
+
+    %% duplicate the unit cells 
+    ucellWP.set('displ', [-(a/2+w/2) b]);
+
+    ucellWP2 = ucellgeom.feature.duplicate('wp2', 'wp1');
+    ucellWP2.set('displ', [a-(a/2+w/2) b]);
+
+    ucellWP3 = ucellgeom.feature.duplicate('wp3', 'wp1');
+    ucellWP3.set('displ', [-a-(a/2+w/2) b]);
+
+    ucellWP4 = ucellgeom.feature.duplicate('wp4', 'wp1');
+    ucellWP4.set('displ', [a/2-(a/2+w/2) b]);
+
+    ucellWP5 = ucellgeom.feature.duplicate('wp5', 'wp1');
+    ucellWP5.set('displ', [a/2-a-(a/2+w/2) b]);
+
+    ucellWP6 = ucellgeom.feature.duplicate('wp6', 'wp1');
+    ucellWP6.set('displ', [-(a/2+w/2) b+sqrt(3)*a/2]);
+
+    ucellWP7 = ucellgeom.feature.duplicate('wp7', 'wp1');
+    ucellWP7.set('displ', [a-(a/2+w/2) b+sqrt(3)*a/2]);
+
+    ucellWP8 = ucellgeom.feature.duplicate('wp8', 'wp1');
+    ucellWP8.set('displ', [-a-(a/2+w/2) b+sqrt(3)*a/2]);
+
+    ucellWP9 = ucellgeom.feature.duplicate('wp9', 'wp1');
+    ucellWP9.set('displ', [a/2-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2]);
+
+    ucellWP10 = ucellgeom.feature.duplicate('wp10', 'wp1');
+    ucellWP10.set('displ', [a/2-a-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2]);
+
+    % deactivate unused planes 
+    ucellWP.active(false);
+    ucellWP2.active(false);
+    ucellWP3.active(false);
 
 
+    %% create unit cell with boomerang geometry in the lower cavity
+    ucellWP_lower = ucellgeom.create('wp_lower', 'WorkPlane');
+    ucellWP_lower.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
+    ucellplane_lower = ucellWP_lower.geom.feature.create('r_base', 'Rectangle');
+    ucellplane_lower.set('pos', [-a/2 0]);
+    ucellplane_lower.set('size', [a b]);
 
+    rec1 = ucellWP_lower.geom.feature.create('r1', 'Rectangle');
+    rec1.set('pos', [0 d/2+(ho-hi)/2+hi]);
+    rec1.set('base', 'center');
+    rec1.set('size', [wo ho-hi]);
+
+    rec2 = ucellWP_lower.geom.feature.create('r2', 'Rectangle');
+    rec2.set('pos', [-wo/2+(wo-wi)/4 d/2+ho/2]);
+    rec2.set('base', 'center');
+    rec2.set('size', [(wo-wi)/2 ho]);
+
+    rec3 = ucellWP_lower.geom.feature.create('r3', 'Rectangle');
+    rec3.set('pos', [wo/2-(wo-wi)/4 d/2+ho/2]);
+    rec3.set('base', 'center');
+    rec3.set('size', [(wo-wi)/2 ho]);
+
+    compose1 = ucellWP_lower.geom.feature.create('co1', 'Compose');
+    compose1.set('formula', 'r_base-r1-r2-r3');
+
+    fillet1 = ucellWP_lower.geom.feature.create('fil1', 'Fillet');
+    fillet1.set('radius', r1);
+    fillet1.selection('point').set('co1(1)', [3 4 6 9 13 14]);
+    fillet2 = ucellWP_lower.geom.feature.create('fil2', 'Fillet');
+    fillet2.set('radius', r2);
+    fillet2.selection('point').set('fil1(1)', [10 13]);
+
+    % ucellWP_lower.set('displ', [0 a*sqrt(3)*(3/4)-a/2]);
+
+    %% the strip work plane 
+    ucellWP11 = ucellgeom.feature.create('wp11', 'WorkPlane');
+    ucellWP11.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
+    rec_base = ucellWP11.geom.feature.create('r_base', 'Rectangle');
+    rec_base.set('size',[a sqrt(3)*2*a]);
+    rec_base.set('pos',[-a/2 0]);
+
+    % ucellWP12 = ucellgeom.feature.create('wp12', 'WorkPlane');
+    % ucellWP12.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
+    % rec_base2 = ucellWP12.geom.feature.create('r_base2', 'Rectangle');
+    % rec_base2.set('size',[a sqrt(3)*a/4]);
+    % rec_base2.set('pos',[-a/2 0]);
+    ucellgeom.runAll;
+end
 
 
 
