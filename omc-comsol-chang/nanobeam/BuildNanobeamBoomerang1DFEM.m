@@ -21,20 +21,27 @@ r2 = P.r2;      % the fillet radius of the center of the hole
 
 % asym = P.asym;
 
-if isfield(P,'asymCav') && P.asymCav
-    geom = P.geom;      % the geometric parameters associated with the cavity
-    beamLen = P.beamLen;
-    P.xc = P.beamLenHalfL;
-else
-    geom = P.geomHalf;
-    beamLen = P.beamLenHalf;
-    P.xc = 0;
-end
+% if isfield(P,'asymCav') && P.asymCav
+%     geom = P.geom;      % the geometric parameters associated with the cavity
+%     beamLen = P.beamLen;
+%     P.xc = P.beamLenHalfL;
+% else
+%     geom = P.geomHalf;
+%     beamLen = P.beamLenHalf;
+%     P.xc = 0;
+% end
+geom = P.geom;
 
 % cavity geometries 
 MN_left = P.MN_left;
 MN_right = P.MN_right;
 TN = P.TN;
+% the parameters in the defect region 
+a_ctr = P.a_ctr;                 % for taperTo = 'custom': lattice constant of center hole
+ho_ctr = P.ho_ctr;                    % for taperTo = 'custom': hole height of center hole
+hi_ctr = P.hi_ctr;                    % for taperTo = 'custom': hole height of center hole
+wo_ctr = P.wo_ctr;                    % for taperTo = 'custom': hole height of center hole
+wi_ctr = P.wi_ctr;                    % for taperTo = 'custom': hole height of center hole
 % get the parameter lists of the cavity 
 nholes = size(geom,1); % the number of unit cells 
 wo_list = geom(:,1)';
@@ -44,14 +51,15 @@ hi_list = geom(:,4)';
 a_list = geom(:,5)';
 % calculate the location of the center of each super unit cell
 xpos = zeros(1,nholes);
-cci = WN + MN_left + TN + 1;
+cci = MN_left + TN + 1;
 for index = cci+1:nholes
     xpos(index) = xpos(index-1)+a_list(index-1)/2+a_list(index)/2;
 end
-for index = cci-1:1 
-    xpos(index) = xpos(index+1)-a_list(index-1)/2-a_list(index)/2;
+for i = 2:cci
+    index = cci+1-i;
+    xpos(index) = xpos(index+1)-a_list(index+1)/2-a_list(index)/2;
 end
-
+beamLen = abs(xpos(nholes)-xpos(1));
 % if using rectangular cross section, use half of height due to symmetry
 if strcmp(P.xsect,'rect')
     thi = P.th/2;
@@ -74,24 +82,32 @@ slabgeom = model.geom.create(P.geomname, 3);
 slabgeom.label('slab');
 
 %% Create beam with rectangular cross-section
-slabWP = beamgeom.feature.create('slabWP', 'WorkPlane');
+slabWP = slabgeom.feature.create('slabWP', 'WorkPlane');
 slabWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', 0);
 
 slabplane = slabWP.geom.feature.create('slabplane', 'Rectangle');
 slabplane.set('type', 'solid').set('base', 'corner');
-slabplane.set('pos', [0 0]).set('size', [beamLen P.a]);
+slabplane.set('pos', [-beamLen/2 0]).set('size', [beamLen sqrt(3)*2*a]);
 slabgeom.runCurrent;
     
-holeList = [];
+holeList = {};
 holeFormula = [];
 extrude_labels = {};
 % add the supercells of the cavities one by one
 for k = 1:nholes
+    % add the boomerang unit cells 
     xloc = xpos(k);
-    label_list = buildBoomerangCells(slabgeom,xloc,k);
+    label_list = buildBoomerangCells(P,slabgeom,xloc,k);
     holeList = [holeList,label_list];
+    % add the lower cavity region 
+    P.a = a_list(k);
+    P.ho = ho_list(k);
+    P.hi = hi_list(k);
+    P.wo = wo_list(k);
+    P.wi = wi_list(k);
+    lowerCavity = buildLowerCell(slabgeom,P,k,xloc);
+    holeList = [holeList,{lowerCavity}];
 end
-slabgeom.runCurrent;
     
 % % compose workplane
 % beamComp = beamWP.geom.feature.create('beamComp', 'Compose');
@@ -117,105 +133,92 @@ totLen = beamLen;
 maxWid = a;
 maxThi = thi;
 
+
+
+%% create the intersect 
+compose = slabgeom.feature.create('col','Compose');
+% compose the formula for making the structure 
+compose_formula = ['('];
+for i=1:length(holeList)
+    if i == length(holeList)
+        compose_formula = [compose_formula,holeList{i},')'];
+    else
+        compose_formula = [compose_formula,holeList{i},'+'];
+    end
+end
+holeList = [{'slabWP'}, holeList];
+compose_formula = ['slabWP*',compose_formula];
+compose.selection('input').set(holeList);
+compose.set('formula', compose_formula);
+
+% use box selection for extruding
+% box selection for the boundary condition 
+base_Selection = slabgeom.feature.create('2d_structures', 'BoxSelection');
+base_Selection.set('entitydim', -1);
+% x_boundary_disksel_r.set('xmin', a/2-selection_width/2);
+% x_boundary_disksel_r.set('xmax', a/2+selection_width/2);
+base_Selection.set('inputent', 'all');
+base_Selection.set('condition', 'inside');
+
+% extrude 
+extrude = slabgeom.feature.create('ext1', 'Extrude');
+extrude.set('extrudefrom', 'faces');
+extrude.selection('inputface').named('2d_structures');
+extrude.setIndex('distance', th/2, 0);
+
 %% Run geometry
-beamgeom.run;
+slabgeom.run;
 
 %% to implement: adding phononic mirrors
 % use createNanobeamGeom
 % then update total length
-%% Create mechanical PML
-xL = 0;
-displayPMLStr = '';
-if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
-    % PML on right-end of beam (fixed boundary)
-    PMLWP = beamgeom.feature.create('PMLWP', 'WorkPlane');
-    PMLWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -thi/2);
-    PMLplaneR = PMLWP.geom.feature.create('PMLplaneR', 'Circle');
-    PMLplaneR.set('type', 'solid').set('base', 'center');
-    PMLplaneR.set('pos', [beamLen 0]).set('r', P.PMLLen);
-    PMLplaneR.set('angle',90).set('rot',0);
-    beamgeom.runCurrent;
-    totLen = totLen + P.PMLLen;
-    
-    % PML on left-end of beam (fixed boundary)
-    if P.asymCav
-        PMLplaneL = PMLWP.geom.feature.create('PMLplaneL', 'Circle');
-        PMLplaneL.set('type', 'solid').set('base', 'center');
-        PMLplaneL.set('pos', [0 0]).set('r', P.PMLLen);
-        PMLplaneL.set('angle',90).set('rot',90);
-        beamgeom.runCurrent;
-        totLen = totLen + P.PMLLen;
-        xL = -P.PMLLen;
-        
-        % compose workplane
-        PMLComp = PMLWP.geom.feature.create('PMLComp', 'Compose');
-        PMLComp.selection('input').set({'PMLplaneL','PMLplaneR'});
-        PMLComp.set('formula', ['PMLplaneL + PMLplaneR']);
-        beamgeom.runCurrent;
-    end
-    
-    % extrude
-    PMLAll = beamgeom.feature.create('MechPML', 'Extrude');
-    PMLAll.set('distance', thi);
-    beamgeom.runCurrent;  
-    
-    % Compose final geometry
-    beamHolesAir = beamgeom.feature.create('beamHolesPML', 'Compose');
-    beamHolesAir.selection('input').set(finBeamTag);
-    beamHolesAir.selection('input').set('MechPML');
-    beamHolesAir.set('formula', [finBeamTag,' + MechPML']);
-    beamgeom.run;
-    displayCylStr = ', mech PML';
-    finBeamTag = 'beamHolesPML';
-    
-    % track max dimensions for selections
-    maxWid = max(maxWid,2*P.PMLLen);
-    maxThi = max(maxThi,thi);
-end
 
-%% Symmetry in z
-finBeamTag = [];
-symZOn = strcmp(P.xsect,'rect') && ...
-        ((P.solveMech && ~P.solveOpt && abs(P.mevenz)) || ...
-         (P.solveOpt && ~P.solveMech && abs(P.oevenz)) || ...
-         (P.solveMech && P.solveOpt && abs(P.mevenz) && abs(P.oevenz)));
-if symZOn
-%     symZthList = thi/2;
-%     symWList = wid/2;
-%     if isfield(P,'airrad') && P.solveOpt
-%         symZthList(end+1) = P.airrad;
-%         symWList(end+1) = P.airrad;
-%     end
-%     if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
-%         symZthList(end+1) = thi/2;
-%         symWList(end+1) = P.PMLLen;
-%     end
-    % create symmetry block
-    symZWP = beamgeom.feature.create('symZWP', 'WorkPlane');
-    symZWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -maxThi/2);
-    symZPlane = symZWP.geom.feature.create('symZPlane', 'Rectangle');
-    symZPlane.set('type', 'solid').set('base', 'corner');
-    symZPlane.set('pos', [0 0]).set('size', [totLen maxWid]);
-    
-    % extrude symmetry block
-    beamgeom.runCurrent;
-    symZPlaneExt = beamgeom.feature.create('symZPlaneExt', 'Extrude');
-    symZPlaneExt.set('distance', maxThi/2);
-    
-    % compose: unit cell - symmetry block
-    symZComp = beamgeom.feature.create('symZComp', 'Compose');
-    for k=1:length(extrude_labels)
-        symZComp.selection('input').set(extrude_labels{k});
-        finBeamTag = [extrude_labels{k},'+',finBeamTag];
-    end
-    finBeamTag = finBeamTag(1:end-1);
-    symZComp.selection('input').set('symZPlaneExt');
-    symZComp.set('formula', [finBeamTag,' - symZPlaneExt']);
-    beamgeom.run;
-    
-    maxThi = maxThi/2;
-end
-    
+%% Making selections (with box select) for boundary conditions 
+% mphgeom(model);
+selection_width = 2.5e-9;
+
+% box selection for the boundary condition 
+x_boundary_disksel_r = slabgeom.feature.create('x_boundary_boxsel_r', 'BoxSelection');
+x_boundary_disksel_r.set('entitydim', 2);
+x_boundary_disksel_r.set('xmin', beamLen/2-selection_width/2);
+x_boundary_disksel_r.set('xmax', beamLen/2+selection_width/2);
+x_boundary_disksel_r.set('inputent', 'all');
+x_boundary_disksel_r.set('condition', 'inside');
+
+x_boundary_disksel_l = slabgeom.feature.create('x_boundary_boxsel_l', 'BoxSelection');
+x_boundary_disksel_l.set('entitydim', 2);
+x_boundary_disksel_l.set('xmin', -beamLen/2-selection_width/2);
+x_boundary_disksel_l.set('xmax', -beamLen/2+selection_width/2);
+x_boundary_disksel_l.set('inputent', 'all');
+x_boundary_disksel_l.set('condition', 'inside');
+
+slabgeom.selection.create('xboundaries','CumulativeSelection');
+slabgeom.selection('xboundaries').label('Cumulative Selection x boundaries');
+x_boundary_disksel_r.set('contributeto','xboundaries');
+x_boundary_disksel_l.set('contributeto','xboundaries');
+
+y_boundary_symmetry = slabgeom.feature.create('y_boundary_symmetry', 'BoxSelection');
+y_boundary_symmetry.set('entitydim', 2);
+y_boundary_symmetry.set('ymin', -selection_width/2);
+y_boundary_symmetry.set('ymax', selection_width/2);
+y_boundary_symmetry.set('inputent', 'all');
+y_boundary_symmetry.set('condition', 'inside');
+
+slabgeom.selection.create('yboundaries','CumulativeSelection');
+slabgeom.selection('yboundaries').label('Cumulative Selection y boundaries');
+y_boundary_symmetry.set('contributeto','yboundaries');
+
+z_boundary_symmetry = slabgeom.feature.create('z_boundary_symmetry', 'BoxSelection');
+z_boundary_symmetry.set('entitydim', 2);
+z_boundary_symmetry.set('zmin', -selection_width/2);
+z_boundary_symmetry.set('zmax', selection_width/2);
+z_boundary_symmetry.set('inputent', 'all');
+z_boundary_symmetry.set('condition', 'inside');
+
+slabgeom.selection.create('zboundaries','CumulativeSelection');
+slabgeom.selection('zboundaries').label('Cumulative Selection z boundaries');
+y_boundary_symmetry.set('contributeto','zboundaries');
+
 %% Create air cylinder around beam
 displayCylStr = '';
 if isfield(P,'airrad') && P.solveOpt
@@ -247,263 +250,18 @@ end
 
 display(['Geometry created - ',displayBeamStr,displayCylStr,displayPMLStr]);
 
-
-%% Create domain selections after full geometry is constructed
-
-% Create selection with beam only
-% define box slightly larger and fully containing full beam volume
-delta = 10e-9; 
-beamSel = beamgeom.create('beamSel', 'BoxSelection');
-beamSel.set('xmin', -delta).set('xmax', beamLen + delta);
-beamSel.set('ymin', -delta).set('ymax', max(a) + delta);
-beamSel.set('zmin', -thi/2-delta).set('zmax', thi/2 + delta);
-beamSel.set('entitydim', 3).set('condition', 'inside');
-beamgeom.runCurrent;
-inds = model.selection([P.geomname,'_beamSel']).inputEntities();
-P.domSel.beam = inds';
-
-% Create selection with cylinder only
-% - define box slightly larger and fully containing full cylinder volume
-% then take difference selection with beam
-if isfield(P,'airrad') && P.solveOpt
-    delta = 10e-9; 
-    beamCylSel = beamgeom.create('beamCylSel', 'BoxSelection');
-    beamCylSel.set('xmin', -delta).set('xmax', beamLen + delta);
-    beamCylSel.set('ymin', -delta).set('ymax', P.airrad + delta);
-    beamCylSel.set('zmin', -P.airrad-delta).set('zmax', P.airrad + delta);
-    beamCylSel.set('condition', 'inside');
-    beamgeom.runCurrent;
-    
-    cylSel = beamgeom.create('cylSel', 'DifferenceSelection');
-    cylSel.set('entitydim',3).set('add','beamCylSel').set('subtract','beamSel');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_cylSel']).inputEntities();
-    P.domSel.cyl = inds';
-end
-
-% Create selection with PML pads only
-% - define box slightly larger and fully containing PML pads and beam
-% then take difference selection with beam
-if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
-    delta = 10e-9; 
-    beamPMLSel = beamgeom.create('beamPMLSel', 'BoxSelection');
-    beamPMLSel.set('xmin', xL-delta).set('xmax', xL+totLen+delta);
-    beamPMLSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
-    beamPMLSel.set('zmin', -thi/2-delta).set('zmax', thi/2+delta);
-    beamPMLSel.set('entitydim', 3).set('condition', 'inside');
-    beamgeom.runCurrent;
-    
-    PMLSel = beamgeom.create('PMLSel', 'DifferenceSelection');
-    PMLSel.set('entitydim',3).set('add','beamPMLSel').set('subtract','beamSel');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_PMLSel']).inputEntities();
-    P.domSel.PML = inds';
-end
-
-%% Create boundary selections after full geometry is constructed
-% flat planes: use box selection with condition that all vertices are in box
-% curved planes: use box selection with condition that box intersects plane
-
-delta = 5e-9;
-
-% beam x-symmetry plane
-beamXsymSel = beamgeom.create('beamXsymSel', 'BoxSelection');
-beamXsymSel.set('xmin', -delta).set('xmax', delta);
-beamXsymSel.set('ymin', -delta).set('ymax', max(a)+delta);
-beamXsymSel.set('zmin', -thi/2*(1-symZOn)-delta).set('zmax', thi/2+delta);
-beamXsymSel.set('entitydim', 2).set('condition', 'allvertices');
-beamgeom.runCurrent;
-inds = model.selection([P.geomname,'_beamXsymSel']).inputEntities();
-P.bndSel.beamXsym = inds';
-
-% beam x-end plane
-beamXendSel = beamgeom.create('beamXendSel', 'BoxSelection');
-beamXendSel.set('xmin', beamLen-delta).set('xmax', beamLen+delta);
-beamXendSel.set('ymin', -delta).set('ymax', max(a)+delta);
-beamXendSel.set('zmin', -thi/2*(1-symZOn)-delta).set('zmax', thi/2+delta);
-beamXendSel.set('entitydim', 2).set('condition', 'allvertices');
-beamgeom.runCurrent;
-inds = model.selection([P.geomname,'_beamXendSel']).inputEntities();
-P.bndSel.beamXend = inds';
-
-% beam y-symmetry plane
-beamYsymSel = beamgeom.create('beamYsymSel', 'BoxSelection');
-beamYsymSel.set('xmin', -delta).set('xmax', beamLen+delta);
-beamYsymSel.set('ymin', -delta).set('ymax', delta);
-beamYsymSel.set('zmin', -thi/2*(1-symZOn)-delta).set('zmax', thi/2+delta);
-beamYsymSel.set('entitydim', 2).set('condition', 'allvertices');
-beamgeom.runCurrent;
-inds = model.selection([P.geomname,'_beamYsymSel']).inputEntities();
-P.bndSel.beamYsym = inds';
-
-% beam z-symmetry plane
-beamZsymSel = beamgeom.create('beamZsymSel', 'BoxSelection');
-beamZsymSel.set('xmin', -delta).set('xmax', beamLen+delta);
-beamZsymSel.set('ymin', min(w)/2-2*delta).set('ymax', min(w)/2-delta);
-beamZsymSel.set('zmin', -delta).set('zmax', delta);
-beamZsymSel.set('entitydim', 2).set('condition', 'somevertex'); % only want beam surface, exclude air holes
-beamgeom.runCurrent;
-inds = model.selection([P.geomname,'_beamZsymSel']).inputEntities();
-P.bndSel.beamZsym = inds';
-
-if isfield(P,'airrad') && P.solveOpt
-    % cyl x-symmetry plane
-    cylXsymSel = beamgeom.create('cylXsymSel', 'BoxSelection');
-    cylXsymSel.set('xmin', -delta).set('xmax', delta);
-    cylXsymSel.set('ymin', -delta).set('ymax', P.airrad+delta);
-    cylXsymSel.set('zmin', -delta).set('zmax', P.airrad+delta);
-    cylXsymSel.set('entitydim', 2).set('condition', 'allvertices');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_cylXsymSel']).inputEntities();
-    P.bndSel.cylXsym = inds';
-        
-    % cyl x-end plane
-    cylXendSel = beamgeom.create('cylXendSel', 'BoxSelection');
-    cylXendSel.set('xmin', beamLen-delta).set('xmax', beamLen+delta);
-    cylXendSel.set('ymin', -delta).set('ymax', P.airrad+delta);
-    cylXendSel.set('ymin', -delta).set('ymax', P.airrad+delta);
-    cylXendSel.set('entitydim', 2).set('condition', 'allvertices');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_cylXendSel']).inputEntities();
-    P.bndSel.cylXend = inds';
-    
-    % cyl y-symmetry plane
-    cylYsymSel = beamgeom.create('cylYsymSel', 'BoxSelection');
-    cylYsymSel.set('xmin', -delta).set('xmax', beamLen+delta);
-    cylYsymSel.set('ymin', -delta).set('ymax', delta);
-    cylYsymSel.set('zmin', -P.airrad*(1-symZOn)-delta).set('zmax', P.airrad+delta);
-    cylYsymSel.set('entitydim', 2).set('condition', 'allvertices');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_cylYsymSel']).inputEntities();
-    P.bndSel.cylYsym = inds';
-    
-    % cyl z-symmetry plane
-    cylZsymSel = beamgeom.create('cylZsymSel', 'BoxSelection');
-    cylZsymSel.set('xmin', -delta).set('xmax', beamLen+delta);
-    cylZsymSel.set('ymin', -delta).set('ymax', P.airrad+delta);
-    cylZsymSel.set('zmin', -delta).set('zmax', delta);
-    cylZsymSel.set('entitydim', 2).set('condition', 'allvertices');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_cylZsymSel']).inputEntities();
-    P.bndSel.cylZsym = inds';
-    
-%     % beam holes z-symmetry plane
-%     bhlZsymSel = beamgeom.create('bhlZsymSel', 'BoxSelection');
-%     bhlZsymSel.set('xmin', -delta).set('xmax', beamLen+delta);
-%     bhlZsymSel.set('ymin', -delta).set('ymax', max(P.geom(:,2))/2+delta);
-%     bhlZsymSel.set('zmin', -delta).set('zmax', delta);
-%     bhlZsymSel.set('entitydim', 2).set('condition', 'allvertices');
-%     beamgeom.runCurrent;
-%     inds = model.selection([P.geomname,'_bhlZsymSel']).inputEntities();
-%     P.bndSel.cylZsym = [P.bndSel.cylZsym,inds'];
-    
-    % cyl top curved plane
-    cylCurvSel = beamgeom.create('cylCurvSel', 'BoxSelection');
-    cylCurvSel.set('xmin', delta).set('xmax', 2*delta);
-    cylCurvSel.set('ymin', P.airrad/sqrt(2)-10*delta).set('ymax', P.airrad/sqrt(2)+10*delta);
-    cylCurvSel.set('zmin', P.airrad/sqrt(2)-10*delta).set('zmax', P.airrad/sqrt(2)+10*delta);
-    cylCurvSel.set('entitydim', 2).set('condition', 'intersects');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_cylCurvSel']).inputEntities();
-    P.bndSel.cylCurv = inds';
-    
-    if ~strcmp(P.xsect,'rect')
-        cylCurv2Sel = beamgeom.create('cylCurv2Sel', 'BoxSelection');
-        cylCurv2Sel.set('xmin', delta).set('xmax', 2*delta);
-        cylCurv2Sel.set('ymin', P.airrad/sqrt(2)-10*delta).set('ymax', P.airrad/sqrt(2)+10*delta);
-        cylCurv2Sel.set('zmin', -P.airrad/sqrt(2)-10*delta).set('zmax', -P.airrad/sqrt(2)+10*delta);
-        cylCurv2Sel.set('entitydim', 2).set('condition', 'intersects');
-        beamgeom.runCurrent;
-        inds = model.selection([P.geomname,'_cylCurv2Sel']).inputEntities();
-        P.bndSel.cylCurv = [P.bndSel.cylCurv,inds'];
-    end
-end
-
-if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
-    % PML z-top plane
-    PMLRtopSel = beamgeom.create('PMLRtopSel', 'BoxSelection');
-    PMLRtopSel.set('xmin', beamLen-delta).set('xmax', beamLen+P.PMLLen+delta);
-    PMLRtopSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
-    PMLRtopSel.set('zmin', thi/2-delta).set('zmax', thi/2+delta);
-    PMLRtopSel.set('entitydim', 2).set('condition', 'allvertices');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_PMLRtopSel']).inputEntities();
-    P.bndSel.PMLZtop = inds';
-    
-    PMLLtopSel = beamgeom.create('PMLLtopSel', 'BoxSelection');
-    PMLLtopSel.set('xmin', -P.PMLLen-delta).set('xmax', delta);
-    PMLLtopSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
-    PMLLtopSel.set('zmin', thi/2-delta).set('zmax', thi/2+delta);
-    PMLLtopSel.set('entitydim', 2).set('condition', 'allvertices');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_PMLLtopSel']).inputEntities();
-    P.bndSel.PMLZtop = [P.bndSel.PMLZtop,inds'];
-    
-    % PML z-bottom plane (for z-symmetry)
-    PMLRbotSel = beamgeom.create('PMLRbotSel', 'BoxSelection');
-    PMLRbotSel.set('xmin', beamLen-delta).set('xmax', beamLen+P.PMLLen+delta);
-    PMLRbotSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
-    PMLRbotSel.set('zmin', -thi/2*(1-symZOn)-delta).set('zmax', -thi/2*(1-symZOn)+delta);
-    PMLRbotSel.set('entitydim', 2).set('condition', 'allvertices');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_PMLRbotSel']).inputEntities();
-    P.bndSel.PMLZsym = inds';
-    
-    PMLLbotSel = beamgeom.create('PMLLbotSel', 'BoxSelection');
-    PMLLbotSel.set('xmin', -P.PMLLen-delta).set('xmax', delta);
-    PMLLbotSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
-    PMLLbotSel.set('zmin', -thi/2*(1-symZOn)-delta).set('zmax', -thi/2*(1-symZOn)+delta);
-    PMLLbotSel.set('entitydim', 2).set('condition', 'allvertices');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_PMLLbotSel']).inputEntities();
-    P.bndSel.PMLZsym = [P.bndSel.PMLZsym,inds'];
-    
-    % PML XZ-plane (for y-symmetry)
-    PMLRYsymSel = beamgeom.create('PMLRYsymSel', 'BoxSelection');
-    PMLRYsymSel.set('xmin', beamLen-delta).set('xmax', beamLen+P.PMLLen+delta);
-    PMLRYsymSel.set('ymin', -delta).set('ymax', delta);
-    PMLRYsymSel.set('zmin', -thi/2*(1-symZOn)-delta).set('zmax', thi/2+delta);
-    PMLRYsymSel.set('entitydim', 2).set('condition', 'allvertices');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_PMLRYsymSel']).inputEntities();
-    P.bndSel.PMLYsym = inds';
-    
-    PMLLYsymSel = beamgeom.create('PMLLYsymSel', 'BoxSelection');
-    PMLLYsymSel.set('xmin', -P.PMLLen-delta).set('xmax', delta);
-    PMLLYsymSel.set('ymin', -delta).set('ymax', delta);
-    PMLLYsymSel.set('zmin', -thi/2*(1-symZOn)-delta).set('zmax', thi/2+delta);
-    PMLLYsymSel.set('entitydim', 2).set('condition', 'allvertices');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_PMLLYsymSel']).inputEntities();
-    P.bndSel.PMLYsym = [P.bndSel.PMLYsym,inds'];
-    
-    % PML curved plane
-    PMLRCurSel = beamgeom.create('PMLRCurSel', 'BoxSelection');
-    PMLRCurSel.set('xmin', beamLen+P.PMLLen/sqrt(2)-delta).set('xmax', beamLen+P.PMLLen/sqrt(2)+delta);
-    PMLRCurSel.set('ymin', P.PMLLen/sqrt(2)-delta).set('ymax', P.PMLLen/sqrt(2)+delta);
-    PMLRCurSel.set('zmin', -thi/2*(1-symZOn)+delta).set('zmax', thi/2-delta);
-    PMLRCurSel.set('entitydim', 2).set('condition', 'intersects');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_PMLRCurSel']).inputEntities();
-    P.bndSel.PMLcurv = inds';
-    
-    PMLLCurSel = beamgeom.create('PMLLCurSel', 'BoxSelection');
-    PMLLCurSel.set('xmin', -P.PMLLen/sqrt(2)-delta).set('xmax', -P.PMLLen/sqrt(2)+delta);
-    PMLLCurSel.set('ymin', P.PMLLen/sqrt(2)-delta).set('ymax', P.PMLLen/sqrt(2)+delta);
-    PMLLCurSel.set('zmin', -thi/2*(1-symZOn)+delta).set('zmax', thi/2-delta);
-    PMLLCurSel.set('entitydim', 2).set('condition', 'intersects');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_PMLLCurSel']).inputEntities();
-    P.bndSel.PMLcurv = [P.bndSel.PMLcurv, inds'];
-end
+% return the model 
+out = model;
 end 
 
 %% define the subfunction for make variout unit cell geometries 
-function ucellWP = buildBoomerangCell(ucellgeom,workPlaneName, loc)
+function ucellWP = buildBoomerangCell(P,ucellgeom,workPlaneName, loc)
     %% create unit cell with boomerang geometry
     ucellWP = ucellgeom.feature.create(workPlaneName, 'WorkPlane');
     ucellWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', 0);
-    
+    a = P.a;
+    w = P.w;
+    r = P.r;
     ucellplane = ucellWP.geom.feature.create('pol1', 'Polygon');
     ucellplane.label('Base plane');
     ucellplane.set('source', 'table');
@@ -522,7 +280,7 @@ function ucellWP = buildBoomerangCell(ucellgeom,workPlaneName, loc)
     rec_3.set('size', [w r]);
     
     % implement functions to add fillets to the unit cells 
-    addFillets(ucellWP)
+    addFillets(P,ucellWP)
     
     % set the displacement of the unit cell 
     ucellWP.set('displ', loc);
@@ -535,7 +293,11 @@ function ucellWP_dup = cellDuplicate(ucellgeom,workPlaneName,workPlaneName_dup,l
     ucellWP_dup.set('displ', loc);
 end
 
-function addFillets(ucellWP)
+function addFillets(P,ucellWP)
+    r1= P.r1;
+    r2 = P.r2;
+    a = P.a;
+    w = P.w;
     ucellWP.geom.create('fil1', 'Fillet');
     ucellWP.geom.feature('fil1').set('radius', r1);
     ucellWP.geom.feature('fil1').selection('point').set('r1(1)', [3 4]);
@@ -551,172 +313,103 @@ function addFillets(ucellWP)
     ucellWP.geom.feature('fil2').selection('point').set('co1(1)', [6 10 12]);
 end 
 
-function label_list = buildBoomerangCells(ucellgeom,xloc,cell_num)
+function label_list = buildBoomerangCells(P,ucellgeom,xloc,cell_num)
     % buildSnowFlakeRegion: this function builds the boomerang cells that compose one
     % super unit cell
     %  xloc - specify the x location of the unit cell 
     %  cell_num - keeping track of which unit cell in the cavity sequence we are adding 
-    
-    label_list = []; % list of labels corresponding to each boomerang unit cell
+    a = P.a;
+    b = P.b;
+    w = P.w;
+    cell_num = num2str(cell_num);
+    label_list = {}; % list of labels corresponding to each boomerang unit cell
     % adding the first unit cell 
     loc1 = [xloc+a/2-(a/2+w/2) b];
-    workPlaneName = ['wp_',cell_num,'_cell_',1];
-    ucellWP = buildBoomerangCell(ucellgeom,workPlaneName, loc1);
-    list(end+1) = workPlaneName;
+    workPlaneName = ['wp_',cell_num,'_cell_',num2str(1)];
+    ucellWP = buildBoomerangCell(P,ucellgeom,workPlaneName, loc1);
+    label_list = [label_list,{workPlaneName}];
     % duplicate the second unit cell 
     loc2 = [xloc+a/2-a-(a/2+w/2) b];
-    workPlaneName2 = ['wp_',cell_num,'_cell_',2];
+    workPlaneName2 = ['wp_',cell_num,'_cell_',num2str(2)];
     ucellWP2 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName2, loc2);
-    list(end+1) = workPlaneName2;
+    label_list = [label_list,{workPlaneName2}];
     
     loc3 = [xloc-(a/2+w/2) b+sqrt(3)*a/2];
-    workPlaneName3 = ['wp_',cell_num,'_cell_',3];
+    workPlaneName3 = ['wp_',cell_num,'_cell_',num2str(3)];
     ucellWP3 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName3, loc3);
-    list(end+1) = workPlaneName3;
+    label_list = [label_list,{workPlaneName3}];
     
     loc4 = [xloc+a-(a/2+w/2) b+sqrt(3)*a/2];
-    workPlaneName4 = ['wp_',cell_num,'_cell_',4];
+    workPlaneName4 = ['wp_',cell_num,'_cell_',num2str(4)];
     ucellWP4 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName4, loc4);
-    list(end+1) = workPlaneName4;
+    label_list = [label_list,{workPlaneName4}];
     
     loc5 = [xloc-a-(a/2+w/2) b+sqrt(3)*a/2];
-    workPlaneName5 = ['wp_',cell_num,'_cell_',5];
+    workPlaneName5 = ['wp_',cell_num,'_cell_',num2str(5)];
     ucellWP5 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName5, loc5);
-    list(end+1) = workPlaneName5;
+    label_list = [label_list,{workPlaneName5}];
     
     loc6 = [xloc+a/2-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2];
-    workPlaneName6 = ['wp_',cell_num,'_cell_',6];
+    workPlaneName6 = ['wp_',cell_num,'_cell_',num2str(6)];
     ucellWP6 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName6, loc6);
-    list(end+1) = workPlaneName6;
+    label_list = [label_list,{workPlaneName6}];
     
     loc7 = [xloc+a/2-a-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2];
-    workPlaneName7 = ['wp_',cell_num,'_cell_',7];
+    workPlaneName7 = ['wp_',cell_num,'_cell_',num2str(7)];
     ucellWP7 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName7, loc7);
-    list(end+1) = workPlaneName7;
+    label_list = [label_list,{workPlaneName7}];
     
 end
 
-function buildSuperCell(model,P)
-    %% create unit cell with boomerang geometry
-    ucellWP = ucellgeom.feature.create('wp1', 'WorkPlane');
-    ucellWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', 0);
-    % ucellWP.set('unite', true);
+function workPlaneName = buildLowerCell(ucellgeom,P,cell_num,xloc)
+%% this function is used to build lower portion of the boomerang supercell 
+cell_num = num2str(cell_num);
+workPlaneName = ['lowerCell_',cell_num];
+a = P.a;
+b = P.b;
+d = P.d;
+ho = P.ho;
+hi = P.hi;
+wo = P.wo;
+wi = P.wi;
+r1 = P.r1;
+r2 = P.r2;
+ucellWP_lower = ucellgeom.feature.create(workPlaneName, 'WorkPlane');
+ucellWP_lower.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', 0);
+ucellplane_lower = ucellWP_lower.geom.feature.create('r_base', 'Rectangle');
+ucellplane_lower.set('pos', [-a/2 0]);
+ucellplane_lower.set('size', [a b]);
 
-    ucellplane = ucellWP.geom.feature.create('pol1', 'Polygon');
-    ucellplane.label('Base plane');
-    ucellplane.set('source', 'table');
-    ucellplane.set('table', [0 0; a/2 (a/2)*sqrt(3); a*(3/2) (a/2)*sqrt(3); a 0; 0 0]);
-    rec_1 = ucellWP.geom.feature.create('r1', 'Rectangle');
-    rec_1.set('pos', [a/2+w/2 r/2+(w/4)*sqrt(3)+(a/2)/sqrt(3)]);
-    rec_1.set('base', 'center');
-    rec_1.set('size', [w r]);
-    rec_2 = ucellWP.geom.feature.create('r2', 'Rectangle');
-    rec_2.set('pos', [-a*(3/4)+a/2+a*(3/4)-a/2+w/2+a/2 -(w/4)*sqrt(3)+(a/2)/sqrt(3)]);
-    rec_2.set('rot', 120);
-    rec_2.set('size', [w r]);
-    rec_3 = ucellWP.geom.feature.create('r3', 'Rectangle');
-    rec_3.set('pos', [-a*(3/4)+a/2+w/2+a*(3/4)-a/2+w/2+a/2 (w/4)*sqrt(3)+(a/2)/sqrt(3)]);
-    rec_3.set('rot', 240);
-    rec_3.set('size', [w r]);
+rec1 = ucellWP_lower.geom.feature.create('r1', 'Rectangle');
+rec1.set('pos', [0 d/2+(ho-hi)/2+hi]);
+rec1.set('base', 'center');
+rec1.set('size', [wo ho-hi]);
 
-    ucellWP.geom.create('fil1', 'Fillet');
-    ucellWP.geom.feature('fil1').set('radius', r1);
-    ucellWP.geom.feature('fil1').selection('point').set('r1(1)', [3 4]);
-    ucellWP.geom.feature('fil1').selection('point').set('r3(1)', [3 4]);
-    ucellWP.geom.feature('fil1').selection('point').set('r2(1)', [3 4]);
-    centerTriangle = ucellWP.geom.feature.create('pol2', 'Polygon');
-    centerTriangle.set('source', 'table');
-    centerTriangle.set('table', [a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3); w+a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3); a/2+w/2 -(w/2)*sqrt(3)/2+(a/2)/sqrt(3); a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3)]);
-    composit_geom = ucellWP.geom.feature.create('co1', 'Compose');
-    composit_geom.set('formula', 'pol1-fil1(1)-fil1(2)-fil1(3)-pol2');
-    ucellWP.geom.create('fil2', 'Fillet');
-    ucellWP.geom.feature('fil2').set('radius', r2);
-    ucellWP.geom.feature('fil2').selection('point').set('co1(1)', [6 10 12]);
+rec2 = ucellWP_lower.geom.feature.create('r2', 'Rectangle');
+rec2.set('pos', [-wo/2+(wo-wi)/4 d/2+ho/2]);
+rec2.set('base', 'center');
+rec2.set('size', [(wo-wi)/2 ho]);
 
-    %% duplicate the unit cells 
-    ucellWP.set('displ', [-(a/2+w/2) b]);
+rec3 = ucellWP_lower.geom.feature.create('r3', 'Rectangle');
+rec3.set('pos', [wo/2-(wo-wi)/4 d/2+ho/2]);
+rec3.set('base', 'center');
+rec3.set('size', [(wo-wi)/2 ho]);
 
-    ucellWP2 = ucellgeom.feature.duplicate('wp2', 'wp1');
-    ucellWP2.set('displ', [a-(a/2+w/2) b]);
+compose1 = ucellWP_lower.geom.feature.create('co1_lower', 'Compose');
+compose1.set('formula', 'r_base-r1-r2-r3');
 
-    ucellWP3 = ucellgeom.feature.duplicate('wp3', 'wp1');
-    ucellWP3.set('displ', [-a-(a/2+w/2) b]);
+% fillet1 = ucellWP_lower.geom.feature.create('fil1', 'Fillet');
+% fillet1.set('radius', r1);
+% fillet1.selection('point').set('co1(1)', [3 4 6 9 13 14]);
+% fillet2 = ucellWP_lower.geom.feature.create('fil2', 'Fillet');
+% fillet2.set('radius', r2);
+% fillet2.selection('point').set('fil1(1)', [10 13]);
 
-    ucellWP4 = ucellgeom.feature.duplicate('wp4', 'wp1');
-    ucellWP4.set('displ', [a/2-(a/2+w/2) b]);
+% set the displacement of the unit cell 
+ucellWP_lower.set('displ', [xloc,0]);
 
-    ucellWP5 = ucellgeom.feature.duplicate('wp5', 'wp1');
-    ucellWP5.set('displ', [a/2-a-(a/2+w/2) b]);
-
-    ucellWP6 = ucellgeom.feature.duplicate('wp6', 'wp1');
-    ucellWP6.set('displ', [-(a/2+w/2) b+sqrt(3)*a/2]);
-
-    ucellWP7 = ucellgeom.feature.duplicate('wp7', 'wp1');
-    ucellWP7.set('displ', [a-(a/2+w/2) b+sqrt(3)*a/2]);
-
-    ucellWP8 = ucellgeom.feature.duplicate('wp8', 'wp1');
-    ucellWP8.set('displ', [-a-(a/2+w/2) b+sqrt(3)*a/2]);
-
-    ucellWP9 = ucellgeom.feature.duplicate('wp9', 'wp1');
-    ucellWP9.set('displ', [a/2-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2]);
-
-    ucellWP10 = ucellgeom.feature.duplicate('wp10', 'wp1');
-    ucellWP10.set('displ', [a/2-a-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2]);
-
-    % deactivate unused planes 
-    ucellWP.active(false);
-    ucellWP2.active(false);
-    ucellWP3.active(false);
-
-
-    %% create unit cell with boomerang geometry in the lower cavity
-    ucellWP_lower = ucellgeom.create('wp_lower', 'WorkPlane');
-    ucellWP_lower.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
-    ucellplane_lower = ucellWP_lower.geom.feature.create('r_base', 'Rectangle');
-    ucellplane_lower.set('pos', [-a/2 0]);
-    ucellplane_lower.set('size', [a b]);
-
-    rec1 = ucellWP_lower.geom.feature.create('r1', 'Rectangle');
-    rec1.set('pos', [0 d/2+(ho-hi)/2+hi]);
-    rec1.set('base', 'center');
-    rec1.set('size', [wo ho-hi]);
-
-    rec2 = ucellWP_lower.geom.feature.create('r2', 'Rectangle');
-    rec2.set('pos', [-wo/2+(wo-wi)/4 d/2+ho/2]);
-    rec2.set('base', 'center');
-    rec2.set('size', [(wo-wi)/2 ho]);
-
-    rec3 = ucellWP_lower.geom.feature.create('r3', 'Rectangle');
-    rec3.set('pos', [wo/2-(wo-wi)/4 d/2+ho/2]);
-    rec3.set('base', 'center');
-    rec3.set('size', [(wo-wi)/2 ho]);
-
-    compose1 = ucellWP_lower.geom.feature.create('co1', 'Compose');
-    compose1.set('formula', 'r_base-r1-r2-r3');
-
-    fillet1 = ucellWP_lower.geom.feature.create('fil1', 'Fillet');
-    fillet1.set('radius', r1);
-    fillet1.selection('point').set('co1(1)', [3 4 6 9 13 14]);
-    fillet2 = ucellWP_lower.geom.feature.create('fil2', 'Fillet');
-    fillet2.set('radius', r2);
-    fillet2.selection('point').set('fil1(1)', [10 13]);
-
-    % ucellWP_lower.set('displ', [0 a*sqrt(3)*(3/4)-a/2]);
-
-    %% the strip work plane 
-    ucellWP11 = ucellgeom.feature.create('wp11', 'WorkPlane');
-    ucellWP11.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
-    rec_base = ucellWP11.geom.feature.create('r_base', 'Rectangle');
-    rec_base.set('size',[a sqrt(3)*2*a]);
-    rec_base.set('pos',[-a/2 0]);
-
-    % ucellWP12 = ucellgeom.feature.create('wp12', 'WorkPlane');
-    % ucellWP12.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
-    % rec_base2 = ucellWP12.geom.feature.create('r_base2', 'Rectangle');
-    % rec_base2.set('size',[a sqrt(3)*a/4]);
-    % rec_base2.set('pos',[-a/2 0]);
-    ucellgeom.runAll;
 end
+
 
 
 

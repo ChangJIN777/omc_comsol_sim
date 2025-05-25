@@ -27,7 +27,6 @@ if P.solveMech
     meveny = P.meveny;      % 1/-1 for symmetry/anti-symmetry; 0 for no symmetry
     mevenz = P.mevenz*strcmp(P.xsect,'rect');      % 1/-1 for symmetry/anti-symmetry; 0 for no symmetry
     P.mevenz = mevenz;
-    
 end
 
 % symmetry conditions for the optical resonance
@@ -52,11 +51,12 @@ end
 
 % extract geometry parameters for specifying boundary conditions
 
-if isfield(P,'asymCav') && P.asymCav
-    len = P.beamLen;    % for end of right half of beam
-else
-    len = P.beamLenHalf;        % length of beam
-end
+% if isfield(P,'asymCav') && P.asymCav
+%     len = P.beamLen;    % for end of right half of beam
+% else
+%     len = P.beamLenHalf;        % length of beam
+% end
+len = P.beamLen;
 % totLen = len;
 
 if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML

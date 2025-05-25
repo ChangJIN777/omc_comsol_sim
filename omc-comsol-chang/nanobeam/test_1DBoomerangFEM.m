@@ -8,6 +8,7 @@ P.xsect = 'rect';                        % beam cross sectional shape - 'tri' or
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang_v2';                   % specify the cell type
 P.anisoMat = 1;
+P.solveMech = 1;    % if we are solving for the mechanical mode 
 
 % unit cell geometry
 P.a = 700e-9;              % lattice constant 
@@ -20,6 +21,7 @@ P.wi = 252e-9;           % the width of the hole in the lower portion
 P.ho = 525e-9;
 P.hi = 450e-9;
 P.d = 200e-9;    % 
+P.b = sqrt(3)*P.a/2; 
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
@@ -29,18 +31,15 @@ P.MN_left = 10;                         % # holes in the left mirror region
 P.MN_right = 10;                        % # holes in the right mirror region 
 P.TN = 6;                               % # holes in the tapering defect region
 
-P.nholes = 19;                          % # holes in 1/2 beam length
-P.ndef = 9;                             % # of holes in 1/2 defect region
-P.maxdef = 0.15906;                     % defect percentage
-P.oblong = 3.0563;                      % oblong parameter (zero if holes are not changed)
-
 % cavity taper params
 P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
 P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
 P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
-P.a_ctr = 400e-9;                     % for taperTo = 'custom': lattice constant of center hole
-P.h_ctr = 110e-9;                    % for taperTo = 'custom': hole height of center hole
-P.d_ctr = 86e-9;                    % for taperTo = 'custom': hole width of center hole
+P.a_ctr = 700e-9;                     % for taperTo = 'custom': lattice constant of center hole
+P.ho_ctr = 525e-9;                    % for taperTo = 'custom': hole height of center hole
+P.hi_ctr = 400e-9;
+P.wo_ctr = 560e-9;                    % for taperTo = 'custom': hole width of center hole
+P.wi_ctr = 252e-9;                    % for taperTo = 'custom': hole width of center hole
 % P.cavlen = 0e-9;                      % custom cavity length between two center holes; disable if not used
 
 % end waveguide mirror taper params
@@ -54,6 +53,10 @@ P.wgmTaper.ho_end = P.ho;             % for endtype = 'custom': hole height of e
 P.wgmTaper.hi_end = P.hi;             % for endtype = 'custom': hole width of end hole
 % P.wgmTaper.maxdef_end = 0.094932;     % defect percentage - for endtype = 'maxdef'
 % P.wgmTaper.oblong_end = 2.9172;       % oblong parameter (zero if holes are not changed) - for endtype = 'maxdef'
+
+% parameters for the optical cavity 
+P.solveOpt = False;     % if we are solving for the optical mode of the cavity 
+P.airrad = 1000e-9;     % the radius of the air cylinder surrounding the cavity
 
 % asymmetric cavity - specify param data struct P.PL with similar fields to
 % P, for left half of asymmetric cavity
