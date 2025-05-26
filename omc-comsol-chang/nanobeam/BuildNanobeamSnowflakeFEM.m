@@ -2,7 +2,7 @@
 % simulations
 % Cleaven Chia, 11/21/18
 
-function [model,P] = BuildNanobeamBoomerang1DFEM(model,P)
+function [model,P] = BuildNanobeamSnowflakeFEM(model,P)
 
 %% extract geometry parameters from P
 a = P.a;        % lattice constant 
@@ -98,7 +98,7 @@ extrude_labels = {};
 for k = 1:nholes
     % add the boomerang unit cells 
     xloc = xpos(k);
-    label_list = buildBoomerangCells(P,slabgeom,xloc,k);
+    label_list = buildSnowflakeCells(P,slabgeom,xloc,k);
     holeList = [holeList,label_list];
     % add the lower cavity region 
     P.a = a_list(k);
@@ -133,8 +133,6 @@ displayBeamStr = 'Nanobeam, rectangular cross-section';
 totLen = beamLen;
 maxWid = a;
 maxThi = thi;
-
-
 
 %% create the intersect 
 compose = slabgeom.feature.create('col','Compose');
@@ -256,8 +254,8 @@ out = model;
 end 
 
 %% define the subfunction for make variout unit cell geometries 
-function ucellWP = buildBoomerangCell(P,ucellgeom,workPlaneName, loc)
-    %% create unit cell with boomerang geometry
+function ucellWP = buildSnowflakeCell(P,ucellgeom,workPlaneName,loc)
+    %% create unit cell with snowflake geometry
     ucellWP = ucellgeom.feature.create(workPlaneName, 'WorkPlane');
     ucellWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', 0);
     a = P.a;
@@ -267,21 +265,33 @@ function ucellWP = buildBoomerangCell(P,ucellgeom,workPlaneName, loc)
     ucellplane.label('Base plane');
     ucellplane.set('source', 'table');
     ucellplane.set('table', [0 0; a/2 (a/2)*sqrt(3); a*(3/2) (a/2)*sqrt(3); a 0; 0 0]);
+    
     rec_1 = ucellWP.geom.feature.create('r1', 'Rectangle');
-    rec_1.set('pos', [a/2+w/2 r/2+(w/4)*sqrt(3)+(a/2)/sqrt(3)]);
+    rec_1.set('pos', [a*(1/2+1/4) a*sqrt(3)/4]);
     rec_1.set('base', 'center');
-    rec_1.set('size', [w r]);
+    rec_1.set('size', [2*r w]);
+
     rec_2 = ucellWP.geom.feature.create('r2', 'Rectangle');
-    rec_2.set('pos', [-a*(3/4)+a/2+a*(3/4)-a/2+w/2+a/2 -(w/4)*sqrt(3)+(a/2)/sqrt(3)]);
-    rec_2.set('rot', 120);
-    rec_2.set('size', [w r]);
+    rec_2.set('pos', [a*(1/2+1/4) a*sqrt(3)/4]);
+    rec_2.set('rot', 60);
+    rec_2.set('base', 'center');
+    rec_2.set('size', [2*r w]);
+
+
     rec_3 = ucellWP.geom.feature.create('r3', 'Rectangle');
-    rec_3.set('pos', [-a*(3/4)+a/2+w/2+a*(3/4)-a/2+w/2+a/2 (w/4)*sqrt(3)+(a/2)/sqrt(3)]);
-    rec_3.set('rot', 240);
-    rec_3.set('size', [w r]);
+    rec_3.set('pos', [a*(1/2+1/4) a*sqrt(3)/4]);
+    rec_3.set('rot', 120);
+    rec_3.set('base', 'center');
+    rec_3.set('size', [2*r w]);
+    
+    % make the composite geometry 
+    composit_geom = ucellWP.geom.feature.create('co1', 'Compose');
+    composit_geom.set('formula', 'pol1 - r1 - r2 - r3');
     
     % implement functions to add fillets to the unit cells 
-    addFillets(P,ucellWP)
+    selection_width = 5e-9;
+    hole_indx = 1;
+    addFillet(P,ucellWP,hole_indx,loc,selection_width);
     
     % set the displacement of the unit cell 
     ucellWP.set('displ', loc);
@@ -294,27 +304,39 @@ function ucellWP_dup = cellDuplicate(ucellgeom,workPlaneName,workPlaneName_dup,l
     ucellWP_dup.set('displ', loc);
 end
 
-function addFillets(P,ucellWP)
-    r1= P.r1;
-    r2 = P.r2;
-    a = P.a;
+function addFillet(P,ucellWP,hole_indx,hole_pos,selection_width)
     w = P.w;
-    ucellWP.geom.create('fil1', 'Fillet');
-    ucellWP.geom.feature('fil1').set('radius', r1);
-    ucellWP.geom.feature('fil1').selection('point').set('r1(1)', [3 4]);
-    ucellWP.geom.feature('fil1').selection('point').set('r3(1)', [3 4]);
-    ucellWP.geom.feature('fil1').selection('point').set('r2(1)', [3 4]);
-    centerTriangle = ucellWP.geom.feature.create('pol2', 'Polygon');
-    centerTriangle.set('source', 'table');
-    centerTriangle.set('table', [a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3); w+a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3); a/2+w/2 -(w/2)*sqrt(3)/2+(a/2)/sqrt(3); a/2 (w/2)*sqrt(3)/2+(a/2)/sqrt(3)]);
-    composit_geom = ucellWP.geom.feature.create('co1', 'Compose');
-    composit_geom.set('formula', 'pol1-fil1(1)-fil1(2)-fil1(3)-pol2');
-    ucellWP.geom.create('fil2', 'Fillet');
-    ucellWP.geom.feature('fil2').set('radius', r2);
-    ucellWP.geom.feature('fil2').selection('point').set('co1(1)', [6 10 12]);
-end 
+    r = P.r;
+    r1 = P.r1;
+    r2 = P.r2;
+    disksel1_label = sprintf('h%d_disksel1',hole_indx);
+    disksel2_label = sprintf('h%d_disksel2',hole_indx);
+    fillet1_label = sprintf('h%d_fil1',hole_indx);
+    fillet2_label = sprintf('h%d_fil2',hole_indx);
+    % hole 
+    disksel1 = ucellWP.geom.feature.create(disksel1_label, 'DiskSelection');
+    disksel1.set('entitydim', 0);
+    disksel1.set('posx', hole_pos(1));
+    disksel1.set('posy', hole_pos(2));
+    disksel1.set('r', w);
+    disksel1.set('rin', w/(2*sqrt(2)));
+    disksel1.set('condition', 'allvertices');
+    fil1 = ucellWP.geom.feature.create(fillet1_label, 'Fillet');
+    fil1.set('radius', r1);
+    fil1.selection('point').named(disksel1_label);
+    disksel2 = ucellWP.geom.feature.create(disksel2_label, 'DiskSelection');
+    disksel2.set('entitydim', 0);
+    disksel2.set('posy', hole_pos(2));
+    disksel2.set('posx', hole_pos(1));
+    disksel2.set('r', r+selection_width/2);
+    disksel2.set('rin', r-selection_width/2);
+    disksel2.set('condition', 'allvertices');
+    fil2 = ucellWP.geom.feature.create(fillet2_label, 'Fillet');
+    fil2.set('radius', r2);
+    fil2.selection('point').named(disksel2_label);
+end
 
-function label_list = buildBoomerangCells(P,ucellgeom,xloc,cell_num)
+function label_list = buildSnowflakeCells(P,ucellgeom,xloc,cell_num)
     % buildSnowFlakeRegion: this function builds the boomerang cells that compose one
     % super unit cell
     %  xloc - specify the x location of the unit cell 
@@ -325,37 +347,37 @@ function label_list = buildBoomerangCells(P,ucellgeom,xloc,cell_num)
     cell_num = num2str(cell_num);
     label_list = {}; % list of labels corresponding to each boomerang unit cell
     % adding the first unit cell 
-    loc1 = [xloc+a/2-(a/2+w/2) b];
+    loc1 = [xloc+a/2+a/4-a b];
     workPlaneName = ['wp_',cell_num,'_cell_',num2str(1)];
-    ucellWP = buildBoomerangCell(P,ucellgeom,workPlaneName, loc1);
+    ucellWP = buildSnowflakeCell(P,ucellgeom,workPlaneName, loc1);
     label_list = [label_list,{workPlaneName}];
     % duplicate the second unit cell 
-    loc2 = [xloc+a/2-a-(a/2+w/2) b];
+    loc2 = [xloc+a/2-a+a/4-a b];
     workPlaneName2 = ['wp_',cell_num,'_cell_',num2str(2)];
     ucellWP2 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName2, loc2);
     label_list = [label_list,{workPlaneName2}];
     
-    loc3 = [xloc-(a/2+w/2) b+sqrt(3)*a/2];
+    loc3 = [xloc+a/4-a b+sqrt(3)*a/2];
     workPlaneName3 = ['wp_',cell_num,'_cell_',num2str(3)];
     ucellWP3 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName3, loc3);
     label_list = [label_list,{workPlaneName3}];
     
-    loc4 = [xloc+a-(a/2+w/2) b+sqrt(3)*a/2];
+    loc4 = [xloc+a+a/4-a b+sqrt(3)*a/2];
     workPlaneName4 = ['wp_',cell_num,'_cell_',num2str(4)];
     ucellWP4 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName4, loc4);
     label_list = [label_list,{workPlaneName4}];
     
-    loc5 = [xloc-a-(a/2+w/2) b+sqrt(3)*a/2];
+    loc5 = [xloc-a+a/4-a b+sqrt(3)*a/2];
     workPlaneName5 = ['wp_',cell_num,'_cell_',num2str(5)];
     ucellWP5 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName5, loc5);
     label_list = [label_list,{workPlaneName5}];
     
-    loc6 = [xloc+a/2-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2];
+    loc6 = [xloc+a/2+a/4-a b+a*sqrt(3)/2+sqrt(3)*a/2];
     workPlaneName6 = ['wp_',cell_num,'_cell_',num2str(6)];
     ucellWP6 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName6, loc6);
     label_list = [label_list,{workPlaneName6}];
     
-    loc7 = [xloc+a/2-a-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2];
+    loc7 = [xloc+a/2-a+a/4-a b+a*sqrt(3)/2+sqrt(3)*a/2];
     workPlaneName7 = ['wp_',cell_num,'_cell_',num2str(7)];
     ucellWP7 = cellDuplicate(ucellgeom,workPlaneName,workPlaneName7, loc7);
     label_list = [label_list,{workPlaneName7}];

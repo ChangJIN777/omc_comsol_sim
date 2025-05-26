@@ -8,7 +8,7 @@
 % model: updated COMSOL model with solutions
 % ds: data structure with FEM substructures containing postprocessing results
 
-function [model,ds] = SolveNanobeamBoomerangFEM(model,ds)
+function [model,ds] = SolveNanobeamSnowflakeFEM(model,ds)
 
 % constants
 c = 299792458;
@@ -229,8 +229,8 @@ if P.solveMech
 
     % set no. of eigenmodes to solve for, and target frequency to solve about
     mstd_eigv.set('neigsactive',true).set('neigs',mneigs);
-    % mstd_eigv.set('shiftactive',true).set('shift',num2str(0-1i*2*pi*freq));
-    mstd_eigv.set('shiftactive',true).set('shift',num2str(2*pi*freq));
+    mstd_eigv.set('shiftactive',true).set('shift',num2str(0-1i*2*pi*freq));
+%     mstd_eigv.set('shiftactive',true).set('shift',num2str(2*pi*freq));
 
     % disable EM waves in solid mechanics study
     % and disable solid mechanics in EM waves study

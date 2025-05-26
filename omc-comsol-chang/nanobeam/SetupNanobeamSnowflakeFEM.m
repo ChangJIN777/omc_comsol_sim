@@ -8,7 +8,7 @@
 % model: updated COMSOL model with studies set up
 % ds: data structure with FEM substructures
 
-function [model,ds] = SetupNanobeamBoomerangFEM(model,P)
+function [model,ds] = SetupNanobeamSnowflakeFEM(model,P)
 
 % extract parameters from P
 evenz = 0;

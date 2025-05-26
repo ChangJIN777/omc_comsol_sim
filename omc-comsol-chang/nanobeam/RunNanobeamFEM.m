@@ -51,8 +51,10 @@ try
         %% Create geometry: generate array of geometry dimensions for all unit cells
         if isfield(P,'celltype') && strcmp(P.celltype,'blockTet')
             P = CreateNanobeamBlockTetGeom(P);              % block-tether geometry
-        elseif isfield(P,'celltype') && strcmp(P.celltype,'boomerang')
-            P = CreateNanobeamGeomBoomerang1D(P);
+        elseif isfield(P,'celltype') && strcmp(P.celltype,'boomerang_v2')
+            P = CreateNanobeamGeomBoomerang1D(P); % the boomerang unit cells 
+        elseif isfield(P,'celltype') && strcmp(P.celltype,'snowflake')
+            P = CreateNanobeamGeomSnowflake(P); % the boomerang unit cells 
         else
             % create beam-hole geometry by default
             if isfield(P,'asymCav') && P.asymCav && isfield(P,'PL')
@@ -93,8 +95,10 @@ try
         P = LoadMaterialParams(P);
 
         %% Run simulations
-        if isfield(P,'celltype') && strcmp(P.celltype,'boomerang')
+        if isfield(P,'celltype') && strcmp(P.celltype,'boomerang_v2')
             [model,P] = BuildNanobeamBoomerang1DFEM(model,P);
+        elseif isfield(P,'celltype') && strcmp(P.celltype,'snowflake')
+            [model,P] = BuildNanobeamSnowflakeFEM(model,P);
         else
             [model,P] = BuildNanobeamFEM(model,P);              % generates nanobeam in COMSOL
         end
@@ -107,9 +111,12 @@ try
             saveas(gcf,[datLoc,P.fileBase,'_mphgeom.png']);
         end
         
-        if isfield(P,'celltype') && strcmp(P.celltype,'boomerang')
+        if isfield(P,'celltype') && strcmp(P.celltype,'boomerang_v2')
             [model,ds] = SetupNanobeamBoomerangFEM(model,P);         % set up nanobeam FEM simulations
             [model,ds] = SolveNanobeamBoomerangFEM(model,ds);        % solve and postprocess FEM simulations
+        elseif isfield(P,'celltype') && strcmp(P.celltype,'snowflake')
+            [model,ds] = SetupNanobeamSnowflakeFEM(model,P);         % set up nanobeam FEM simulations
+            [model,ds] = SolveNanobeamSnowflakeFEM(model,ds);        % solve and postprocess FEM simulations
         else
             [model,ds] = SetupNanobeamFEM(model,P);         % set up nanobeam FEM simulations
             [model,ds] = SolveNanobeamFEM(model,ds);        % solve and postprocess FEM simulations
