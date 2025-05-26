@@ -58,7 +58,7 @@ P.asym = 0;                             % cross-section asymmetry (target y-offs
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
-P.solveOpt = 1;                         % 1 to solve for optics
+P.solveOpt = 0;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
 P.calcS = 1*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)
@@ -127,5 +127,5 @@ P.max_dof = 5e6;                        % max # of degrees of freedom
 
 %% single run
 % data location to save files in
-datLoc = 'D:\Files\OMC-SiV\RectOMC\v10240435\OM\'; 
+datLoc = '.\testing\'; 
 [ds,model] = RunNanobeamFEM(P,datLoc);
