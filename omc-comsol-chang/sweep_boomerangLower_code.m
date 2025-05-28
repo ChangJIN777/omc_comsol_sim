@@ -3,34 +3,31 @@ clear all; clc; close all;
 clear P;
 P = struct;
 
-P.celltype = 'boomerang_strip';                   % specify the cell type
+P.celltype = 'boomerang_strip_v2';                   % specify the cell type
 P.xsect = 'rect'; 
 P.beamMat = 'diamond';                  % beam material name
-P.celltype = 'boomerang_lower';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
 
-a = 480e-9; % lattice constant
-a_min = 0.8*a;
-a_max = 1.2*a;
-h_min = 100e-9;
-h_max = 200e-9;
-d_min = 50e-9;
-d_max = 200e-9;
-h_list = linspace(h_min,h_max,5);
-d_list = linspace(d_min,d_max,5);
-a_list = linspace(a_min,a_max,5);
+P.a = 700e-9;              % lattice constant 
+P.w = P.a*(85/600);              % unit cell width (along x)
+P.r = P.a*(225/600);              % unit cell height (along y)
+P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
+                            % or of inner block (for celltype = 'solid')
+P.wo = 560e-9;           % the height of the hole in the lower portion
+P.wi = 252e-9;           % the width of the hole in the lower portion                            
+P.ho = 400e-9;
+P.hi = 400e-9;
+P.b = sqrt(3)*P.a/2;        
+P.d = 200e-9;
 
-%% sweep the lattice
-for i=1:length(a_list)
-    sweep_boomerang_lower_v2(P,a_list(i));
+wi_min = 200e-9;
+wi_max = 350e-9;
+wi_list = linspace(wi_min,wi_max,3);
+
+%% sweep wi
+for i=1:length(wi_list)
+    sweep_boomerang_strip_v2(P,wi_list(i));
 end
-
-% %% run the sweep
-% for i=1:length(h_list)
-%     for j=1:length(d_list)
-%         sweep_boomerang_lower(P,h_list(i),d_list(j));
-%     end
-% end
 
 function sweep_boomerang_lower(P,h,d)    
     %% unit cell params 
@@ -82,15 +79,25 @@ function sweep_boomerang_lower(P,h,d)
     bds = solveBands(P);
 end 
 
-function sweep_boomerang_lower_v2(P,a)    
+function sweep_boomerang_strip_v2(P,wi)    
+    %% this function sweep wi of the strip boomerang unit cell
     %% unit cell params 
-    P.a = a;              % lattice constant 
-    P.h = 200*a/450;           % the height of the hole in the lower portion
-    P.d = 86e-9;           % the width of the hole in the lower portion
-    P.w = 86e-9;              % unit cell width (along x)
-    P.r = a*180/450;              % unit cell height (along y)
-    P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
+    P.xsect = 'rect'; 
+    P.beamMat = 'diamond';                  % beam material name
+    P.celltype = 'boomerang_strip_v2';                   % specify the cell type
+    P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
+    P.a = 700e-9;              % lattice constant 
+    P.w = P.a*(85/600);              % unit cell width (along x)
+    P.r = P.a*(225/600);              % unit cell height (along y)
+    P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
+    P.wo = 560e-9;           % the height of the hole in the lower portion
+    P.wi = wi;           % the width of the hole in the lower portion                            
+    P.ho = 475e-9;
+    P.hi = 400e-9;
+    P.b = sqrt(3)*P.a/2;        
+    P.d = 200e-9;
+    
     P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
     P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
@@ -100,11 +107,11 @@ function sweep_boomerang_lower_v2(P,a)
     P.mbevenz = 1;      % 1 to find even mechanical mode about z
     
     P.kpts = 7;                             % no. of k-points, EXCLUDING gamma point
-    P.nbands = 15;                           % no. of bands to solve for
+    P.nbands = 20;                           % no. of bands to solve for
     
     P.solveasym = 1;                        % 1 to solve for antisymmetric bands
     P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
-    P.plotgeom = 0;                         % 1 to plot the geometry
+    P.plotgeom = 1;                         % 1 to plot the geometry
     P.savedat = 1;                          % 1 to save data structures
     P.savebndplot = 1;                      % 1 to save bandstructure plot
     P.saveplots = 1;                        % 1 to save displacement and strain profiles
@@ -113,21 +120,31 @@ function sweep_boomerang_lower_v2(P,a)
     
     %% mechanical simulation parameters 
     % solid mechanics solver parameters
-    P.mbeveny = 0;                          % 1 to find even mechanical mode about y
+    P.mbeveny = 1;                          % 1 to find even mechanical mode about y
     P.mbevenz = 1;                          % 1 to find even mechanical mode about z
-    P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
-    P.meshSize = 4;                         % mesh quality for mechanical simulations
-    P.fixed_bc = 1;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
+    % the symmetry condition parameters 
+    P.TwoSymPlanes = 1;             % if we are solving for band structures with two symmetry planes
+    P.zSymCondition = 0;
+    P.freq = 10e9;                             % target frequency - set to 0 for bandstructure simulations
+    P.meshSize = 5;                         % mesh quality for mechanical simulations
+    P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
     
     P.anisoMat = 1;
     P.rxtal = 45;                           % ccw rotation of elasticity matrix in deg 
                                             % from <100> inplane direction about <100> surface normal
-    
+    %% optical simulation parameters 
+    % for the optical bandgap 
+    P.bandStructureDim=1;           % specify the dimension of the band structure 
+    P.optical_freq = 100;       % specify the target frequency (THz)
+    P.add_airDisk = 0;
+    P.airDiskH = 4000e-9;
     %% define the maximum number of degree of freedom to limit the simulation time
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
-    %% run the simluation and save the data
-    datLoc = '.\test\boomerang_lower\082024_sweep1\';
+    %% Single solve
+    currentDate = datestr(now,'mmddyyyy');
+    datLoc = ['.\test\boomerang_strip_v2_sweep\',currentDate,'\'];
     P.datLoc = datLoc;
     bds = solveBands(P);
+
 end 

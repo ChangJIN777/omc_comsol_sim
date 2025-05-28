@@ -13,7 +13,7 @@ P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.wo = 560e-9;           % the height of the hole in the lower portion
 P.wi = 252e-9;           % the width of the hole in the lower portion                            
-P.ho = 525e-9;
+P.ho = 475e-9;
 P.hi = 400e-9;
 P.b = sqrt(3)*P.a/2;        
 P.d = 200e-9;
@@ -26,7 +26,7 @@ P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
-P.kpts = 7;                             % no. of k-points, EXCLUDING gamma point
+P.kpts = 6;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 20;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
@@ -43,7 +43,7 @@ P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
 P.mbeveny = 1;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 % the symmetry condition parameters 
-P.TwoSymPlanes = 1; % if we are solving for band structures with two symmetry planes
+P.TwoSymPlanes = 1;             % if we are solving for band structures with two symmetry planes
 P.zSymCondition = 0;
 P.freq = 10e9;                             % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 5;                         % mesh quality for mechanical simulations
