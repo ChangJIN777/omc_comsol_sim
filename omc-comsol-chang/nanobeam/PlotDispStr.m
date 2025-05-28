@@ -172,7 +172,7 @@ for mi = mModes
     dispplot_vol.set('rangecolormax',num2str(xzpf(mi)));
 %     dispplot_vol.set('rangecolormax',num2str(1));
     dispplot_vol.set('rangecolormin',num2str(0));
-    dispplot_def.set('scale', [num2str(dispMax),'*1e-9']);
+    dispplot_def.set('scale', [num2str(dispMax),'*1e-12']);
     dispplot.run;
     
     figure;

@@ -45,7 +45,7 @@ hi_ctr = P.hi_ctr;                    % for taperTo = 'custom': hole height of c
 wo_ctr = P.wo_ctr;                    % for taperTo = 'custom': hole height of center hole
 wi_ctr = P.wi_ctr;                    % for taperTo = 'custom': hole height of center hole
 
-nholes = MN_left + MN_right + TN*2 +1;
+nholes = MN_left + MN_right + TN*2-1;
 % ndef = P.ndef;
 % maxdef = P.maxdef;
 % oblong = P.oblong;
@@ -105,7 +105,7 @@ end
 % hy_hole_maxdef = hy*(1-maxdef)^(1+oblong);
 
 % generate the defect cells
-taperingNum = TN;
+taperingNum = TN-1;
 a_defect = generate_defect_region(a,a_ctr,taperingNum);
 ho_defect = generate_defect_region(ho,ho_ctr,taperingNum);
 hi_defect = generate_defect_region(hi,hi_ctr,taperingNum);

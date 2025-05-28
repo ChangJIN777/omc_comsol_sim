@@ -51,7 +51,7 @@ hi_list = geom(:,4)';
 a_list = geom(:,5)';
 % calculate the location of the center of each super unit cell
 xpos = zeros(1,nholes);
-cci = MN_left + TN + 1;
+cci = MN_left + TN;
 for index = cci+1:nholes
     xpos(index) = xpos(index-1)+a_list(index-1)/2+a_list(index)/2;
 end
@@ -98,7 +98,11 @@ extrude_labels = {};
 for k = 1:nholes
     % add the boomerang unit cells 
     xloc = xpos(k);
-    label_list = buildBoomerangCells(P,slabgeom,xloc,k);
+    if P.addshield
+        label_list = buildBoomerangCells(P,slabgeom,xloc,k);
+    else 
+        label_list = {};
+    end
     holeList = [holeList,label_list];
     % add the lower cavity region 
     P.a = a_list(k);
@@ -220,26 +224,40 @@ slabgeom.selection.create('zboundaries','CumulativeSelection');
 slabgeom.selection('zboundaries').label('Cumulative Selection z boundaries');
 z_boundary_symmetry.set('contributeto','zboundaries');
 
+% if we dont add 2D shield 
+if P.addshield~=1
+    y_boundary_fixed = slabgeom.feature.create('y_boundary_fixed', 'BoxSelection');
+    y_boundary_fixed.set('entitydim', 2);
+    y_boundary_fixed.set('ymin', b-selection_width/2);
+    y_boundary_fixed.set('ymax', b+selection_width/2);
+    y_boundary_fixed.set('inputent', 'all');
+    y_boundary_fixed.set('condition', 'inside');
+    
+    slabgeom.selection.create('yboundaries_fixed','CumulativeSelection');
+    slabgeom.selection('yboundaries_fixed').label('Cumulative Selection y fixed boundaries');
+    y_boundary_fixed.set('contributeto','yboundaries_fixed');
+end
+
 %% Create air cylinder around beam
 displayCylStr = '';
 if isfield(P,'airrad') && P.solveOpt
-    cyl_cut_wp = beamgeom.feature.create('cyl_cut_wp', 'WorkPlane');
+    cyl_cut_wp = slabgeom.feature.create('cyl_cut_wp', 'WorkPlane');
     cyl_cut_wp.set('planetype', 'quick').set('quickplane', 'xz');
     cyl_cut = cyl_cut_wp.geom.feature.create('cyl_cut','Rectangle');
     cyl_cut.set('type','solid').set('pos',[0,0]).set('size',[totLen,P.airrad]);
 
-    air_cyl = beamgeom.feature.create('air_cyl', 'Revolve');
+    air_cyl = slabgeom.feature.create('air_cyl', 'Revolve');
     air_cyl.selection('input').set('cyl_cut_wp');
 
     air_cyl.set('angle1','-180');
     air_cyl.set('axis',[1,0]).set('pos',[0,0]).set('angle2','0');
 
     % Compose final geometry
-    beamHolesAir = beamgeom.feature.create('beamHolesAir', 'Compose');
+    beamHolesAir = slabgeom.feature.create('beamHolesAir', 'Compose');
     beamHolesAir.selection('input').set('symZComp');
     beamHolesAir.selection('input').set('air_cyl');
     beamHolesAir.set('formula', ['air_cyl-','symZComp']);
-    beamgeom.run;
+    slabgeom.run;
     displayCylStr = ', air cylinder';
     finBeamTag = 'beamHolesAir';
 
@@ -250,6 +268,39 @@ if isfield(P,'airrad') && P.solveOpt
 end
 
 % display(['Geometry created - ',displayBeamStr,displayCylStr,displayPMLStr]);
+
+%% Create domain selections after full geometry is constructed
+
+% Create selection with beam only
+% define box slightly larger and fully containing full beam volume
+delta = 10e-9; 
+beamSel = slabgeom.create('beamSel', 'BoxSelection');
+beamSel.set('xmin', -beamLen/2-delta).set('xmax', beamLen/2 + delta);
+beamSel.set('ymin', -delta).set('ymax', sqrt(3)*P.a*4 + delta);
+beamSel.set('zmin', -delta).set('zmax', thi + delta);
+beamSel.set('entitydim', 3).set('condition', 'inside');
+slabgeom.runCurrent;
+inds = model.selection([P.geomname,'_beamSel']).inputEntities();
+P.domSel.beam = inds';
+
+% Create selection with cylinder only
+% - define box slightly larger and fully containing full cylinder volume
+% then take difference selection with beam
+if isfield(P,'airrad') && P.solveOpt
+    delta = 10e-9; 
+    beamCylSel = slabgeom.create('beamCylSel', 'BoxSelection');
+    beamCylSel.set('xmin', -delta).set('xmax', beamLen + delta);
+    beamCylSel.set('ymin', -delta).set('ymax', P.airrad + delta);
+    beamCylSel.set('zmin', -P.airrad-delta).set('zmax', P.airrad + delta);
+    beamCylSel.set('condition', 'inside');
+    slabgeom.runCurrent;
+    
+    cylSel = slabgeom.create('cylSel', 'DifferenceSelection');
+    cylSel.set('entitydim',3).set('add','beamCylSel').set('subtract','beamSel');
+    slabgeom.runCurrent;
+    inds = model.selection([P.geomname,'_cylSel']).inputEntities();
+    P.domSel.cyl = inds';
+end
 
 % return the model 
 out = model;

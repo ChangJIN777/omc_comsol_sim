@@ -37,7 +37,7 @@ if P.solveMech
     mfem = ds.mfem;         % mechanical FEM data structure
     mneigs = P.mneigs;      % no. of mechanical eigenmodes to solve for
     freq = P.freq;          % target mechanical frequency
-%     bdom = mfem.dia_domind; % domain index for diamond
+    bdom = mfem.dia_domind; % domain index for diamond
 end
 
 % study, solver, physics tags; geometry name
@@ -229,8 +229,8 @@ if P.solveMech
 
     % set no. of eigenmodes to solve for, and target frequency to solve about
     mstd_eigv.set('neigsactive',true).set('neigs',mneigs);
-    % mstd_eigv.set('shiftactive',true).set('shift',num2str(0-1i*2*pi*freq));
-    mstd_eigv.set('shiftactive',true).set('shift',num2str(2*pi*freq));
+    mstd_eigv.set('shiftactive',true).set('shift',num2str(0-1i*2*pi*freq));
+    % mstd_eigv.set('shiftactive',true).set('shift',num2str(2*pi*freq));
 
     % disable EM waves in solid mechanics study
     % and disable solid mechanics in EM waves study
@@ -368,9 +368,11 @@ if P.solveMech
     % that of whole beam
     extractLocMechModes = 1;
     if extractLocMechModes
+        
+        % defines the boundaries of confined modes 
+        maxX = (2*P.TN-1)*P.a;
+        maxY = P.b;
 
-        maxX = 2*P.a;
-        maxY = P.w;
         stepWeight = ['if(((abs(x-',num2str(xc),')<',num2str(maxX),')',...
                         '&&(abs(y)<',num2str(maxY),')',...
                         '),1,0)'];

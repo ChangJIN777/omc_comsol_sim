@@ -93,6 +93,8 @@ P.freq = 10.7e9;                           % target mechanical frequency
 P.mneigs = 10;                          % # of eignevalues to find
 P.mMesh = 4;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
+% if we are adding the 2D phononic shield
+P.addshield = 0;
 
 % rotate crystal orientation of elasticity matrix
 % ccw rotation in deg from <100> inplane direction about <100> surface normal

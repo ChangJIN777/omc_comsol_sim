@@ -52,7 +52,8 @@ if strcmp(P.beamMat,'diamond') || strcmp(P.beamMat,'dia')
 elseif strcmp(P.beamMat,'silicon') || strcmp(P.beamMat,'Si')
     P.beamMat = 'silicon';
     % material properties
-    P.E = 168.5e9;                          % Young's modulus (Pa)
+    % P.E = 168.5e9;                          % Young's modulus (Pa)
+    P.E = 130e9;                          % Young's modulus (Pa)
     P.rho = 2330;                           % density (kg/m3)
     P.nu = 0.28;                            % Poisson ratio
     

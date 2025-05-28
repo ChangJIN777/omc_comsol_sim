@@ -16,9 +16,9 @@ P.r = 262e-9;              % unit cell height (along y)
 P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.wo = 560e-9;           % the height of the hole in the lower portion
-P.wi = 252e-9;           % the width of the hole in the lower portion                            
-P.ho = 525e-9;
-P.hi = 475e-9;
+P.wi = 200e-9;           % the width of the hole in the lower portion                            
+P.ho = 475e-9;
+P.hi = 400e-9;
 P.d = 200e-9;    % 
 P.b = sqrt(3)*P.a/2; 
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -35,10 +35,10 @@ P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
 P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
 P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
 P.a_ctr = 700e-9;                     % for taperTo = 'custom': lattice constant of center hole
-P.ho_ctr = 525e-9;                    % for taperTo = 'custom': hole height of center hole
+P.ho_ctr = 475e-9;                    % for taperTo = 'custom': hole height of center hole
 P.hi_ctr = 400e-9;
 P.wo_ctr = 560e-9;                    % for taperTo = 'custom': hole width of center hole
-P.wi_ctr = 252e-9;                    % for taperTo = 'custom': hole width of center hole
+P.wi_ctr = 350e-9;                    % for taperTo = 'custom': hole width of center hole
 % P.cavlen = 0e-9;                      % custom cavity length between two center holes; disable if not used
 
 % end waveguide mirror taper params
@@ -86,13 +86,15 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
-P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
+P.mevenx = 0;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 10e9;                           % target mechanical frequency
+P.freq = 9.264e9;                           % target mechanical frequency
 P.mneigs = 10;                          % # of eignevalues to find
 P.mMesh = 4;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
+% if we are adding the 2D phononic shield
+P.addshield = 1;
 
 % rotate crystal orientation of elasticity matrix
 % ccw rotation in deg from <100> inplane direction about <100> surface normal
@@ -137,7 +139,7 @@ P.LStats.zmax = P.th/2;
 % P.PMLstr = 0.008;
 
 %% Simulation settings
-P.max_dof = 5e6;                        % max # of degrees of freedom
+P.max_dof = 5e9;                        % max # of degrees of freedom
 
 % single run
 % data location to save files in

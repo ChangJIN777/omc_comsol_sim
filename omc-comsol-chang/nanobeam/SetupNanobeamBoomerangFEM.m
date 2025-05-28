@@ -144,14 +144,13 @@ else
 end
 
 % find index of domain corresponding to beam, then assign material to beam
-% mfem.dia_domind = solid_index(beam,-1,[0,wid/2,thi/2],[0,0,1]); % beam
-% mfem.dia_domind = P.domSel.beam;
-% % mfem.pml_domind = [];
-% if isfield(P,'solveMechPML') && P.solveMechPML
-%     mfem.dia_domind = sort([mfem.dia_domind,P.domSel.PML]);
-% end
-% bMat.selection.geom(geomname, 3);    %to select domain
-% bMat.selection.set(mfem.dia_domind);
+mfem.dia_domind = P.domSel.beam;
+% mfem.pml_domind = [];
+if isfield(P,'solveMechPML') && P.solveMechPML
+    mfem.dia_domind = sort([mfem.dia_domind,P.domSel.PML]);
+end
+bMat.selection.geom(geomname, 3);    %to select domain
+bMat.selection.set(mfem.dia_domind);
 end % of if P.solveMech
 
 % optical properties - conductivity, rel permittivity, refractive index
@@ -231,11 +230,17 @@ smech.selection.all;
 % boundary conditions: all BCs set to free by default
 % clear bnds
 
-
 % fixed BCs - end of beam or PML pad
 fixedBCs = smech.create('fixedBCs', 'Fixed', 2);
 fixedBCs.label('Fixed Constraint');
 fixedBCs.selection.named('slab_xboundaries_bnd');
+
+% fixed BCs - end of beam or PML pad
+if P.addshield~=1
+    fixedBCs_y = smech.create('fixedBCs_y', 'Fixed', 2);
+    fixedBCs_y.label('Fixed Constraint y');
+    fixedBCs_y.selection.named('slab_yboundaries_fixed_bnd');
+end
 
 % if mevenx == 0 
 %     if isfield(P,'solveMechPML') && P.solveMechPML
