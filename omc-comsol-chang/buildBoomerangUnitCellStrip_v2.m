@@ -25,6 +25,7 @@ ucellcomp = model.modelNode.create('comp1');
 ucellcomp.label('Unit cell FEM simulation');
 ucelllabel = 'Unit Cell';
 ucellname = 'geom1';
+P.ucellname = ucellname;
 ucellgeom = model.geom.create(ucellname, 3);
 ucellgeom.label(ucelllabel);
 
@@ -132,6 +133,19 @@ fillet2 = ucellWP_lower.geom.feature.create('fil2', 'Fillet');
 fillet2.set('radius', r2);
 fillet2.selection('point').set('fil1(1)', [10 13]);
 
+% add the air disk 
+if P.add_airDisk
+    airPlane = ucellgeom.feature.create('wpair', 'WorkPlane');
+    airPlane.set('quickplane', 'zx');
+    airPlane.set('unite', true);
+    diskBase = airPlane.geom.feature.create('r1', 'Rectangle');
+    diskBase.set('pos', [0 -P.a/2]);
+    diskBase.set('size', [P.airDiskH P.a]);
+    revolve = ucellgeom.feature.create('rev1', 'Revolve');
+    revolve.set('angle2', -90);
+    revolve.selection('input').set({'wpair'});
+end
+
 % ucellWP_lower.set('displ', [0 a*sqrt(3)*(3/4)-a/2]);
 
 %% the strip work plane 
@@ -236,6 +250,15 @@ y_boundary_symmetry.set('condition', 'inside');
 ucellgeom.selection.create('yboundaries','CumulativeSelection');
 ucellgeom.selection('yboundaries').label('Cumulative Selection y boundaries');
 y_boundary_symmetry.set('contributeto','yboundaries');
+
+% select the diamond material once the geometry is built
+delta = 10e-9; 
+beamSel = ucellgeom.feature.create('beamSel', 'BoxSelection');
+beamSel.set('xmin', -a/2-delta).set('xmax', a/2 + delta);
+beamSel.set('ymin', -delta).set('ymax', sqrt(3)*P.a*4 + delta);
+beamSel.set('zmin', -delta).set('zmax', P.th/2 + delta);
+beamSel.set('entitydim', 3).set('condition', 'inside');
+ucellgeom.runCurrent;
 
 %% Making selections (manual)
 mphgeom(model);

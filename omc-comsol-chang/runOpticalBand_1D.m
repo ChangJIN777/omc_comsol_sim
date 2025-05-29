@@ -41,7 +41,7 @@ if strcmp(P.unitcell,'hexagonal')
     end
     
     % compile expressions for input to COMSOL model
-    kliststr = ['range(0,1/',num2str(kpts),',1-1/',num2str(kpts),')'];
+    kliststr = ['range(0,1/',num2str(kpts),',1)'];
     % kliststr = ['range(0,1/',num2str(kpts),',1)'];
     for ki = 1:kpts
         kparamstr{ki} = ['"k", "',num2str((ki-1)/kpts),'"'];
@@ -66,9 +66,9 @@ end
 if strcmp(P.celltype,'cross')
     [model,P] = DrawCrossUnitCell(model,P);
 elseif strcmp(P.celltype,'boomerang')
-    [model,P] = buildBoomerangUnitCell_2D(model,P);
-elseif strcmp(P.celltype,'boomerang_strip')
-    [model,P] = buildBoomerangStrip_3D(model,P);
+    [model,P] = buildBoomerangUnitCellStrip_v2(model,P);
+elseif strcmp(P.celltype,'boomerang_strip_v2')
+    [model,P] = buildBoomerangUnitCellStrip_v2(model,P);
 elseif strcmp(P.celltype,'hole_strip')
     [model,P] = buildHoleStrip_3D(model,P);
 elseif strcmp(P.celltype,'hole_strip_wvg')
@@ -94,7 +94,11 @@ model.component('comp1').geom('geom1').run;
 model.component('comp1').material.create('mat2', 'Common');
 model.component('comp1').material('mat2').selection.all;
 model.component('comp1').material.create('mat1', 'Common');
-model.component('comp1').material('mat1').selection.set([1]);
+if strcmp(P.celltype,'boomerang_strip_v2')
+    model.component('comp1').material('mat1').selection.named([P.ucellname,'_beamSel']);
+else
+    model.component('comp1').material('mat1').selection.set([1]);
+end
 if strcmp(P.celltype,'rib')
     model.component('comp1').material('mat1').label('Air');
     model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
@@ -178,7 +182,11 @@ if P.bandStructureDim ~= 1
 end
 % add the scattering boundary condition 
 model.component('comp1').physics('emw').create('sctr1', 'Scattering', 2);
-model.component('comp1').physics('emw').feature('sctr1').selection.set([3 12]);
+if strcmp(P.celltype,'boomerang_strip_v2')
+    model.component('comp1').physics('emw').feature('sctr1').selection.set([7]);
+else
+    model.component('comp1').physics('emw').feature('sctr1').selection.set([3 12]);
+end
 
 %% Add Mesh
 mesh_quality = meshSize;
@@ -469,7 +477,7 @@ for ki = 1:kpts
     lambda_ki = find(sols.sol1.map(:,outer_inds)==ki+1);
     fem.sol.lambda = sols.sol1.map(lambda_ki,lambda_inds);
     fem.sol.freqs = abs(fem.sol.lambda)/(2*pi);
-    for nb = 1:nbands*2
+    for nb = 1:nbands
         ds.F(ki+1,nb) = fem.sol.freqs(nb);
     end
 end

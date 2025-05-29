@@ -4,49 +4,61 @@ clear P;
 %% unit cell params 
 P.xsect = 'rect'; 
 P.beamMat = 'diamond';                  % beam material name
-P.celltype = 'hole_strip';                   % specify the cell type
-P.unitcell = 'strip';                  % specify the shape of the unit cell
-P.a = 255e-9;              % lattice constant 
-P.b = 0e-9;              % unit cell shift in the y direction
-P.b_wvg = 0e-9;           % unit cell shift in the y direction (wvg region)
-P.r = 65e-9;              % radius of the unit cell
-P.th = 160e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.celltype = 'boomerang_strip_v2';                   % specify the cell type
+P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
+P.a = 700e-9;              % lattice constant 
+P.w = P.a*(85/600);              % unit cell width (along x)
+P.r = P.a*(225/600);              % unit cell height (along y)
+P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-P.r1 = 35e-9;             % width (along y) of cross (for celltype = 'hollow')
-P.airDiskH = 2500e-9; % the height of the air disk
+P.wo = 560e-9;           % the height of the hole in the lower portion
+P.wi = 252e-9;           % the width of the hole in the lower portion                            
+P.ho = 475e-9;
+P.hi = 400e-9;
+P.b = sqrt(3)*P.a/2;        
+P.d = 200e-9;
+
+P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-P.r2 = 40e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
+P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
                             % or of outer fins (for celltype = 'solid')
 P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
 P.bandStructureDim = 1;                 % 1D vs 2D band structure
-P.kpts = 7;                             % no. of k-points, EXCLUDING gamma point
+P.kpts = 6;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 20;                           % no. of bands to solve for
-P.saveRawData = 1;                      % if we will save the raw band structure data
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
 P.plotgeom = 0;                         % 1 to plot the geometry
 P.savedat = 1;                          % 1 to save data structures
 P.savebndplot = 1;                      % 1 to save bandstructure plot
-P.saveplots = 0;                        % 1 to save displacement and strain profiles
+P.saveplots = 1;                        % 1 to save displacement and strain profiles
 P.saveMPH = 0; 
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
-P.mbeveny = 0;                          % 1 to find even mechanical mode about y
+P.mbeveny = 1;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
-P.optical_freq = 100;                % target optical mid band frequency (THz)                        % target frequency - set to 0 for bandstructure simulations
+% the symmetry condition parameters 
+P.TwoSymPlanes = 1;             % if we are solving for band structures with two symmetry planes
+P.zSymCondition = 0;
+P.freq = 10e9;                             % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 7;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
 P.anisoMat = 1;
 P.rxtal = 45;                           % ccw rotation of elasticity matrix in deg 
                                         % from <100> inplane direction about <100> surface normal
-
+%% optical simulation parameters 
+% for the optical bandgap 
+P.bandStructureDim=1;           % specify the dimension of the band structure 
+P.optical_freq = 100;       % specify the target frequency (THz)
+P.add_airDisk = 1;
+P.airDiskH = 4000e-9;
 %% define the maximum number of degree of freedom to limit the simulation time
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
@@ -62,12 +74,11 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % % create COMSOL model named 'model' from which COMSOL methods can be called, 
 % % e.g. model.save
 % model = ModelUtil.create('model');
-% 
-% buildHoleStrip_3D(model,P);
+% buildBoomerangUnitCellStrip_v2(model,P);
 % mphlaunch(model);
 
-%% run the simulation
+% Single solve
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\hole_strip\',currentDate,'\'];
+datLoc = ['.\test\optical_boomerang_strip_v2\',currentDate,'\'];
 P.datLoc = datLoc;
-solveOpticalBands(P);
+bds = solveOpticalBands(P);
