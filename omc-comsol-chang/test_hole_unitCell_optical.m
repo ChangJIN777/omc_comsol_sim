@@ -43,7 +43,7 @@ P.optical_freq = 300; % THz the center frequency of the targeted optical bandgap
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 0;                          % 1 to find even mechanical mode about z
 P.freq = 3e9;                             % target frequency - set to 0 for bandstructure simulations
-P.meshSize = 4;                         % mesh quality for mechanical simulations
+P.meshSize = 5;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
 P.anisoMat = 1;

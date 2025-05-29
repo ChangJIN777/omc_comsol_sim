@@ -10,7 +10,7 @@ P.celltype = 'boomerang_v2';                   % specify the cell type
 P.anisoMat = 1;
 
 % unit cell geometry
-P.a = 700e-9;              % lattice constant 
+P.a = 700e-9;               % lattice constant 
 P.w = 100e-9;              % unit cell width (along x)
 P.r = 262e-9;              % unit cell height (along y)
 P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
@@ -28,7 +28,7 @@ P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.MN_left = 10;                         % # holes in the left mirror region 
 P.MN_right = 10;                        % # holes in the right mirror region 
-P.TN = 6;                               % # holes in the tapering defect region
+P.TN = 7;                               % # holes in the tapering defect region
 
 % cavity taper params
 P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
@@ -38,7 +38,7 @@ P.a_ctr = 700e-9;                     % for taperTo = 'custom': lattice constant
 P.ho_ctr = 475e-9;                    % for taperTo = 'custom': hole height of center hole
 P.hi_ctr = 400e-9;
 P.wo_ctr = 560e-9;                    % for taperTo = 'custom': hole width of center hole
-P.wi_ctr = 350e-9;                    % for taperTo = 'custom': hole width of center hole
+P.wi_ctr = 250e-9;                    % for taperTo = 'custom': hole width of center hole
 % P.cavlen = 0e-9;                      % custom cavity length between two center holes; disable if not used
 
 % end waveguide mirror taper params
