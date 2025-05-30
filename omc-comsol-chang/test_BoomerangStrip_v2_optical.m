@@ -5,16 +5,16 @@ clear P;
 P.xsect = 'rect'; 
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang_strip_v2';                   % specify the cell type
-P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 700e-9;              % lattice constant 
-P.w = P.a*(85/600);              % unit cell width (along x)
-P.r = P.a*(225/600);              % unit cell height (along y)
-P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.unitcell = 'strip';                  % specify the shape of the unit cell
+P.a = 448e-9;              % lattice constant 
+P.w = 93e-9;              % unit cell width (along x)
+P.r = 172e-9;              % unit cell height (along y)
+P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-P.wo = 560e-9;           % the height of the hole in the lower portion
-P.wi = 252e-9;           % the width of the hole in the lower portion                            
-P.ho = 475e-9;
-P.hi = 400e-9;
+P.wo = 320e-9;           % the height of the hole in the lower portion
+P.wi = 85e-9;           % the width of the hole in the lower portion                            
+P.ho = 195e-9;
+P.hi = 110e-9;
 P.b = sqrt(3)*P.a/2;        
 P.d = 200e-9;
 
@@ -27,8 +27,8 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
 P.bandStructureDim = 1;                 % 1D vs 2D band structure
-P.kpts = 6;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 20;                           % no. of bands to solve for
+P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
+P.nbands = 40;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -56,9 +56,10 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 %% optical simulation parameters 
 % for the optical bandgap 
 P.bandStructureDim=1;           % specify the dimension of the band structure 
-P.optical_freq = 100;       % specify the target frequency (THz)
+P.optical_freq = 200;       % specify the target frequency (THz)
 P.add_airDisk = 1;
-P.airDiskH = 4000e-9;
+P.airDiskH = 3000e-9;
+P.saveRawData = 0; 
 %% define the maximum number of degree of freedom to limit the simulation time
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
