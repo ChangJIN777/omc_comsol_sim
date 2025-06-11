@@ -252,7 +252,7 @@ try
         fileName = [fileName,'_',CfBase];
     end
 
-    mphsave(model,[datLoc,fileName,'.mph']);
+    % mphsave(model,[datLoc,fileName,'.mph']);
     save([datLoc,fileName,'.mat'],'ds');
     
     %% Plot - electric field, displacement, strain, strain coupling
@@ -307,7 +307,9 @@ try
     end
     
     %% Save file
-    mphsave(model,[datLoc,fileName,'.mph']);
+    if P.storeMPH
+        mphsave(model,[datLoc,fileName,'.mph']);
+    end
     save([datLoc,fileName,'.mat'],'ds');
 catch lasterror % if geometry cannot be fabbed
     disp(lasterror.message)
@@ -319,7 +321,7 @@ catch lasterror % if geometry cannot be fabbed
     end
     
     
-    mphsave(model,[datLoc,'error_',P.fileBase,'.mph']);
+    % mphsave(model,[datLoc,'error_',P.fileBase,'.mph']);
     save([datLoc,'error_',P.fileBase,'.mat'],'ds');
 end
 

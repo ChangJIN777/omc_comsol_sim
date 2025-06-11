@@ -118,9 +118,13 @@ eytopplot_slc.set('rangecoloractive', 'on');
 eytopplot_slc.set('rangecolormax',1).set('rangecolormin',-1);
 eytopplot_slc.set('colortable', 'WaveLight');
 
-ctrHoleRX = P.xc + ds.P.hx_hole(1)/2;
-adjHoleLX = P.xc + ds.P.a_hole(2) - ds.P.hx_hole(2)/2;
-dielCtrX = (ctrHoleRX+adjHoleLX)/2;
+if strcmp(P.celltype,'snowflake') || strcmp(P.celltype,'boomerang_v2')
+    dielCtrX = P.xc;
+else
+    ctrHoleRX = P.xc + ds.P.hx_hole(1)/2;
+    adjHoleLX = P.xc + ds.P.a_hole(2) - ds.P.hx_hole(2)/2;
+    dielCtrX = (ctrHoleRX+adjHoleLX)/2;
+end
 
 if ~isfield(resTags,'eyxsecplot')
     eyxsecplot = model.result.create('eyxsecplot', 'PlotGroup3D');

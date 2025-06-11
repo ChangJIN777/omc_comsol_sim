@@ -1,5 +1,5 @@
 clc, clear;
-data_path = '.\test\snowflake\090224_sweep1\';
+data_path = 'C:\Users\User\Documents\comsol\omc_comsol_sim\omc-comsol-chang\test\snowflake\05302025\';
 matfiles = dir(fullfile([data_path,'*.mat']));
 for i=1:length(matfiles)
     filename = matfiles(i).name;
@@ -17,7 +17,7 @@ end
 
 %% function definitions
 function fitness = calFitnessSnowflake(fullMidBand,fullGapSize)
-    targetFreq = 50e9; % the target frequency of the bandgap 
+    targetFreq = 20e9; % the target frequency of the bandgap 
     freqTolerance = 1e9; % the tolerance for frequency offsets 
     % the fitness function associated with the optimization code
     fitness = -fullGapSize.*exp(-((fullMidBand-targetFreq)./freqTolerance).^2);

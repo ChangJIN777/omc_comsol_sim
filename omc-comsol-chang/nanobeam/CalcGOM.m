@@ -75,24 +75,25 @@ geomname = geomnames{1};
 beam = model.geom(geomname);
 
 % get boundaries on beam, not overlapping with symmetry planes
-model.geom('beam').create('beamBndsAll','AdjacentSelection');
-model.geom('beam').feature('beamBndsAll').set('entitydim',3);
-model.geom('beam').feature('beamBndsAll').set('input','beamSel');
-model.geom('beam').feature('beamBndsAll').set('outputdim',2);
-model.geom('beam').feature('beamBndsAll').set('selkeep','on');
-bndsM = model.selection('beam_beamBndsAll').inputEntities(); % get output entities
+model.geom(P.geomname).create('beamBndsAll','AdjacentSelection');
+model.geom(P.geomname).feature('beamBndsAll').set('entitydim',3);
+model.geom(P.geomname).feature('beamBndsAll').set('input','beamSel');
+model.geom(P.geomname).feature('beamBndsAll').set('outputdim',2);
+model.geom(P.geomname).feature('beamBndsAll').set('selkeep','on');
+beam.runCurrent;
+bndsM = model.selection([P.geomname,'_beamBndsAll']).inputEntities(); % get output entities
 
 % exclude symmetry planes
 if (abs(P.mevenx) && abs(P.oevenx))
-    bndsM = setdiff(bndsM,P.bndSel.beamXsym);
+    bndsM = setdiff(bndsM,P.bndSel.Xsym_l);
 end
 
 if (abs(P.meveny) && abs(P.oeveny))
-    bndsM = setdiff(bndsM,P.bndSel.beamYsym);
+    bndsM = setdiff(bndsM,P.bndSel.Ysym);
 end
 
 if (abs(P.mevenz) && abs(P.oevenz))
-    bndsM = setdiff(bndsM,P.bndSel.beamZsym);
+    bndsM = setdiff(bndsM,P.bndSel.Zsym);
 end
 
 %% Form datasets for volume and boundary integrals
@@ -266,7 +267,7 @@ for oi = oModes
             pS1 = pS{1}; pS2 = pS{2}; pS3 = pS{3};
             pS4 = pS{4}; pS5 = pS{5}; pS6 = pS{6};
             
-            % generate expression for photoelastic integrand E.pS.E
+            % generate expression for phodattoelastic integrand E.pS.E
             EpSEDiv =   [pS1,'*',Ex2,'+',pS2,'*',Ey2,'+',pS3,'*',Ez2];
             EpSEShear = [ '2*',pS4,'*',Eyz,'+2*',pS5,'*',Exz,...
                          '+2*',pS6,'*',Exy];

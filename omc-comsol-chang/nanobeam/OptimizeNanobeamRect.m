@@ -29,100 +29,112 @@ maxSPtoRun = 0;     % no. of starting points to run for; 0 to run indefinitely
 %% Nominal nanobeam parameters
 % ===geometry parameters
 % unit cell params
-P.xsect = 'rect';            % beam cross sectional shape
-P.beamMat = 'diamond';      % beam material name
+P.xsect = 'rect';                        % beam cross sectional shape - 'tri' or 'rect'
+P.beamMat = 'diamond';                  % beam material name
+P.celltype = 'snowflake';                   % specify the cell type
+P.anisoMat = 1;
 
-P.a = 436e-9*1550/1101;%565.7e-9*1550/2200;                           % nominal lattice constant
-P.w = 529e-9*1550/1101;%1074.8e-9*1550/2200;                          % beam width
-P.theta = 45;                           % etch angle in degrees
-P.th = 220e-9*1550/1101;%P.w/(2*tan(P.theta*pi/180));                       % beam thickness
-P.hx = 165e-9*1550/1101;%226.3e-9*1550/2200;                          % nominal hole height (along x-axis)
-P.hy = 366e-9*1550/1101;%698.6e-9*1550/2200;                          % nominal hole width (along y-axis)
-
-% unit cell bands
-% P.bandLoc = 'L:\Individuals\cchia\OMC\45oDesign\mechBands\tri_elps_45o_rxt_45o_a_566nm_w_1075nm_hx_226nm_hy_699nm_fullBands.fig';
-% P.bandmidgap = 9.26e9;
-
+% unit cell geometry
+P.a = 700e-9;              % lattice constant 
+P.w = 90e-9;              % unit cell width (along x)
+P.r = 300e-9;              % unit cell height (along y)
+P.th = 350e-9;             % height (along x) of cross (for celltype = 'hollow')
+                            % or of inner block (for celltype = 'solid')
+P.wo = 553e-9;           % the height of the hole in the lower portion
+P.wi = 300e-9;           % the width of the hole in the lower portion                            
+P.ho = 284e-9;
+P.hi = 175e-9;
+P.d = 100e-9;    % 
+P.b = sqrt(3)*P.a/2; 
+P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
+                            % or of inner block (for celltype = 'solid')
+P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
+                            % or of outer fins (for celltype = 'solid')
 % hole params for symmetric cavity / right half of asymmetric cavity
-P.nholes = 18;                          % # holes in 1/2 beam length
-P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.25;                    % defect percentage
-P.oblong = 1.6584;                      % oblong parameter (zero if holes are not changed)
-P.consthole = 0;                        % 1 if hole size is held constant
+P.MN_left = 15;                         % # holes in the left mirror region 
+P.MN_right = 15;                        % # holes in the right mirror region 
+P.TN = 10;                               % # holes in the tapering defect region
 
-% cavity params
-P.holeatctr = 1;            % 1/0 for hole/dielectric in middle
-P.taperFunc = 'cubic';      % linear/cubic/quadratic taper function to center hole in cavity
-% P.taperTo = 'custom';     % taper to custom hole in center of cavity; disable for taper to maxdef
-% P.a_ctr = 392e-9;  %for taperTo = 'custom'
-% P.hx_ctr = 189e-9; %for taperTo = 'custom'
-% P.hy_ctr = 177e-9; %for taperTo = 'custom'
-% P.cavlen = -10e-9;         % custom cavity length between two center holes
+% cavity taper params
+P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
+P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
+P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
+P.a_ctr = 700e-9;                     % for taperTo = 'custom': lattice constant of center hole
+P.ho_ctr = 287e-9;                    % for taperTo = 'custom': hole height of center hole
+P.hi_ctr = 195e-9;
+P.wo_ctr = 403e-9;                    % for taperTo = 'custom': hole width of center hole
+P.wi_ctr = 200e-9;                    % for taperTo = 'custom': hole width of center hole
+% P.cavlen = 0e-9;                      % custom cavity length between two center holes; disable if not used
 
 % end waveguide mirror taper params
-P.wvgmir = 0;
-P.wgmTaper.func = 'cubic'; %linear, quadratic, cubic
-P.wgmTaper.endtype = 'custom'; %custom, maxdef, zero (or '')
-P.wgmTaper.a_end = 426e-9;  %for endtype = 'custom'
-P.wgmTaper.hx_end = 213e-9; %for endtype = 'custom'
-P.wgmTaper.hy_end = 173e-9; %for endtype = 'custom'
-% P.wgmTaper.maxdef_end = 0.094932; % defect percentage - for endtype = 'maxdef'
-% P.wgmTaper.oblong_end = 2.9172; % oblong parameter (zero if holes are not changed) - for endtype = 'maxdef'
+P.wvgmir = 0;                           % no. of mirrors in end waveguide mirror taper
+P.wgmTaper.func = 'cubic';              % taper function - linear, quadratic, cubic
+P.wgmTaper.endtype = 'custom';          % taper to custom, maxdef, zero (or '') end hole
+P.wgmTaper.a_end = 500e-9;              % for endtype = 'custom': lattice constant of end hole
+P.wgmTaper.wo_end = P.wo;             % for endtype = 'custom': hole height of end hole
+P.wgmTaper.wi_end = P.wi;             % for endtype = 'custom': hole width of end hole
+P.wgmTaper.ho_end = P.ho;             % for endtype = 'custom': hole height of end hole
+P.wgmTaper.hi_end = P.hi;             % for endtype = 'custom': hole width of end hole
+% P.wgmTaper.maxdef_end = 0.094932;     % defect percentage - for endtype = 'maxdef'
+% P.wgmTaper.oblong_end = 2.9172;       % oblong parameter (zero if holes are not changed) - for endtype = 'maxdef'
 
-P.nphonmir = 0;
-
-% central taper support params
-% P.tapSup.on = 1;
-% P.tapSup.theta = P.theta;
-% P.tapSup.wo1 = P.w;   % waveguide width at input
-% P.tapSup.wo2 = P.w;   % waveguide width at output
-% P.tapSup.ws = 1.3*P.w;    % max width of waveguide support
-% P.tapSup.tprlgth = 15e-6; % length (of 1/2-beam) to taper over
-% P.tapSup.strghtlgth = 0;  % length of straight sections at both ends of support
-% P.tapSup.extrlgth1 = 0;   % length of straight section at input end (in addition to strghtlgth)
-% P.tapSup.extrlgth2 = 0;   % length of straight section at output end (in addition to strghtlgth)
-% P.tapSup.centLength = 0;  % length of straight section in center of taper
-% P.tapSup.nRes = 20;       % resolution for taper
-
-% asymmetric cavity: set with same parameters above
-P.asymCav = 0;
-if P.asymCav
+% asymmetric cavity - specify param data struct P.PL with similar fields to
+% P, for left half of asymmetric cavity
+P.asymCav = 0;                          % 1 to enable asymmetric cavity
+if P.asymCav                
     P.PL = P;
-    P.PL.nholes = 4+P.ndef;
-    P.PL.wvgmir=7;
+    P.PL.nholes = 3+P.ndef;
+    P.PL.wvgmir = 5;
 end
 
-P.lambda = 1550e-9;                      % target optical wavelength
+P.lambda = 1640e-9;                     % target optical wavelength
 
-%Disorder
-P.stdDev = [0,0]; %0.05*[P.hh,P.hw];             % standard deviation of hole dimensions (hh,hw)
-P.stdDevPos = 0; %0.05*P.a;                  % standard deviation of hole positions
-P.asym = 0; %0.02*P.w;                       % cross-section asymmetry (target y-offset in bottom apex position)
+% Disorder
+P.stdDev = [0,0];                       % standard deviation of hole dimensions (hh,hw)
+P.stdDevPos = 0;                        % standard deviation of hole positions
+P.asym = 0;                             % cross-section asymmetry (target y-offset in bottom apex position)
 
-% specify simulations/calculations to run
-P.solveMech = 1;        % solve for optics
-P.solveOpt = 1;         % solve for mechanics
-P.calcG = 1*(P.solveMech && P.solveOpt);    % calculate optomechanical coupling
-P.calcS = 1*P.solveMech;    % calculate strain coupling
+%% specify simulation/calculation/plot/save options
+P.solveMech = 1;                        % 1 to solve for mechanics
+P.solveOpt = 1;                         % 1 to solve for optics
+P.nbeam = 2.4064;        % refractive index of the dielectric material
+P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
+P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
+P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)
 
 % plotting & saving
-P.plotgeom = 0;                     % 1 to plot the geometry
-P.storeMPH = 0;                     % 1 to save COMSOL MPH model
-P.plotMech = 1*P.solveMech;         % 1 to plot displacement and strain profiles
-P.plotOpt = 1*P.solveOpt;           % 1 to plot E-field profiles
-P.plotStrCpl = 1*P.calcS;           % 1 to plot strain coupling profile
+P.plotgeom = 1;                         % 1 to plot the geometry
+P.storeMPH = 0;                         % 1 to save COMSOL model file
+P.plotMech = 1*P.solveMech;             % 1 to plot displacement and strain profiles
+P.plotOpt = 1*P.solveOpt;               % 1 to plot E-field profiles
+P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 
-% ===mechanical simulation parameters 
+%% mechanical simulation parameters 
 % solid mechanics solver parameters
-P.mevenx = 1;       % +/-1 to find even/odd mode about x; 0 for fixed BC
-P.meveny = 1;       % +/-1 to find even/odd mode about y; 0 for fixed BC
-P.mevenz = 1;       % +/-1 to find even/odd mode about z; 0 for fixed BC
-P.freq = 8e9;       % target mechanical frequency
-% P.freqList = [4.487,7.156,9.055]*1e9;
-P.freqList = 8e9;
-P.mneigs = 10;      % # of eignevalues to find
-P.mMesh = 3;        % mesh quality
-P.mAdjMesh = 1;     % adjust mesh if DOFs exceed max_dof
+P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
+P.meveny = 1;                           % +/-1 to find even/odd mode about y
+P.mevenz = 1;                           % +/-1 to find even/odd mode about z
+P.freq = 19e9;                           % target mechanical frequency
+P.mneigs = 10;                          % # of eignevalues to find
+P.mMesh = 7;                            % mesh quality for mechanical simulations
+P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
+% if we are adding the 2D phononic shield
+P.addshield = 0;
+
+% rotate crystal orientation of elasticity matrix
+% ccw rotation in deg from <100> inplane direction about <100> surface normal
+P.rxtal = 45;
+P.rxtalInFilename = 1;
+
+%% optical simulation parameters
+% rf module solver parameters
+P.oevenx = 1;            % +/-1 to find even/odd optical mode about x (-1 == fundamental for hole in center)
+P.oeveny = -1;                          % +/-1 to find even/odd optical mode about y (-1 == TE-like)
+P.oevenz = 1;                           % +/-1 to find even/odd optical mode about z 
+P.oneigs = 10;                           % # of eigenvalues to find
+P.oMesh = 7;                            % mesh quality for optical simulations
+P.oAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
+P.airrad = P.lambda+P.a*sqrt(3)*3;            % radius of air cylinder surrounding nanobeam
 
 % material properties
 P.E = 1050e9;       % Young's modulus
@@ -140,19 +152,6 @@ P.rxtal = 45;           % ccw rotation in deg from <100> inplane direction about
 
 P.useStress = 0;        % 1 to include instrinsic stress in calculations
 P.stress = 1e9;         % Intrinsic stress (Pa) 
-
-% ===optical simulation parameters
-% rf module solver parameters
-P.oevenx = -1^(P.holeatctr);      % 1 to find even optical mode about x (-1 == fundamental for hole in center)
-P.oeveny = -1;      % 1 to find even optical mode about y (-1 == TE-like)
-P.oevenz = 1;       % 1 to find even optical mode about z 
-P.oneigs = 1;       % # of eigenvalues to find
-P.oMesh = 4;        % mesh quality
-P.oAdjMesh = 1;     % adjust mesh if DOFs exceed max_dof
-
-% material properties
-P.nbeam = 2.386;                        % index of refraction in material
-P.airrad = 2*P.lambda+P.w/2;            % radius of surrounding air cylinder
 
 % ===OM coupling: photoelastic tensor components for g calculation
 P.p11 = -0.25;

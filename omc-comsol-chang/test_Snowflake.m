@@ -6,10 +6,10 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'snowflake';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 700e-9;              % lattice constant 
-P.w = 105e-9;              % unit  cell width (along x)
-P.r = 287e-9;              % unit cell height (along y)
-P.th = 308e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.a = 660e-9;              % lattice constant 
+P.w = 82.5e-9;              % unit  cell width (along x)
+P.r = 272e-9;              % unit cell height (along y)
+P.th = 350e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -38,7 +38,7 @@ P.zSymCondition = 1;
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
-P.meshSize = 5;                         % mesh quality for mechanical simulations
+P.meshSize = 7;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
 P.anisoMat = 1;

@@ -7,8 +7,8 @@ P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang_strip_v2';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
 P.a = 700e-9;              % lattice constant 
-P.w = P.a*(85/600);              % unit cell width (along x)
-P.r = P.a*(225/600);              % unit cell height (along y)
+P.w = 105e-9;              % unit cell width (along x)
+P.r = 287e-9;              % unit cell height (along y)
 P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.wo = 560e-9;           % the height of the hole in the lower portion

@@ -196,6 +196,7 @@ if abs(P.mbevenz)
     symZPlaneExt.set('distance', symZth);
 
     % compose: unit cell - symmetry block
+    %% 
     symZComp = ucellgeom.feature.create('symZComp', 'Compose');
     symZComp.selection('input').set('ext1');
     symZComp.selection('input').set('symZPlaneExt');

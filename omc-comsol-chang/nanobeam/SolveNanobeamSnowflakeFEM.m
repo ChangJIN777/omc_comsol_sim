@@ -36,8 +36,8 @@ end
 if P.solveMech
     mfem = ds.mfem;         % mechanical FEM data structure
     mneigs = P.mneigs;      % no. of mechanical eigenmodes to solve for
-    freq = P.freq;          % target mechanical frequency
-%     bdom = mfem.dia_domind; % domain index for diamond
+    freq = P.freq;          % target mechanical frequenc
+    bdom = mfem.dia_domind; % domain index for diamond
 end
 
 % study, solver, physics tags; geometry name
@@ -369,8 +369,8 @@ if P.solveMech
     extractLocMechModes = 1;
     if extractLocMechModes
 
-        maxX = 2*P.a;
-        maxY = P.w;
+        maxX = (2*P.TN-1)*P.a;
+        maxY = P.b*2;
         stepWeight = ['if(((abs(x-',num2str(xc),')<',num2str(maxX),')',...
                         '&&(abs(y)<',num2str(maxY),')',...
                         '),1,0)'];

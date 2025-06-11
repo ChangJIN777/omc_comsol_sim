@@ -5,12 +5,20 @@ function [model,P] = buildSnowflakeStrip_3D(model,P)
 % Model exported on Jul 21 2024, 16:57 by COMSOL 6.1.0.357.
 
 %% read the input parameters 
+% the parameters for the boomerang unit cell
 a = P.a;        % lattice constant 
-b = P.b;        % the offset for the optical mode
-b_base = P.b_base; 
-th = P.th;        % the height of the hole
-w = P.w;        % the width of the hole
-r = P.r;        % the height of the hole 
+w = P.w;        % the width of the boomerang unit cell 
+r = P.r;        % the length of the boomerang unit cell 
+b = P.b;
+th = P.th;        % the thickness of the cavity 
+% the parameters for the center unit cell 
+wo = P.wo;
+wi = P.wi;
+ho = P.ho;
+hi = P.hi; 
+d = P.d;
+b_wvg = 0;
+% fillet radius
 r1 = P.r1;      % the fillet radius of the edges of the hole 
 r2 = P.r2;      % the fillet radius of the center of the hole 
 abssym = abs(P.mbevenz);    % symmetry in the z direction 
@@ -23,290 +31,128 @@ ucellname = 'geom1';
 ucellgeom = model.geom.create(ucellname, 3);
 ucellgeom.label(ucelllabel);
 
-%% create unit cell with boomerang geometry
+%% create unit cell with snowflake geometry
 ucellWP = ucellgeom.feature.create('wp1', 'WorkPlane');
 ucellWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
-ucellWP.set('unite', true);
+% ucellWP.set('unite', true);
 
-% build the base plate for the strip
-ucellplane = ucellWP.geom.feature.create('r_base', 'Rectangle');
+ucellplane = ucellWP.geom.feature.create('pol1', 'Polygon');
 ucellplane.label('Base plane');
-ucellplane.set('pos', [-a/2 0]);
-ucellplane.set('base','corner');
-ucellplane.set('size',[a sqrt(3)*(2+1/2)*a+b_base+b]);
+ucellplane.set('source', 'table');
+ucellplane.set('table', [-a/2 0; a/2 0; a/2 b+sqrt(3)*a+d/2; -a/2 b+sqrt(3)*a+d/2; -a/2 0]);
+hole_label_list = {};
 
 % add the holes for the strip
-% hole #1 
-c1_rec_1 = ucellWP.geom.feature.create('c1_r1', 'Rectangle');
-c1_rec_1.set('pos', [0 a*sqrt(3)/2+b+b_base]);
-c1_rec_1.set('base', 'center');
-c1_rec_1.set('size', [2*r w]);
+% adding center unit cell v2 
+hole1_center = [-a/2 b+d/2];
+holeCenter_lableList = add_SnowflakeHole(ucellWP,hole1_center,P,1);
+hole_label_list = [hole_label_list,holeCenter_lableList];
 
-c1_rec_2 = ucellWP.geom.feature.create('c1_r2', 'Rectangle');
-c1_rec_2.set('pos', [0 a*sqrt(3)/2+b+b_base]);
-c1_rec_2.set('rot', 60);
-c1_rec_2.set('base', 'center');
-c1_rec_2.set('size', [2*r w]);
+hole2_center = [a/2 b+d/2];
+hole2_labelList = add_SnowflakeHole(ucellWP,hole2_center,P,2);
+hole_label_list = [hole_label_list,hole2_labelList];
 
-c1_rec_3 = ucellWP.geom.feature.create('c1_r3', 'Rectangle');
-c1_rec_3.set('pos', [0 a*sqrt(3)/2+b+b_base]);
-c1_rec_3.set('rot', 120);
-c1_rec_3.set('base', 'center');
-c1_rec_3.set('size', [2*r w]);
+hole3_center = [0 b+sqrt(3)*a/2+d/2];
+hole3_labelList = add_SnowflakeHole(ucellWP,hole3_center,P,3);
+hole_label_list = [hole_label_list,hole3_labelList];
 
-% hole #2 
-c2_rec_1 = ucellWP.geom.feature.create('c2_r1', 'Rectangle');
-c2_rec_1.set('pos', [0 -(a*sqrt(3)/2+b+b_base)]);
-c2_rec_1.set('base', 'center');
-c2_rec_1.set('size', [2*r w]);
+hole4_center = [-a/2 b+sqrt(3)*a+d/2];
+hole4_labelList = add_SnowflakeHole(ucellWP,hole4_center,P,4);
+hole_label_list = [hole_label_list,hole4_labelList];
 
-c2_rec_2 = ucellWP.geom.feature.create('c2_r2', 'Rectangle');
-c2_rec_2.set('pos', [0 -(a*sqrt(3)/2+b+b_base)]);
-c2_rec_2.set('rot', 60);
-c2_rec_2.set('base', 'center');
-c2_rec_2.set('size', [2*r w]);
+hole5_center = [a/2 b+sqrt(3)*a+d/2];
+hole5_labelList = add_SnowflakeHole(ucellWP,hole5_center,P,5);
+hole_label_list = [hole_label_list,hole5_labelList];
 
-c2_rec_3 = ucellWP.geom.feature.create('c2_r3', 'Rectangle');
-c2_rec_3.set('pos', [0 -(a*sqrt(3)/2+b+b_base)]);
-c2_rec_3.set('rot', 120);
-c2_rec_3.set('base', 'center');
-c2_rec_3.set('size', [2*r w]);
+% hole6_center = [0 b+sqrt(3)*a*(3/2)+d/2];
+% hole6_labelList = add_SnowflakeHole(ucellWP,hole6_center,P,6);
+% hole_label_list = [hole_label_list,hole6_labelList];
+% 
+% hole7_center = [a/2 b+sqrt(3)*a*2+d/2];
+% hole7_labelList = add_SnowflakeHole(ucellWP,hole7_center,P,7);
+% hole_label_list = [hole_label_list,hole7_labelList];
+% 
+% hole8_center = [-a/2 b+sqrt(3)*a*2+d/2];
+% hole8_labelList = add_SnowflakeHole(ucellWP,hole8_center,P,8);
+% hole_label_list = [hole_label_list,hole8_labelList];
 
-% hole #3 
-c3_rec_1 = ucellWP.geom.feature.create('c3_r1', 'Rectangle');
-c3_rec_1.set('pos', [0 a*sqrt(3)/2+sqrt(3)*a+b_base]);
-c3_rec_1.set('base', 'center');
-c3_rec_1.set('size', [2*r w]);
+% hole9_center = [a/2-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2];
+% hole9_labelList = add_SnowflakeHole(ucellWP,hole9_center,P,9);
+% hole_label_list = [hole_label_list,hole9_labelList];
+% 
+% hole10_center = [a/2-a-(a/2+w/2) b+a*sqrt(3)/2+sqrt(3)*a/2];
+% hole10_labelList = add_SnowflakeHole(ucellWP,hole10_center,P,10);
+% hole_label_list = [hole_label_list,hole10_labelList];
 
-c3_rec_2 = ucellWP.geom.feature.create('c3_r2', 'Rectangle');
-c3_rec_2.set('pos', [0 a*sqrt(3)/2+sqrt(3)*a+b_base]);
-c3_rec_2.set('rot', 60);
-c3_rec_2.set('base', 'center');
-c3_rec_2.set('size', [2*r w]);
 
-c3_rec_3 = ucellWP.geom.feature.create('c3_r3', 'Rectangle');
-c3_rec_3.set('pos', [0 a*sqrt(3)/2+sqrt(3)*a+b_base]);
-c3_rec_3.set('rot', 120);
-c3_rec_3.set('base', 'center');
-c3_rec_3.set('size', [2*r w]);
 
-% hole #4 
-c4_rec_1 = ucellWP.geom.feature.create('c4_r1', 'Rectangle');
-c4_rec_1.set('pos', [0 a*sqrt(3)/2+2*sqrt(3)*a+b_base]);
-c4_rec_1.set('base', 'center');
-c4_rec_1.set('size', [2*r w]);
 
-c4_rec_2 = ucellWP.geom.feature.create('c4_r2', 'Rectangle');
-c4_rec_2.set('pos', [0 a*sqrt(3)/2+2*sqrt(3)*a+b_base]);
-c4_rec_2.set('rot', 60);
-c4_rec_2.set('base', 'center');
-c4_rec_2.set('size', [2*r w]);
+%% create unit cell with boomerang geometry in the lower cavity
+% ucellWP_lower = ucellgeom.create('wp_lower', 'WorkPlane');
+% ucellWP_lower.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
+% ucellplane_lower = ucellWP_lower.geom.feature.create('r_base', 'Rectangle');
+% ucellplane_lower.set('pos', [-a/2 0]);
+% ucellplane_lower.set('size', [a b]);
 
-c4_rec_3 = ucellWP.geom.feature.create('c4_r3', 'Rectangle');
-c4_rec_3.set('pos', [0 a*sqrt(3)/2+2*sqrt(3)*a+b_base]);
-c4_rec_3.set('rot', 120);
-c4_rec_3.set('base', 'center');
-c4_rec_3.set('size', [2*r w]);
+rec1 = ucellWP.geom.feature.create('r1_base', 'Rectangle');
+rec1.set('pos', [0 d/2+(ho-hi)/2+hi]);
+rec1.set('base', 'center');
+rec1.set('size', [wo ho-hi]);
+hole_label_list = [hole_label_list,'r1_base'];
 
-% hole #5
-c5_rec_1 = ucellWP.geom.feature.create('c5_r1', 'Rectangle');
-c5_rec_1.set('pos', [0 -(a*sqrt(3)/2+sqrt(3)*a+b_base)]);
-c5_rec_1.set('base', 'center');
-c5_rec_1.set('size', [2*r w]);
+rec2 = ucellWP.geom.feature.create('r2_base', 'Rectangle');
+rec2.set('pos', [-wo/2+(wo-wi)/4 d/2+ho/2]);
+rec2.set('base', 'center');
+rec2.set('size', [(wo-wi)/2 ho]);
+hole_label_list = [hole_label_list,'r2_base'];
 
-c5_rec_2 = ucellWP.geom.feature.create('c5_r2', 'Rectangle');
-c5_rec_2.set('pos', [0 -(a*sqrt(3)/2+sqrt(3)*a+b_base)]);
-c5_rec_2.set('rot', 60);
-c5_rec_2.set('base', 'center');
-c5_rec_2.set('size', [2*r w]);
+rec3 = ucellWP.geom.feature.create('r3_base', 'Rectangle');
+rec3.set('pos', [wo/2-(wo-wi)/4 d/2+ho/2]);
+rec3.set('base', 'center');
+rec3.set('size', [(wo-wi)/2 ho]);
+hole_label_list = [hole_label_list,'r3_base'];
 
-c5_rec_3 = ucellWP.geom.feature.create('c5_r3', 'Rectangle');
-c5_rec_3.set('pos', [0 -(a*sqrt(3)/2+sqrt(3)*a+b_base)]);
-c5_rec_3.set('rot', 120);
-c5_rec_3.set('base', 'center');
-c5_rec_3.set('size', [2*r w]);
-
-% hole #6
-c6_rec_1 = ucellWP.geom.feature.create('c6_r1', 'Rectangle');
-c6_rec_1.set('pos', [0 -(a*sqrt(3)/2+2*sqrt(3)*a+b_base)]);
-c6_rec_1.set('base', 'center');
-c6_rec_1.set('size', [2*r w]);
-
-c6_rec_2 = ucellWP.geom.feature.create('c6_r2', 'Rectangle');
-c6_rec_2.set('pos', [0 -(a*sqrt(3)/2+2*sqrt(3)*a+b_base)]);
-c6_rec_2.set('rot', 60);
-c6_rec_2.set('base', 'center');
-c6_rec_2.set('size', [2*r w]);
-
-c6_rec_3 = ucellWP.geom.feature.create('c6_r3', 'Rectangle');
-c6_rec_3.set('pos', [0 -(a*sqrt(3)/2+2*sqrt(3)*a+b_base)]);
-c6_rec_3.set('rot', 120);
-c6_rec_3.set('base', 'center');
-c6_rec_3.set('size', [2*r w]);
-
-% hole #7
-c7_rec_1 = ucellWP.geom.feature.create('c7_r1', 'Rectangle');
-c7_rec_1.set('pos', [a/2 sqrt(3)*a+b_base]);
-c7_rec_1.set('base', 'center');
-c7_rec_1.set('size', [2*r w]);
-
-c7_rec_2 = ucellWP.geom.feature.create('c7_r2', 'Rectangle');
-c7_rec_2.set('pos', [a/2 sqrt(3)*a+b_base]);
-c7_rec_2.set('rot', 60);
-c7_rec_2.set('base', 'center');
-c7_rec_2.set('size', [2*r w]);
-
-c7_rec_3 = ucellWP.geom.feature.create('c7_r3', 'Rectangle');
-c7_rec_3.set('pos', [a/2 sqrt(3)*a+b_base]);
-c7_rec_3.set('rot', 120);
-c7_rec_3.set('base', 'center');
-c7_rec_3.set('size', [2*r w]);
-
-% hole #8
-c8_rec_1 = ucellWP.geom.feature.create('c8_r1', 'Rectangle');
-c8_rec_1.set('pos', [-a/2 sqrt(3)*a+b_base]);
-c8_rec_1.set('base', 'center');
-c8_rec_1.set('size', [2*r w]);
-
-c8_rec_2 = ucellWP.geom.feature.create('c8_r2', 'Rectangle');
-c8_rec_2.set('pos', [-a/2 sqrt(3)*a+b_base]);
-c8_rec_2.set('rot', 60);
-c8_rec_2.set('base', 'center');
-c8_rec_2.set('size', [2*r w]);
-
-c8_rec_3 = ucellWP.geom.feature.create('c8_r3', 'Rectangle');
-c8_rec_3.set('pos', [-a/2 sqrt(3)*a+b_base]);
-c8_rec_3.set('rot', 120);
-c8_rec_3.set('base', 'center');
-c8_rec_3.set('size', [2*r w]);
-
-% hole #9
-c9_rec_1 = ucellWP.geom.feature.create('c9_r1', 'Rectangle');
-c9_rec_1.set('pos', [a/2 -sqrt(3)*a-b_base]);
-c9_rec_1.set('base', 'center');
-c9_rec_1.set('size', [2*r w]);
-
-c9_rec_2 = ucellWP.geom.feature.create('c9_r2', 'Rectangle');
-c9_rec_2.set('pos', [a/2 -sqrt(3)*a-b_base]);
-c9_rec_2.set('rot', 60);
-c9_rec_2.set('base', 'center');
-c9_rec_2.set('size', [2*r w]);
-
-c9_rec_3 = ucellWP.geom.feature.create('c9_r3', 'Rectangle');
-c9_rec_3.set('pos', [a/2 -sqrt(3)*a-b_base]);
-c9_rec_3.set('rot', 120);
-c9_rec_3.set('base', 'center');
-c9_rec_3.set('size', [2*r w]);
-
-% hole #10
-c10_rec_1 = ucellWP.geom.feature.create('c10_r1', 'Rectangle');
-c10_rec_1.set('pos', [-a/2 -sqrt(3)*a-b_base]);
-c10_rec_1.set('base', 'center');
-c10_rec_1.set('size', [2*r w]);
-
-c10_rec_2 = ucellWP.geom.feature.create('c10_r2', 'Rectangle');
-c10_rec_2.set('pos', [-a/2 -sqrt(3)*a-b_base]);
-c10_rec_2.set('rot', 60);
-c10_rec_2.set('base', 'center');
-c10_rec_2.set('size', [2*r w]);
-
-c10_rec_3 = ucellWP.geom.feature.create('c10_r3', 'Rectangle');
-c10_rec_3.set('pos', [-a/2 -sqrt(3)*a-b_base]);
-c10_rec_3.set('rot', 120);
-c10_rec_3.set('base', 'center');
-c10_rec_3.set('size', [2*r w]);
-
-% hole #11
-c11_rec_1 = ucellWP.geom.feature.create('c11_r1', 'Rectangle');
-c11_rec_1.set('pos', [a/2 sqrt(3)*a+a*sqrt(3)+b_base]);
-c11_rec_1.set('base', 'center');
-c11_rec_1.set('size', [2*r w]);
-
-c11_rec_2 = ucellWP.geom.feature.create('c11_r2', 'Rectangle');
-c11_rec_2.set('pos', [a/2 sqrt(3)*a+a*sqrt(3)+b_base]);
-c11_rec_2.set('rot', 60);
-c11_rec_2.set('base', 'center');
-c11_rec_2.set('size', [2*r w]);
-
-c11_rec_3 = ucellWP.geom.feature.create('c11_r3', 'Rectangle');
-c11_rec_3.set('pos', [a/2 sqrt(3)*a+a*sqrt(3)+b_base]);
-c11_rec_3.set('rot', 120);
-c11_rec_3.set('base', 'center');
-c11_rec_3.set('size', [2*r w]);
-
-% hole #12
-c12_rec_1 = ucellWP.geom.feature.create('c12_r1', 'Rectangle');
-c12_rec_1.set('pos', [-a/2 sqrt(3)*a+a*sqrt(3)+b_base]);
-c12_rec_1.set('base', 'center');
-c12_rec_1.set('size', [2*r w]);
-
-c12_rec_2 = ucellWP.geom.feature.create('c12_r2', 'Rectangle');
-c12_rec_2.set('pos', [-a/2 sqrt(3)*a+a*sqrt(3)+b_base]);
-c12_rec_2.set('rot', 60);
-c12_rec_2.set('base', 'center');
-c12_rec_2.set('size', [2*r w]);
-
-c12_rec_3 = ucellWP.geom.feature.create('c12_r3', 'Rectangle');
-c12_rec_3.set('pos', [-a/2 sqrt(3)*a+a*sqrt(3)+b_base]);
-c12_rec_3.set('rot', 120);
-c12_rec_3.set('base', 'center');
-c12_rec_3.set('size', [2*r w]);
-
-% hole #13
-c13_rec_1 = ucellWP.geom.feature.create('c13_r1', 'Rectangle');
-c13_rec_1.set('pos', [a/2 -sqrt(3)*a-a*sqrt(3)-b_base]);
-c13_rec_1.set('base', 'center');
-c13_rec_1.set('size', [2*r w]);
-
-c13_rec_2 = ucellWP.geom.feature.create('c13_r2', 'Rectangle');
-c13_rec_2.set('pos', [a/2 -sqrt(3)*a-a*sqrt(3)-b_base]);
-c13_rec_2.set('rot', 60);
-c13_rec_2.set('base', 'center');
-c13_rec_2.set('size', [2*r w]);
-
-c13_rec_3 = ucellWP.geom.feature.create('c13_r3', 'Rectangle');
-c13_rec_3.set('pos', [a/2 -sqrt(3)*a-a*sqrt(3)-b_base]);
-c13_rec_3.set('rot', 120);
-c13_rec_3.set('base', 'center');
-c13_rec_3.set('size', [2*r w]);
-
-% hole #14
-c14_rec_1 = ucellWP.geom.feature.create('c14_r1', 'Rectangle');
-c14_rec_1.set('pos', [-a/2 -sqrt(3)*a-a*sqrt(3)-b_base]);
-c14_rec_1.set('base', 'center');
-c14_rec_1.set('size', [2*r w]);
-
-c14_rec_2 = ucellWP.geom.feature.create('c14_r2', 'Rectangle');
-c14_rec_2.set('pos', [-a/2 -sqrt(3)*a-a*sqrt(3)-b_base]);
-c14_rec_2.set('rot', 60);
-c14_rec_2.set('base', 'center');
-c14_rec_2.set('size', [2*r w]);
-
-c14_rec_3 = ucellWP.geom.feature.create('c14_r3', 'Rectangle');
-c14_rec_3.set('pos', [-a/2 -sqrt(3)*a-a*sqrt(3)-b_base]);
-c14_rec_3.set('rot', 120);
-c14_rec_3.set('base', 'center');
-c14_rec_3.set('size', [2*r w]);
-
-composit_geom = ucellWP.geom.feature.create('co1', 'Compose');
-composit_geom.set('formula', 'r_base-(c1_r1 + c1_r2 + c1_r3 + c2_r1 + c2_r2 + c2_r3 + c3_r1 + c3_r2 + c3_r3 + c4_r1 + c4_r2 + c4_r3 + c5_r1 + c5_r2 + c5_r3 + c6_r1 + c6_r2 + c6_r3 + c7_r1 + c7_r2 + c7_r3 + c8_r1 + c8_r2 + c8_r3 + c9_r1 + c9_r2 + c9_r3 + c10_r1 + c10_r2 + c10_r3 + c11_r1 + c11_r2 + c11_r3 + c12_r1 + c12_r2 + c12_r3 + c13_r1 + c13_r2 + c13_r3 + c14_r1 + c14_r2 + c14_r3)');
-
-% the position of all the holes 
-hole_pos = [0 a*sqrt(3)/2+b+b_base; 0 -(a*sqrt(3)/2+b+b_base); 0 a*sqrt(3)/2+sqrt(3)*a+b_base;
-    0 a*sqrt(3)/2+2*sqrt(3)*a+b_base; 0 -(a*sqrt(3)/2+sqrt(3)*a+b_base);0 -(a*sqrt(3)/2+2*sqrt(3)*a+b_base);
-    a/2 sqrt(3)*a+b_base; -a/2 sqrt(3)*a+b_base; a/2 -sqrt(3)*a-b_base; -a/2 -sqrt(3)*a-b_base;
-    a/2 sqrt(3)*a+a*sqrt(3)+b_base; -a/2 sqrt(3)*a+a*sqrt(3)+b_base; a/2 -sqrt(3)*a-a*sqrt(3)-b_base;
-    -a/2 -sqrt(3)*a-a*sqrt(3)-b_base];
-
-selection_width = 5e-9;
-for i=1:14
-    addFillet(P,ucellWP.geom,i,hole_pos(i,:),selection_width);
+%% compose the 2D geometry
+compose1 = ucellWP.geom.feature.create('co1', 'Compose');
+compose_string = 'pol1';
+for i=1:length(hole_label_list)
+    compose_string = strcat(compose_string,'-');
+    compose_string = strcat(compose_string,hole_label_list(i));
 end
+    
+compose1.set('formula', compose_string);
 
-extrude = ucellgeom.feature.create('ext1', 'Extrude');
-% extrude.set('extrudefrom', 'faces');
-extrude.setIndex('distance', th, 0);
-extrude.selection('input').set({'wp1'});
+% compose1 = ucellWP.geom.feature.create('co1', 'Compose');
+% compose1.set('formula', 'r_base-r1-r2-r3');
+
+%% add fillets 
+selection_width = w/2;
+% add fillets 
+addFillet(P,ucellWP.geom,1,hole1_center,selection_width*2);
+addFillet(P,ucellWP.geom,2,hole2_center,selection_width);
+addFillet(P,ucellWP.geom,3,hole3_center,selection_width);
+addFillet(P,ucellWP.geom,4,hole4_center,selection_width);
+addFillet(P,ucellWP.geom,5,hole5_center,selection_width);
+% addFillet(P,ucellWP.geom,6,hole6_center,selection_width);
+% addFillet(P,ucellWP.geom,7,hole7_center,selection_width);
+% addFillet(P,ucellWP.geom,8,hole8_center,selection_width);
+% addFillet(P,ucellWP.geom,9,hole9_center,selection_width);
+% addFillet(P,ucellWP.geom,10,hole10_center,selection_width);
+
+% fillet1 = ucellWP.geom.feature.create('fil1', 'Fillet');
+% fillet1.set('radius', r1);
+% fillet1.selection('point').set('co1(1)', [40 42 61 62 128 129 149 151]);
+% fillet2 = ucellWP.geom.feature.create('fil2', 'Fillet');
+% fillet2.set('radius', r2);
+% fillet2.selection('point').set('fil1(1)', [10 13]);
+% ucellgeom.runAll;
+
+%% extrude 
+model.component('comp1').geom('geom1').run('wp1');
+
+model.component('comp1').geom('geom1').feature.create('ext1', 'Extrude');
+model.component('comp1').geom('geom1').feature('ext1').setIndex('distance', th, 0);
+model.component('comp1').geom('geom1').run('ext1');
 
 % holeplane = ucellgeom.feature.create('r_air', 'Rectangle');
 % holeplane.label('Air plane');
@@ -325,7 +171,7 @@ if abs(P.mbevenz)
     symZWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -symZth);
     symZPlane = symZWP.geom.feature.create('pol2', 'Polygon');
     symZPlane.set('source', 'table');
-    symZPlane.set('table', [-symW/2 0; -symW/2 sqrt(3)*(2+1/2)*a+b_base+b; symW/2 sqrt(3)*(2+1/2)*a+b_base+b; symW/2 0; -symW/2 0]);
+    symZPlane.set('table', [-a/2 0; a/2 0; a/2 b+sqrt(3)*a+d/2; -a/2 b+sqrt(3)*a+d/2; -a/2 0]);
 
     % extrude symmetry block
     ucellgeom.runCurrent;
@@ -339,14 +185,14 @@ if abs(P.mbevenz)
     symZComp.set('formula', ['ext1 - symZPlaneExt']);
     ucellgeom.runCurrent;
 
-
     % beam z-symmetry plane
     delta = 10e-9;
     ZsymSel = ucellgeom.create('ZsymSel', 'BoxSelection');
     ZsymSel.set('xmin', -a/2-delta).set('xmax', a/2+delta);
-    ZsymSel.set('ymin', -delta).set('ymax', sqrt(3)*(2+1/2)*a+b_base+b+delta);
+    ZsymSel.set('ymin', -delta).set('ymax', b+sqrt(3)*a+d/2+delta);
     ZsymSel.set('zmin', -delta).set('zmax', delta);
     ZsymSel.set('entitydim', 2).set('condition', 'allvertices'); % only want beam surface, exclude air holes
+    ZsymSel.set('condition', 'inside');
     ucellgeom.runCurrent;
     inds = model.selection([ucellname,'_ZsymSel']).inputEntities();
     P.bndSel.Zsym = inds';
@@ -355,6 +201,7 @@ end
 
 %% Making selections (with box select)
 mphgeom(model);
+selection_width = 1e-9; 
 
 % box selection for the boundary condition 
 x_boundary_disksel_r = ucellgeom.feature.create('x_boundary_boxsel_r', 'BoxSelection');
@@ -370,6 +217,7 @@ x_boundary_disksel_l.set('xmin', -a/2-selection_width/2);
 x_boundary_disksel_l.set('xmax', -a/2+selection_width/2);
 x_boundary_disksel_l.set('inputent', 'all');
 x_boundary_disksel_l.set('condition', 'inside');
+
 
 ucellgeom.selection.create('xboundaries','CumulativeSelection');
 ucellgeom.selection('xboundaries').label('Cumulative Selection x boundaries');
@@ -406,6 +254,37 @@ P.yEnd2 = [11 13 15];
 % mphplot(model);
 disp(P) % debugging
 out = model;
+end
+
+function hole_rec_label_list = add_SnowflakeHole(ucellWP,hole_center,P,holeIndex)
+    %% add a snowflake hole with specified location and labels 
+    hole_rec1_label = sprintf('h%dr1',holeIndex);
+    hole_rec2_label = sprintf('h%dr2',holeIndex);
+    hole_rec3_label = sprintf('h%dr3',holeIndex);
+    
+    hole_rec_label_list = {hole_rec1_label,hole_rec2_label,hole_rec3_label};
+
+    a = P.a;
+    r = P.r;
+    w = P.w;
+
+    c1_rec_1 = ucellWP.geom.feature.create(hole_rec1_label, 'Rectangle');
+    c1_rec_1.set('pos', [hole_center(1) hole_center(2)]);
+    c1_rec_1.set('base', 'center');
+    c1_rec_1.set('size', [r*2 w]);
+    
+    c1_rec_2 = ucellWP.geom.feature.create(hole_rec2_label, 'Rectangle');
+    c1_rec_2.set('pos', [hole_center(1) hole_center(2)]);
+    c1_rec_2.set('rot', 60);
+    c1_rec_2.set('base', 'center');
+    c1_rec_2.set('size', [r*2 w]);
+    
+    c1_rec_3 = ucellWP.geom.feature.create(hole_rec3_label, 'Rectangle');
+    c1_rec_3.set('pos', [hole_center(1) hole_center(2)]);
+    c1_rec_3.set('rot', 120);
+    c1_rec_3.set('base', 'center');
+    c1_rec_3.set('size', [r*2 w]);
+
 end
 
 function addFillet(P,ucellgeom,hole_indx,hole_pos,selection_width)
