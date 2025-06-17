@@ -1,28 +1,28 @@
 % front panel script for nanobeam FEM simulations (example for rect cross-section, beam-hole geometry)
 clear all; close all; clc
 %% initial parameters (v1)
-wo = 511e-9;
-wi = 300e-9;
-ho = 284e-9;
-hi = 175e-9;
-wo_ctr = 400e-9;
-wi_ctr = 200e-9;
-ho_ctr = 289e-9;
-hi_ctr = 195e-9;
-params0 = [wo,wi,ho,hi,wo_ctr,wi_ctr,ho_ctr,hi_ctr];
+% wo = 557e-9;
+% wi = 200e-9;
+% ho = 235e-9;
+% hi = 175e-9;
+% wo_ctr = 478e-9;
+% wi_ctr = 300e-9;
+% ho_ctr = 257e-9;
+% hi_ctr = 175e-9;
+% params0 = [wo,wi,ho,hi,wo_ctr,wi_ctr,ho_ctr,hi_ctr];
 % minfitness = runSnowflakeFEM(params0);
 % fprintf('the minimum fitness %.2f',minfitness);
 % %% initial parameters (v2)
-% wo = 553e-9;
-% ho = 284e-9;
-% wo_ctr = 403e-9;
-% ho_ctr = 287e-9;
-% params0 = [wo,ho,wo_ctr,ho_ctr];
-% % % minfitness = runSnowflakeFEM(params0);
+wo = 557e-9;
+ho = 235e-9;
+wo_ctr = 478e-9;
+ho_ctr = 257e-9;
+params0 = [wo,ho,wo_ctr,ho_ctr];
+% % minfitness = runSnowflakeFEM(params0);
 % % % fprintf('the minimum fitness %.2f',minfitness);
 %% run the optimization code 
 options = optimset('PlotFcns',@optimplotfval);
-func = @(params) runSnowflakeFEM(params);
+func = @(params) runSnowflakeFEM_v2(params);
 params = fminsearch(func,params0);
 % minfitness = runSnowflakeFEM(params0);
 % fprintf('the minimum fitness %.2f',minfitness);
@@ -39,9 +39,9 @@ function minFitness = runSnowflakeFEM(params)
     P.anisoMat = 1;
     
     % unit cell geometry
-    P.a = 704e-9;              % lattice constant 
-    P.w = 88e-9;              % unit cell width (along x)
-    P.r = 290e-9;              % unit cell height (along y)
+    P.a = 650e-9;              % lattice constant 
+    P.w = 80e-9;              % unit cell width (along x)
+    P.r = 250e-9;              % unit cell height (along y)
     P.th = 350e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
     P.wo = params(1);           % the height of the hole in the lower portion
@@ -55,15 +55,15 @@ function minFitness = runSnowflakeFEM(params)
     P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
                                 % or of outer fins (for celltype = 'solid')
     % hole params for symmetric cavity / right half of asymmetric cavity
-    P.MN_left = 20;                         % # holes in the left mirror region 
-    P.MN_right = 20;                        % # holes in the right mirror region 
-    P.TN = 10;                               % # holes in the tapering defect region
+    P.MN_left = 15;                         % # holes in the left mirror region 
+    P.MN_right = 15;                        % # holes in the right mirror region 
+    P.TN = 5;                               % # holes in the tapering defect region
     
     % cavity taper params
     P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
     P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
     P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
-    P.a_ctr = 704e-9;                     % for taperTo = 'custom': lattice constant of center hole
+    P.a_ctr = 650e-9;                     % for taperTo = 'custom': lattice constant of center hole
     P.wo_ctr = params(5);                    % for taperTo = 'custom': hole width of center hole
     P.wi_ctr = params(6);                    % for taperTo = 'custom': hole width of center hole
     P.ho_ctr = params(7);                    % for taperTo = 'custom': hole height of center hole
@@ -91,7 +91,7 @@ function minFitness = runSnowflakeFEM(params)
         P.PL.wvgmir = 5;
     end
     
-    P.lambda = 1655e-9;                     % target optical wavelength
+    P.lambda = 1553e-9;                     % target optical wavelength
     
     % Disorder
     P.stdDev = [0,0];                       % standard deviation of hole dimensions (hh,hw)
@@ -115,7 +115,7 @@ function minFitness = runSnowflakeFEM(params)
     %% specify simulation/calculation/plot/save options
     P.solveMech = 1;                        % 1 to solve for mechanics
     P.solveOpt = 1;                         % 1 to solve for optics
-    P.nbeam = 2.4064;        % refractive index of the dielectric material
+    P.nbeam = 2.4028;        % refractive index of the dielectric material
     P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
     P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
     P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)
@@ -132,7 +132,7 @@ function minFitness = runSnowflakeFEM(params)
     P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
     P.meveny = 1;                           % +/-1 to find even/odd mode about y
     P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-    P.freq = 19e9;                           % target mechanical frequency
+    P.freq = 20.5e9;                           % target mechanical frequency
     P.mneigs = 10;                          % # of eignevalues to find
     P.mMesh = 7;                            % mesh quality for mechanical simulations
     P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
@@ -229,15 +229,15 @@ function minFitness = runSnowflakeFEM_v2(params)
     P.anisoMat = 1;
     
     % unit cell geometry
-    P.a = 700e-9;              % lattice constant 
-    P.w = 90e-9;              % unit cell width (along x)
-    P.r = 300e-9;              % unit cell height (along y)
+    P.a = 650e-9;              % lattice constant 
+    P.w = 80e-9;              % unit cell width (along x)
+    P.r = 250e-9;              % unit cell height (along y)
     P.th = 350e-9;             % height (along x) of cross (for celltype = 'hollow')
                                 % or of inner block (for celltype = 'solid')
     P.wo = params(1);           % the height of the hole in the lower portion
-    P.wi = 369.2e-9;           % the width of the hole in the lower portion                            
+    P.wi = 200e-9;           % the width of the hole in the lower portion                            
     P.ho = params(2);
-    P.hi = 166.2e-9;
+    P.hi = 175e-9;
     P.d = 100e-9;    % 
     P.b = sqrt(3)*P.a/2; 
     P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -247,24 +247,24 @@ function minFitness = runSnowflakeFEM_v2(params)
     % hole params for symmetric cavity / right half of asymmetric cavity
     P.MN_left = 15;                         % # holes in the left mirror region 
     P.MN_right = 15;                        % # holes in the right mirror region 
-    P.TN = 10;                               % # holes in the tapering defect region
+    P.TN = 5;                               % # holes in the tapering defect region
     
     % cavity taper params
     P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
     P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
     P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
-    P.a_ctr = 700e-9;                     % for taperTo = 'custom': lattice constant of center hole
+    P.a_ctr = 650e-9;                     % for taperTo = 'custom': lattice constant of center hole
     P.wo_ctr = params(3);                    % for taperTo = 'custom': hole width of center hole
-    P.wi_ctr = 205.2e-9;                    % for taperTo = 'custom': hole width of center hole
+    P.wi_ctr = 300e-9;                    % for taperTo = 'custom': hole width of center hole
     P.ho_ctr = params(4);                    % for taperTo = 'custom': hole height of center hole
-    P.hi_ctr = 191.4e-9;
+    P.hi_ctr = 175e-9;
     % P.cavlen = 0e-9;                      % custom cavity length between two center holes; disable if not used
     
     % end waveguide mirror taper params
     P.wvgmir = 0;                           % no. of mirrors in end waveguide mirror taper
     P.wgmTaper.func = 'cubic';              % taper function - linear, quadratic, cubic
     P.wgmTaper.endtype = 'custom';          % taper to custom, maxdef, zero (or '') end hole
-    P.wgmTaper.a_end = 500e-9;              % for endtype = 'custom': lattice constant of end hole
+    P.wgmTaper.a_end = 650e-9;              % for endtype = 'custom': lattice constant of end hole
     P.wgmTaper.wo_end = P.wo;             % for endtype = 'custom': hole height of end hole
     P.wgmTaper.wi_end = P.wi;             % for endtype = 'custom': hole width of end hole
     P.wgmTaper.ho_end = P.ho;             % for endtype = 'custom': hole height of end hole
@@ -281,7 +281,7 @@ function minFitness = runSnowflakeFEM_v2(params)
         P.PL.wvgmir = 5;
     end
     
-    P.lambda = 1600e-9;                     % target optical wavelength
+    P.lambda = 1553e-9;                     % target optical wavelength
     
     % Disorder
     P.stdDev = [0,0];                       % standard deviation of hole dimensions (hh,hw)
@@ -291,7 +291,7 @@ function minFitness = runSnowflakeFEM_v2(params)
     %% specify simulation/calculation/plot/save options
     P.solveMech = 1;                        % 1 to solve for mechanics
     P.solveOpt = 1;                         % 1 to solve for optics
-    P.nbeam = 2.4064;        % refractive index of the dielectric material
+    P.nbeam = 2.4028;        % refractive index of the dielectric material
     P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
     P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
     P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)
@@ -308,7 +308,7 @@ function minFitness = runSnowflakeFEM_v2(params)
     P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
     P.meveny = 1;                           % +/-1 to find even/odd mode about y
     P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-    P.freq = 19e9;                           % target mechanical frequency
+    P.freq = 20.5e9;                           % target mechanical frequency
     P.mneigs = 10;                          % # of eignevalues to find
     P.mMesh = 7;                            % mesh quality for mechanical simulations
     P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof

@@ -10,9 +10,9 @@ P.celltype = 'boomerang_v2';                   % specify the cell type
 P.anisoMat = 1;
 
 % unit cell geometry
-P.a = 700e-9;               % lattice constant 
-P.w = 100e-9;              % unit cell width (along x)
-P.r = 262e-9;              % unit cell height (along y)
+P.a = 650e-9;               % lattice constant 
+P.w = 80e-9;              % unit cell width (along x)
+P.r = 250e-9;              % unit cell height (along y)
 P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.wo = 560e-9;           % the height of the hole in the lower portion
