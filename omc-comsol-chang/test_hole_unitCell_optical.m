@@ -66,10 +66,10 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % % e.g. model.save
 % model = ModelUtil.create('model');
 % 
-% buildRibUnitCell_LN(model,P);
+% buildHoleUnitCell(model,P);
 % mphlaunch(model);
 %% Single solve
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\hole_DiamondOptical\',currentDate,'\'];
+datLoc = ['.\test\hole_DiamondMechanical\',currentDate,'\'];
 P.datLoc = datLoc;
-solveOpticalBands(P);
+solveBands(P);
