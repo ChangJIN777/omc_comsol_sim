@@ -6,14 +6,14 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'hole';                   % specify the cell type
 P.unitcell = 'rectrangular';                  % specify the shape of the unit cell
-P.a = 270e-9;              % lattice constant 
-P.hx = 130e-9;              % the diameter of the hole in x 
-P.hy = 130e-9;              % the diameter of the hole in y
-P.beam_width = 350e-9; % the width of the unit cell
+P.a = 650e-9;              % lattice constant 
+P.hx = 343e-9;              % the diameter of the hole in x 
+P.hy = 617e-9;              % the diameter of the hole in y
+P.beam_width = 800e-9; % the width of the unit cell
 P.d_in = 0; % the sidewall angle for the inside
 P.d_out = 0; % the sidewall angle for the outside
 
-P.th = 160e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 
 P.nperiod = 1;  % no. of periods to simulate for
@@ -31,7 +31,7 @@ P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across al
 P.plotgeom = 1;                         % 1 to plot the geometry
 P.savedat = 1;                          % 1 to save data structures
 P.savebndplot = 1;                      % 1 to save bandstructure plot
-P.saveplots = 1;                        % 1 to save displacement and strain profiles
+P.saveplots = 0;                        % 1 to save displacement and strain profiles
 P.saveMPH = 0; 
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
 P.bandStructureDim = 1;         % 3 to simulate the band structure in 3D 
