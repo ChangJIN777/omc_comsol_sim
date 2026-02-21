@@ -24,7 +24,7 @@ P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 10;                           % no. of bands to solve for
 
 % simulation parameters 
-P.TwoSymPlanes = 1;                     % 1 to solve the band with both y and z symmetry; 0 to solve with only z/y symmetry
+P.TwoSymPlanes = 0;                     % 1 to solve the band with both y and z symmetry; 0 to solve with only z/y symmetry
 P.zSymCondition = 1;                    % for the single symmetry case: 1 for z symmetry and 0 for y symmetry 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -38,7 +38,7 @@ P.bandStructureDim = 1;         % 3 to simulate the band structure in 3D
 
 %% optical simulation parameters 
 P.airDiskH = 1000e-9; % the radius of the air disk 
-P.run_optical = 0; % 1 for optical simulation and 0 for mechanics 
+P.run_optical = 1; % 0 for optical simulat
 P.optical_freq = 300; % THz the center frequency of the targeted optical bandgap 
 
 %% mechanical simulation parameters 

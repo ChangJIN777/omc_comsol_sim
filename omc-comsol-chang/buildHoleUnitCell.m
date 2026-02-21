@@ -1,6 +1,6 @@
 function [model,P] = buildHoleUnitCell(model,P)
 %
-% buildBoomerangUnitCell.m
+% buildHoleUnitCell.m
 %
 % Model exported on Jul 21 2024, 16:57 by COMSOL 6.1.0.357.
 
@@ -56,7 +56,8 @@ if abs(P.mbevenz)
     symZWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -symZth);
     symZPlane = symZWP.geom.feature.create('pol2', 'Polygon');
     symZPlane.set('source', 'table');
-    symZPlane.set('table', [-a/2 0; a/2 0; a/2 sqrt(3)*(4+1/2)*a+b_wvg; -a/2 sqrt(3)*(4+1/2)*a+b_wvg; -a/2 0]);
+    % symZPlane.set('table', [-a/2 0; a/2 0; a/2 sqrt(3)*(4+1/2)*a+b_wvg; -a/2 sqrt(3)*(4+1/2)*a+b_wvg; -a/2 0]);
+    symZPlane.set('table', [-a/2 -beam_width/2; a/2 -beam_width/2; a/2 beam_width/2; -a/2 beam_width/2]);
 
     % extrude symmetry block
     ucellgeom.runCurrent;
@@ -67,56 +68,56 @@ if abs(P.mbevenz)
     symZComp = ucellgeom.feature.create('symZComp', 'Compose');
     symZComp.selection('input').set('ext1');
     symZComp.selection('input').set('symZPlaneExt');
-    symZComp.set('formula', ['ext1 - symZPlaneExt']);
+    symZComp.set('formula', ['co1 - symZPlaneExt']);
     ucellgeom.runCurrent;
 
 
-    % beam z-symmetry plane
-    delta = 10e-9;
-    ZsymSel = ucellgeom.create('ZsymSel', 'BoxSelection');
-    ZsymSel.set('xmin', -a/2-delta).set('xmax', a/2+delta);
-    ZsymSel.set('ymin', -delta).set('ymax', P.airDiskH+delta);
-    ZsymSel.set('zmin', -delta).set('zmax', delta);
-    ZsymSel.set('entitydim', 2).set('condition', 'allvertices'); % only want beam surface, exclude air holes
-    ucellgeom.runCurrent;
-    inds = model.selection([ucellname,'_ZsymSel']).inputEntities();
-    P.bndSel.Zsym = inds';
+    % % beam z-symmetry plane
+    % delta = 10e-9;
+    % ZsymSel = ucellgeom.create('ZsymSel', 'BoxSelection');
+    % ZsymSel.set('xmin', -a/2-delta).set('xmax', a/2+delta);
+    % ZsymSel.set('ymin', -delta).set('ymax', P.airDiskH+delta);
+    % ZsymSel.set('zmin', -delta).set('zmax', delta);
+    % ZsymSel.set('entitydim', 2).set('condition', 'allvertices'); % only want beam surface, exclude air holes
+    % ucellgeom.runCurrent;
+    % inds = model.selection([ucellname,'_ZsymSel']).inputEntities();
+    % P.bndSel.Zsym = inds';
 
 end 
 
 ucellgeom.runAll;
 
 model.component('comp1').geom('geom1').create('wp7', 'WorkPlane');
-if ~P.run_optical
-    model.component('comp1').geom('geom1').feature('wp7').active(false);
-end
+% if ~P.run_optical
+    % model.component('comp1').geom('geom1').feature('wp7').active(false);
+% end
 model.component('comp1').geom('geom1').feature('wp7').set('quickplane', 'xz');
 model.component('comp1').geom('geom1').feature('wp7').set('unite', true);
 model.component('comp1').geom('geom1').feature('wp7').geom.create('r1', 'Rectangle');
 model.component('comp1').geom('geom1').feature('wp7').geom.feature('r1').set('size', [a th]);
 model.component('comp1').geom('geom1').feature('wp7').geom.feature('r1').set('pos', [-a/2 -th/2]);
 model.component('comp1').geom('geom1').create('ext8', 'Extrude');
-if ~P.run_optical
-    model.component('comp1').geom('geom1').feature('ext8').active(false);
-end
+% if ~P.run_optical 
+    % model.component('comp1').geom('geom1').feature('ext8').active(false);
+% end
 model.component('comp1').geom('geom1').feature('ext8').setIndex('distance', beam_width/2, 0);
 model.component('comp1').geom('geom1').feature('ext8').selection('input').set({'wp7'});
 model.component('comp1').geom('geom1').create('co2', 'Compose');
-if ~P.run_optical
-    model.component('comp1').geom('geom1').feature('co2').active(false);
-end
-model.component('comp1').geom('geom1').feature('co2').set('formula', 'co1-ext8');
+% if ~P.run_optical 
+    % model.component('comp1').geom('geom1').feature('co2').active(false);
+% end
+model.component('comp1').geom('geom1').feature('co2').set('formula', 'symZComp-ext8');
 model.component('comp1').geom('geom1').create('wp8', 'WorkPlane');
 if ~P.run_optical
     model.component('comp1').geom('geom1').feature('wp8').active(false);
 end
-model.component('comp1').geom('geom1').feature('wp8').set('quickplane', 'xz');
-model.component('comp1').geom('geom1').feature('wp8').set('unite', true);
-model.component('comp1').geom('geom1').feature('wp8').geom.create('r1', 'Rectangle');
-model.component('comp1').geom('geom1').feature('wp8').geom.feature('r1').set('size', [a airDiskH]);
-model.component('comp1').geom('geom1').feature('wp8').geom.feature('r1').set('pos', [-a/2 0]);
-model.component('comp1').geom('geom1').create('rev1', 'Revolve');
 if ~P.run_optical
+    model.component('comp1').geom('geom1').feature('wp8').set('quickplane', 'xz');
+    model.component('comp1').geom('geom1').feature('wp8').set('unite', true);
+    model.component('comp1').geom('geom1').feature('wp8').geom.create('r1', 'Rectangle');
+    model.component('comp1').geom('geom1').feature('wp8').geom.feature('r1').set('size', [a airDiskH]);
+    model.component('comp1').geom('geom1').feature('wp8').geom.feature('r1').set('pos', [-a/2 0]);
+    model.component('comp1').geom('geom1').create('rev1', 'Revolve');
     model.component('comp1').geom('geom1').feature('rev1').active(false);
 end
 model.component('comp1').geom('geom1').feature('rev1').set('angle2', 180);
@@ -126,7 +127,7 @@ model.component('comp1').geom('geom1').run;
 model.component('comp1').geom('geom1').run('fin');
 
 
-% %% Making selections (with box select)
+%% Making selections (with box select)
 % mphgeom(model);
 selection_width = 10e-9;
 
@@ -150,7 +151,7 @@ ucellgeom.selection('xboundaries').label('Cumulative Selection x boundaries');
 x_boundary_disksel_r.set('contributeto','xboundaries');
 x_boundary_disksel_l.set('contributeto','xboundaries');
 
-if P.run_optical    
+if P.TwoSymPlanes   
     y_boundary_symmetry = ucellgeom.feature.create('y_boundary_symmetry', 'BoxSelection');
     y_boundary_symmetry.set('entitydim', 2);
     y_boundary_symmetry.set('ymin', -selection_width/2);
@@ -161,6 +162,28 @@ if P.run_optical
     ucellgeom.selection('yboundaries').label('Cumulative Selection y boundaries');
     y_boundary_symmetry.set('contributeto','yboundaries');
 end
+
+% z boundary symmetry 
+% beam z-symmetry plane
+% delta = 10e-9;
+ZsymSel = ucellgeom.feature.create('ZsymSel', 'BoxSelection');
+% ZsymSel.set('xmin', -a/2-delta).set('xmax', a/2+delta);
+% ZsymSel.set('ymin', -a/2-delta).set('ymax', a/2+delta);
+ZsymSel.set('zmin', -selection_width/2).set('zmax', selection_width/2);
+ZsymSel.set('entitydim', 2).set('condition', 'allvertices'); % only want beam surface, exclude air holes
+ucellgeom.runCurrent;
+inds = model.selection([ucellname,'_ZsymSel']).inputEntities();
+P.bndSel.Zsym = inds';
+
+% z_boundary_symmetry = ucellgeom.feature.create('z_boundary_symmetry', 'BoxSelection');
+% z_boundary_symmetry.set('entitydim', 2);
+% z_boundary_symmetry.set('zmin', -selection_width/2);
+% z_boundary_symmetry.set('zmax', selection_width/2);
+% z_boundary_symmetry.set('inputent', 'all');
+% z_boundary_symmetry.set('condition', 'inside');
+% ucellgeom.selection.create('zboundaries','CumulativeSelection');
+% ucellgeom.selection('zboundaries').label('Cumulative Selection z boundaries');
+% z_boundary_symmetry.set('contributeto','ZsymSel');
 
 model.component('comp1').geom('geom1').run;
 

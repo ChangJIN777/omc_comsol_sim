@@ -113,7 +113,7 @@ end
 %% Set up the geometry
 if strcmp(P.celltype,'boomerang_strip_v2')
     [model,P] = buildBoomerangUnitCellStrip_v2(model,P);
-elseif strcmp(P.celltype,'hole_unitCell')
+elseif strcmp(P.celltype,'hole')
     [model,P] = buildHoleUnitCell(model,P);
 elseif strcmp(P.celltype,'rib')
     [model,P] = buildRibUnitCell_LN(model,P);
