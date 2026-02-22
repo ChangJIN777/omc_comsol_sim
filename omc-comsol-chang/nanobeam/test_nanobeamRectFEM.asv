@@ -8,18 +8,18 @@ P.xsect = 'rect';                       % beam cross sectional shape - 'tri' or 
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a = 650e-9;                           % nominal lattice constant
-P.w = 800e-9;                           % beam width
+P.a = e-9;                           % nominal lattice constant
+P.w = 763e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 250e-9;                          % beam thickness
-P.hx = 343e-9;                          % nominal hole height (along x-axis)
-P.hy = 617e-9;                          % nominal hole width (along y-axis)
+P.th = 344e-9;                          % beam thickness
+P.hx = 190e-9;                          % nominal hole height (along x-axis)
+P.hy = 591e-9;                          % nominal hole width (along y-axis)
 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.15;                     % defect percentage
-P.oblong = 2;                      % oblong parameter (zero if holes are not changed)
+P.maxdef = 0.2044;                     % defect percentage
+P.oblong = 2.1520;                      % oblong parameter (zero if holes are not changed)
 
 % cavity taper params
 P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
@@ -34,9 +34,9 @@ P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function 
 P.wvgmir = 0;                           % no. of mirrors in end waveguide mirror taper
 P.wgmTaper.func = 'cubic';              % taper function - linear, quadratic, cubic
 P.wgmTaper.endtype = 'custom';          % taper to custom, maxdef, zero (or '') end hole
-P.wgmTaper.a_end = 600e-9;              % for endtype = 'custom': lattice constant of end hole
-P.wgmTaper.hx_end = 343e-9;             % for endtype = 'custom': hole height of end hole
-P.wgmTaper.hy_end = 300e-9;             % for endtype = 'custom': hole width of end hole
+P.wgmTaper.a_end = 419e-9;              % for endtype = 'custom': lattice constant of end hole
+P.wgmTaper.hx_end = 151e-9;             % for endtype = 'custom': hole height of end hole
+P.wgmTaper.hy_end = 208e-9;             % for endtype = 'custom': hole width of end hole
 % P.wgmTaper.maxdef_end = 0.094932;     % defect percentage - for endtype = 'maxdef'
 % P.wgmTaper.oblong_end = 2.9172;       % oblong parameter (zero if holes are not changed) - for endtype = 'maxdef'
 
@@ -58,14 +58,14 @@ P.asym = 0;                             % cross-section asymmetry (target y-offs
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
-P.solveOpt = 1;                         % 1 to solve for optics
+P.solveOpt = 0;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
 P.calcS = 1*P.solveMech;                % 1 to calculate strain coupling
-P.solveMechPML = 1;                     % 1 to solve for mechanical Q (future implementation)
+P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)
 
 % plotting & saving
 P.plotgeom = 0;                         % 1 to plot the geometry
-P.storeMPH = 0;                         % 1 to save COMSOL model file
+P.storeMPH = 1;                         % 1 to save COMSOL model file
 P.plotMech = 1*P.solveMech;             % 1 to plot displacement and strain profiles
 P.plotOpt = 1*P.solveOpt;               % 1 to plot E-field profiles
 P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
@@ -75,7 +75,7 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 6e9;                           % target mechanical frequency
+P.freq = 7e9;                           % target mechanical frequency
 P.mneigs = 10;                          % # of eignevalues to find
 P.mMesh = 3;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
@@ -117,16 +117,15 @@ P.LStats.zmin = P.th/2-80e-9;   % z-coords relative to center of beam
 P.LStats.zmax = P.th/2;
 
 %% Mechanical PML simulation settings (future implementation)
-P.PMLmesh = 5;
-P.PMLmeshDiv = 20;
-P.PMLLen = 10e-6;
-P.PMLstr = 0.008;
+% P.PMLmesh = 5;
+% P.PMLmeshDiv = 20;
+% P.PMLLen = 10e-6;
+% P.PMLstr = 0.008;
 
 %% Simulation settings
 P.max_dof = 5e6;                        % max # of degrees of freedom
 
 %% single run
 % data location to save files in
-currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\1D_OMC_hole\',currentDate,'\'];
+datLoc = '.\testing\'; 
 [ds,model] = RunNanobeamFEM(P,datLoc);

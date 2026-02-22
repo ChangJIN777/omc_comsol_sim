@@ -85,6 +85,7 @@ bndsM = model.selection([P.geomname,'_beamBndsAll']).inputEntities(); % get outp
 
 % exclude symmetry planes
 if (abs(P.mevenx) && abs(P.oevenx))
+    % bndsM = setdiff(bndsM,P.bndSel.Xsym_l);
     bndsM = setdiff(bndsM,P.bndSel.Xsym_l);
 end
 
