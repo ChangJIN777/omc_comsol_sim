@@ -4,7 +4,8 @@ clear all; close all; clc
 
 %% geometry parameters
 % unit cell params
-P.xsect = 'rect';                       % beam cross sectional shape - 'tri' or 'rect'
+P.xsect = 'rect';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
+P.celltype = 'hole';                    % specify what type of unit cells we are simulating
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
@@ -60,8 +61,8 @@ P.asym = 0;                             % cross-section asymmetry (target y-offs
 P.solveMech = 1;                        % 1 to solve for mechanics
 P.solveOpt = 1;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
-P.calcS = 1*P.solveMech;                % 1 to calculate strain coupling
-P.solveMechPML = 1;                     % 1 to solve for mechanical Q (future implementation)
+P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
+P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)
 
 % plotting & saving
 P.plotgeom = 0;                         % 1 to plot the geometry

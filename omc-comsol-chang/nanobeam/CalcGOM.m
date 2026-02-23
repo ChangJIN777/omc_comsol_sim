@@ -86,15 +86,15 @@ bndsM = model.selection([P.geomname,'_beamBndsAll']).inputEntities(); % get outp
 % exclude symmetry planes
 if (abs(P.mevenx) && abs(P.oevenx))
     % bndsM = setdiff(bndsM,P.bndSel.Xsym_l);
-    bndsM = setdiff(bndsM,P.bndSel.Xsym_l);
+    bndsM = setdiff(bndsM,P.bndSel.cylXsym);
 end
 
 if (abs(P.meveny) && abs(P.oeveny))
-    bndsM = setdiff(bndsM,P.bndSel.Ysym);
+    bndsM = setdiff(bndsM,P.bndSel.cylYsym);
 end
 
 if (abs(P.mevenz) && abs(P.oevenz))
-    bndsM = setdiff(bndsM,P.bndSel.Zsym);
+    bndsM = setdiff(bndsM,P.bndSel.cylZsym);
 end
 
 %% Form datasets for volume and boundary integrals

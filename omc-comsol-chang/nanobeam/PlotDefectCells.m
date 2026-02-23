@@ -179,6 +179,8 @@ if strcmp(P.xsect,'tri')
     ttl1 = ['\theta=',num2str(P.theta,'%.0f'),'^o, '];
 elseif strcmp(P.xsect,'rect')
     ttl1 = ['th=',num2str(P.th*1e9,'%.0f'),'nm, '];
+elseif strcmp(P.xsect,'isoFit')
+    ttl1 = ['th=',num2str(P.th*1e9,'%.0f'),'nm, '];
 end
 ttl1 = [ttl1,...
         'a=',num2str(P.a*1e9,'%.0f'),'nm, ',...

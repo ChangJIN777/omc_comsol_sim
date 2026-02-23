@@ -161,29 +161,29 @@ totLen = beamLen;
 maxWid = max(w);
 maxThi = thi;
 
-%% Create beam with cross-section more realistic from iso etch
+%% Create beam with triangular cross-section
 % create workplane for triangular cross-section
-if strcmp(P.xsect,'isoFit')
+if strcmp(P.xsect,'tri')
     P.mevenz = 0;
-    beamTriWP = beamgeom.feature.create('beamisoFitWP', 'WorkPlane');
+    beamTriWP = beamgeom.feature.create('beamTriWP', 'WorkPlane');
     beamTriWP.set('planetype', 'coordinates');
     beamTriWP.set('genpoints', [0 0 0; 0 1 0; 0 0 1]);
-    beamTri = beamTriWP.geom.feature.create('beamIso', 'Polygon');
+    beamTri = beamTriWP.geom.feature.create('beamTri', 'Polygon');
     beamTri.set('type', 'solid');
-    beamTri.set('x', [0 wid/2 wid/2]).set('y', [-thi/2 -thi/2 -thi/2+sqrt(3)*wid/6]);
+    beamTri.set('x', [0 0 wid/2]).set('y', [-thi/2 thi/2 thi/2]);
     
     beamgeom.runCurrent;    % run workplane geometry before extrusion
-    beamTriExt = beamgeom.feature.create('beamIsoExt', 'Extrude');
+    beamTriExt = beamgeom.feature.create('beamTriExt', 'Extrude');
     beamTriExt.set('distance', beamLen);
     
     % Compose final beam with holes and triangular cross-section: (beam - holes) * triangle cross-section
-    finBeamTag = 'beamHolesIso';
+    finBeamTag = 'beamHolesTri';
     BeamHolesTri = beamgeom.feature.create(finBeamTag, 'Compose');
-    BeamHolesTri.selection('input').set('beamIsoExt');
+    BeamHolesTri.selection('input').set('beamTriExt');
     BeamHolesTri.selection('input').set('beamHoles');
-    BeamHolesTri.set('formula', 'beamHoles - beamIsoExt');
+    BeamHolesTri.set('formula', 'beamTriExt * beamHoles');
     beamgeom.runCurrent;  
-    displayBeamStr = 'Nanobeam, isotropic fitted cross-section';
+    displayBeamStr = 'Nanobeam, triangular cross-section';
 end
 
 % track max dimensions for selections

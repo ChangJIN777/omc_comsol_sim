@@ -7,7 +7,7 @@
 %     mkdir(datLoc)
 % end
 
-function pp = OptimizeNanobeamRect(datLoc)
+function pp = OptimizeNanobeamRect_20260222(datLoc)
 
 %% folders
 %append \ to end of datLoc if not present
@@ -31,48 +31,52 @@ maxSPtoRun = 0;     % no. of starting points to run for; 0 to run indefinitely
 % unit cell params
 P.xsect = 'rect';                        % beam cross sectional shape - 'tri' or 'rect'
 P.beamMat = 'diamond';                  % beam material name
-P.celltype = 'hole';                   % specify the cell type
+P.celltype = 'snowflake';                   % specify the cell type
 P.anisoMat = 1;
 
-P.a = 650e-9;                     % nominal lattice constant
-P.w = 800e-9;                    % beam width
-P.theta = 45;                       % etch angle in degrees
-P.th = 250e-9; % beam thickness
-P.hx = 343e-9;                      % nominal hole height (along x-axis)
-P.hy = 617e-9;                    % nominal hole width (along y-axis)
-
-% % unit cell bands
-% P.bandLoc = 'D:\Files\OMC-SiV\45oBands\45o_a566nm_w1075nm_hx226nm_hy699nm_rxt45o_fullBands.fig';
-% P.bandmidgap = 4.69e9;
-
+% unit cell geometry
+P.a = 700e-9;              % lattice constant 
+P.w = 90e-9;              % unit cell width (along x)
+P.r = 300e-9;              % unit cell height (along y)
+P.th = 350e-9;             % height (along x) of cross (for celltype = 'hollow')
+                            % or of inner block (for celltype = 'solid')
+P.wo = 553e-9;           % the height of the hole in the lower portion
+P.wi = 300e-9;           % the width of the hole in the lower portion                            
+P.ho = 284e-9;
+P.hi = 175e-9;
+P.d = 100e-9;    % 
+P.b = sqrt(3)*P.a/2; 
+P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
+                            % or of inner block (for celltype = 'solid')
+P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
+                            % or of outer fins (for celltype = 'solid')
 % hole params for symmetric cavity / right half of asymmetric cavity
-P.nholes = 17;                          % # holes in 1/2 beam length
-P.ndef = 9;                             % # of holes in 1/2 defect region
-P.maxdef = 0.15;                         % defect percentage
-P.consthole = 0;                        % 1 if hole size is held constant
-P.oblong = 2;           % oblong parameter (zero if holes are not changed)
-% other good params: [0.1380,3.1553], [0.1514,3.391]
+P.MN_left = 15;                         % # holes in the left mirror region 
+P.MN_right = 15;                        % # holes in the right mirror region 
+P.TN = 10;                               % # holes in the tapering defect region
 
-% cavity params
-P.holeatctr = 1;            % 1/0 for hole/dielectric in middle
-P.taperFunc = 'cubic';      % linear/cubic/quadratic taper function to center hole in cavity
-% P.taperTo = 'custom';     % taper to custom hole in center of cavity; disable for taper to maxdef
-% P.a_ctr = 392e-9;  %for taperTo = 'custom'
-% P.hx_ctr = 189e-9; %for taperTo = 'custom'
-% P.hy_ctr = 177e-9; %for taperTo = 'custom'
-% P.cavlen = -10e-9;         % custom cavity length between two center holes
+% cavity taper params
+P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
+P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
+P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
+P.a_ctr = 700e-9;                     % for taperTo = 'custom': lattice constant of center hole
+P.ho_ctr = 287e-9;                    % for taperTo = 'custom': hole height of center hole
+P.hi_ctr = 195e-9;
+P.wo_ctr = 403e-9;                    % for taperTo = 'custom': hole width of center hole
+P.wi_ctr = 200e-9;                    % for taperTo = 'custom': hole width of center hole
+% P.cavlen = 0e-9;                      % custom cavity length between two center holes; disable if not used
 
 % end waveguide mirror taper params
-P.wvgmir = 0;
-P.wgmTaper.func = 'cubic'; %linear, quadratic, cubic
-P.wgmTaper.endtype = 'custom'; %custom, maxdef, zero (or '')
-P.wgmTaper.a_end = 426e-9;  %for endtype = 'custom'
-P.wgmTaper.hx_end = 213e-9; %for endtype = 'custom'
-P.wgmTaper.hy_end = 173e-9; %for endtype = 'custom'
-% P.wgmTaper.maxdef_end = 0.094932; % defect percentage - for endtype = 'maxdef'
-% P.wgmTaper.oblong_end = 2.9172; % oblong parameter (zero if holes are not changed) - for endtype = 'maxdef'
-
-P.nphonmir = 0;
+P.wvgmir = 0;                           % no. of mirrors in end waveguide mirror taper
+P.wgmTaper.func = 'cubic';              % taper function - linear, quadratic, cubic
+P.wgmTaper.endtype = 'custom';          % taper to custom, maxdef, zero (or '') end hole
+P.wgmTaper.a_end = 500e-9;              % for endtype = 'custom': lattice constant of end hole
+P.wgmTaper.wo_end = P.wo;             % for endtype = 'custom': hole height of end hole
+P.wgmTaper.wi_end = P.wi;             % for endtype = 'custom': hole width of end hole
+P.wgmTaper.ho_end = P.ho;             % for endtype = 'custom': hole height of end hole
+P.wgmTaper.hi_end = P.hi;             % for endtype = 'custom': hole width of end hole
+% P.wgmTaper.maxdef_end = 0.094932;     % defect percentage - for endtype = 'maxdef'
+% P.wgmTaper.oblong_end = 2.9172;       % oblong parameter (zero if holes are not changed) - for endtype = 'maxdef'
 
 % asymmetric cavity - specify param data struct P.PL with similar fields to
 % P, for left half of asymmetric cavity
@@ -99,7 +103,7 @@ P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)
 
 % plotting & saving
-P.plotgeom = 0;                         % 1 to plot the geometry
+P.plotgeom = 1;                         % 1 to plot the geometry
 P.storeMPH = 0;                         % 1 to save COMSOL model file
 P.plotMech = 1*P.solveMech;             % 1 to plot displacement and strain profiles
 P.plotOpt = 1*P.solveOpt;               % 1 to plot E-field profiles
@@ -110,9 +114,9 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 6e9;                           % target mechanical frequency
+P.freq = 19e9;                           % target mechanical frequency
 P.mneigs = 10;                          % # of eignevalues to find
-P.mMesh = 3;                            % mesh quality for mechanical simulations
+P.mMesh = 7;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
 % if we are adding the 2D phononic shield
 P.addshield = 0;
@@ -124,13 +128,13 @@ P.rxtalInFilename = 1;
 
 %% optical simulation parameters
 % rf module solver parameters
-P.oevenx = -1^(P.holeatctr);            % +/-1 to find even/odd optical mode about x (-1 == fundamental for hole in center)
+P.oevenx = 1;            % +/-1 to find even/odd optical mode about x (-1 == fundamental for hole in center)
 P.oeveny = -1;                          % +/-1 to find even/odd optical mode about y (-1 == TE-like)
 P.oevenz = 1;                           % +/-1 to find even/odd optical mode about z 
-P.oneigs = 3;                           % # of eigenvalues to find
-P.oMesh = 3;                            % mesh quality for optical simulations
+P.oneigs = 10;                           % # of eigenvalues to find
+P.oMesh = 7;                            % mesh quality for optical simulations
 P.oAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
-P.airrad = 2*P.lambda+P.w/2;            % radius of air cylinder surrounding nanobeam
+P.airrad = P.lambda+P.a*sqrt(3)*3;            % radius of air cylinder surrounding nanobeam
 
 % material properties
 P.E = 1050e9;       % Young's modulus
@@ -193,7 +197,7 @@ P.max_dof = 5e6;                      % max # of degrees of freedom
 P.fitStr = ['min(abs(omds.cpl.gOM.*omds.cpl.optWvl./299792458),3.0e5/1.96e14)./(3.0e5/1.96e14)',...
             '.*min([omds.cpl.Q,5e6])./5e6',...
             '.*ofdtd.Trans.*real(omds.cpl.lambdaG_111)'];
-P.parVec = '[P.oblong/10,P.maxdef]';
+P.parVec = '[P.th*1e6,P.th/P.w,P.a/P.w,P.hx/P.a,P.hy/P.w,P.oblong/10,P.maxdef]';
 
 %% define optimization parameter space
 sampbnds = [0.1,0.9]; % limits in which starting point is to be found
