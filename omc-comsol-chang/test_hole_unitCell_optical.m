@@ -6,9 +6,13 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'hole';                   % specify the cell type
 P.unitcell = 'rectrangular';                  % specify the shape of the unit cell
-P.a = 650e-9;              % lattice constant 
-P.hx = 343e-9;              % the diameter of the hole in x 
-P.hy = 617e-9;              % the diameter of the hole in y
+% defect params 
+P.maxdef = 0.16;                     % defect percentage
+P.oblong = 1.15;                      % oblong parameter (zero if holes are not changed)
+% unit cell params 
+P.a = (1-P.maxdef)*650e-9;              % lattice constant 
+P.hx = ((1-P.maxdef)^(1-P.oblong))*343e-9;              % the diameter of the hole in x 
+P.hy = ((1-P.maxdef)^(1+P.oblong))*617e-9;              % the diameter of the hole in y
 P.beam_width = 800e-9; % the width of the unit cell
 P.d_in = 0; % the sidewall angle for the inside
 P.d_out = 0; % the sidewall angle for the outside
@@ -39,8 +43,8 @@ P.bandStructureDim = 1;         % 3 to simulate the band structure in 3D
 %% optical simulation parameters 
 P.airDiskH = 1000e-9; % the radius of the air disk 
 P.run_optical = 0; % 1 for optical simulation and 0 for mechanics 
-P.optical_freq = 300; % THz the center frequency of the targeted optical bandgap 
-
+P.optical_freq = 200; % THz the center frequency of the targeted optical bandgap 
+P.nbeam = 2.386; % the refractive index of diamond at telecom
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
@@ -73,6 +77,12 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 %% Single solve
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\hole_DiamondMechanical\',currentDate,'\'];
-P.datLoc = datLoc;
-solveBands(P);
+if P.run_optical
+    datLoc = ['.\test\hole_DiamondOptical\',currentDate,'\'];
+    P.datLoc = datLoc;
+    solveOpticalBands(P);
+else
+    datLoc = ['.\test\hole_DiamondMechanical\',currentDate,'\'];
+    P.datLoc = datLoc;
+    solveBands(P);
+end 

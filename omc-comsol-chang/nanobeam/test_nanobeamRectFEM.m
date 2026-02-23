@@ -19,11 +19,11 @@ P.hy = 617e-9;                          % nominal hole width (along y-axis)
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.15;                     % defect percentage
-P.oblong = 2;                      % oblong parameter (zero if holes are not changed)
+P.maxdef = 0.3;                     % defect percentage
+P.oblong = 1.15;                      % oblong parameter (zero if holes are not changed)
 
 % cavity taper params
-P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
+P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle
 P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
 % P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
 % P.a_ctr = 392e-9;                     % for taperTo = 'custom': lattice constant of center hole
@@ -51,6 +51,7 @@ if P.asymCav
 end
 
 P.lambda = 1550e-9;                     % target optical wavelength
+P.nbeam = 2.386;                        % the refractive index of diamond at telecom
 
 % Disorder
 P.stdDev = [0,0];                       % standard deviation of hole dimensions (hh,hw)
@@ -88,7 +89,7 @@ P.rxtalInFilename = 1;
 
 %% optical simulation parameters
 % rf module solver parameters
-P.oevenx = -1^(P.holeatctr);            % +/-1 to find even/odd optical mode about x (-1 == fundamental for hole in center)
+P.oevenx = (-1)^(P.holeatctr);            % +/-1 to find even/odd optical mode about x (-1 == fundamental for hole in center)
 P.oeveny = -1;                          % +/-1 to find even/odd optical mode about y (-1 == TE-like)
 P.oevenz = 1;                           % +/-1 to find even/odd optical mode about z 
 P.oneigs = 1;                           % # of eigenvalues to find

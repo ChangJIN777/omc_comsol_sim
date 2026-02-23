@@ -107,18 +107,23 @@ model.component('comp1').geom('geom1').create('co2', 'Compose');
 % if ~P.run_optical 
     % model.component('comp1').geom('geom1').feature('co2').active(false);
 % end
-model.component('comp1').geom('geom1').feature('co2').set('formula', 'symZComp-ext8');
+if abs(P.mbevenz)
+    model.component('comp1').geom('geom1').feature('co2').set('formula', 'symZComp-ext8');
+else 
+    model.component('comp1').geom('geom1').feature('co2').set('formula', 'co1-ext8');
+end
+
 model.component('comp1').geom('geom1').create('wp8', 'WorkPlane');
 if ~P.run_optical
     model.component('comp1').geom('geom1').feature('wp8').active(false);
 end
+model.component('comp1').geom('geom1').feature('wp8').set('quickplane', 'xz');
+model.component('comp1').geom('geom1').feature('wp8').set('unite', true);
+model.component('comp1').geom('geom1').feature('wp8').geom.create('r1', 'Rectangle');
+model.component('comp1').geom('geom1').feature('wp8').geom.feature('r1').set('size', [a airDiskH]);
+model.component('comp1').geom('geom1').feature('wp8').geom.feature('r1').set('pos', [-a/2 0]);
+model.component('comp1').geom('geom1').create('rev1', 'Revolve');
 if ~P.run_optical
-    model.component('comp1').geom('geom1').feature('wp8').set('quickplane', 'xz');
-    model.component('comp1').geom('geom1').feature('wp8').set('unite', true);
-    model.component('comp1').geom('geom1').feature('wp8').geom.create('r1', 'Rectangle');
-    model.component('comp1').geom('geom1').feature('wp8').geom.feature('r1').set('size', [a airDiskH]);
-    model.component('comp1').geom('geom1').feature('wp8').geom.feature('r1').set('pos', [-a/2 0]);
-    model.component('comp1').geom('geom1').create('rev1', 'Revolve');
     model.component('comp1').geom('geom1').feature('rev1').active(false);
 end
 model.component('comp1').geom('geom1').feature('rev1').set('angle2', 180);

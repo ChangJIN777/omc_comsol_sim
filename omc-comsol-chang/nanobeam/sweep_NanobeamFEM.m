@@ -1,8 +1,8 @@
 clear all; close all; clc
 
 %% initial parameters
-maxdef_0 = 0.15;
-oblong_0 = 2;
+maxdef_0 = 0.16;
+oblong_0 = 1.15;
 params0 = [maxdef_0,oblong_0];
 
 %% testing the function 
@@ -40,7 +40,7 @@ function minFitness = runNanobeamFEM(params)
     P.oblong = params(2);                      % oblong parameter (zero if holes are not changed)
     
     % cavity taper params
-    P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
+    P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle
     P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
     % P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
     % P.a_ctr = 392e-9;                     % for taperTo = 'custom': lattice constant of center hole
@@ -68,6 +68,7 @@ function minFitness = runNanobeamFEM(params)
     end
     
     P.lambda = 1550e-9;                     % target optical wavelength
+    P.nbeam = 2.386;                        % the refractive index of diamond at telecom
     
     % Disorder
     P.stdDev = [0,0];                       % standard deviation of hole dimensions (hh,hw)
@@ -105,7 +106,7 @@ function minFitness = runNanobeamFEM(params)
     
     %% optical simulation parameters
     % rf module solver parameters
-    P.oevenx = -1^(P.holeatctr);            % +/-1 to find even/odd optical mode about x (-1 == fundamental for hole in center)
+    P.oevenx = (-1)^(P.holeatctr);            % +/-1 to find even/odd optical mode about x (-1 == fundamental for hole in center)
     P.oeveny = -1;                          % +/-1 to find even/odd optical mode about y (-1 == TE-like)
     P.oevenz = 1;                           % +/-1 to find even/odd optical mode about z 
     P.oneigs = 1;                           % # of eigenvalues to find
@@ -165,7 +166,7 @@ function minFitness = runNanobeamFEM(params)
         opt_Q,opt_lambda,mech_freq,gOM,minFitness];
     
     % make the file if not present
-    optFilename = [datLoc,'optimizeData_',currentDate,'.csv'];
+    optFilename = [datLoc,'optimizeData_trial2_',currentDate,'.csv'];
     if ~exist(optFilename)
         writematrix(data,optFilename,'WriteMode','overwrite');
     end
@@ -173,6 +174,6 @@ function minFitness = runNanobeamFEM(params)
 end 
 function fitness = calFitness(opt_QAll,opt_lambdaAll,gOM)
 %% outputing the fitness associated with a cavity design 
-    wavelength_tolerance = 100e-9;
+    wavelength_tolerance = 50e-9;
     fitness = -abs(gOM.*opt_QAll.*exp(-((opt_lambdaAll-1550e-9)./(wavelength_tolerance)).^2));
 end

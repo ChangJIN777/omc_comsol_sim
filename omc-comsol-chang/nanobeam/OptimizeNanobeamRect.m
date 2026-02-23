@@ -877,8 +877,7 @@ try
 
             end
                 
-                
-                
+                   
             %% Save data and plots
             % Once we have found our optimal mechanical mode for this
             % structure, output the results, plot and save the data,
