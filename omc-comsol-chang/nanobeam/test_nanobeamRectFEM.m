@@ -19,7 +19,7 @@ P.hy = 617e-9;                          % nominal hole width (along y-axis)
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.3;                     % defect percentage
+P.maxdef = 0.16;                     % defect percentage
 P.oblong = 1.15;                      % oblong parameter (zero if holes are not changed)
 
 % cavity taper params

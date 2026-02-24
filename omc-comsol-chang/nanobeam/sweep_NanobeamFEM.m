@@ -1,8 +1,8 @@
 clear all; close all; clc
 
 %% initial parameters
-maxdef_0 = 0.16;
-oblong_0 = 1.15;
+maxdef_0 = 0.194;
+oblong_0 = 0.863;
 params0 = [maxdef_0,oblong_0];
 
 %% testing the function 
