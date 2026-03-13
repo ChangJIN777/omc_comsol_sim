@@ -4,23 +4,23 @@ clear all; close all; clc
 
 %% geometry parameters
 % unit cell params
-P.xsect = 'rect';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
+P.xsect = 'isoFit';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
 P.celltype = 'hole';                    % specify what type of unit cells we are simulating
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a = 650e-9;                           % nominal lattice constant
-P.w = 800e-9;                           % beam width
+P.a = 528e-9;                           % nominal lattice constant
+P.w = 900e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 250e-9;                          % beam thickness
-P.hx = 343e-9;                          % nominal hole height (along x-axis)
-P.hy = 617e-9;                          % nominal hole width (along y-axis)
+P.th = 550e-9;                          % beam thickness
+P.hx = 197e-9;                          % nominal hole height (along x-axis)
+P.hy = 578e-9;                          % nominal hole width (along y-axis)
 
 % hole params for symmetric cavity / right half of asymmetric cavity
-P.nholes = 23;                          % # holes in 1/2 beam length
+P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.2346;                     % defect percentage
-P.oblong = 0.7265;                      % oblong parameter (zero if holes are not changed)
+P.maxdef = 0.193;                     % defect percentage
+P.oblong = 2.27;                      % oblong parameter (zero if holes are not changed)
 
 % cavity taper params
 P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle

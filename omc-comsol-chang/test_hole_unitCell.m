@@ -2,7 +2,7 @@ clear all; clc; close all;
 clear P;
 
 %% unit cell params 
-P.xsect = 'rect'; 
+P.xsect = 'isoFit';                    % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'hole';                   % specify the cell type
 P.unitcell = 'rectrangular';                  % specify the shape of the unit cell
