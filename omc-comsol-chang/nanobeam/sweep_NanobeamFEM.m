@@ -1,8 +1,8 @@
 clear all; close all; clc
 
 %% initial parameters
-maxdef_0 = 0.194;
-oblong_0 = 0.863;
+maxdef_0 = 0.15;
+oblong_0 = 0.7265;
 params0 = [maxdef_0,oblong_0];
 
 %% testing the function 
@@ -21,17 +21,17 @@ function minFitness = runNanobeamFEM(params)
 
     %% geometry parameters
     % unit cell params
-    P.xsect = 'rect';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
+    P.xsect = 'isoFit';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
     P.celltype = 'hole';                    % specify what type of unit cells we are simulating
     P.beamMat = 'diamond';                  % beam material name
     P.anisoMat = 1;
     
-    P.a = 650e-9;                           % nominal lattice constant
-    P.w = 800e-9;                           % beam width
+    P.a = 550e-9;                           % nominal lattice constant
+    P.w = 600e-9;                           % beam width
     P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-    P.th = 250e-9;                          % beam thickness
-    P.hx = 343e-9;                          % nominal hole height (along x-axis)
-    P.hy = 617e-9;                          % nominal hole width (along y-axis)
+    P.th = 400e-9;                          % beam thickness
+    P.hx = P.a*0.4;                          % nominal hole height (along x-axis)
+    P.hy = P.a*0.6;                          % nominal hole width (along y-axis)
     
     % hole params for symmetric cavity / right half of asymmetric cavity
     P.nholes = 18;                          % # holes in 1/2 beam length
@@ -67,7 +67,7 @@ function minFitness = runNanobeamFEM(params)
         P.PL.wvgmir = 5;
     end
     
-    P.lambda = 1550e-9;                     % target optical wavelength
+    P.lambda = 1500e-9;                     % target optical wavelength
     P.nbeam = 2.386;                        % the refractive index of diamond at telecom
     
     % Disorder
@@ -94,8 +94,8 @@ function minFitness = runNanobeamFEM(params)
     P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
     P.meveny = 1;                           % +/-1 to find even/odd mode about y
     P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-    P.freq = 6e9;                           % target mechanical frequency
-    P.mneigs = 10;                          % # of eignevalues to find
+    P.freq = 10e9;                           % target mechanical frequency
+    P.mneigs = 20;                          % # of eignevalues to find
     P.mMesh = 3;                            % mesh quality for mechanical simulations
     P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
     

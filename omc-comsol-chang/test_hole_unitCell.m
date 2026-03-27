@@ -2,22 +2,27 @@ clear all; clc; close all;
 clear P;
 
 %% unit cell params 
-P.xsect = 'isoFit';                    % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
+P.xsect = 'rect';                    % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'hole';                   % specify the cell type
 P.unitcell = 'rectrangular';                  % specify the shape of the unit cell
 % defect params 
-P.maxdef = 0.16;                     % defect percentage
-P.oblong = 1.15;                      % oblong parameter (zero if holes are not changed)
+P.maxdef = 0.15;                     % defect percentage
+P.oblong = 0.7265;                      % oblong parameter (zero if holes are not changed)
 % unit cell params 
-P.a = (1-P.maxdef)*650e-9;              % lattice constant 
-P.hx = ((1-P.maxdef)^(1-P.oblong))*343e-9;              % the diameter of the hole in x 
-P.hy = ((1-P.maxdef)^(1+P.oblong))*617e-9;              % the diameter of the hole in y
-P.beam_width = 800e-9; % the width of the unit cell
+% for the mirror region 
+P.a = 550e-9;              % lattice constant 
+P.hx = P.a*0.4;              % the diameter of the hole in x 
+P.hy = P.a*0.6;              % the diameter of the hole in y
+% % for the defect region 
+% P.a = (1-P.maxdef)*650e-9;              % lattice constant 
+% P.hx = ((1-P.maxdef)^(1-P.oblong))*343e-9;              % the diameter of the hole in x 
+% P.hy = ((1-P.maxdef)^(1+P.oblong))*617e-9;              % the diameter of the hole in y
+P.beam_width = 600e-9; % the width of the unit cell
 P.d_in = 0; % the sidewall angle for the inside
 P.d_out = 0; % the sidewall angle for the outside
 
-P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.th = 400e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 
 P.nperiod = 1;  % no. of periods to simulate for

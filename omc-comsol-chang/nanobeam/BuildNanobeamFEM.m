@@ -430,7 +430,7 @@ if isfield(P,'airrad') && P.solveOpt
     cylXsymSel = beamgeom.create('cylXsymSel', 'BoxSelection');
     cylXsymSel.set('xmin', -delta).set('xmax', delta);
     cylXsymSel.set('ymin', -delta).set('ymax', P.airrad+delta);
-    cylXsymSel.set('zmin', -delta).set('zmax', P.airrad+delta);
+    cylXsymSel.set('zmin', -P.airrad-delta).set('zmax', P.airrad+delta);
     cylXsymSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_cylXsymSel']).inputEntities();

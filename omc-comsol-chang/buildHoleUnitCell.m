@@ -14,6 +14,9 @@ d_in = P.d_in; % the sidewall angle for the inside
 d_out = P.d_out; % the sidewall angle for the outside
 abssym = abs(P.mbevenz);    % symmetry in the z direction 
 airDiskH = P.airDiskH; % the height the of air disk
+if strcmp(P.xsect,'tri') || strcmp(P.xsect,'isoFit')
+    P.mevenz = 0;
+end
 
 %% Create component 
 ucellcomp = model.modelNode.create('comp1');
@@ -30,7 +33,11 @@ ucellWP.set('quickx', -a/2);
 ucellWP.set('unite', true);
 basePolygon = ucellWP.geom.feature.create('pol1', 'Polygon');
 basePolygon.set('source', 'table');
-basePolygon.set('table', [-beam_width/2 -th/2; beam_width/2 -th/2; beam_width/2-tan(d_out)*th th/2 ; -beam_width/2+tan(d_out)*th th/2]);
+if strcmp(P.xsect,'isoFit')
+    basePolygon.set('table', [beam_width/2 th/2; -beam_width/2 th/2; -beam_width/2 -th/2+sqrt(3)*beam_width/6 ; 0 -th/2; beam_width/2 -th/2+sqrt(3)*beam_width/6]);
+else
+    basePolygon.set('table', [-beam_width/2 -th/2; beam_width/2 -th/2; beam_width/2-tan(d_out)*th th/2 ; -beam_width/2+tan(d_out)*th th/2]);
+end
 ext1 = ucellgeom.feature.create('ext1', 'Extrude');
 ext1.setIndex('distance', a, 0);
 ext1.selection('input').set({'wp1'});
@@ -157,7 +164,7 @@ ucellgeom.selection('xboundaries').label('Cumulative Selection x boundaries');
 x_boundary_disksel_r.set('contributeto','xboundaries');
 x_boundary_disksel_l.set('contributeto','xboundaries');
 
-if P.TwoSymPlanes   
+if P.TwoSymPlanes || ~P.zSymCondition
     y_boundary_symmetry = ucellgeom.feature.create('y_boundary_symmetry', 'BoxSelection');
     y_boundary_symmetry.set('entitydim', 2);
     y_boundary_symmetry.set('ymin', -selection_width/2);

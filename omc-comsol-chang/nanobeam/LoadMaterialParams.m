@@ -26,8 +26,8 @@ if strcmp(P.beamMat,'diamond') || strcmp(P.beamMat,'dia')
     c44 = 578e9;
     
     % index of refraction in material
-    if ~isfield(P,'nbeam') || (isfield(P,'nbeam') && P.nbeam ~= 2.4028)
-        P.nbeam = 2.4028;
+    if ~isfield(P,'nbeam')
+        P.nbeam = 2.4028; % default to diamond refractive index at visible
     end
     
     % photoelastic constants

@@ -9,18 +9,18 @@ P.celltype = 'hole';                    % specify what type of unit cells we are
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a = 528e-9;                           % nominal lattice constant
-P.w = 900e-9;                           % beam width
+P.a = 550e-9;                           % nominal lattice constant
+P.w = 600e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 550e-9;                          % beam thickness
-P.hx = 197e-9;                          % nominal hole height (along x-axis)
-P.hy = 578e-9;                          % nominal hole width (along y-axis)
+P.th = 400e-9;                          % beam thickness
+P.hx = P.a*0.4;                          % nominal hole height (along x-axis)
+P.hy = P.a*0.6;                          % nominal hole width (along y-axis)
 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.193;                     % defect percentage
-P.oblong = 2.27;                      % oblong parameter (zero if holes are not changed)
+P.maxdef = 0.15;                     % defect percentage
+P.oblong = 0.7265;                      % oblong parameter (zero if holes are not changed)
 
 % cavity taper params
 P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle
@@ -35,7 +35,7 @@ P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function 
 P.wvgmir = 0;                           % no. of mirrors in end waveguide mirror taper
 P.wgmTaper.func = 'cubic';              % taper function - linear, quadratic, cubic
 P.wgmTaper.endtype = 'custom';          % taper to custom, maxdef, zero (or '') end hole
-P.wgmTaper.a_end = 600e-9;              % for endtype = 'custom': lattice constant of end hole
+P.wgmTaper.a_end = 650e-9;              % for endtype = 'custom': lattice constant of end hole
 P.wgmTaper.hx_end = 343e-9;             % for endtype = 'custom': hole height of end hole
 P.wgmTaper.hy_end = 300e-9;             % for endtype = 'custom': hole width of end hole
 % P.wgmTaper.maxdef_end = 0.094932;     % defect percentage - for endtype = 'maxdef'
@@ -50,7 +50,7 @@ if P.asymCav
     P.PL.wvgmir = 5;
 end
 
-P.lambda = 1550e-9;                     % target optical wavelength
+P.lambda = 1500e-9;                     % target optical wavelength
 P.nbeam = 2.386;                        % the refractive index of diamond at telecom
 
 % Disorder
@@ -77,8 +77,8 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 6e9;                           % target mechanical frequency
-P.mneigs = 10;                          % # of eignevalues to find
+P.freq = 10e9;                           % target mechanical frequency
+P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 3;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
 
@@ -93,7 +93,7 @@ P.oevenx = (-1)^(P.holeatctr);            % +/-1 to find even/odd optical mode a
 P.oeveny = -1;                          % +/-1 to find even/odd optical mode about y (-1 == TE-like)
 P.oevenz = 1;                           % +/-1 to find even/odd optical mode about z 
 P.oneigs = 1;                           % # of eigenvalues to find
-P.oMesh = 4;                            % mesh quality for optical simulations
+P.oMesh = 3;                            % mesh quality for optical simulations
 P.oAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
 P.airrad = 2*P.lambda+P.w/2;            % radius of air cylinder surrounding nanobeam
 
