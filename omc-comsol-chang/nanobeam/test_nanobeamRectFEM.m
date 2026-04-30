@@ -13,14 +13,14 @@ P.a = 550e-9;                           % nominal lattice constant
 P.w = 600e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
 P.th = 400e-9;                          % beam thickness
-P.hx = P.a*0.4;                          % nominal hole height (along x-axis)
-P.hy = P.a*0.6;                          % nominal hole width (along y-axis)
+P.hx = 220e-9;                          % nominal hole height (along x-axis)
+P.hy = 330e-9;                          % nominal hole width (along y-axis)
 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.15;                     % defect percentage
-P.oblong = 0.7265;                      % oblong parameter (zero if holes are not changed)
+P.maxdef = 0.133;                     % defect percentage
+P.oblong = 0.752;                      % oblong parameter (zero if holes are not changed)
 
 % cavity taper params
 P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle
@@ -111,8 +111,8 @@ P.ySlc = 0;
 P.zSlc = 0;
 
 % define aperture to run stats (min, max, mean, stddev) on strain coupling
-P.LStats.xmin = -P.a/2; % leave empty to define based on generated geometry
-P.LStats.xmax = P.a/2;
+P.LStats.xmin = []; % leave empty to define based on generated geometry
+P.LStats.xmax = [];
 P.LStats.ymin = 0;
 P.LStats.ymax = 60e-9;
 P.LStats.zmin = P.th/2-80e-9;   % z-coords relative to center of beam

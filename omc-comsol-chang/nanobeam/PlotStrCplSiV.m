@@ -70,6 +70,8 @@ for mi = mModes
         wPlot = (zSlc(mIdx)+P.th/2)/P.th*P.w; 
     elseif strcmp(P.xsect,'rect')
         wPlot = max(w);
+    elseif strcmp(P.xsect,'isoFit')
+            wPlot = min(max(P.w),2*(zSlc + P.th/2)*sqrt(3));
     end
     
     if isfield(P,'asymCav') && P.asymCav

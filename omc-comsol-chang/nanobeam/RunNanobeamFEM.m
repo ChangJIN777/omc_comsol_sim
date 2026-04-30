@@ -210,7 +210,8 @@ try
         % aperture
         if isfield(P,'LStats')
             % define extents of aperture for hole-based geometry
-            if ~isfield(P,'celltype') && (isempty(P.LStats.xmin) || isempty(P.LStats.xmax))
+            % if ~isfield(P,'celltype') && (isempty(P.LStats.xmin) || isempty(P.LStats.xmax))
+            if strcmp(P.celltype,'hole') && (isempty(P.LStats.xmin) || isempty(P.LStats.xmax))
                 ctrHoleRX = ds.P.xc + ds.P.holeatctr*ds.P.hx_hole(1)/2;   % central hole right-x-coordinate
                 a1 = ds.P.a_hole(1);
                 a1(isnan(a1)) = 0;
