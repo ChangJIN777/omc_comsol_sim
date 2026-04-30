@@ -62,7 +62,7 @@ P.asym = 0;                             % cross-section asymmetry (target y-offs
 P.solveMech = 1;                        % 1 to solve for mechanics
 P.solveOpt = 1;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
-P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
+P.calcS = 1*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)
 
 % plotting & saving
@@ -111,8 +111,8 @@ P.ySlc = 0;
 P.zSlc = 0;
 
 % define aperture to run stats (min, max, mean, stddev) on strain coupling
-P.LStats.xmin = []; % leave empty to define based on generated geometry
-P.LStats.xmax = [];
+P.LStats.xmin = -P.a/2; % leave empty to define based on generated geometry
+P.LStats.xmax = P.a/2;
 P.LStats.ymin = 0;
 P.LStats.ymax = 60e-9;
 P.LStats.zmin = P.th/2-80e-9;   % z-coords relative to center of beam
