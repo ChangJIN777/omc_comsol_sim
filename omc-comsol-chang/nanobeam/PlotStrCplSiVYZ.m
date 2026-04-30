@@ -185,7 +185,7 @@ for mIdx = 1:length(mModes) % mi = mModes
         zSlcSecSgn = (sign(zSlc))^(abs(P.mevenz)) + (sign(zSlc)==0);
         secsZSlc = find((secSgnAll(3,:))==zSlcSecSgn);
         [secsZSlc,secsZSlcIdx] = intersect(secsPlt,secsZSlc);
-        [~,IslcZ] = min(abs(ZDatAll(:,secsZSlcIdx(1))-zSlc));
+        IslcZ = min(abs(ZDatAll(:,secsZSlcIdx(1))-zSlc));
         
         % get max coupling at specified coordinates in plane
         IslcSec = intersect(secsYSlc,secsZSlc);

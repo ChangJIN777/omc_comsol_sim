@@ -73,7 +73,7 @@ elseif maxdef~= 1 && (a*(1-maxdef)-hx*(1-maxdef)^(1-oblong) < 50e-9)
         'nm, a_def-hx_def=',num2str((a*(1-maxdef)-hx*(1-maxdef)^(1-oblong))*1e9,'%.1f'),'nm<50nm - gap too small for lithography']);
 end
 
-if (hx < 150e-9) || (hy < 150e-9)
+if (hx < 50e-9) || (hy < 50e-9)
     error('Hole size too small for lithography')
 end
 

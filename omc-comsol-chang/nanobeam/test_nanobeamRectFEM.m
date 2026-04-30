@@ -4,22 +4,22 @@ clear all; close all; clc
 
 %% geometry parameters
 % unit cell params
-P.xsect = 'isoFit';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
+P.xsect = 'rect';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
 P.celltype = 'hole';                    % specify what type of unit cells we are simulating
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a = 550e-9;                           % nominal lattice constant
-P.w = 600e-9;                           % beam width
+P.a = 245e-9;                           % nominal lattice constant
+P.w = 460e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 400e-9;                          % beam thickness
-P.hx = 220e-9;                          % nominal hole height (along x-axis)
-P.hy = 330e-9;                          % nominal hole width (along y-axis)
+P.th = 150e-9;                          % beam thickness
+P.hx = 95e-9;                          % nominal hole height (along x-axis)
+P.hy = 240e-9;                          % nominal hole width (along y-axis)
 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.133;                     % defect percentage
+P.maxdef = 0.151;                     % defect percentage
 P.oblong = 0.752;                      % oblong parameter (zero if holes are not changed)
 
 % cavity taper params
@@ -50,8 +50,8 @@ if P.asymCav
     P.PL.wvgmir = 5;
 end
 
-P.lambda = 1500e-9;                     % target optical wavelength
-P.nbeam = 2.386;                        % the refractive index of diamond at telecom
+P.lambda = 737e-9;                     % target optical wavelength
+P.nbeam = 2.4028;                        % the refractive index of diamond at telecom
 
 % Disorder
 P.stdDev = [0,0];                       % standard deviation of hole dimensions (hh,hw)
@@ -77,7 +77,7 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 10e9;                           % target mechanical frequency
+P.freq = 12e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 3;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
