@@ -9,18 +9,18 @@ P.celltype = 'hole';                    % specify what type of unit cells we are
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a = 245e-9;                           % nominal lattice constant
-P.w = 460e-9;                           % beam width
+P.a = 235e-9;                           % nominal lattice constant
+P.w = 420e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 150e-9;                          % beam thickness
+P.th = 170e-9;                          % beam thickness
 P.hx = 95e-9;                          % nominal hole height (along x-axis)
 P.hy = 240e-9;                          % nominal hole width (along y-axis)
 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.151;                     % defect percentage
-P.oblong = 0.752;                      % oblong parameter (zero if holes are not changed)
+P.maxdef = 0.15;                     % defect percentage
+P.oblong = 2.31;                      % oblong parameter (zero if holes are not changed)
 
 % cavity taper params
 P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle
@@ -60,7 +60,7 @@ P.asym = 0;                             % cross-section asymmetry (target y-offs
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
-P.solveOpt = 1;                         % 1 to solve for optics
+P.solveOpt = 0;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
 P.calcS = 1*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)
@@ -79,7 +79,7 @@ P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
 P.freq = 12e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
-P.mMesh = 3;                            % mesh quality for mechanical simulations
+P.mMesh = 1;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
 
 % rotate crystal orientation of elasticity matrix
