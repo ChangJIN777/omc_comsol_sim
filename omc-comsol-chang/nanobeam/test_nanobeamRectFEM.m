@@ -124,7 +124,7 @@ P.PMLmeshDiv = 20;
 P.PMLLen = 10e-6;
 P.PMLstr = 0.008;
 
-%% Simulation settings
+%% Simulation settings/in
 P.max_dof = 5e6;                        % max # of degrees of freedom
 
 %% single run
