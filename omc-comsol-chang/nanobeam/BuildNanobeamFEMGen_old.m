@@ -7,6 +7,7 @@ function [model,P] = BuildNanobeamFEMGen(model,P)
 % extract geometry parameters from P
 wid = P.w;
 thi = P.th;
+% asym = P.asym;
 
 if isfield(P,'asymCav') && P.asymCav
     geom = P.geom;
@@ -17,7 +18,7 @@ else
     beamLen = P.beamLenHalf;
     P.xc = 0;
 end
-
+    
 nholes = size(geom,1);
 hx = geom(:,1)';
 hy = geom(:,2)';
@@ -26,6 +27,11 @@ ypos = geom(:,4)';
 w = geom(:,5)';
 a = geom(:,6)';
 
+% % if using rectangular cross section, use half of height due to symmetry
+% if strcmp(P.xsect,'rect')
+%     thi = P.th/2;
+% end
+% 
 % if using triangular cross section, recalculate height of beam
 if strcmp(P.xsect,'tri')
     thi = wid/(2*tan(P.theta*pi/180));
@@ -35,6 +41,13 @@ end
 %% Create component
 comp = model.modelNode.create('comp');
 comp.label('Nanobeam FEM simulation');
+% if P.solveOpt
+%     beamlabel = 'Nanobeam with air cylinder';
+%     beamname = 'beamCyl';
+% else
+%     beamlabel = 'Nanobeam';
+%     beamname = 'beam';
+% end
 
 P.geomname = 'beam';
 beamgeom = model.geom.create(P.geomname, 3);
@@ -51,7 +64,7 @@ if isfield(P,'celltype') && strcmp(P.celltype,'blockTet')
     beamplane.set('type', 'solid').set('base', 'corner');
     beamplane.set('pos', [0 0]).set('size', [beamLen P.hy/2]);
     beamgeom.runCurrent;
-
+    
     holeList = {};
     holeFormula = [];
     for k = 1:nholes
@@ -62,24 +75,23 @@ if isfield(P,'celltype') && strcmp(P.celltype,'blockTet')
             hxk = hx(k);
             dx = hxk/2;
         end
-        % MOD 5: split single-line statement into multiple lines
+    %     hole = holes.geom.feature.create(['hole_' num2str(k)], 'Ellipse');
         holeID = ['block_' num2str(k)];
-        hole = beamWP.geom.feature.create(holeID, 'Rectangle');
-        hole.set('type', 'solid').set('base', 'corner');
-        hole.set('pos', [xpos(k)-dx ypos(k)]).set('size', [hxk w(k)/2]);
+        hole = beamWP.geom.feature.create(holeID, 'Rectangle');         hole.set('type', 'solid').set('base', 'corner');         hole.set('pos', [xpos(k)-dx ypos(k)]).set('size', [hxk w(k)/2]);
         holeList = [holeList,holeID];
         holeFormula = [holeFormula,' + ',holeID];
     end
     beamgeom.runCurrent;
-
+    
+    
     % compose workplane
     beamComp = beamWP.geom.feature.create('beamComp', 'Compose');
     beamComp.selection('input').set(['beamplane',holeList]);
     beamComp.set('formula', ['beamplane',holeFormula]).set('intbnd',false);
     beamgeom.runCurrent;
-
+    
 else
-
+    
     beamplane = beamWP.geom.feature.create('beamplane', 'Rectangle');
     beamplane.set('type', 'solid').set('base', 'corner');
     beamplane.set('pos', [0 0]).set('size', [beamLen wid/2]);
@@ -88,14 +100,8 @@ else
     holeList = {};
     holeFormula = [];
     for k = 1:nholes
-        % MOD 2: guard P.holeType with isfield; MOD 4: use hole_N naming;
-        % MOD 3: use .geom.feature.create for ellipse (matches repo API)
-        if ~isfield(P,'holeType') || strcmp(P.holeType,'hole')
-            holeID = ['hole_' num2str(k)];
-            ell = beamWP.geom.feature.create(holeID, 'Ellipse');
-            ell.set('pos', [xpos(k) ypos(k)]);
-            ell.set('semiaxes', [hx(k)/2 hy(k)/2]);
-        elseif strcmp(P.holeType,'tri') || strcmp(P.holeType,'anvil')
+    %     hole = holes.geom.feature.create(['hole_' num2str(k)], 'Ellipse');
+        if strcmp(P.holeType,'tri') || strcmp(P.holeType,'anvil')
             holeID = ['Polygon',num2str(k)];
             poly = beamWP.geom.create(holeID, 'Polygon');
             poly.set('source', 'table');
@@ -106,11 +112,17 @@ else
                 filOne.set('radius', P.r1);
                 filOne.selection('point').set(holeID, [1 4]);
                 holeID = ['Filet_2_',num2str(k)];
-                filTwo = beamWP.geom.create(holeID, 'Fillet');
+                filTwo= beamWP.geom.create(holeID, 'Fillet');
                 filTwo.set('radius', P.r2);
                 filTwo.selection('point').set(filID, [3 4]);
             end
-        else % strcmp(P.holeType,'rib')
+        elseif strcmp(P.holeType,'hole') 
+            holeID = ['Ellipse' num2str(k)];
+            ellName = ['Ellipse',num2str(k)];
+            ell = beamWP.geom.create(ellName,'Ellipse');
+            ell.set('pos', [xpos(k) ypos(k)]);
+            ell.set('semiaxes', [hx(k)/2 hy(k)/2]);
+        else %strcmp(P.holeType,'rib')
             curveOneName = ['curveOne',num2str(k)];
             curveOne = beamWP.geom.create(curveOneName, 'ParametricCurve');
             curveOne.set('parmin', -a(k)/2);
@@ -153,7 +165,8 @@ else
             convert.selection('input').set({LineBotName LineTopName curveOneName curveTwoName curveThreeName curveFourName});
             convert.set('repairtoltype', 'relative');
             convert.set('repairtol', 1.0E-5);
-
+            
+            
             mirName = ['mir',num2str(k)];
             mir = beamWP.geom.create(mirName, 'Mirror');
             mir.set('keep', true);
@@ -167,6 +180,9 @@ else
             holeID = ['mir',num2str(k)];
             disp(k);
         end
+        %hole = beamWP.geom.feature.create(holeID, 'Ellipse');
+        %hole.set('pos', [xpos(k) ypos(k)]);
+        %hole.set('semiaxes', [hx(k)/2 hy(k)/2]);
         holeList = [holeList,holeID];
         holeFormula = [holeFormula,' - ',holeID];
     end
@@ -176,14 +192,14 @@ else
     beamComp = beamWP.geom.feature.create('beamComp', 'Compose');
     beamComp.selection('input').set(['beamplane',holeList]);
     beamComp.set('formula',['beamplane',holeFormula]).set('intbnd',false);
-    beamgeom.runCurrent;
+    beamgeom.runCurrent;    
 end
 
 % extrude
 finBeamTag = 'beamHoles';
 beamHoles = beamgeom.feature.create(finBeamTag, 'Extrude');
 beamHoles.set('distance', thi);
-beamgeom.runCurrent;
+beamgeom.runCurrent;  
 displayBeamStr = 'Nanobeam, rectangular cross-section';
 
 % track max dimensions for selections
@@ -192,6 +208,7 @@ maxWid = wid;
 maxThi = thi;
 
 %% Create beam with triangular cross-section
+% create workplane for triangular cross-section
 if strcmp(P.xsect,'tri')
     P.mevenz = 0;
     beamTriWP = beamgeom.feature.create('beamTriWP', 'WorkPlane');
@@ -200,43 +217,19 @@ if strcmp(P.xsect,'tri')
     beamTri = beamTriWP.geom.feature.create('beamTri', 'Polygon');
     beamTri.set('type', 'solid');
     beamTri.set('x', [0 0 wid/2]).set('y', [-thi/2 thi/2 thi/2]);
-
-    beamgeom.runCurrent;
+    
+    beamgeom.runCurrent;    % run workplane geometry before extrusion
     beamTriExt = beamgeom.feature.create('beamTriExt', 'Extrude');
     beamTriExt.set('distance', beamLen);
-
-    % Compose: (beam - holes) * triangle cross-section
+    
+    % Compose final beam with holes and triangular cross-section: (beam - holes) * triangle cross-section
     finBeamTag = 'beamHolesTri';
     BeamHolesTri = beamgeom.feature.create(finBeamTag, 'Compose');
     BeamHolesTri.selection('input').set('beamTriExt');
     BeamHolesTri.selection('input').set('beamHoles');
     BeamHolesTri.set('formula', 'beamTriExt * beamHoles');
-    beamgeom.runCurrent;
+    beamgeom.runCurrent;  
     displayBeamStr = 'Nanobeam, triangular cross-section';
-end
-
-%% MOD 1: Create beam with cross-section realistic from isotropic etch
-if strcmp(P.xsect,'isoFit')
-    P.mevenz = 0;
-    beamTriWP = beamgeom.feature.create('beamisoFitWP', 'WorkPlane');
-    beamTriWP.set('planetype', 'coordinates');
-    beamTriWP.set('genpoints', [0 0 0; 0 1 0; 0 0 1]);
-    beamTri = beamTriWP.geom.feature.create('beamIso', 'Polygon');
-    beamTri.set('type', 'solid');
-    beamTri.set('x', [0 wid/2 wid/2]).set('y', [-thi/2 -thi/2 -thi/2+sqrt(3)*wid/6]);
-
-    beamgeom.runCurrent;
-    beamTriExt = beamgeom.feature.create('beamIsoExt', 'Extrude');
-    beamTriExt.set('distance', beamLen);
-
-    % Compose: beam holes - iso cross-section
-    finBeamTag = 'beamHolesIso';
-    BeamHolesTri = beamgeom.feature.create(finBeamTag, 'Compose');
-    BeamHolesTri.selection('input').set('beamIsoExt');
-    BeamHolesTri.selection('input').set('beamHoles');
-    BeamHolesTri.set('formula', 'beamHoles - beamIsoExt');
-    beamgeom.runCurrent;
-    displayBeamStr = 'Nanobeam, isotropic fitted cross-section';
 end
 
 % track max dimensions for selections
@@ -246,6 +239,10 @@ maxThi = thi;
 
 %% Run geometry
 beamgeom.run;
+
+%% to implement: adding phononic mirrors
+% use createNanobeamGeom
+% then update total length
 
 %% Create air cylinder around beam
 displayCylStr = '';
@@ -257,7 +254,7 @@ if isfield(P,'airrad') && P.solveOpt
 
     air_cyl = beamgeom.feature.create('air_cyl', 'Revolve');
     air_cyl.selection('input').set('cyl_cut_wp');
-
+    
     air_cyl.set('angle1','-180');
     air_cyl.set('axis',[1,0]).set('pos',[0,0]).set('angle2','0');
 
@@ -269,12 +266,14 @@ if isfield(P,'airrad') && P.solveOpt
     beamgeom.run;
     displayCylStr = ', air cylinder';
     finBeamTag = 'beamHolesAir';
-
+    
     % track max dimensions for selections
     totLen = beamLen;
     maxWid = max(maxWid,2*P.airrad);
     maxThi = max(maxThi,2*P.airrad);
 end
+
+
 
 %% Create mechanical PML
 xL = 0;
@@ -289,9 +288,9 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     PMLplaneR.set('angle',90).set('rot',0);
     beamgeom.runCurrent;
     totLen = totLen + P.PMLLen;
-
-    % PML on left-end of beam (asymmetric cavity only)
-    if isfield(P,'asymCav') && P.asymCav
+    
+    % PML on left-end of beam (fixed boundary)
+    if P.asymCav
         PMLplaneL = PMLWP.geom.feature.create('PMLplaneL', 'Circle');
         PMLplaneL.set('type', 'solid').set('base', 'center');
         PMLplaneL.set('pos', [0 0]).set('r', P.PMLLen);
@@ -299,19 +298,19 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
         beamgeom.runCurrent;
         totLen = totLen + P.PMLLen;
         xL = -P.PMLLen;
-
+        
         % compose workplane
         PMLComp = PMLWP.geom.feature.create('PMLComp', 'Compose');
         PMLComp.selection('input').set({'PMLplaneL','PMLplaneR'});
         PMLComp.set('formula', ['PMLplaneL + PMLplaneR']);
         beamgeom.runCurrent;
     end
-
+    
     % extrude
     PMLAll = beamgeom.feature.create('MechPML', 'Extrude');
     PMLAll.set('distance', thi);
-    beamgeom.runCurrent;
-
+    beamgeom.runCurrent;  
+    
     % Compose final geometry
     beamHolesAir = beamgeom.feature.create('beamHolesPML', 'Compose');
     beamHolesAir.selection('input').set(finBeamTag);
@@ -320,7 +319,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     beamgeom.run;
     displayCylStr = ', mech PML';
     finBeamTag = 'beamHolesPML';
-
+    
     % track max dimensions for selections
     maxWid = max(maxWid,2*P.PMLLen);
     maxThi = max(maxThi,thi);
@@ -332,35 +331,48 @@ symZOn = strcmp(P.xsect,'rect') && ...
          (P.solveOpt && ~P.solveMech && abs(P.oevenz)) || ...
          (P.solveMech && P.solveOpt && abs(P.mevenz) && abs(P.oevenz)));
 if symZOn
+%     symZthList = thi/2;
+%     symWList = wid/2;
+%     if isfield(P,'airrad') && P.solveOpt
+%         symZthList(end+1) = P.airrad;
+%         symWList(end+1) = P.airrad;
+%     end
+%     if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
+%         symZthList(end+1) = thi/2;
+%         symWList(end+1) = P.PMLLen;
+%     end
     % create symmetry block
     symZWP = beamgeom.feature.create('symZWP', 'WorkPlane');
     symZWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -maxThi/2);
     symZPlane = symZWP.geom.feature.create('symZPlane', 'Rectangle');
     symZPlane.set('type', 'solid').set('base', 'corner');
     symZPlane.set('pos', [xL 0]).set('size', [totLen maxWid/2]);
-
+    
     % extrude symmetry block
     beamgeom.runCurrent;
     symZPlaneExt = beamgeom.feature.create('symZPlaneExt', 'Extrude');
     symZPlaneExt.set('distance', maxThi/2);
-
+    
     % compose: unit cell - symmetry block
     symZComp = beamgeom.feature.create('symZComp', 'Compose');
     symZComp.selection('input').set(finBeamTag);
     symZComp.selection('input').set('symZPlaneExt');
     symZComp.set('formula', [finBeamTag,' - symZPlaneExt']);
     beamgeom.run;
-
+    
     maxThi = maxThi/2;
 end
+    
+
 
 display(['Geometry created - ',displayBeamStr,displayCylStr,displayPMLStr]);
 
 
 %% Create domain selections after full geometry is constructed
 
-% beam domain
-delta = 10e-9;
+% Create selection with beam only
+% define box slightly larger and fully containing full beam volume
+delta = 10e-9; 
 beamSel = beamgeom.create('beamSel', 'BoxSelection');
 beamSel.set('xmin', -delta).set('xmax', beamLen + delta);
 beamSel.set('ymin', -delta).set('ymax', max(w)/2 + delta);
@@ -370,16 +382,18 @@ beamgeom.runCurrent;
 inds = model.selection([P.geomname,'_beamSel']).inputEntities();
 P.domSel.beam = inds';
 
-% air cylinder domain
+% Create selection with cylinder only
+% - define box slightly larger and fully containing full cylinder volume
+% then take difference selection with beam
 if isfield(P,'airrad') && P.solveOpt
-    delta = 10e-9;
+    delta = 10e-9; 
     beamCylSel = beamgeom.create('beamCylSel', 'BoxSelection');
     beamCylSel.set('xmin', -delta).set('xmax', beamLen + delta);
     beamCylSel.set('ymin', -delta).set('ymax', P.airrad + delta);
     beamCylSel.set('zmin', -P.airrad-delta).set('zmax', P.airrad + delta);
     beamCylSel.set('condition', 'inside');
     beamgeom.runCurrent;
-
+    
     cylSel = beamgeom.create('cylSel', 'DifferenceSelection');
     cylSel.set('entitydim',3).set('add','beamCylSel').set('subtract','beamSel');
     beamgeom.runCurrent;
@@ -387,22 +401,28 @@ if isfield(P,'airrad') && P.solveOpt
     P.domSel.cyl = inds';
 end
 
-% PML domain
+% Create selection with PML pads only
+% - define box slightly larger and fully containing PML pads and beam
+% then take difference selection with beam
 if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
-    delta = 10e-9;
+    delta = 10e-9; 
     beamPMLSel = beamgeom.create('beamPMLSel', 'BoxSelection');
     beamPMLSel.set('xmin', xL-delta).set('xmax', xL+totLen+delta);
     beamPMLSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
     beamPMLSel.set('zmin', -thi/2-delta).set('zmax', thi/2+delta);
     beamPMLSel.set('entitydim', 3).set('condition', 'inside');
     beamgeom.runCurrent;
-
+    
     PMLSel = beamgeom.create('PMLSel', 'DifferenceSelection');
     PMLSel.set('entitydim',3).set('add','beamPMLSel').set('subtract','beamSel');
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_PMLSel']).inputEntities();
     P.domSel.PML = inds';
 end
+
+
+
+
 
 
 %% Create boundary selections after full geometry is constructed
@@ -446,7 +466,7 @@ beamZsymSel = beamgeom.create('beamZsymSel', 'BoxSelection');
 beamZsymSel.set('xmin', delta).set('xmax', 2*delta);
 beamZsymSel.set('ymin', min(w)/2-2*delta).set('ymax', min(w)/2-delta);
 beamZsymSel.set('zmin', -delta).set('zmax', delta);
-beamZsymSel.set('entitydim', 2).set('condition', 'intersects');
+beamZsymSel.set('entitydim', 2).set('condition', 'intersects'); % only want beam surface, exclude air holes
 beamgeom.runCurrent;
 inds = model.selection([P.geomname,'_beamZsymSel']).inputEntities();
 P.bndSel.beamZsym = inds';
@@ -456,12 +476,12 @@ if isfield(P,'airrad') && P.solveOpt
     cylXsymSel = beamgeom.create('cylXsymSel', 'BoxSelection');
     cylXsymSel.set('xmin', -delta).set('xmax', delta);
     cylXsymSel.set('ymin', -delta).set('ymax', P.airrad+delta);
-    cylXsymSel.set('zmin', -P.airrad-delta).set('zmax', P.airrad+delta);
+    cylXsymSel.set('zmin', -delta).set('zmax', P.airrad+delta);
     cylXsymSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_cylXsymSel']).inputEntities();
     P.bndSel.cylXsym = inds';
-
+        
     % cyl x-end plane
     cylXendSel = beamgeom.create('cylXendSel', 'BoxSelection');
     cylXendSel.set('xmin', beamLen-delta).set('xmax', beamLen+delta);
@@ -471,7 +491,7 @@ if isfield(P,'airrad') && P.solveOpt
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_cylXendSel']).inputEntities();
     P.bndSel.cylXend = inds';
-
+    
     % cyl y-symmetry plane
     cylYsymSel = beamgeom.create('cylYsymSel', 'BoxSelection');
     cylYsymSel.set('xmin', -delta).set('xmax', beamLen+delta);
@@ -481,7 +501,7 @@ if isfield(P,'airrad') && P.solveOpt
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_cylYsymSel']).inputEntities();
     P.bndSel.cylYsym = inds';
-
+    
     % cyl z-symmetry plane
     cylZsymSel = beamgeom.create('cylZsymSel', 'BoxSelection');
     cylZsymSel.set('xmin', -delta).set('xmax', beamLen+delta);
@@ -491,7 +511,17 @@ if isfield(P,'airrad') && P.solveOpt
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_cylZsymSel']).inputEntities();
     P.bndSel.cylZsym = inds';
-
+    
+%     % beam holes z-symmetry plane
+%     bhlZsymSel = beamgeom.create('bhlZsymSel', 'BoxSelection');
+%     bhlZsymSel.set('xmin', -delta).set('xmax', beamLen+delta);
+%     bhlZsymSel.set('ymin', -delta).set('ymax', max(P.geom(:,2))/2+delta);
+%     bhlZsymSel.set('zmin', -delta).set('zmax', delta);
+%     bhlZsymSel.set('entitydim', 2).set('condition', 'allvertices');
+%     beamgeom.runCurrent;
+%     inds = model.selection([P.geomname,'_bhlZsymSel']).inputEntities();
+%     P.bndSel.cylZsym = [P.bndSel.cylZsym,inds'];
+    
     % cyl top curved plane
     cylCurvSel = beamgeom.create('cylCurvSel', 'BoxSelection');
     cylCurvSel.set('xmin', delta).set('xmax', 2*delta);
@@ -501,7 +531,7 @@ if isfield(P,'airrad') && P.solveOpt
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_cylCurvSel']).inputEntities();
     P.bndSel.cylCurv = inds';
-
+    
     if ~strcmp(P.xsect,'rect')
         cylCurv2Sel = beamgeom.create('cylCurv2Sel', 'BoxSelection');
         cylCurv2Sel.set('xmin', delta).set('xmax', 2*delta);
@@ -524,7 +554,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_PMLRtopSel']).inputEntities();
     P.bndSel.PMLZtop = inds';
-
+    
     PMLLtopSel = beamgeom.create('PMLLtopSel', 'BoxSelection');
     PMLLtopSel.set('xmin', -P.PMLLen-delta).set('xmax', delta);
     PMLLtopSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
@@ -533,7 +563,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_PMLLtopSel']).inputEntities();
     P.bndSel.PMLZtop = [P.bndSel.PMLZtop,inds'];
-
+    
     % PML z-bottom plane (for z-symmetry)
     PMLRbotSel = beamgeom.create('PMLRbotSel', 'BoxSelection');
     PMLRbotSel.set('xmin', beamLen-delta).set('xmax', beamLen+P.PMLLen+delta);
@@ -543,7 +573,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_PMLRbotSel']).inputEntities();
     P.bndSel.PMLZsym = inds';
-
+    
     PMLLbotSel = beamgeom.create('PMLLbotSel', 'BoxSelection');
     PMLLbotSel.set('xmin', -P.PMLLen-delta).set('xmax', delta);
     PMLLbotSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
@@ -552,7 +582,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_PMLLbotSel']).inputEntities();
     P.bndSel.PMLZsym = [P.bndSel.PMLZsym,inds'];
-
+    
     % PML XZ-plane (for y-symmetry)
     PMLRYsymSel = beamgeom.create('PMLRYsymSel', 'BoxSelection');
     PMLRYsymSel.set('xmin', beamLen-delta).set('xmax', beamLen+P.PMLLen+delta);
@@ -562,7 +592,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_PMLRYsymSel']).inputEntities();
     P.bndSel.PMLYsym = inds';
-
+    
     PMLLYsymSel = beamgeom.create('PMLLYsymSel', 'BoxSelection');
     PMLLYsymSel.set('xmin', -P.PMLLen-delta).set('xmax', delta);
     PMLLYsymSel.set('ymin', -delta).set('ymax', delta);
@@ -571,7 +601,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_PMLLYsymSel']).inputEntities();
     P.bndSel.PMLYsym = [P.bndSel.PMLYsym,inds'];
-
+    
     % PML curved plane
     PMLRCurSel = beamgeom.create('PMLRCurSel', 'BoxSelection');
     PMLRCurSel.set('xmin', beamLen+P.PMLLen/sqrt(2)-delta).set('xmax', beamLen+P.PMLLen/sqrt(2)+delta);
@@ -581,7 +611,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_PMLRCurSel']).inputEntities();
     P.bndSel.PMLcurv = inds';
-
+    
     PMLLCurSel = beamgeom.create('PMLLCurSel', 'BoxSelection');
     PMLLCurSel.set('xmin', -P.PMLLen/sqrt(2)-delta).set('xmax', -P.PMLLen/sqrt(2)+delta);
     PMLLCurSel.set('ymin', P.PMLLen/sqrt(2)-delta).set('ymax', P.PMLLen/sqrt(2)+delta);
