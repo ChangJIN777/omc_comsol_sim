@@ -4,23 +4,23 @@ clear all; close all; clc
 
 %% geometry parameters
 % unit cell params
-P.xsect = 'rect';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
+P.xsect = 'isoFit';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
 P.celltype = 'hole';                    % specify what type of unit cells we are simulating
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a = 235e-9;                           % nominal lattice constant
-P.w = 420e-9;                           % beam width
+P.a = 605e-9;                           % nominal lattice constant
+P.w = 600e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 170e-9;                          % beam thickness
-P.hx = 95e-9;                          % nominal hole height (along x-axis)
-P.hy = 240e-9;                          % nominal hole width (along y-axis)
+P.th = 400e-9;                          % beam thickness
+P.hx = 220e-9;                          % nominal hole height (along x-axis)
+P.hy = 330e-9;                          % nominal hole width (along y-axis)
 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
 P.maxdef = 0.15;                     % defect percentage
-P.oblong = 2.31;                      % oblong parameter (zero if holes are not changed)
+P.oblong = 0.7265;                      % oblong parameter (zero if holes are not changed)
 
 % cavity taper params
 P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle
@@ -50,8 +50,8 @@ if P.asymCav
     P.PL.wvgmir = 5;
 end
 
-P.lambda = 737e-9;                     % target optical wavelength
-P.nbeam = 2.4028;                        % the refractive index of diamond at telecom
+P.lambda = 1550e-9;                     % target optical wavelength
+P.nbeam = 2.386;                        % the refractive index of diamond at telecom
 
 % Disorder
 P.stdDev = [0,0];                       % standard deviation of hole dimensions (hh,hw)
@@ -60,9 +60,9 @@ P.asym = 0;                             % cross-section asymmetry (target y-offs
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
-P.solveOpt = 0;                         % 1 to solve for optics
+P.solveOpt = 1;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
-P.calcS = 1*P.solveMech;                % 1 to calculate strain coupling
+P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)
 
 % plotting & saving
@@ -77,7 +77,7 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 12e9;                           % target mechanical frequency
+P.freq = 10e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
