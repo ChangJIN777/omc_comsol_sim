@@ -291,7 +291,7 @@ try
                 P.xSlc = 0.5*(ctrHoleRX+adjHoleLX)*P.holeatctr;
             end
             
-            pSlc = zeros(3,length(mModes),length(P.zSiV));
+            pSlc = zeros(3,length(mM/ageodes),length(P.zSiV));
             for mIdx = 1:length(mModes)
                 for oi = 1:length(P.zSiV)
                     pSlc(1:3,mIdx,oi) = [P.xSlc;P.ySlc;P.zSlc];

@@ -233,50 +233,45 @@ end
 xL = 0;
 displayPMLStr = '';
 if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
-    % PML on right-end of beam (fixed boundary)
-    PMLWP = beamgeom.feature.create('PMLWP', 'WorkPlane');
-    PMLWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -thi/2);
-    PMLplaneR = PMLWP.geom.feature.create('PMLplaneR', 'Circle');
-    PMLplaneR.set('type', 'solid').set('base', 'center');
-    PMLplaneR.set('pos', [beamLen 0]).set('r', P.PMLLen);
-    PMLplaneR.set('angle',90).set('rot',0);
+    % PML on right-end of beam (rectangular block)
+    PMLblockR = beamgeom.feature.create('PMLblockR', 'Block');
+    PMLblockR.set('base', 'corner');
+    PMLblockR.set('pos', [beamLen, -max(w)/2, -thi/2]);
+    PMLblockR.set('size', [P.PMLLen, max(w), thi]);
     beamgeom.runCurrent;
     totLen = totLen + P.PMLLen;
-    
-    % PML on left-end of beam (fixed boundary)
+    PMLtag = 'PMLblockR';
+
+    % PML on left-end of beam (rectangular block)
     if P.asymCav
-        PMLplaneL = PMLWP.geom.feature.create('PMLplaneL', 'Circle');
-        PMLplaneL.set('type', 'solid').set('base', 'center');
-        PMLplaneL.set('pos', [0 0]).set('r', P.PMLLen);
-        PMLplaneL.set('angle',90).set('rot',90);
+        PMLblockL = beamgeom.feature.create('PMLblockL', 'Block');
+        PMLblockL.set('base', 'corner');
+        PMLblockL.set('pos', [-P.PMLLen, -max(w)/2, -thi/2]);
+        PMLblockL.set('size', [P.PMLLen, max(w), thi]);
         beamgeom.runCurrent;
         totLen = totLen + P.PMLLen;
         xL = -P.PMLLen;
-        
-        % compose workplane
-        PMLComp = PMLWP.geom.feature.create('PMLComp', 'Compose');
-        PMLComp.selection('input').set({'PMLplaneL','PMLplaneR'});
-        PMLComp.set('formula', ['PMLplaneL + PMLplaneR']);
+
+        % compose PML blocks
+        PMLAll = beamgeom.feature.create('MechPML', 'Compose');
+        PMLAll.selection('input').set({'PMLblockR','PMLblockL'});
+        PMLAll.set('formula', 'PMLblockR + PMLblockL');
         beamgeom.runCurrent;
+        PMLtag = 'MechPML';
     end
-    
-    % extrude
-    PMLAll = beamgeom.feature.create('MechPML', 'Extrude');
-    PMLAll.set('distance', thi);
-    beamgeom.runCurrent;  
-    
+
     % Compose final geometry
     beamHolesAir = beamgeom.feature.create('beamHolesPML', 'Compose');
     beamHolesAir.selection('input').set(finBeamTag);
-    beamHolesAir.selection('input').set('MechPML');
-    beamHolesAir.set('formula', [finBeamTag,' + MechPML']);
+    beamHolesAir.selection('input').set(PMLtag);
+    beamHolesAir.set('formula', [finBeamTag,' + ',PMLtag]);
     beamgeom.run;
     displayCylStr = ', mech PML';
     finBeamTag = 'beamHolesPML';
-    
+
     % track max dimensions for selections
-    maxWid = max(maxWid,2*P.PMLLen);
-    maxThi = max(maxThi,thi);
+    maxWid = max(maxWid, max(w));
+    maxThi = max(maxThi, thi);
 end
 
 %% Symmetry in z
@@ -556,21 +551,22 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     inds = model.selection([P.geomname,'_PMLLYsymSel']).inputEntities();
     P.bndSel.PMLYsym = [P.bndSel.PMLYsym,inds'];
     
-    % PML curved plane
+    % PML outer x-face (flat, right end)
     PMLRCurSel = beamgeom.create('PMLRCurSel', 'BoxSelection');
-    PMLRCurSel.set('xmin', beamLen+P.PMLLen/sqrt(2)-delta).set('xmax', beamLen+P.PMLLen/sqrt(2)+delta);
-    PMLRCurSel.set('ymin', P.PMLLen/sqrt(2)-delta).set('ymax', P.PMLLen/sqrt(2)+delta);
-    PMLRCurSel.set('zmin', -thi/2*(1-symZOn)+delta).set('zmax', thi/2-delta);
-    PMLRCurSel.set('entitydim', 2).set('condition', 'intersects');
+    PMLRCurSel.set('xmin', beamLen+P.PMLLen-10e-9).set('xmax', beamLen+P.PMLLen+10e-9);
+    PMLRCurSel.set('ymin', -max(w)/2-10e-9).set('ymax', max(w)/2+10e-9);
+    PMLRCurSel.set('zmin', -thi/2*(1-symZOn)-10e-9).set('zmax', thi/2+10e-9);
+    PMLRCurSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_PMLRCurSel']).inputEntities();
     P.bndSel.PMLcurv = inds';
-    
+
+    % PML outer x-face (flat, left end)
     PMLLCurSel = beamgeom.create('PMLLCurSel', 'BoxSelection');
-    PMLLCurSel.set('xmin', -P.PMLLen/sqrt(2)-delta).set('xmax', -P.PMLLen/sqrt(2)+delta);
-    PMLLCurSel.set('ymin', P.PMLLen/sqrt(2)-delta).set('ymax', P.PMLLen/sqrt(2)+delta);
-    PMLLCurSel.set('zmin', -thi/2*(1-symZOn)+delta).set('zmax', thi/2-delta);
-    PMLLCurSel.set('entitydim', 2).set('condition', 'intersects');
+    PMLLCurSel.set('xmin', -P.PMLLen-10e-9).set('xmax', -P.PMLLen+10e-9);
+    PMLLCurSel.set('ymin', -max(w)/2-10e-9).set('ymax', max(w)/2+10e-9);
+    PMLLCurSel.set('zmin', -thi/2*(1-symZOn)-10e-9).set('zmax', thi/2+10e-9);
+    PMLLCurSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
     inds = model.selection([P.geomname,'_PMLLCurSel']).inputEntities();
     P.bndSel.PMLcurv = [P.bndSel.PMLcurv, inds'];

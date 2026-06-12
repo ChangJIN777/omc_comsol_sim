@@ -269,7 +269,9 @@ msolv_vars.set('control','mstd_eigv');
 msolv_eigv.set('control','mstd_eigv');
 msolv_eigv.set('eigref',num2str(0-1i*2*pi*freq));
 msolv_eigv.feature('dDef').set('linsolver', 'mumps');
-msolv_eigv.feature('aDef').set('complexfun', 'off');
+% msolv_eigv.feature('aDef').set('complexfun', 'off');
+msolv_eigv.feature('aDef').set('complexfun', 'on');
+
 
 % disable EM waves in solid mechanics study
 % and disable solid mechanics in EM waves study
@@ -360,8 +362,10 @@ mfem.PVals = mPValRe + 1i*mPValIm;
 mfem.freqsC = mfem.PVals/(2*pi);
 mfem.freqs = abs(mPValIm)/(2*pi);   % mechanical frequencies
 
-% % mechanical quality factor
-% mfem.post.mechQ = imag(mfem.sol.lambda)./(2*real(mfem.sol.lambda));
+% mechanical quality factor (radiation loss via PML)
+if isfield(P,'solveMechPML') && P.solveMechPML
+    mfem.QAll = abs(mPValIm) ./ (2*abs(mPValRe));
+end
 
 % extract results for localized mechanical modes
 % by calculating ratio of integrated displacements in center of beam to
@@ -399,7 +403,12 @@ disp('Mechanical simulations done - Postprocessing done');
 if ~isempty(mfem.locInd)
     disp('  Localized mechanical modes:')
     for locIdx = 1:length(mfem.locInd)
-        disp(['  mode ',num2str(mfem.locInd(locIdx)),': wM = ',num2str(mfem.locFreqs(locIdx)/1e9,'%.2f'),' GHz'])
+        mIdx = mfem.locInd(locIdx);
+        if isfield(mfem,'QAll')
+            disp(['  mode ',num2str(mIdx),': wM = ',num2str(mfem.locFreqs(locIdx)/1e9,'%.2f'),' GHz, Qrad = ',num2str(mfem.QAll(mIdx),'%.2e')])
+        else
+            disp(['  mode ',num2str(mIdx),': wM = ',num2str(mfem.locFreqs(locIdx)/1e9,'%.2f'),' GHz'])
+        end
     end
 else
     disp('  No localized mechanical modes found, saving most localized mode')

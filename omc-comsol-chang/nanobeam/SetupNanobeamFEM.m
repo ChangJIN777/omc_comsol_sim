@@ -114,24 +114,7 @@ if isfield(P,'D')
         error('ERROR: Insufficient number of stiffness constants specified');
     end
     bMat_aniso = bMat.propertyGroup.create('AnisotropicVoGrp', 'Anisotropic, Voigt notation');
-    % define decay function in PML region
-    if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
-        DVo = {};
-        decayFunc = ['(1+1i*',num2str(P.PMLstr),...
-                     '*((x>',num2str(len),')*(y>',num2str(0),')',...
-                     '*(((x-',num2str(len),')/',num2str(P.a),'[m])^2',...
-                       '+((y-',num2str(0),  ')/',num2str(P.a),'[m])^2))+',...
-                       '((x<',num2str(xL),')*(y>',num2str(0),')',...
-                     '*(((x-',num2str(xL), ')/',num2str(P.a),'[m])^2',...
-                       '+((y-',num2str(0),  ')/',num2str(P.a),'[m])^2)))'];
-        for di = 1:length(P.D)
-            DVoi = [num2str(P.D(di)),'[Pa]*',decayFunc];
-            DVo = [DVo,DVoi];
-        end
-    else
-        DVo = P.D;
-    end
-    bMat_aniso.set('DVo', DVo);
+    bMat_aniso.set('DVo', P.D);
     
 elseif (isfield(P,'E') && isfield(P,'nu')) 
     mfem.nu = P.nu;
@@ -231,13 +214,15 @@ smech.selection.set(mfem.dia_domind);
 
 
 % fixed BCs - end of beam or PML pad
+bnds.fixed_inds = [];
 fixedBCs = smech.create('fixedBCs', 'Fixed', 2);
 fixedBCs.label('Fixed Constraint');
-bnds.fixed_inds = [];
-bnds.fixed_inds = [bnds.fixed_inds,P.bndSel.beamXend];
-if mevenx == 0 
+if ~(isfield(P,'solveMechPML') && P.solveMechPML)
+    bnds.fixed_inds = [bnds.fixed_inds,P.bndSel.beamXend];
+end
+if mevenx == 0
     if isfield(P,'solveMechPML') && P.solveMechPML
-        bnds.fixed_inds = [bnds.fixed_inds,P.bndSel.PMLcurv];
+        % native PML: outer face is traction-free by default — no fixed BC needed
     else
         bnds.fixed_inds = [bnds.fixed_inds,P.bndSel.beamXsym];
     end
@@ -301,6 +286,17 @@ else
 end
 
 mfem.bnds = bnds;
+
+if isfield(P,'solveMechPML') && P.solveMechPML
+    pml = model.coordSystem.create('pml1', geomname, 'PML');
+    pml.selection.set(P.domSel.PML);
+    pml.set('ScalingType', 'Cartesian');
+    pml.set('wavelengthSourceType', 'userDefined');
+    v_long = sqrt(P.D(1) / P.rho);
+    lambda_mech = v_long / P.freq;
+    pml.set('typicalWavelength', [num2str(lambda_mech), '[m]']);
+end
+
 display('Solid Mechanics added - boundary conditions done');
 end % of if P.solveMech
 
