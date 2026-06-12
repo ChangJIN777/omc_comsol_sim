@@ -18,7 +18,8 @@ else
     beamLen = P.beamLenHalf;
     P.xc = 0;
 end
-    
+   
+
 nholes = size(geom,1);
 hx = geom(:,1)';
 hy = geom(:,2)';
@@ -236,8 +237,8 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     % PML on right-end of beam (rectangular block)
     PMLblockR = beamgeom.feature.create('PMLblockR', 'Block');
     PMLblockR.set('base', 'corner');
-    PMLblockR.set('pos', [beamLen, -max(w)/2, -thi/2]);
-    PMLblockR.set('size', [P.PMLLen, max(w), thi]);
+    PMLblockR.set('pos', [beamLen, 0, -thi/2]);
+    PMLblockR.set('size', [P.PMLLen, max(w)/2, thi]);
     beamgeom.runCurrent;
     totLen = totLen + P.PMLLen;
     PMLtag = 'PMLblockR';
@@ -246,8 +247,8 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     if P.asymCav
         PMLblockL = beamgeom.feature.create('PMLblockL', 'Block');
         PMLblockL.set('base', 'corner');
-        PMLblockL.set('pos', [-P.PMLLen, -max(w)/2, -thi/2]);
-        PMLblockL.set('size', [P.PMLLen, max(w), thi]);
+        PMLblockL.set('pos', [-P.PMLLen, 0, -thi/2]);
+        PMLblockL.set('size', [P.PMLLen, max(w)/2, thi]);
         beamgeom.runCurrent;
         totLen = totLen + P.PMLLen;
         xL = -P.PMLLen;
@@ -351,22 +352,31 @@ if isfield(P,'airrad') && P.solveOpt
 end
 
 % Create selection with PML pads only
-% - define box slightly larger and fully containing PML pads and beam
-% then take difference selection with beam
+% - directly select domain in PML x-region (right of beam end, left of xL)
 if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
-    delta = 10e-9; 
-    beamPMLSel = beamgeom.create('beamPMLSel', 'BoxSelection');
-    beamPMLSel.set('xmin', xL-delta).set('xmax', xL+totLen+delta);
-    beamPMLSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
-    beamPMLSel.set('zmin', -thi/2-delta).set('zmax', thi/2+delta);
-    beamPMLSel.set('entitydim', 3).set('condition', 'inside');
+    delta = 10e-9;
+    % Right PML: x > beamLen
+    PMLRdomSel = beamgeom.create('PMLRdomSel', 'BoxSelection');
+    PMLRdomSel.set('xmin', beamLen+delta).set('xmax', beamLen+P.PMLLen+delta);
+    PMLRdomSel.set('ymin', -delta).set('ymax', max(w)/2+delta);
+    PMLRdomSel.set('zmin', -thi/2-delta).set('zmax', thi/2+delta);
+    PMLRdomSel.set('entitydim', 3).set('condition', 'inside');
     beamgeom.runCurrent;
-    
-    PMLSel = beamgeom.create('PMLSel', 'DifferenceSelection');
-    PMLSel.set('entitydim',3).set('add','beamPMLSel').set('subtract','beamSel');
-    beamgeom.runCurrent;
-    inds = model.selection([P.geomname,'_PMLSel']).inputEntities();
+    inds = model.selection([P.geomname,'_PMLRdomSel']).inputEntities();
     P.domSel.PML = inds';
+
+    % Left PML: x < 0 (asymCav only)
+    if isfield(P,'asymCav') && P.asymCav
+        PMLLdomSel = beamgeom.create('PMLLdomSel', 'BoxSelection');
+        PMLLdomSel.set('xmin', -P.PMLLen-delta).set('xmax', -delta);
+        PMLLdomSel.set('ymin', -delta).set('ymax', max(w)/2+delta);
+        PMLLdomSel.set('zmin', -thi/2-delta).set('zmax', thi/2+delta);
+        PMLLdomSel.set('entitydim', 3).set('condition', 'inside');
+        beamgeom.runCurrent;
+        inds = model.selection([P.geomname,'_PMLLdomSel']).inputEntities();
+        P.domSel.PML = [P.domSel.PML, inds'];
+    end
+    disp(['PML domain indices: ', num2str(P.domSel.PML)]);
 end
 
 
@@ -497,7 +507,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     % PML z-top plane
     PMLRtopSel = beamgeom.create('PMLRtopSel', 'BoxSelection');
     PMLRtopSel.set('xmin', beamLen-delta).set('xmax', beamLen+P.PMLLen+delta);
-    PMLRtopSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
+    PMLRtopSel.set('ymin', -delta).set('ymax', max(w)/2+delta);
     PMLRtopSel.set('zmin', thi/2-delta).set('zmax', thi/2+delta);
     PMLRtopSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
@@ -506,7 +516,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     
     PMLLtopSel = beamgeom.create('PMLLtopSel', 'BoxSelection');
     PMLLtopSel.set('xmin', -P.PMLLen-delta).set('xmax', delta);
-    PMLLtopSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
+    PMLLtopSel.set('ymin', -delta).set('ymax', max(w)/2+delta);
     PMLLtopSel.set('zmin', thi/2-delta).set('zmax', thi/2+delta);
     PMLLtopSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
@@ -516,7 +526,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     % PML z-bottom plane (for z-symmetry)
     PMLRbotSel = beamgeom.create('PMLRbotSel', 'BoxSelection');
     PMLRbotSel.set('xmin', beamLen-delta).set('xmax', beamLen+P.PMLLen+delta);
-    PMLRbotSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
+    PMLRbotSel.set('ymin', -delta).set('ymax', max(w)/2+delta);
     PMLRbotSel.set('zmin', -thi/2*(1-symZOn)-delta).set('zmax', -thi/2*(1-symZOn)+delta);
     PMLRbotSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
@@ -525,7 +535,7 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     
     PMLLbotSel = beamgeom.create('PMLLbotSel', 'BoxSelection');
     PMLLbotSel.set('xmin', -P.PMLLen-delta).set('xmax', delta);
-    PMLLbotSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
+    PMLLbotSel.set('ymin', -delta).set('ymax', max(w)/2+delta);
     PMLLbotSel.set('zmin', -thi/2*(1-symZOn)-delta).set('zmax', -thi/2*(1-symZOn)+delta);
     PMLLbotSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
