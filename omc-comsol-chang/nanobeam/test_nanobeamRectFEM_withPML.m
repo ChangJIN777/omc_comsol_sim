@@ -15,7 +15,7 @@ P.theta = 45;                           % etch angle in degrees (no effect for r
 P.th = 400e-9;                          % beam thickness
 P.hx = 220e-9;                          % nominal hole height (along x-axis)
 P.hy = 330e-9;                          % nominal hole width (along y-axis)
-fit the sem of the fabricated omc 
+% fit the sem of the fabricated omc 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
