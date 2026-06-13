@@ -31,6 +31,12 @@ P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function 
 % P.hy_ctr = 177e-9;                    % for taperTo = 'custom': hole width of center hole
 % P.cavlen = 0e-9;                      % custom cavity length between two center holes; disable if not used
 
+% manual defect unit cell (overrides maxdef/oblong for the cavity taper)
+P.useManualDefect = 0;     % 1 to specify defect-center dims directly
+% P.hxDef = 190e-9;        % hole height at cavity center
+% P.hyDef = 300e-9;        % hole width at cavity center
+% P.aDef  = 560e-9;        % lattice constant at center (defaults to P.a if absent)
+
 % end waveguide mirror taper params
 P.wvgmir = 0;                           % no. of mirrors in end waveguide mirror taper
 P.wgmTaper.func = 'cubic';              % taper function - linear, quadratic, cubic

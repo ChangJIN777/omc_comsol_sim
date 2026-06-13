@@ -390,8 +390,15 @@ end
 % PML domain
 if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
     delta = 10e-9;
+    % for asymmetric cavity, left PML starts at xL=-PMLLen; for symmetric,
+    % the only PML starts at beamLen (right end)
+    if isfield(P,'asymCav') && P.asymCav
+        xPMLmin = xL - delta;
+    else
+        xPMLmin = beamLen - delta;
+    end
     beamPMLSel = beamgeom.create('beamPMLSel', 'BoxSelection');
-    beamPMLSel.set('xmin', xL-delta).set('xmax', xL+totLen+delta);
+    beamPMLSel.set('xmin', xPMLmin).set('xmax', beamLen+P.PMLLen+delta);
     beamPMLSel.set('ymin', -delta).set('ymax', P.PMLLen+delta);
     beamPMLSel.set('zmin', -thi/2-delta).set('zmax', thi/2+delta);
     beamPMLSel.set('entitydim', 3).set('condition', 'inside');

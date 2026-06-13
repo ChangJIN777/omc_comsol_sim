@@ -290,7 +290,10 @@ mfem.bnds = bnds;
 if isfield(P,'solveMechPML') && P.solveMechPML
     pml = model.coordSystem.create('pml1', geomname, 'PML');
     pml.selection.set(P.domSel.PML);
-    pml.set('ScalingType', 'Cartesian');
+    pml.set('ScalingType', 'userDefined');
+    pml.set('directions', '2');
+    pml.setIndex('dmax', '1[mm]', 0);
+    pml.setIndex('dmax', '1[mm]', 1);
     pml.set('wavelengthSourceType', 'userDefined');
     v_long = sqrt(P.D(1) / P.rho);
     lambda_mech = v_long / P.freq;

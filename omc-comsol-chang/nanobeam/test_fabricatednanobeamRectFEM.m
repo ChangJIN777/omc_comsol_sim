@@ -1,5 +1,7 @@
 % front panel script for nanobeam FEM simulations (example for rect cross-section, beam-hole geometry)
 
+
+
 clear all; close all; clc
 
 %% geometry parameters
@@ -9,20 +11,46 @@ P.celltype = 'hole';                    % specify what type of unit cells we are
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a = 550e-9;                           % nominal lattice constant
+P.a = 616e-9;                           % nominal lattice constant
 P.w = 562e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 400e-9;                          % beam thickness
+P.th = 218e-9+(P.w/2)/sqrt(3);                          % beam thickness
 P.hx = 220e-9;                          % nominal hole height (along x-axis)
-P.hy = 330e-9;                          % nominal hole width (along y-axis)
-fit the sem of the fabricated omc 
+P.hy = 300e-9;                          % nominal hole width (along y-axis)
+% fit the sem of the fabricated omc
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
-P.ndef = 8;                             % # of holes in 1/2 defect region
+P.ndef = 6;                             % # of holes in 1/2 defect region
 P.maxdef = 0.15;                     % defect percentage
 P.oblong = 0.7265;                      % oblong parameter (zero if holes are not changed)
 
+%% manual geometry from SEM measurements (omc_01, Fiji/ImageJ analysis)
+% Holes 1-10 measured left-to-right in the defect region.
+% Angle ~90 deg means Major axis is vertical (across beam = hy); Minor is along beam = hx.
+% Set pxScale from your SEM scale bar calibration [m/px].
+pxScale = 1.0e-9;           % [m/px] — CALIBRATE from SEM scale bar
+
+% Right-half defect holes, inner->outer (SEM holes 6->10)
+hx_sem = [209.655, 212.680, 215.132, 218.526, 220.841, 223.267] * pxScale;  % Minor (along beam)
+hy_sem = [240.436, 245.413, 254.202, 269.321, 285.028, 296.428] * pxScale;  % Major (across width)
+a_sem  = [527, 537, 558, 579, 599, 613] * pxScale;  % center-to-center spacings
+
+% Nominal mirror cells appended after measured defect region
+n_mir   = 18;
+hx_mir  = P.hx * ones(1, n_mir);
+hy_mir  = P.hy * ones(1, n_mir);
+a_mir   = P.a  * ones(1, n_mir);
+
+% Assemble full half-beam arrays (inner->outer, column vectors)
+P.useManualGeom = 1;        % bypass taper formula; use arrays below directly
+P.holeatctr     = 1;        % dielectric at cavity center (no hole at x=0)
+P.hx_hole = [hx_sem, hx_mir]';
+P.hy_hole = [hy_sem, hy_mir]';
+P.a_hole  = [a_sem,  a_mir ]';
+P.nholes  = numel(P.hx_hole);  % total holes per half
+
 % cavity taper params
+P.useManualDefect = 0;                  % 1 to specify defect-center dims directly
 P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle
 P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
 % P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
@@ -79,7 +107,7 @@ P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
 P.freq = 9.87e9;                           % target mechanical frequency
-P.mneigs = 20;                          % # of eignevalues to find
+P.mneigs = 10;                          % # of eignevalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
 
@@ -120,7 +148,7 @@ P.LStats.zmin = P.th/2-80e-9;   % z-coords relative to center of beam
 P.LStats.zmax = P.th/2;
 
 %% Mechanical PML simulation settings (future implementation)
-P.PMLmesh = 5;
+P.PMLmesh = 3;
 P.PMLmeshDiv = 20;
 P.PMLLen = 10e-6;
 P.PMLstr = 0.008;

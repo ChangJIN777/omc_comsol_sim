@@ -22,6 +22,37 @@
 
 function [P] = CreateNanobeamGeom(P)
 
+if isfield(P,'useManualGeom') && P.useManualGeom
+    hx_hole = P.hx_hole(:)';
+    hy_hole = P.hy_hole(:)';
+    a_hole  = P.a_hole(:)';
+    w_hole  = P.w * ones(size(hx_hole));
+
+    if P.holeatctr
+        xposHalf = [0, cumsum(a_hole(2:end))];
+    else
+        xposHalf = cumsum([a_hole(1)/2, a_hole(2:end)]);
+    end
+    yposHalf = zeros(size(a_hole));
+
+    xposFull = [-fliplr(xposHalf), xposHalf];
+    hx_holeF = [fliplr(hx_hole), hx_hole];
+    hy_holeF = [fliplr(hy_hole), hy_hole];
+    w_holeF  = [fliplr(w_hole),  w_hole];
+    a_holeF  = [fliplr(a_hole),  a_hole];
+    yposFull = zeros(size(xposFull));
+
+    P.hx_hole     = hx_hole';
+    P.hy_hole     = hy_hole';
+    P.a_hole      = a_hole';
+    P.w_hole      = w_hole';
+    P.beamLenHalf = xposHalf(end) + a_hole(end)/2;
+    P.beamLen     = 2*P.beamLenHalf;
+    P.geomHalf    = [hx_hole' hy_hole' xposHalf' yposHalf' w_hole' a_hole'];
+    P.geom        = [hx_holeF' hy_holeF' xposFull' yposFull' w_holeF' a_holeF'];
+    return
+end
+
 % constants
 a = P.a;
 wid = P.w;
@@ -119,6 +150,24 @@ else
     hyT = 0;
 end
 
+useManualDefect = isfield(P,'useManualDefect') && P.useManualDefect;
+if useManualDefect
+    if ~isfield(P,'hxDef') || ~isfield(P,'hyDef')
+        error('useManualDefect=true requires P.hxDef and P.hyDef');
+    end
+    hxDef = P.hxDef;
+    hyDef = P.hyDef;
+    if isfield(P,'aDef'), aDef = P.aDef; else, aDef = a; end
+    if ndef < 1, error('useManualDefect requires ndef >= 1'); end
+    if (hxDef < 50e-9) || (hyDef < 50e-9)
+        error('Manual defect hole size too small for lithography');
+    elseif wid - hyDef < 150e-9
+        error(['Manual defect hy too large: w-hyDef=', num2str((wid-hyDef)*1e9,'%.1f'), 'nm < 150nm']);
+    elseif aDef - hxDef < 50e-9
+        error(['Manual defect gap too small: aDef-hxDef=', num2str((aDef-hxDef)*1e9,'%.1f'), 'nm < 50nm']);
+    end
+end
+
 if holeatctr && isfield(P,'cavlen') && P.cavlen ~= 0
     cavlen = P.cavlen;
 else
@@ -145,20 +194,33 @@ for ki = 1:nholes+nctr
             k = ki-nctr; % tapered defect cells
         end
         x = (k-1)/(ndef);
-        hx_hole(ki) = hxT + (hx-hxT)*(1-maxdef*f(x))^(1-oblong);
-        hy_hole(ki) = hyT + (hy-hyT)*(1-maxdef*f(x))^(1+oblong);
+        if useManualDefect
+            hx_hole(ki) = hx + (hxDef-hx)*f(x);
+            hy_hole(ki) = hy + (hyDef-hy)*f(x);
+        else
+            hx_hole(ki) = hxT + (hx-hxT)*(1-maxdef*f(x))^(1-oblong);
+            hy_hole(ki) = hyT + (hy-hyT)*(1-maxdef*f(x))^(1+oblong);
+        end
         
         % if hole at ctr, there is one fewer possible value for a compared
         % to hx, hy
         xa = (k-1-holeatctr)/(ndef-holeatctr);
         if xa < 0
-            if holeatctr && ki > 1 
-                a_hole(ki) = aT + (a-aT)*(1-maxdef);
+            if holeatctr && ki > 1
+                if useManualDefect
+                    a_hole(ki) = aDef;
+                else
+                    a_hole(ki) = aT + (a-aT)*(1-maxdef);
+                end
             else
                 a_hole(ki) = NaN;
             end
         else
-            a_hole(ki) = aT + (a-aT)*(1-maxdef*f(xa)) + cavlen*(ki==2);
+            if useManualDefect
+                a_hole(ki) = a + (aDef-a)*f(xa) + cavlen*(ki==2);
+            else
+                a_hole(ki) = aT + (a-aT)*(1-maxdef*f(xa)) + cavlen*(ki==2);
+            end
         end
     % mirror cells
     else
