@@ -140,7 +140,7 @@ P.oAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
 P.airrad = 2*P.lambda+P.w/2;            % radius of air cylinder surrounding nanobeam
 
 %% OM coupling parameters
-P.g0min = 10e3;                         % min g0 above which to save plots for
+P.g0min = 1e3;                         % min g0 above which to save plots for
 
 %% SiV strain coupling: susceptibilities and positions
 % specify SiV axis - [1 1 1],[-1 1 1],[-1 -1 1],[1 -1 1]
