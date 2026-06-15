@@ -35,8 +35,9 @@ if P.solveOpt
     if isfield(P,'asymCav') && P.asymCav
         oevenx = 0;
         P.oevenx = oevenx;
+    else
+        oevenx = P.oevenx^(P.holeatctr);  % 1/-1 for symmetry/anti-symmetry; 0 for no symmetry
     end
-    oevenx = P.oevenx^(P.holeatctr);      % 1/-1 for symmetry/anti-symmetry; 0 for no symmetry
     oeveny = P.oeveny;      % 1/-1 for symmetry/anti-symmetry; 0 for no symmetry
     oevenz = P.oevenz;      % 1/-1 for symmetry/anti-symmetry; 0 for no symmetry
     evenz = oevenz;
