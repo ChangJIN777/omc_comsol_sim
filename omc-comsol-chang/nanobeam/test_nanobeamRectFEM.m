@@ -49,7 +49,7 @@ P.wgmTaper.hy_end = 300e-9;             % for endtype = 'custom': hole width of 
 
 % asymmetric cavity - specify param data struct P.PL with similar fields to
 % P, for left half of asymmetric cavity
-P.asymCav = 0;                          % 1 to e-nable asymmetric cavity
+P.asymCav = 1;                          % 1 to e-nable asymmetric cavity
 if P.asymCav                
     P.PL = P;
     P.PL.nholes = 3+P.ndef;
@@ -66,7 +66,7 @@ P.asym = 0;                             % cross-section asymmetry (target y-offs
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
-P.solveOpt = 1;                         % 1 to solve for optics
+P.solveOpt = 0;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
 P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)

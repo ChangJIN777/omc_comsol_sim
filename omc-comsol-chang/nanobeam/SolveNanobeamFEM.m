@@ -370,7 +370,7 @@ end
 % extract results for localized mechanical modes
 % by calculating ratio of integrated displacements in center of beam to
 % that of whole beam
-extractLocMechModes = 1;
+extractLocMechModes = P.extractLocMechModes;
 if extractLocMechModes
     
     maxX = 2*P.a;
@@ -383,7 +383,7 @@ if extractLocMechModes
     locDisp = mphint2(model,[stepWeight,'*solid.disp'],'volume',...
                       'dataset','mdset','selection',bdom,'solnum','all');
     mfem.locRatio = locDisp./totDisp;
-	mfem.locInd = find(locDisp./totDisp>0);
+	mfem.locInd = find(locDisp./totDisp>0.1);
     mfem.locFreqs = mfem.freqs(mfem.locInd);
 else
     mfem.locRatio = zeros(1,length(mfem.freqs));

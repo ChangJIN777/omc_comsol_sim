@@ -252,17 +252,18 @@ if P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
         PMLxArmL.set('pos', [-P.PMLLen, 0, -thi/2]);
         PMLxArmL.set('size', [P.PMLLen, P.PMLLen, thi]);
 
-        PMLcornerL = beamgeom.feature.create('PMLcornerL', 'Block');
-        PMLcornerL.set('base', 'corner');
-        PMLcornerL.set('pos', [-P.PMLLen, max(w)/2, -thi/2]);
-        PMLcornerL.set('size', [P.PMLLen, P.PMLLen, thi]);
+        % PMLcornerL = beamgeom.feature.create('PMLcornerL', 'Block');
+        % PMLcornerL.set('base', 'corner');
+        % PMLcornerL.set('pos', [-P.PMLLen, max(w)/2, -thi/2]);
+        % PMLcornerL.set('size', [P.PMLLen, P.PMLLen, thi]);
+
         beamgeom.runCurrent;
         totLen = totLen + P.PMLLen;
         xL = -P.PMLLen;
 
         PMLAll = beamgeom.feature.create('MechPML', 'Compose');
-        PMLAll.selection('input').set({'MechPMLR','PMLxArmL','PMLcornerL'});
-        PMLAll.set('formula', 'MechPMLR + PMLxArmL + PMLcornerL');
+        PMLAll.selection('input').set({'PMLxArm','PMLxArmL'});
+        PMLAll.set('formula', 'PMLxArm + PMLxArmL');
         beamgeom.runCurrent;
         PMLtag = 'MechPML';
     end

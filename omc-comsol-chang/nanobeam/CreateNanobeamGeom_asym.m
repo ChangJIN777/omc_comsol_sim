@@ -4,6 +4,13 @@
 
 function PR = CreateNanobeamGeom_asym(PR,PL)
 
+% validate left-half manual arrays before building geometry
+if isfield(PL,'useManualGeom') && PL.useManualGeom
+    assert(numel(PL.hx_hole) == PL.nholes, ...
+        'asym left half: hx_hole has %d entries but PL.nholes=%d — set PL arrays explicitly', ...
+        numel(PL.hx_hole), PL.nholes);
+end
+
 % create geometries
 PL = CreateNanobeamGeom(PL);
 PR = CreateNanobeamGeom(PR);

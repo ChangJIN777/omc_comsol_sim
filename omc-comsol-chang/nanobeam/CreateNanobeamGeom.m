@@ -22,36 +22,7 @@
 
 function [P] = CreateNanobeamGeom(P)
 
-if isfield(P,'useManualGeom') && P.useManualGeom
-    hx_hole = P.hx_hole(:)';
-    hy_hole = P.hy_hole(:)';
-    a_hole  = P.a_hole(:)';
-    w_hole  = P.w * ones(size(hx_hole));
-
-    if P.holeatctr
-        xposHalf = [0, cumsum(a_hole(2:end))];
-    else
-        xposHalf = cumsum([a_hole(1)/2, a_hole(2:end)]);
-    end
-    yposHalf = zeros(size(a_hole));
-
-    xposFull = [-fliplr(xposHalf), xposHalf];
-    hx_holeF = [fliplr(hx_hole), hx_hole];
-    hy_holeF = [fliplr(hy_hole), hy_hole];
-    w_holeF  = [fliplr(w_hole),  w_hole];
-    a_holeF  = [fliplr(a_hole),  a_hole];
-    yposFull = zeros(size(xposFull));
-
-    P.hx_hole     = hx_hole';
-    P.hy_hole     = hy_hole';
-    P.a_hole      = a_hole';
-    P.w_hole      = w_hole';
-    P.beamLenHalf = xposHalf(end) + a_hole(end)/2;
-    P.beamLen     = 2*P.beamLenHalf;
-    P.geomHalf    = [hx_hole' hy_hole' xposHalf' yposHalf' w_hole' a_hole'];
-    P.geom        = [hx_holeF' hy_holeF' xposFull' yposFull' w_holeF' a_holeF'];
-    return
-end
+useManualGeom = isfield(P,'useManualGeom') && P.useManualGeom;
 
 % constants
 a = P.a;
@@ -59,23 +30,27 @@ wid = P.w;
 hx = P.hx;
 hy = P.hy;
 nholes = P.nholes;
-ndef = P.ndef;
-maxdef = P.maxdef;
-oblong = P.oblong;
 holeatctr = P.holeatctr;
-taperFunc = P.taperFunc;
+if ~useManualGeom
+    ndef = P.ndef;
+    maxdef = P.maxdef;
+    oblong = P.oblong;
+    taperFunc = P.taperFunc;
+end
 
 % cavity taper function
-if strcmp(taperFunc,'quadratic')
-    f = @(x) 1-x.^2;
-elseif strcmp(taperFunc,'cubic')
-    f = @(x) 1-3*x.^2+2*x.^3;
-elseif strcmp(taperFunc,'linear')
-    f = @(x) 1-x;
-elseif strcmp(taperFunc,'none')
-    f = @(x) 1;
-else
-    error('Invalid taper function specified')
+if ~useManualGeom
+    if strcmp(taperFunc,'quadratic')
+        f = @(x) 1-x.^2;
+    elseif strcmp(taperFunc,'cubic')
+        f = @(x) 1-3*x.^2+2*x.^3;
+    elseif strcmp(taperFunc,'linear')
+        f = @(x) 1-x;
+    elseif strcmp(taperFunc,'none')
+        f = @(x) 1;
+    else
+        error('Invalid taper function specified')
+    end
 end
 
 % end waveguide mirror taper function
@@ -99,7 +74,7 @@ if wid-hy < 150e-9
     error(['hy=',num2str(hy*1e9,'%.1f'),'nm, w=',num2str(wid*1e9,'%.1f'),...
         'nm, w-hy=',num2str((wid-hy)*1e9,'%.1f'),'nm<200nm - gap too small for lithography']);
 % elseif ndef > 0 && (a*(1-maxdef)-hx*(1-maxdef)^(1-oblong) < 50e-9)
-elseif maxdef~= 1 && (a*(1-maxdef)-hx*(1-maxdef)^(1-oblong) < 50e-9)
+elseif ~useManualGeom && maxdef~= 1 && (a*(1-maxdef)-hx*(1-maxdef)^(1-oblong) < 50e-9)
     error(['a_def=',num2str(a*(1-maxdef)*1e9,'%.1f'),'nm, hx_def=',num2str(hx*(1-maxdef)^(1-oblong)*1e9,'%.1f'),...
         'nm, a_def-hx_def=',num2str((a*(1-maxdef)-hx*(1-maxdef)^(1-oblong))*1e9,'%.1f'),'nm<50nm - gap too small for lithography']);
 end
@@ -133,45 +108,49 @@ else
     nctr = 0;
 end
 
-% central hole - custom hole dimensions
-if isfield(P, 'taperTo')
-    if strcmp(P.taperTo,'custom')
-        aT = P.a_ctr;
-        hxT = P.hx_ctr;
-        hyT = P.hy_ctr;
+if ~useManualGeom
+    % central hole - custom hole dimensions
+    if isfield(P, 'taperTo')
+        if strcmp(P.taperTo,'custom')
+            aT = P.a_ctr;
+            hxT = P.hx_ctr;
+            hyT = P.hy_ctr;
+        else
+            aT = 0;
+            hxT = 0;
+            hyT = 0;
+        end
     else
         aT = 0;
         hxT = 0;
         hyT = 0;
     end
-else
-    aT = 0;
-    hxT = 0;
-    hyT = 0;
 end
 
-useManualDefect = isfield(P,'useManualDefect') && P.useManualDefect;
-if useManualDefect
-    if ~isfield(P,'hxDef') || ~isfield(P,'hyDef')
-        error('useManualDefect=true requires P.hxDef and P.hyDef');
+if ~useManualGeom
+    useManualDefect = isfield(P,'useManualDefect') && P.useManualDefect;
+    if useManualDefect
+        if ~isfield(P,'hxDef') || ~isfield(P,'hyDef')
+            error('useManualDefect=true requires P.hxDef and P.hyDef');
+        end
+        hxDef = P.hxDef;
+        hyDef = P.hyDef;
+        if isfield(P,'aDef'), aDef = P.aDef; else, aDef = a; end
+        if ndef < 1, error('useManualDefect requires ndef >= 1'); end
+        if (hxDef < 50e-9) || (hyDef < 50e-9)
+            error('Manual defect hole size too small for lithography');
+        elseif wid - hyDef < 150e-9
+            error(['Manual defect hy too large: w-hyDef=', num2str((wid-hyDef)*1e9,'%.1f'), 'nm < 150nm']);
+        elseif aDef - hxDef < 50e-9
+            error(['Manual defect gap too small: aDef-hxDef=', num2str((aDef-hxDef)*1e9,'%.1f'), 'nm < 50nm']);
+        end
     end
-    hxDef = P.hxDef;
-    hyDef = P.hyDef;
-    if isfield(P,'aDef'), aDef = P.aDef; else, aDef = a; end
-    if ndef < 1, error('useManualDefect requires ndef >= 1'); end
-    if (hxDef < 50e-9) || (hyDef < 50e-9)
-        error('Manual defect hole size too small for lithography');
-    elseif wid - hyDef < 150e-9
-        error(['Manual defect hy too large: w-hyDef=', num2str((wid-hyDef)*1e9,'%.1f'), 'nm < 150nm']);
-    elseif aDef - hxDef < 50e-9
-        error(['Manual defect gap too small: aDef-hxDef=', num2str((aDef-hxDef)*1e9,'%.1f'), 'nm < 50nm']);
-    end
-end
 
-if holeatctr && isfield(P,'cavlen') && P.cavlen ~= 0
-    cavlen = P.cavlen;
-else
-    cavlen = 0;
+    if holeatctr && isfield(P,'cavlen') && P.cavlen ~= 0
+        cavlen = P.cavlen;
+    else
+        cavlen = 0;
+    end
 end
 
 ntot = nholes + nwgm + nctr;
@@ -185,48 +164,58 @@ hy_hole = zeros(1,ntot);
 % hx_hole_maxdef = hx*(1-maxdef)^(1-oblong);
 % hy_hole_maxdef = hy*(1-maxdef)^(1+oblong);
 
-for ki = 1:nholes+nctr
-    % defect cells
-    if ki <= ndef+nctr
-        if ki <= nctr % duplicate central cavity cell
-            k = 1; 
-        else
-            k = ki-nctr; % tapered defect cells
-        end
-        x = (k-1)/(ndef);
-        if useManualDefect
-            hx_hole(ki) = hx + (hxDef-hx)*f(x);
-            hy_hole(ki) = hy + (hyDef-hy)*f(x);
-        else
-            hx_hole(ki) = hxT + (hx-hxT)*(1-maxdef*f(x))^(1-oblong);
-            hy_hole(ki) = hyT + (hy-hyT)*(1-maxdef*f(x))^(1+oblong);
-        end
-        
-        % if hole at ctr, there is one fewer possible value for a compared
-        % to hx, hy
-        xa = (k-1-holeatctr)/(ndef-holeatctr);
-        if xa < 0
-            if holeatctr && ki > 1
-                if useManualDefect
-                    a_hole(ki) = aDef;
+if useManualGeom
+    ncore = nholes + nctr;
+    if numel(P.hx_hole) ~= ncore || numel(P.hy_hole) ~= ncore || numel(P.a_hole) ~= ncore
+        error('useManualGeom: hx/hy/a_hole must each have nholes(=%d) entries', ncore);
+    end
+    hx_hole(1:ncore) = P.hx_hole(:)';
+    hy_hole(1:ncore) = P.hy_hole(:)';
+    a_hole(1:ncore)  = P.a_hole(:)';
+else
+    for ki = 1:nholes+nctr
+        % defect cells
+        if ki <= ndef+nctr
+            if ki <= nctr % duplicate central cavity cell
+                k = 1;
+            else
+                k = ki-nctr; % tapered defect cells
+            end
+            x = (k-1)/(ndef);
+            if useManualDefect
+                hx_hole(ki) = hx + (hxDef-hx)*f(x);
+                hy_hole(ki) = hy + (hyDef-hy)*f(x);
+            else
+                hx_hole(ki) = hxT + (hx-hxT)*(1-maxdef*f(x))^(1-oblong);
+                hy_hole(ki) = hyT + (hy-hyT)*(1-maxdef*f(x))^(1+oblong);
+            end
+
+            % if hole at ctr, there is one fewer possible value for a compared
+            % to hx, hy
+            xa = (k-1-holeatctr)/(ndef-holeatctr);
+            if xa < 0
+                if holeatctr && ki > 1
+                    if useManualDefect
+                        a_hole(ki) = aDef;
+                    else
+                        a_hole(ki) = aT + (a-aT)*(1-maxdef);
+                    end
                 else
-                    a_hole(ki) = aT + (a-aT)*(1-maxdef);
+                    a_hole(ki) = NaN;
                 end
             else
-                a_hole(ki) = NaN;
+                if useManualDefect
+                    a_hole(ki) = a + (aDef-a)*f(xa) + cavlen*(ki==2);
+                else
+                    a_hole(ki) = aT + (a-aT)*(1-maxdef*f(xa)) + cavlen*(ki==2);
+                end
             end
+        % mirror cells
         else
-            if useManualDefect
-                a_hole(ki) = a + (aDef-a)*f(xa) + cavlen*(ki==2);
-            else
-                a_hole(ki) = aT + (a-aT)*(1-maxdef*f(xa)) + cavlen*(ki==2);
-            end
+            hx_hole(ki) = hx;
+            hy_hole(ki) = hy;
+            a_hole(ki) = a;
         end
-    % mirror cells
-    else
-        hx_hole(ki) = hx;
-        hy_hole(ki) = hy;
-        a_hole(ki) = a;
     end
 end
 
@@ -240,7 +229,27 @@ if nPhM>0 && isfield(P, 'phonMir')
 end
 
 %% append end waveguide mirror taper, if defined
-if nwgm>0 && isfield(P, 'wgmTaper') %&& ~strcmp(P.wgmTaperFunc,'linearEndMaxDefect')
+useManualWvgMir = isfield(P,'useManualWvgMir') && P.useManualWvgMir;
+
+if useManualWvgMir && nwgm==0
+    warning('useManualWvgMir=1 but wvgmir=0; no taper holes appended, arrays ignored.');
+end
+
+if nwgm>0 && useManualWvgMir
+    % manual end-taper hole dimensions (inner->outer, mirror-side first)
+    % a_wvgmir = center-to-center spacing from previous hole [m]
+    if ~isfield(P,'hx_wvgmir') || ~isfield(P,'hy_wvgmir') || ~isfield(P,'a_wvgmir')
+        error('useManualWvgMir=1 requires P.hx_wvgmir, P.hy_wvgmir, P.a_wvgmir');
+    end
+    if numel(P.hx_wvgmir)~=nwgm || numel(P.hy_wvgmir)~=nwgm || numel(P.a_wvgmir)~=nwgm
+        error('useManualWvgMir: hx/hy/a_wvgmir must each have wvgmir(=%d) entries', nwgm);
+    end
+    idx = nholes+nctr+nPhM + (1:nwgm);
+    hx_hole(idx) = P.hx_wvgmir(:)';
+    hy_hole(idx) = P.hy_wvgmir(:)';
+    a_hole(idx)  = P.a_wvgmir(:)';
+
+elseif nwgm>0 && isfield(P, 'wgmTaper') %&& ~strcmp(P.wgmTaperFunc,'linearEndMaxDefect')
     % taper end - custom hole dimensions
     if isfield(P.wgmTaper, 'endtype')
         if strcmp(P.wgmTaper.endtype,'custom')
@@ -263,7 +272,7 @@ if nwgm>0 && isfield(P, 'wgmTaper') %&& ~strcmp(P.wgmTaperFunc,'linearEndMaxDefe
         hxD = 0;
         hyD = 0;
     end
-    
+
     nwvgmir = nwgm+1; %eliminate the first mirror hole and null hole at end of taper
     for k = 2:nwvgmir
         if strcmp(P.wgmTaper.endtype,'custom') || strcmp(P.wgmTaper.endtype,'maxdef')
@@ -271,14 +280,14 @@ if nwgm>0 && isfield(P, 'wgmTaper') %&& ~strcmp(P.wgmTaperFunc,'linearEndMaxDefe
         else
             x = ((k-1)/nwvgmir); % tapering to 0 hole size
         end
-        
+
         a_hole(nholes+nctr+nPhM+k-1) = aD + (a-aD)*tf(x);
         hx_hole(nholes+nctr+nPhM+k-1) = hxD + (hx-hxD)*tf(x);
         hy_hole(nholes+nctr+nPhM+k-1) = hyD + (hy-hyD)*tf(x);
-        
+
         gapx = a_hole(nholes+nctr+nPhM+k-1) - 0.5*hx_hole(nholes+nctr+nPhM+k-1) ...
                 - 0.5*hx_hole(nholes+nctr+nPhM+k-2);
-        
+
         % check if hole is within fabrication tolerance
         if wid-hy_hole(nholes+nctr+nPhM+k-1) < 100e-9
             display(num2str(wid-hy_hole(nholes+nctr+nPhM+k-1))*1e9);
@@ -287,13 +296,13 @@ if nwgm>0 && isfield(P, 'wgmTaper') %&& ~strcmp(P.wgmTaperFunc,'linearEndMaxDefe
             display(gapx);
             error('Hole height in end taper too large relative to lattice constant');
         end
-        
+
         if (hx_hole(nholes+nctr+nPhM+k-1) < 150e-9) ||...
            (hy_hole(nholes+nctr+nPhM+k-1) < 150e-9)
             error('Hole size too small for lithography')
         end
     end
-    
+
 end
 
 %% assemble coordinates and diameters of holes

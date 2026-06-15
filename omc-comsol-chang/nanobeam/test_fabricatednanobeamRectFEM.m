@@ -34,6 +34,7 @@ pxScale = 1.0e-9;           % [m/px] — CALIBRATE from SEM scale bar
 hx_sem = [209.655, 212.680, 215.132, 218.526, 220.841, 223.267] * pxScale;  % Minor (along beam)
 hy_sem = [240.436, 245.413, 254.202, 269.321, 285.028, 296.428] * pxScale;  % Major (across width)
 a_sem  = [527, 537, 558, 579, 599, 613] * pxScale;  % center-to-center spacings
+P.ndef = length(hx_sem);       
 
 % Nominal mirror cells appended after measured defect region
 n_mir   = 18;
@@ -42,8 +43,7 @@ hy_mir  = P.hy * ones(1, n_mir);
 a_mir   = P.a  * ones(1, n_mir);
 
 % Assemble full half-beam arrays (inner->outer, column vectors)
-P.useManualGeom = 1;        % bypass taper formula; use arrays below directly
-P.holeatctr     = 1;        % dielectric at cavity center (no hole at x=0)
+P.useManualGeom = 0;        % bypass taper formula; use arrays below directly
 P.hx_hole = [hx_sem, hx_mir]';
 P.hy_hole = [hy_sem, hy_mir]';
 P.a_hole  = [a_sem,  a_mir ]';
@@ -51,7 +51,7 @@ P.nholes  = numel(P.hx_hole);  % total holes per half
 
 % cavity taper params
 P.useManualDefect = 0;                  % 1 to specify defect-center dims directly
-P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle
+P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
 P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
 % P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
 % P.a_ctr = 392e-9;                     % for taperTo = 'custom': lattice constant of center hole
@@ -71,11 +71,23 @@ P.wgmTaper.hy_end = 300e-9;             % for endtype = 'custom': hole width of 
 
 % asymmetric cavity - specify param data struct P.PL with similar fields to
 % P, for left half of asymmetric cavity
-P.asymCav = 0;                          % 1 to e-nable asymmetric cavity
-if P.asymCav                
-    P.PL = P;
-    P.PL.nholes = 3+P.ndef;
-    P.PL.wvgmir = 5;
+P.asymCav = 1;                          % 1 to enable asymmetric cavity
+if P.asymCav
+    P.PL = P;                           % inherits useManualGeom=1, wgmTaper, holeatctr, etc.
+    P.PL.wvgmir = 5;                    % 5 end-taper holes on left (weak) mirror
+    nmirL = 7;                          % left mirror periods (weak side)
+    P.PL.hx_hole = [hx_sem, P.hx * ones(1, nmirL)]';
+    P.PL.hy_hole = [hy_sem, P.hy * ones(1, nmirL)]';
+    P.PL.a_hole  = [a_sem,  P.a  * ones(1, nmirL)]';
+    P.PL.nholes  = numel(P.PL.hx_hole); % = 13 core holes (6 SEM + 7 mirror); +5 wvgmir appended
+
+    % manual end-taper holes — inner->outer (mirror-side first, beam-end last)
+    % a_wvgmir = center-to-center spacing from previous hole [m]
+    P.PL.useManualWvgMir = 1;
+    P.PL.hx_wvgmir = [184.7, 151.9, 111.5]* pxScale;   % <-- FILL IN: hole heights [m]
+    P.PL.hy_wvgmir = [242.8, 193.8, 133.4]* pxScale;   % <-- FILL IN: hole widths  [m]
+    P.PL.a_wvgmir  = P.a  * ones(1, length(P.PL.hx_wvgmir));   % <-- FILL IN: lattice constants [m]
+    P.PL.wvgmir = length(P.PL.hx_wvgmir);                    % end-taper holes on left (weak) mirror
 end
 
 P.lambda = 1550e-9;                     % target optical wavelength
@@ -88,7 +100,7 @@ P.asym = 0;                             % cross-section asymmetry (target y-offs
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
-P.solveOpt = 0;                         % 1 to solve for optics
+P.solveOpt = 1;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
 P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 1;                     % 1 to solve for mechanical Q (future implementation)
@@ -109,7 +121,8 @@ P.mevenz = 1;                           % +/-1 to find even/odd mode about z
 P.freq = 10e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
-P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
+P.mAdjMesh = 0;                         % adjust mesh if DOFs exceed max_dof ( 1 = user/DOF-controlled path; 0 = pure physics-determined)
+P.extractLocMechModes = 0;              % if we are filtering mode based on how confined they are
 
 % rotate crystal orientation of elasticity matrix
 % ccw rotation in deg from <100> inplane direction about <100> surface normal
@@ -127,7 +140,7 @@ P.oAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
 P.airrad = 2*P.lambda+P.w/2;            % radius of air cylinder surrounding nanobeam
 
 %% OM coupling parameters
-P.g0min = 80e3;                         % min g0 above which to save plots for
+P.g0min = 10e3;                         % min g0 above which to save plots for
 
 %% SiV strain coupling: susceptibilities and positions
 % specify SiV axis - [1 1 1],[-1 1 1],[-1 -1 1],[1 -1 1]
