@@ -159,8 +159,8 @@ end
 lambdaAll = ofem.lambdaAll;
 wO = c./lambdaAll;
 epsE2Str = 'abs(emw.normE)^2*emw.epsrAv*epsilon0_const';
-LV = symFac*mphint2(model,epsE2Str,'volume','dataset','odset','selection','all','solnum',oModes);
-LVmax = mphmax(model,epsE2Str,'volume','dataset','odset','selection','all','solnum',oModes);
+LV = symFac*mphint2(model,epsE2Str,'volume','dataset','odset','selection',[adomO, bdomO],'solnum',oModes);
+LVmax = mphmax(model,epsE2Str,'volume','dataset','odset','selection',[adomO, bdomO],'solnum',oModes);
 cpl.Veff = (LV./LVmax)./((lambdaAll(oModes)./(2*n)).^3);   %norm to cubic eff wavelength
 
 %% Displacement normalization and zero-point displacement
