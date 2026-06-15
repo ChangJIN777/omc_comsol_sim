@@ -383,7 +383,7 @@ if extractLocMechModes
     locDisp = mphint2(model,[stepWeight,'*solid.disp'],'volume',...
                       'dataset','mdset','selection',bdom,'solnum','all');
     mfem.locRatio = locDisp./totDisp;
-	mfem.locInd = find(locDisp./totDisp>0.35);
+	mfem.locInd = find(locDisp./totDisp>0);
     mfem.locFreqs = mfem.freqs(mfem.locInd);
 else
     mfem.locRatio = zeros(1,length(mfem.freqs));
