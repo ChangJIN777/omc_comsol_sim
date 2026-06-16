@@ -100,7 +100,7 @@ P.asym = 0;                             % cross-section asymmetry (target y-offs
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
-P.solveOpt = 0;                         % 1 to solve for optics
+P.solveOpt = 1;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
 P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 1;                     % 1 to solve for mechanical Q (future implementation)
@@ -121,7 +121,7 @@ P.mevenz = 1*(1-P.asym);                           % +/-1 to find even/odd mode 
 P.freq = 10e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
-P.mAdjMesh = 0;                         % adjust mesh if DOFs exceed max_dof ( 1 = user/DOF-controlled path; 0 = pure physics-determined)
+P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof ( 1 = user/DOF-controlled path; 0 = pure physics-determined)
 P.extractLocMechModes = 0;              % if we are filtering mode based on how confined they are
 
 % rotate crystal orientation of elasticity matrix
