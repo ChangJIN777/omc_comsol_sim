@@ -100,7 +100,7 @@ P.asym = 0;                             % cross-section asymmetry (target y-offs
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
-P.solveOpt = 1;                         % 1 to solve for optics
+P.solveOpt = 0;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
 P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 1;                     % 1 to solve for mechanical Q (future implementation)
@@ -115,13 +115,13 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
-P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
+P.mevenx = 1*(1-P.asym);                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
-P.mevenz = 1;                           % +/-1 to find even/odd mode about z
+P.mevenz = 1*(1-P.asym);                           % +/-1 to find even/odd mode about z
 P.freq = 10e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
-P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof ( 1 = user/DOF-controlled path; 0 = pure physics-determined)
+P.mAdjMesh = 0;                         % adjust mesh if DOFs exceed max_dof ( 1 = user/DOF-controlled path; 0 = pure physics-determined)
 P.extractLocMechModes = 0;              % if we are filtering mode based on how confined they are
 
 % rotate crystal orientation of elasticity matrix
@@ -131,9 +131,9 @@ P.rxtalInFilename = 1;
 
 %% optical simulation parameters
 % rf module solver parameters
-P.oevenx = (-1)^(P.holeatctr);            % +/-1 to find even/odd optical mode about x (-1 == fundamental for hole in center)
+P.oevenx = (-1)^(P.holeatctr)*(1-P.asym);            % +/-1 to find even/odd optical mode about x (-1 == fundamental for hole in center)
 P.oeveny = -1;                          % +/-1 to find even/odd optical mode about y (-1 == TE-like)
-P.oevenz = 1;                           % +/-1 to find even/odd optical mode about z 
+P.oevenz = 1*(1-P.asym);                           % +/-1 to find even/odd optical mode about z 
 P.oneigs = 1;                           % # of eigenvalues to find
 P.oMesh = 1;                            % mesh quality for optical simulations
 P.oAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
