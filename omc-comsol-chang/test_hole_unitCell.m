@@ -11,18 +11,18 @@ P.maxdef = 0.15;                     % defect percentage
 P.oblong = 0.7265;                      % oblong parameter (zero if holes are not changed)
 % unit cell params 
 % for the mirror region 
-P.a = 616e-9;              % lattice constant 
+P.a = 550e-9;              % lattice constant 
 P.hx = 220e-9;              % the diameter of the hole in x 
-P.hy = 300e-9;              % the diameter of the hole in y
+P.hy = 330e-9;              % the diameter of the hole in y
 % % for the defect region 
 % P.a = (1-P.maxdef)*650e-9;              % lattice constant 
 % P.hx = ((1-P.maxdef)^(1-P.oblong))*343e-9;              % the diameter of the hole in x 
 % P.hy = ((1-P.maxdef)^(1+P.oblong))*617e-9;              % the diameter of the hole in y
-P.beam_width = 562e-9; % the width of the unit cell
+P.beam_width = 600e-9; % the width of the unit cell
 P.d_in = 0; % the sidewall angle for the inside
 P.d_out = 0; % the sidewall angle for the outside
 
-P.th = 218e-9+(P.beam_width/2)/sqrt(3);             % height (along x) of cross (for celltype = 'hollow')
+P.th = 400e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 
 P.nperiod = 1;  % no. of periods to simulate for
