@@ -84,8 +84,8 @@ if P.asymCav
     % manual end-taper holes — inner->outer (mirror-side first, beam-end last)
     % a_wvgmir = center-to-center spacing from previous hole [m]
     P.PL.useManualWvgMir = 1;
-    P.PL.hx_wvgmir = [184.7, 151.9, 111.5]* pxScale;   % <-- FILL IN: hole heights [m]
-    P.PL.hy_wvgmir = [242.8, 193.8, 133.4]* pxScale;   % <-- FILL IN: hole widths  [m]
+    P.PL.hx_wvgmir = [189.2, 155.5, 111.7, 42.6]* pxScale;   % <-- FILL IN: hole heights [m]
+    P.PL.hy_wvgmir = [243.7, 191.0, 134.5, 46.7]* pxScale;   % <-- FILL IN: hole widths  [m]
     P.PL.a_wvgmir  = P.a  * ones(1, length(P.PL.hx_wvgmir));   % <-- FILL IN: lattice constants [m]
     P.PL.wvgmir = length(P.PL.hx_wvgmir);                    % end-taper holes on left (weak) mirror
 end
@@ -121,7 +121,7 @@ P.mevenz = 1;                           % +/-1 to find even/odd mode about z
 P.freq = 10e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
-P.mAdjMesh = 0;                         % adjust mesh if DOFs exceed max_dof ( 1 = user/DOF-controlled path; 0 = pure physics-determined)
+P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof ( 1 = user/DOF-controlled path; 0 = pure physics-determined)
 P.extractLocMechModes = 0;              % if we are filtering mode based on how confined they are
 
 % rotate crystal orientation of elasticity matrix
@@ -135,7 +135,7 @@ P.oevenx = (-1)^(P.holeatctr);            % +/-1 to find even/odd optical mode a
 P.oeveny = -1;                          % +/-1 to find even/odd optical mode about y (-1 == TE-like)
 P.oevenz = 1;                           % +/-1 to find even/odd optical mode about z 
 P.oneigs = 1;                           % # of eigenvalues to find
-P.oMesh = 3;                            % mesh quality for optical simulations
+P.oMesh = 1;                            % mesh quality for optical simulations
 P.oAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
 P.airrad = 2*P.lambda+P.w/2;            % radius of air cylinder surrounding nanobeam
 
