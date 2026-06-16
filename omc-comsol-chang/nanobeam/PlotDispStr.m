@@ -31,10 +31,23 @@ else
     fileBase = P.fileBase;
 end
 
+%% Restrict the rendered dataset to the diamond beam only
+% mphplot renders from the result dataset, not the COMSOL GUI view, so
+% view('view1').hideEntities cannot remove PML pads from the plot.
+% P.domSel.beam excludes both air cylinder and PML (unlike mfem.dia_domind,
+% which folds in PML when P.solveMechPML is active).
+dsetTags = mphmodel(model.result.dataset);
+if ~isfield(dsetTags,'mdset_beam')
+    mdset_beam = model.result.dataset.duplicate('mdset_beam', 'mdset');
+else
+    mdset_beam = model.result.dataset('mdset_beam');
+end
+mdset_beam.label('Mechanical Solutions (Beam Only)');
+mdset_beam.selection.geom(P.geomname, 3).set(P.domSel.beam);
+
 %% plot full beam
 if fullBeamPlot
-    dsetTags = mphmodel(model.result.dataset);
-    
+
     if ~isfield(dsetTags,'mdset_sec')
         mdset_sec = model.result.dataset.create('mdset_sec', 'Sector3D');
     else
@@ -43,7 +56,7 @@ if fullBeamPlot
     % in XY-plane: create full structure with both rotation and reflection
     % by creating 4 sectors
     mdset_sec.label('M Sol Full Beam XY');
-    mdset_sec.set('data', 'mdset');
+    mdset_sec.set('data', 'mdset_beam');
     mdset_sec.set('method', 'twopoint');
     mdset_sec.setIndex('genpoints', '0', 0, 0); % set axis data
     mdset_sec.setIndex('genpoints', '0', 0, 1);
@@ -89,35 +102,19 @@ if fullBeamPlot
     end
     
 else
-    mdsetPlot = 'mdset';
+    mdsetPlot = 'mdset_beam';
 end
 
 
 %% Get max displacements
 dispMaxAll = zeros(1,P.mneigs);
 for mi = mModes
-    dispMaxAll(mi) = mphmax(model,'abs(solid.disp)','volume','dataset','mdset','solnum',mi);
+    dispMaxAll(mi) = mphmax(model,'abs(solid.disp)','volume','dataset','mdset','selection',P.domSel.beam,'solnum',mi);
 end
 
 %% Save mechanical displacement profile
 
-% hide air cylinder if present
-geomnames = fieldnames(mphmodel(model.geom));
-geomname = geomnames{1};
-NDoms = model.geom(geomname).getNDomains;
-if NDoms == 2
-    if isfield(mfem,'air_domind')
-        airdom = mfem.air_domind;
-    else
-        airdom = setdiff([1,2],mfem.dia_domind);
-    end
-    
-    hideTags = mphmodel(model.view('view1').hideEntities);
-    if ~isfield(hideTags,'hide1')
-        model.view('view1').hideEntities.create('hide1');
-        model.view('view1').hideEntities('hide1').set(airdom);
-    end
-end
+% Non-beam domains excluded via mdset_beam dataset selection above.
 
 resTags = mphmodel(model.result);
 
@@ -284,7 +281,7 @@ for mi = mModes
     
     %% str plot
     dispMax = dispMaxAll(mi);
-    strMax = mphmax(model,strExpr,'volume','dataset','mdset','solnum',mi);
+    strMax = mphmax(model,strExpr,'volume','dataset','mdset','selection',P.domSel.beam,'solnum',mi);
     strxpfExpr = [strExpr,'/',num2str(dispMax),'*',num2str(xzpf(mi))];
 
     strplot.set('solnum', mi);
@@ -349,12 +346,5 @@ for mi = mModes
 end
     
 close all; 
-
-if P.solveOpt
-    hideTags = mphmodel(model.view('view1').hideEntities);
-    if isfield(hideTags,'hide1')
-        model.view('view1').hideEntities.remove('hide1');
-    end
-end
 
 end

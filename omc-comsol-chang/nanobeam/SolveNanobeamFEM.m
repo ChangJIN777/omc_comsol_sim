@@ -346,6 +346,9 @@ if P.mAdjMesh
         end 
     end %of: while (ok == 0) && (mfem.mesh < 10)
 else
+    disp(['Meshing with quality: ' num2str(P.mMesh)]);
+    mesh.feature('size').set('custom','off').set('hauto',P.mMesh);
+    mesh.run;
     msolv.runAll;
 end
 
