@@ -22,7 +22,7 @@ P.beam_width = 562e-9; % the width of the unit cell
 P.d_in = 0; % the sidewall angle for the inside
 P.d_out = 0; % the sidewall angle for the outside
 
-P.th = 218e-9+(P.w/2)/sqrt(3);             % height (along x) of cross (for celltype = 'hollow')
+P.th = 218e-9+(P.beam_width/2)/sqrt(3);             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 
 P.nperiod = 1;  % no. of periods to simulate for
@@ -33,8 +33,8 @@ P.kpts = 10;                             % no. of k-points, EXCLUDING gamma poin
 P.nbands = 5;                           % no. of bands to solve for
 
 % simulation parameters 
-P.TwoSymPlanes = 1;                     % 1 to solve the band with both y and z symmetry; 0 to solve with only z/y symmetry
-P.zSymCondition = 1;                    % for the single symmetry case: 1 for z symmetry and 0 for y symmetry 
+P.TwoSymPlanes = 0;                     % 1 to solve the band with both y and z symmetry; 0 to solve with only z/y symmetry
+P.zSymCondition = 0;                    % for the single symmetry case: 1 for z symmetry and 0 for y symmetry 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
 P.plotgeom = 1;                         % 1 to plot the geometry
