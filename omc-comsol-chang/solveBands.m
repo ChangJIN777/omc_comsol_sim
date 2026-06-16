@@ -255,7 +255,9 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
                 p4 = plot(asymy_asymz.k_norm,asymy_asymz.F*1e-9,'--m','linewidth',2,'DisplayName','asymy_asymz');
             else
                 p1 = plot(sym.k_norm,sym.F*1e-9,'-k','linewidth',2,'DisplayName','sym');
-                p2 = plot(asym.k_norm,asym.F*1e-9,'--b','linewidth',2,'DisplayName','asym');
+                if P.solveasym
+                    p2 = plot(asym.k_norm,asym.F*1e-9,'--b','linewidth',2,'DisplayName','asym');
+                end
             end
 
         if P.bandStruct_2D
@@ -304,50 +306,106 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
             %         set(gca,'XTickLabel',{'G','C'},'fontname','symbol','fontsize',16)
             set(gca,'XTickLabel',{'\Gamma','X','M','\Gamma'},'fontsize',12)
         else 
-            % plot symmetric bandgaps
-            for k = 1:length(symy_symz.gapSize)
-                bgp = patch([0 1 1 0],1e-9.*(symy_symz.midGap(k) + 0.5*[symy_symz.gapSize(k) ...
-                    symy_symz.gapSize(k) -symy_symz.gapSize(k) -symy_symz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
-                alpha(bgp,0.5);
-            end
+            if P.TwoSymPlanes
+                % --- two symmetry planes (four structs) ---
+                % plot symmetric bandgaps
+                for k = 1:length(symy_symz.gapSize)
+                    bgp = patch([0 1 1 0],1e-9.*(symy_symz.midGap(k) + 0.5*[symy_symz.gapSize(k) ...
+                        symy_symz.gapSize(k) -symy_symz.gapSize(k) -symy_symz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+                    alpha(bgp,0.5);
+                end
 
-            % plot asymmetric bandgaps
-            for k = 1:length(asymy_asymz.gapSize)
-                bgp = patch([0 1 1 0],1e-9.*(asymy_asymz.midGap(k) + 0.5*[asymy_asymz.gapSize(k) ...
-                    asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
-                alpha(bgp,0.2);
-            end
-
-            % plot full bandgaps
-            if ~isempty(full.midGap)
-                for k = 1:length(full.gapSize)
-                    bgp = patch([0 1 1 0],1e-9.*(full.midGap(k) + 0.5*[full.gapSize(k) ...
-                        full.gapSize(k) -full.gapSize(k) -full.gapSize(k)]),180/255*[1 0 0],'EdgeColor','none');
+                % plot asymmetric bandgaps
+                for k = 1:length(asymy_asymz.gapSize)
+                    bgp = patch([0 1 1 0],1e-9.*(asymy_asymz.midGap(k) + 0.5*[asymy_asymz.gapSize(k) ...
+                        asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
                     alpha(bgp,0.2);
                 end
-            end
 
-            % plot symmetric midgap frequencies
-            for k = 1:length(symy_symz.midGap)
-                midfreqs = symy_symz.midGap(k)*ones(length(symy_symz.k_norm),1);
-                plot(symy_symz.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
-            end
+                % plot full bandgaps
+                if ~isempty(full.midGap)
+                    for k = 1:length(full.gapSize)
+                        bgp = patch([0 1 1 0],1e-9.*(full.midGap(k) + 0.5*[full.gapSize(k) ...
+                            full.gapSize(k) -full.gapSize(k) -full.gapSize(k)]),180/255*[1 0 0],'EdgeColor','none');
+                        alpha(bgp,0.2);
+                    end
+                end
 
-            % plot asymmetric midgap frequencies
-            for k = 1:length(asymy_asymz.midGap)
-                midfreqs = asymy_asymz.midGap(k)*ones(length(asymy_asymz.k_norm),1);
-                plot(asymy_asymz.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
-            end
+                % plot symmetric midgap frequencies
+                for k = 1:length(symy_symz.midGap)
+                    midfreqs = symy_symz.midGap(k)*ones(length(symy_symz.k_norm),1);
+                    plot(symy_symz.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+                end
 
-            % plot complete midgap frequencies
-            for k = 1:length(full.midGap)
-                midfreqs = full.midGap(k)*ones(length(symy_symz.k_norm),1);
-                plot(symy_symz.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+                % plot asymmetric midgap frequencies
+                for k = 1:length(asymy_asymz.midGap)
+                    midfreqs = asymy_asymz.midGap(k)*ones(length(asymy_asymz.k_norm),1);
+                    plot(asymy_asymz.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+                end
+
+                % plot complete midgap frequencies
+                for k = 1:length(full.midGap)
+                    midfreqs = full.midGap(k)*ones(length(symy_symz.k_norm),1);
+                    plot(symy_symz.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+                end
+
+                amax = max([symy_symz.F(:);asymy_asymz.F(:);symy_asymz.F(:);asymy_symz.F(:)])*1e-9;
+            else
+                % --- single symmetry plane (sym / asym) ---
+                % plot symmetric bandgaps
+                for k = 1:length(sym.gapSize)
+                    bgp = patch([0 1 1 0],1e-9.*(sym.midGap(k) + 0.5*[sym.gapSize(k) ...
+                        sym.gapSize(k) -sym.gapSize(k) -sym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+                    alpha(bgp,0.5);
+                end
+
+                % plot asymmetric bandgaps
+                if P.solveasym
+                    for k = 1:length(asym.gapSize)
+                        bgp = patch([0 1 1 0],1e-9.*(asym.midGap(k) + 0.5*[asym.gapSize(k) ...
+                            asym.gapSize(k) -asym.gapSize(k) -asym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+                        alpha(bgp,0.2);
+                    end
+                end
+
+                % plot full bandgaps
+                if ~isempty(full.midGap)
+                    for k = 1:length(full.gapSize)
+                        bgp = patch([0 1 1 0],1e-9.*(full.midGap(k) + 0.5*[full.gapSize(k) ...
+                            full.gapSize(k) -full.gapSize(k) -full.gapSize(k)]),180/255*[1 0 0],'EdgeColor','none');
+                        alpha(bgp,0.2);
+                    end
+                end
+
+                % plot symmetric midgap frequencies
+                for k = 1:length(sym.midGap)
+                    midfreqs = sym.midGap(k)*ones(length(sym.k_norm),1);
+                    plot(sym.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+                end
+
+                % plot asymmetric midgap frequencies
+                if P.solveasym
+                    for k = 1:length(asym.midGap)
+                        midfreqs = asym.midGap(k)*ones(length(asym.k_norm),1);
+                        plot(asym.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+                    end
+                end
+
+                % plot complete midgap frequencies
+                for k = 1:length(full.midGap)
+                    midfreqs = full.midGap(k)*ones(length(sym.k_norm),1);
+                    plot(sym.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+                end
+
+                if P.solveasym
+                    amax = max([sym.F(:);asym.F(:)])*1e-9;
+                else
+                    amax = max(sym.F(:))*1e-9;
+                end
             end
 
             xlabel('k','FontSize',12);
             ylabel('Frequency (GHz)','FontSize',12);
-            amax = max([symy_symz.F(:);asymy_asymz.F(:);symy_asymz.F(:);asymy_symz.F(:)])*1e-9;
             axis([0 1 0 amax]);
             %         axis tight
             set(gca,'XTick',[0; 1]);
