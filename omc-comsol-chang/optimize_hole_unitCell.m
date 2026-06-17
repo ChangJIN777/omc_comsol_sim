@@ -51,7 +51,7 @@ OPT.fminOpts = optimset('Display','iter','TolX',1e-3,'TolFun',1e6, ...
 % noGapPenalty).
 % Swap in any @(ds, targetFreq) handle returning a scalar (higher = better),
 % e.g. to target a specific gap-to-midgap ratio instead of absolute gap size.
-OPT.fitnessFcn = @(ds, targetFreq) fitness_closestGap(ds, targetFreq);
+OPT.fitnessFcn = @(ds, targetFreq) fitness_closestGap_sym(ds, targetFreq);
 
 %% ===================== P STRUCT DEFAULTS =====================
 % Identical to test_hole_unitCell.m except plot/save toggles, which the
@@ -215,6 +215,29 @@ gapSize = gapSize(valid);
 % Select the gap closest to targetFreq (not the widest gap) so the optimizer
 % stays focused on the desired operating frequency rather than drifting to a
 % large but irrelevant gap elsewhere in the spectrum.
+[~, k] = min(abs(midGap - targetFreq));
+fit = gapSize(k);
+end
+
+%% ===================== SYMMETRIC BANDGAP FITNESS HELPER =====================
+function fit = fitness_closestGap_sym(ds, targetFreq)
+% Size (Hz) of the SYMMETRIC bandgap whose midgap is nearest targetFreq.
+% Uses ds.sym (y-symmetric bands, mbeveny=1) rather than ds.full (complete
+% bandgap across all symmetries). NaN if no usable symmetric bandgap exists.
+fit = NaN;
+if ~isfield(ds,'sym') || ~isfield(ds.sym,'midGap') || isempty(ds.sym.midGap)
+    return;
+end
+midGap  = ds.sym.midGap;
+gapSize = ds.sym.gapSize;
+% findGaps can return zero-size entries at band-touching (degenerate) points
+% that are not true bandgaps; discard them before searching for a usable gap.
+valid = gapSize > 0;
+if ~any(valid); return; end
+midGap  = midGap(valid);
+gapSize = gapSize(valid);
+% Select the gap closest to targetFreq so the optimizer stays focused on the
+% desired operating frequency rather than drifting to an irrelevant gap.
 [~, k] = min(abs(midGap - targetFreq));
 fit = gapSize(k);
 end
