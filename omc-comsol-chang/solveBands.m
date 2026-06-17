@@ -199,20 +199,22 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
         %find gaps
         [sym.midGap,sym.gapSize] = findGaps(sym);
         
-        disp('Solving with anti-symmetric boundary condition');
-        if P.zSymCondition
-            P.mbevenz = -1;
-        else 
-            P.mbeveny = -1;
+        if P.solveasym
+            disp('Solving with anti-symmetric boundary condition');
+            if P.zSymCondition
+                P.mbevenz = -1;
+            else
+                P.mbeveny = -1;
+            end
+            if P.bandStruct_2D
+                asym = runBands_2D(P);
+            else
+                asym = runBands(P);
+            end
+
+            %find gaps
+            [asym.midGap,asym.gapSize] = findGaps(asym);
         end
-        if P.bandStruct_2D
-            asym = runBands_2D(P);
-        else 
-            asym = runBands(P);
-        end
-        
-        %find gaps
-        [asym.midGap,asym.gapSize] = findGaps(asym);
     end
     %% test
     % write to data structure
@@ -223,14 +225,20 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
         ds.asymy_asymz = asymy_asymz;
     else
         ds.sym = sym;
-        ds.asym = asym;
+        if P.solveasym
+            ds.asym = asym;
+        end
     end
 
     %% find complete bandgaps
     if P.TwoSymPlanes
         full.F = [symy_symz.F,asymy_symz.F,symy_asymz.F,asymy_asymz.F];
     else
-        full.F = [sym.F,asym.F];
+        if P.solveasym
+            full.F = [sym.F,asym.F];
+        else
+            full.F = sym.F;
+        end
     end
 
     [full.midGap,full.gapSize] = findGaps(full);
