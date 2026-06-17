@@ -26,7 +26,7 @@ clear; close all;
 
 %% ----------------------------- user settings ----------------------------
 % Root folder to search (recursively) for *.mat result files.
-datLoc = 'D:\Files\OMC-SiV\RectOMC\';
+datLoc = '.\';
 
 % If true, a corrupt / incompatible .mat just prints a warning and is skipped
 % instead of aborting the whole batch.
