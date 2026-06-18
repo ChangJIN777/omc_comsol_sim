@@ -30,14 +30,14 @@ OPT.hy0 = 651e-9;
 %   r = 1 -> hx == hy; r < 1 -> taller/narrower hole (hy>hx);
 %   r > 1 -> shorter/wider hole (hx>hy).
 OPT.A0    = OPT.hx0 * OPT.hy0;   % fixed ellipse area (m^2)
-OPT.r_min = 0.5;                 % smallest hx/hy (tall, narrow holes)
+OPT.r_min = 0.3;                 % smallest hx/hy (tall, narrow holes)
 OPT.r_max = 1.5;                 % largest  hx/hy (short, wide holes)
 
 % --- number of r points to evaluate (linspace from r_min to r_max) ---
 OPT.nSweep = 10;
 
 % --- target mechanical frequency (Hz) the gap should be centered on ---
-OPT.targetFreq = 7e9;
+OPT.targetFreq = 5e9;
 
 % --- penalty (unused by the sweep, kept for parity with the fitness helpers) ---
 % A sweep records NaN at failed/gap-free points rather than applying a penalty,
@@ -46,7 +46,7 @@ OPT.noGapPenalty = 1e9;
 
 % --- root location for the per-evaluation output subfolders ---
 currentDate = datestr(now,'mmddyyyy');
-OPT.rootLoc = ['.\test\hole_DiamondMechanical\sweep2_',currentDate,'\'];
+OPT.rootLoc = ['.\test\hole_DiamondMechanical\sweep_',currentDate,'\'];
 
 % --- FITNESS FUNCTION (user-configurable) ---------------------------------
 % Maps the solveBands output struct ds -> scalar score (HIGHER is better).
@@ -68,7 +68,7 @@ P.oblong = 0.7265;
 P.a = 528.6e-9;
 P.hx = OPT.hx0;
 P.hy = OPT.hy0;
-P.beam_width = 800e-9;
+P.beam_width = 600e-9;
 P.d_in = 0;
 P.d_out = 0;
 P.th = 500e-9;
