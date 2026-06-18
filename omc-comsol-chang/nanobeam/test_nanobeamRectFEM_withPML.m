@@ -9,12 +9,12 @@ P.celltype = 'hole';                    % specify what type of unit cells we are
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a = 550e-9;                           % nominal lattice constant
-P.w = 562e-9;                           % beam width
+P.a = 529e-9;                           % nominal lattice constant
+P.w = 800e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 400e-9;                          % beam thickness
-P.hx = 220e-9;                          % nominal hole height (along x-axis)
-P.hy = 330e-9;                          % nominal hole width (along y-axis)
+P.th = 500e-9;                          % beam thickness
+P.hx = 196e-9;                          % nominal hole height (along x-axis)
+P.hy = 650e-9;                          % nominal hole width (along y-axis)
 % fit the sem of the fabricated omc 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
@@ -57,6 +57,7 @@ P.nbeam = 2.386;                        % the refractive index of diamond at tel
 P.stdDev = [0,0];                       % standard deviation of hole dimensions (hh,hw)
 P.stdDevPos = 0;                        % standard deviation of hole positions
 P.asym = 0;                             % cross-section asymmetry (target y-offset in bottom apex position)
+P.extractLocMechModes = 0;              % if we are filtering mode based on how confined they are
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
@@ -78,7 +79,7 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 9.87e9;                           % target mechanical frequency
+P.freq = 6e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof

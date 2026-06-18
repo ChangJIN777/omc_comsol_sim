@@ -74,8 +74,7 @@ function fh = plotBandStruct(ds)
 if isfield(ds,'P')
     P = ds.P;
 else 
-    P = ds.sym.P;
-end
+    P = d
 
 fh = figure; hold on
 
@@ -94,7 +93,7 @@ if P.TwoSymPlanes
     legHandles = [p1(1) p2(1) p3(1) p4(1)];
 else
     sym = ds.sym;
-    p1  = plot(sym.k_norm,ds.sym.F*1e-9,'-k','linewidth',2,'DisplayName','sym');
+    p1  = plot(sym.k_norm,F*1e-9,'-k','linewidth',2,'DisplayName','sym');
     legHandles = p1(1);
     if P.solveasym && isfield(ds,'asym') && ~isempty(ds.asym)
         asym = ds.asym;
