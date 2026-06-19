@@ -58,7 +58,7 @@ P.nbeam = 2.386;                        % the refractive index of diamond at tel
 P.stdDev = [0,0];                       % standard deviation of hole dimensions (hh,hw)
 P.stdDevPos = 0;                        % standard deviation of hole positions
 P.asym = 0;                             % cross-section asymmetry (target y-offset in bottom apex position)
-P.extractLocMechModes = 0;              % if we are filtering mode based on how confined they are
+P.extractLocMechModes = 1;              % if we are filtering mode based on how confined they are
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
@@ -80,7 +80,7 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 6e9;                           % target mechanical frequency
+P.freq = 7e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
@@ -122,7 +122,7 @@ P.LStats.zmin = P.th/2-80e-9;   % z-coords relative to center of beam
 P.LStats.zmax = P.th/2;
 
 %% Mechanical PML simulation settings (future implementation)
-P.PMLmesh = 5;
+% P.PMLmesh = 5;
 P.PMLmeshDiv = 20;
 P.PMLLen = 10e-6;
 P.PMLstr = 0.008;
