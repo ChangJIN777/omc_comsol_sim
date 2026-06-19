@@ -14,16 +14,17 @@ P.w = 800e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
 P.th = 500e-9;                          % beam thickness
 P.hx = 196e-9;                          % nominal hole height (along x-axis)
-P.hy = 650e-9;                          % nominal hole width (along y-axis)
+P.hy = 651e-9;                          % nominal hole width (along y-axis)
 % fit the sem of the fabricated omc 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.15;                     % defect percentage
-P.oblong = 0.7265;                      % oblong parameter (zero if holes are not changed)
+P.maxdef = 1-490/529;                     % defect percentage
+P.oblong = 6.53;                      % oblong parameter (zero if holes are not changed)
+P.aspect_ratio = 1;                    % aspect ratio of the hole at the center (1 if holes are spherical)
 
 % cavity taper params
-P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle
+P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
 P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
 % P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
 % P.a_ctr = 392e-9;                     % for taperTo = 'custom': lattice constant of center hole

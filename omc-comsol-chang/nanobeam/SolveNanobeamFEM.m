@@ -292,6 +292,11 @@ else
     mesh = model.mesh('mesh');
 end
 
+% Apply a separate, coarser mesh quality to the PML domains if requested.
+% The PML-specific size node overrides the global 'size' node on the PML
+% domains only; changing the global size does NOT remove this override.
+usePMLmesh = isfield(P,'solveMechPML') && P.solveMechPML && isfield(P,'PMLmesh');
+
 % Solve for eigenfrequencies, adjust mesh if max DOFs exceeded
 ok = 0;
 if P.mAdjMesh
@@ -299,17 +304,36 @@ if P.mAdjMesh
     mfem.mesh = P.mMesh;
     disp(['Meshing with quality: ' num2str(mfem.mesh)]);
 	mesh.feature('size').set('custom','off').set('hauto',mfem.mesh);
+    mesh.run;   % applied to ALL domains including PML
+    % Create the PML-specific size node once (reuse it if the mesh was
+    % carried over from a previous run), before the first DOF estimate.
+    if usePMLmesh
+        if any(strcmp('size_pml', cellstr(char(mesh.feature.tags()))))
+            szPML = mesh.feature('size_pml');
+        else
+            szPML = mesh.feature.create('size_pml', 'Size');
+        end
+        szPML.selection.geom(geomname, 3).set(P.domSel.PML);
+        szPML.set('custom','off').set('hauto', P.PMLmesh);
+        disp(['PML mesh quality: ' num2str(P.PMLmesh)]);
+    end
     mxmesh = mphxmeshinfo(model, 'soltag', 'msolv', ...
                              'studysteptag', 'msolv_stdstep');
     dofs = mxmesh.ndofs;
     disp(['Estimated no. of DoFs, mechanical: ' num2str(dofs)]);
     mfem.dofs = dofs;
+    mesh.run;   % applied to ALL domains including PML
     while (ok == 0) && (mfem.mesh < 10)
         while (dofs >= max_dof) && (mfem.mesh < 10)
             mfem.mesh = mfem.mesh + 1;
             disp(['Meshing with quality: ' num2str(mfem.mesh)]);
             mesh.feature('size').set('custom','off').set('hauto',mfem.mesh);
-            
+            % Re-assert the PML override; the global change above leaves it
+            % in place, but set it explicitly to keep intent clear.
+            if usePMLmesh
+                mesh.feature('size_pml').set('hauto', P.PMLmesh);
+            end
+
             mesh.run;
             mxmesh = mphxmeshinfo(model, 'soltag', 'msolv', ...
                                          'studysteptag', 'msolv_stdstep');
@@ -337,6 +361,9 @@ if P.mAdjMesh
             disp(['Meshing with quality: ' num2str(mfem.mesh)]);
             mesh.feature('size').set('custom','off').set('hauto',mfem.mesh);
             %mesh.feature('size').set('custom','on').set('hmax',lambda/5);
+            if usePMLmesh
+                mesh.feature('size_pml').set('hauto', P.PMLmesh);
+            end
             mesh.run;
             mxmesh = mphxmeshinfo(model, 'soltag', 'msolv', ...
                                          'studysteptag', 'msolv_stdstep');
@@ -348,6 +375,18 @@ if P.mAdjMesh
 else
     disp(['Meshing with quality: ' num2str(P.mMesh)]);
     mesh.feature('size').set('custom','off').set('hauto',P.mMesh);
+    % Create the PML-specific size node (reuse if it already exists) so
+    % the PML domains get a coarser mesh than the beam.
+    if usePMLmesh
+        if any(strcmp('size_pml', cellstr(char(mesh.feature.tags()))))
+            szPML = mesh.feature('size_pml');
+        else
+            szPML = mesh.feature.create('size_pml', 'Size');
+        end
+        szPML.selection.geom(geomname, 3).set(P.domSel.PML);
+        szPML.set('custom','off').set('hauto', P.PMLmesh);
+        disp(['PML mesh quality: ' num2str(P.PMLmesh)]);
+    end
     mesh.run;
     msolv.runAll;
 end

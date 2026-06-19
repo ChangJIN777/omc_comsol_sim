@@ -69,10 +69,10 @@ if isfield(P,'wgmTaper') && isfield(P.wgmTaper,'func')
 end
 
 % check if geometry is within fabrication tolerance
-if wid-hy < 149e-9
+if wid-hy < 148e-9
     display(num2str(wid-hy));
     error(['hy=',num2str(hy*1e9,'%.1f'),'nm, w=',num2str(wid*1e9,'%.1f'),...
-        'nm, w-hy=',num2str((wid-hy)*1e9,'%.1f'),'nm<151nm - gap too small for lithography']);
+        'nm, w-hy=',num2str((wid-hy)*1e9,'%.1f'),'nm<149nm - gap too small for lithography']);
 % elseif ndef > 0 && (a*(1-maxdef)-hx*(1-maxdef)^(1-oblong) < 50e-9)
 elseif ~useManualGeom && maxdef~= 1 && (a*(1-maxdef)-hx*(1-maxdef)^(1-oblong) < 50e-9)
     error(['a_def=',num2str(a*(1-maxdef)*1e9,'%.1f'),'nm, hx_def=',num2str(hx*(1-maxdef)^(1-oblong)*1e9,'%.1f'),...
