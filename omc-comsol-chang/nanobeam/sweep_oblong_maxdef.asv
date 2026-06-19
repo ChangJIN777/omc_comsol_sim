@@ -2,7 +2,7 @@ function [oVec, mVec, fitnessMap, best_oblong, best_maxdef, fitnessBest, dsBest]
         sweep_oblong_maxdef()
 %SWEEP_OBLONG_MAXDEF  2-D coarse sweep of nanobeam cavity taper parameters.
 %
-%   Sweeps P.oblong x P.maxdef on an (ndefectAspectRatio x nMaxdef) grid using the
+%   Sweeps P.oblong x P.maxdef on an (nOblong x nMaxdef) grid using the
 %   nanobeam FEM pipeline (RunNanobeamFEM). Each grid point is evaluated in
 %   a unique datLoc subfolder so RunNanobeamFEM never reuses a cached result.
 %
@@ -18,9 +18,9 @@ function [oVec, mVec, fitnessMap, best_oblong, best_maxdef, fitnessBest, dsBest]
 %   fitness) is re-run with plots enabled.
 %
 %   Returns:
-%     oVec        – (ndefectAspectRatio x 1) oblong sweep vector
+%     oVec        – (nOblong x 1) oblong sweep vector
 %     mVec        – (nMaxdef x 1) maxdef sweep vector
-%     fitnessMap  – (ndefectAspectRatio x nMaxdef) fitness at each grid point
+%     fitnessMap  – (nOblong x nMaxdef) fitness at each grid point
 %     best_oblong – oblong value at the best grid point
 %     best_maxdef – maxdef value at the best grid point
 %     fitnessBest – fitness at the best grid point
@@ -167,16 +167,16 @@ P.PMLLen     = 10e-6;
 P.PMLstr     = 0.008;
 
 %% ===================== BUILD SWEEP GRIDS =====================
-oVec = linspace(OPT.defectAspectRatio_min, OPT.defectAspectRatio_max, OPT.ndefectAspectRatio)';
+oVec = linspace(OPT.oblong_min, OPT.oblong_max, OPT.nOblong)';
 mVec = linspace(OPT.maxdef_min, OPT.maxdef_max, OPT.nMaxdef)';
 
-fitnessMap = nan(OPT.ndefectAspectRatio, OPT.nMaxdef);
-wM_map     = nan(OPT.ndefectAspectRatio, OPT.nMaxdef);
-gOM_map    = nan(OPT.ndefectAspectRatio, OPT.nMaxdef);
-LSiV_map   = nan(OPT.ndefectAspectRatio, OPT.nMaxdef);
-Qmech_map  = nan(OPT.ndefectAspectRatio, OPT.nMaxdef);
-Qopt_map   = nan(OPT.ndefectAspectRatio, OPT.nMaxdef);
-lambda_map = nan(OPT.ndefectAspectRatio, OPT.nMaxdef);  % optical wavelength (nm)
+fitnessMap = nan(OPT.nOblong, OPT.nMaxdef);
+wM_map     = nan(OPT.nOblong, OPT.nMaxdef);
+gOM_map    = nan(OPT.nOblong, OPT.nMaxdef);
+LSiV_map   = nan(OPT.nOblong, OPT.nMaxdef);
+Qmech_map  = nan(OPT.nOblong, OPT.nMaxdef);
+Qopt_map   = nan(OPT.nOblong, OPT.nMaxdef);
+lambda_map = nan(OPT.nOblong, OPT.nMaxdef);  % optical wavelength (nm)
 
 %% ===================== OPEN CSV LOG =====================
 if ~exist(OPT.rootLoc, 'dir'); mkdir(OPT.rootLoc); end
@@ -193,17 +193,17 @@ nTotal    = OPT.ndefectAspectRatio * OPT.nMaxdef;
 for io = 1:OPT.ndefectAspectRatio
     for im = 1:OPT.nMaxdef
         evalCount = evalCount + 1;
-        defectAspectRatio_i = oVec(io);
+        oblong_i = oVec(io);
         maxdef_i = mVec(im);
 
         Pe = P;
         
         % calculating oblong from the defect aspect ratio
-        mirrorAspectRatio = P.hy/P.hx;
-        r = defectAspectRatio_i/mirrorAspectRatio;
-        
+            
+
+        Pe.oblong = oblong_i;
         Pe.maxdef = maxdef_i;
-        Pe.oblong = log(r)/log(maxdef_i);
+
         % Unique folder per (oblong, maxdef) — RunNanobeamFEM skips the
         % solve if the output file already exists in datLoc.
         evLoc = sprintf('%seval_%04d_ob%.4f_md%.4f%s', ...
@@ -334,7 +334,7 @@ if ~any(validMask(:))
 end
 
 [fitnessBest, linIdx] = max(fitnessMap(:));
-[ioBest, imBest]      = ind2sub([OPT.ndefectAspectRatio, OPT.nMaxdef], linIdx);
+[ioBest, imBest]      = ind2sub([OPT.nOblong, OPT.nMaxdef], linIdx);
 best_oblong = oVec(ioBest);
 best_maxdef = mVec(imBest);
 
@@ -342,7 +342,7 @@ fprintf('\n==================== SWEEP COMPLETE ====================\n');
 fprintf('Best oblong   = %.4f\n', best_oblong);
 fprintf('Best maxdef   = %.4f\n', best_maxdef);
 fprintf('Best fitness  = %.4g\n', fitnessBest);
-fprintf('Grid size     = %d x %d  (%d total evals)\n', OPT.ndefectAspectRatio, OPT.nMaxdef, nTotal);
+fprintf('Grid size     = %d x %d  (%d total evals)\n', OPT.nOblong, OPT.nMaxdef, nTotal);
 fprintf('Log written   -> %s\n', logFile);
 
 %% ===================== SWEEP PLOTS =====================
