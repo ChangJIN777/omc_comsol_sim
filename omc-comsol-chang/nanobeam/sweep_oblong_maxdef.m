@@ -44,7 +44,7 @@ OPT.nOblong    = 5;     % number of oblong grid points (linspace)
 % --- maxdef sweep bounds (dimensionless, 0–<1) ---
 % Fraction by which the mirror lattice constant is reduced at cavity centre.
 % Typical range 0.02 – 0.20; larger = deeper defect = stronger localisation.
-OPT.maxdef_min = 0.07;
+OPT.maxdef_min = 0.1;
 OPT.maxdef_max = 0.2;
 OPT.nMaxdef    = 5;     % number of maxdef grid points (linspace)
 
