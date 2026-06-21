@@ -37,15 +37,19 @@ close all;
 % hy ~ (1-maxdef)^(1+oblong), hx ~ (1-maxdef)^(1-oblong).
 % oblong=0 -> equal scaling; oblong=1 -> hx constant, only hy shrinks.
 % For the fabricated OMC geometry (isoFit, w=800 nm) oblong ≈ 6.53 is typical.
-OPT.defectAspectRatio_min = 1.0;
-OPT.defectAspectRatio_max = 10.0;
+oblong_0 = 2.27;
+maxdef_0 = 0.193;
+defectAspectRatio_0 = (1-maxdef_0)^oblong_0;
+
+OPT.defectAspectRatio_min = defectAspectRatio_0*0.75;
+OPT.defectAspectRatio_max = defectAspectRatio_0*1.25;
 OPT.ndefectAspectRatio   = 5;     % number of oblong grid points (linspace)
 
 % --- maxdef sweep bounds (dimensionless, 0–<1) ---
 % Fraction by which the mirror lattice constant is reduced at cavity centre.
 % Typical range 0.02 – 0.20; larger = deeper defect = stronger localisation.
-OPT.maxdef_min = 0.1;
-OPT.maxdef_max = 0.3;
+OPT.maxdef_min = maxdef_0*0.75;
+OPT.maxdef_max = maxdef_0*1.25;
 OPT.nMaxdef    = 5;     % number of maxdef grid points (linspace)
 
 % --- target mechanical frequency (used for wM heatmap title only) ---
@@ -57,7 +61,7 @@ OPT.lambdaTol    = 100;     % nm  — Gaussian decay scale for wavelength mismat
 
 % --- root folder for per-evaluation subfolders ---
 currentDate = datestr(now, 'mmddyyyy');
-OPT.rootLoc = ['.\test\1D_OMC_hole\sweep_oblongMaxdef_', currentDate, '\'];
+OPT.rootLoc = ['.\test\1D_OMC_hole\sweep_oblongMaxdef_trial3_', currentDate, '\'];
 
 % --- FITNESS FUNCTION (user-configurable) ---------------------------------
 % fitness = Q_opt * Q_mech * exp(-|lambda_opt - targetLambda| / lambdaTol)
@@ -109,7 +113,7 @@ P.asym      = 0;
 
 % --- physics toggles (mechanical + PML; enable solveOpt/calcG/calcS if needed) ---
 P.solveMech    = 1;
-P.solveOpt     = 0;
+P.solveOpt     = 1;
 P.calcG        = 1 * (P.solveMech && P.solveOpt);
 P.calcS        = 0;
 P.solveMechPML = 1;     % mechanical PML for radiative Q estimation
@@ -182,7 +186,7 @@ lambda_map = nan(OPT.ndefectAspectRatio, OPT.nMaxdef);  % optical wavelength (nm
 if ~exist(OPT.rootLoc, 'dir'); mkdir(OPT.rootLoc); end
 logFile = [OPT.rootLoc, 'sweep_log.csv'];
 fid = fopen(logFile, 'w');
-fprintf(fid, ['eval,oblong_idx,maxdef_idx,oblong,maxdef,wM_GHz,gOM_kHz,LSiV_MHz,' ...
+fprintf(fid, ['eval,oblongdx,maxdef_idx,oblong,maxdef,wM_GHz,gOM_kHz,LSiV_MHz,' ...
               'Q_mech,Q_opt,lambda_opt_nm,fitness,status\n']);
 fclose(fid);
 
@@ -207,13 +211,13 @@ for io = 1:OPT.ndefectAspectRatio
         % Unique folder per (oblong, maxdef) — RunNanobeamFEM skips the
         % solve if the output file already exists in datLoc.
         evLoc = sprintf('%seval_%04d_ob%.4f_md%.4f%s', ...
-            OPT.rootLoc, evalCount, oblong_i, maxdef_i, filesep);
+            OPT.rootLoc, evalCount, Pe.oblong, maxdef_i, filesep);
 
         % Strip any stale fileBase so CreateFileBase regenerates it.
         if isfield(Pe, 'fileBase'); Pe = rmfield(Pe, 'fileBase'); end
 
         fprintf('  eval %3d/%d: oblong=%.4f  maxdef=%.4f  -> %s\n', ...
-            evalCount, nTotal, oblong_i, maxdef_i, evLoc);
+            evalCount, nTotal, Pe.oblong, maxdef_i, evLoc);
 
         wM_i     = NaN;
         gOM_i    = NaN;
@@ -241,7 +245,7 @@ for io = 1:OPT.ndefectAspectRatio
             if ~hasMech
                 warning('sweep_oblong_maxdef:noMechModes', ...
                     'eval %d (oblong=%.4f, maxdef=%.4f): no localised mechanical modes found', ...
-                    evalCount, oblong_i, maxdef_i);
+                    evalCount, Pe.oblong, maxdef_i);
                 status_i = 'no_mech_modes';
             else
                 status_i = 'ok';
@@ -262,7 +266,7 @@ for io = 1:OPT.ndefectAspectRatio
                 if ~hasOpt
                     warning('sweep_oblong_maxdef:noOptModes', ...
                         'eval %d (oblong=%.4f, maxdef=%.4f): no high-Q optical modes found', ...
-                        evalCount, oblong_i, maxdef_i);
+                        evalCount, Pe.oblong, maxdef_i);
                     if strcmp(status_i, 'ok')
                         status_i = 'no_opt_modes';
                     else
@@ -301,7 +305,7 @@ for io = 1:OPT.ndefectAspectRatio
         catch ME
             warning('sweep_oblong_maxdef:evalFailed', ...
                 'eval %d (oblong=%.4f, maxdef=%.4f) failed: %s', ...
-                evalCount, oblong_i, maxdef_i, ME.message);
+                evalCount, Pe.oblong, maxdef_i, ME.message);
             status_i = 'failed';
         end
 
@@ -320,7 +324,7 @@ for io = 1:OPT.ndefectAspectRatio
         % Append to CSV immediately so the log survives a mid-run crash.
         fid = fopen(logFile, 'a');
         fprintf(fid, '%d,%d,%d,%.6f,%.6f,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%s\n', ...
-            evalCount, io, im, oblong_i, maxdef_i, ...
+            evalCount, io, im, Pe.oblong, maxdef_i, ...
             wM_i*1e-9, gOM_i*1e-3, LSiV_i*1e-6, Qmech_i, Qopt_i, lambda_i, fit, status_i);
         fclose(fid);
     end

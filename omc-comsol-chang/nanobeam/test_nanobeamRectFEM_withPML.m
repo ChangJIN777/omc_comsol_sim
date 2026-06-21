@@ -10,17 +10,17 @@ P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
 P.a = 529e-9;                           % nominal lattice constant
-P.w = 800e-9;                           % beam width
+P.w = 750e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
 P.th = 500e-9;                          % beam thickness
-P.hx = 196e-9;                          % nominal hole height (along x-axis)
-P.hy = 651e-9;                          % nominal hole width (along y-axis)
+P.hx = 197e-9;                          % nominal hole height (along x-axis)
+P.hy = 578e-9;                          % nominal hole width (along y-axis)
 % fit the sem of the fabricated omc 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
-P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 1-490/529;                     % defect percentage
-P.oblong = 6.53;                      % oblong parameter (zero if holes are not changed)
+P.ndef = 6;                             % # of holes in 1/2 defect region
+P.maxdef = 0.1926;                     % defect percentage
+P.oblong = 2.276;                      % oblong parameter (zero if holes are not changed)
 P.aspect_ratio = 1;                    % aspect ratio of the hole at the center (1 if holes are spherical)
 
 % cavity taper params

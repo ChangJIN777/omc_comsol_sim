@@ -1,0 +1,4 @@
+eval,oblongdx,maxdef_idx,oblong,maxdef,wM_GHz,gOM_kHz,LSiV_MHz,Q_mech,Q_opt,lambda_opt_nm,fitness,status
+1,1,1,1.021777,0.144750,7.33041,46.16,NaN,5.10888e+10,657469,1596.71,2.10553e+16,no_opt_modes
+2,1,2,1.110334,0.168875,7.13692,63.8761,NaN,1.33332e+11,1.14205e+06,1575.22,1.18332e+17,no_opt_modes
+3,1,3,1.200461,0.193000,7.09375,73.4408,NaN,1.71152e+11,1.26359e+06,1551.32,2.13422e+17,no_opt_modes
