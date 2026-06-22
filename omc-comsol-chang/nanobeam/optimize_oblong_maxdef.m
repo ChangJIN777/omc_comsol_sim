@@ -80,11 +80,11 @@ P.rxtal     = 0;
 P.rxtalInFilename = 1;
 
 P.a   = 529e-9;     % nominal lattice constant (m)
-P.w   = 800e-9;     % beam width (m)
+P.w   = 750e-9;     % beam width (m)
 P.theta = 45;       % etch angle (degrees; no effect for isoFit/rect)
 P.th  = 500e-9;     % beam thickness (m)
 P.hx  = 196e-9;     % nominal mirror hole height (m)
-P.hy  = 651e-9;     % nominal mirror hole width  (m)
+P.hy  = 578e-9;     % nominal mirror hole width  (m)
 
 P.nholes    = 18;   % number of holes in half-beam
 P.ndef      = 8;    % number of holes in half-defect region
