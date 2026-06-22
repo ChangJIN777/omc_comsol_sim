@@ -40,8 +40,8 @@ close all;
 % --- starting point (same as sweep centre) ---
 % hy ~ (1-maxdef)^(1+oblong), hx ~ (1-maxdef)^(1-oblong).
 % oblong=0 -> equal scaling; oblong=1 -> hx constant, only hy shrinks.
-oblong_0 = 2.27;
-maxdef_0 = 0.193;
+oblong_0 = 7.14;
+maxdef_0 = 0.22;
 defectAspectRatio_0 = (1-maxdef_0)^oblong_0;
 
 % --- defectAspectRatio box constraints (dimensionless) ---
@@ -435,7 +435,7 @@ if isnan(Qmech); return; end
 if isnan(Qopt) || isnan(lambdaNm)
     fit = Qmech;
 else
-    fit = Qopt * Qmech * exp(-abs(lambdaNm - targetLambdaNm) / tolNm);
+    fit = (gOM_i*1e-3) * Qopt * Qmech * exp(-abs(lambdaNm - targetLambdaNm) / tolNm);
 end
 end
 
