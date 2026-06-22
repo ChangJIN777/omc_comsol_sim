@@ -42,7 +42,7 @@ close all;
 % oblong=0 -> equal scaling; oblong=1 -> hx constant, only hy shrinks.
 oblong_0 = 7.14;
 maxdef_0 = 0.22;
-defectAspectRatio_0 = (1-maxdef_0)^oblong_0;
+defectAspectRatio_0 = (651e-9/196e-9) * (1-maxdef_0)^(2*oblong_0);  % hy/hx * (1-maxdef)^(2*oblong)
 
 % --- defectAspectRatio box constraints (dimensionless) ---
 OPT.defectAspectRatio_min = defectAspectRatio_0*0.5;
@@ -65,10 +65,11 @@ currentDate = datestr(now, 'mmddyyyy');
 OPT.rootLoc = ['.\test\1D_OMC_hole\optimize_oblongMaxdef_trial1_', currentDate, '\'];
 
 % --- FITNESS FUNCTION (user-configurable) ---------------------------------
-% fitness = Q_opt * Q_mech * exp(-|lambda_opt - targetLambda| / lambdaTol)
-% Graceful degradation: if optics are off / no high-Q optical mode found,
-% the fitness falls back to Q_mech alone. Returns NaN if Q_mech is absent.
-OPT.fitnessFcn = @(ds) fitness_QxQxLambda(ds, OPT.targetLambda, OPT.lambdaTol);
+% fitness = g_OM^2 * Q_opt * Q_mech * exp(-|lambda_opt - targetLambda| / lambdaTol)
+% Cooperativity-like figure of merit. Graceful degradation: if g_OM is absent
+% (P.calcG=0) the g^2 factor is dropped; if optics are off, falls back to
+% g_OM^2 * Q_mech. Returns NaN if Q_mech is absent.
+OPT.fitnessFcn = @(ds) fitness_coopProduct(ds, OPT.targetLambda, OPT.lambdaTol);
 
 %% ===================== P STRUCT DEFAULTS =====================
 % Geometry matches test_nanobeamRectFEM_withPML.m (fabricated OMC device).
@@ -215,7 +216,7 @@ best_maxdef            = xBest(2);
 % Recompute the oblong mapping at the optimum.
 mirrorAspectRatio = P.hy / P.hx;
 r_best            = best_defectAspectRatio / mirrorAspectRatio;
-best_oblong       = log(r_best) / log(best_maxdef);
+best_oblong       = log(r_best) / (2*log(1 - best_maxdef));
 
 fitnessBest = -negFitBest;   % un-negate to report the maximized fitness
 
@@ -290,7 +291,7 @@ fprintf('\nRe-running best design with plots -> %s\n', bestLoc);
         r = defectAspectRatio_i / mirrorAspectRatio;
 
         Pe.maxdef = maxdef_i;
-        Pe.oblong = log(r) / log(maxdef_i);
+        Pe.oblong = log(r) / (2*log(1 - maxdef_i));
 
         % Unique folder per evaluation — RunNanobeamFEM never reuses a cache.
         evLoc = sprintf('%seval_%04d_ob%.4f_md%.4f%s', ...
@@ -435,7 +436,7 @@ if isnan(Qmech); return; end
 if isnan(Qopt) || isnan(lambdaNm)
     fit = Qmech;
 else
-    fit = (gOM_i*1e-3) * Qopt * Qmech * exp(-abs(lambdaNm - targetLambdaNm) / tolNm);
+    fit = Qopt * Qmech * exp(-abs(lambdaNm - targetLambdaNm) / tolNm);
 end
 end
 
@@ -484,11 +485,39 @@ Qopt     = Q(k);
 lambdaNm = lam(k);
 end
 
+function fit = fitness_coopProduct(ds, targetLambdaNm, tolNm)
+% fitness = g_OM^2 * Q_opt * Q_mech * exp(-|lambda_opt - targetLambda| / tol)
+% Cooperativity-like figure of merit. Graceful degradation:
+%   no Q_mech (PML off / absent)    -> NaN (unusable point)
+%   no g_OM   (P.calcG = 0)         -> g^2 factor dropped; reverts to Q_opt*Q_mech*gate
+%   optics off / no optical mode    -> g_OM^2 * Q_mech
+fit = NaN;
+[Qmech, ~]        = local_getQmech(ds);
+[Qopt,  lambdaNm] = local_getQopt(ds, targetLambdaNm);
+if isnan(Qmech); return; end
+gOM     = local_getGOM(ds);
+gFactor = 1;
+if ~isnan(gOM); gFactor = gOM^2; end
+if isnan(Qopt) || isnan(lambdaNm)
+    fit = gFactor * Qmech;
+else
+    fit = gFactor * Qopt * Qmech * exp(-abs(lambdaNm - targetLambdaNm) / tolNm);
+end
+end
+
 function fit = fitness_maxGOM(ds)
 % Returns max |g_OM| in Hz. NaN if gOM not computed (calcG = 0).
 fit = NaN;
 if isfield(ds, 'cpl') && isfield(ds.cpl, 'gMax') && ~isempty(ds.cpl.gMax)
     fit = max(abs(ds.cpl.gMax));
+end
+end
+
+function gOM = local_getGOM(ds)
+% Max |g_OM| in Hz of the cavity mode, or NaN if not computed (P.calcG = 0).
+gOM = NaN;
+if isfield(ds, 'cpl') && isfield(ds.cpl, 'gMax') && ~isempty(ds.cpl.gMax)
+    gOM = max(abs(ds.cpl.gMax));
 end
 end
 

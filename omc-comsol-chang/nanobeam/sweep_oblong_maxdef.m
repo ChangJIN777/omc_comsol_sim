@@ -39,7 +39,7 @@ close all;
 % For the fabricated OMC geometry (isoFit, w=800 nm) oblong ≈ 6.53 is typical.
 oblong_0 = 2.27;
 maxdef_0 = 0.193;
-defectAspectRatio_0 = (1-maxdef_0)^oblong_0;
+defectAspectRatio_0 = (651e-9/196e-9) * (1-maxdef_0)^(2*oblong_0);  % hy/hx * (1-maxdef)^(2*oblong)
 
 OPT.defectAspectRatio_min = defectAspectRatio_0*0.75;
 OPT.defectAspectRatio_max = defectAspectRatio_0*1.25;
@@ -207,7 +207,7 @@ for io = 1:OPT.ndefectAspectRatio
         r = defectAspectRatio_i/mirrorAspectRatio;
         
         Pe.maxdef = maxdef_i;
-        Pe.oblong = log(r)/log(maxdef_i);
+        Pe.oblong = log(r) / (2*log(1 - maxdef_i));
         % Unique folder per (oblong, maxdef) — RunNanobeamFEM skips the
         % solve if the output file already exists in datLoc.
         evLoc = sprintf('%seval_%04d_ob%.4f_md%.4f%s', ...
