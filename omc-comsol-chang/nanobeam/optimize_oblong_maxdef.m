@@ -40,7 +40,7 @@ close all;
 % --- starting point (same as sweep centre) ---
 % hy ~ (1-maxdef)^(1+oblong), hx ~ (1-maxdef)^(1-oblong).
 % oblong=0 -> equal scaling; oblong=1 -> hx constant, only hy shrinks.
-oblong_0 = 7.14;
+oblong_0 = 1.96;
 maxdef_0 = 0.22;
 defectAspectRatio_0 = (651e-9/196e-9) * (1-maxdef_0)^(2*oblong_0);  % hy/hx * (1-maxdef)^(2*oblong)
 
@@ -89,8 +89,8 @@ P.hy  = 578e-9;     % nominal mirror hole width  (m)
 
 P.nholes    = 18;   % number of holes in half-beam
 P.ndef      = 8;    % number of holes in half-defect region
-P.maxdef    = 1 - 490/529;  % initial value — will be optimized (~7.4 %)
-P.oblong    = 6.53;         % initial value — will be optimized
+P.maxdef    = maxdef_0;  % initial value — will be optimized (~7.4 %)
+P.oblong    = oblong_0;         % initial value — will be optimized
 P.taperFunc = 'cubic';
 P.holeatctr = 1;    % hole at cavity centre (matches fabricated device)
 
@@ -501,7 +501,7 @@ if ~isnan(gOM); gFactor = gOM^2; end
 if isnan(Qopt) || isnan(lambdaNm)
     fit = gFactor * Qmech;
 else
-    fit = gFactor * Qopt * Qmech * exp(-abs(lambdaNm - targetLambdaNm) / tolNm);
+    fit = gFactor * Qopt * exp(-abs(lambdaNm - targetLambdaNm) / tolNm);
 end
 end
 
