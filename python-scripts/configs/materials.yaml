@@ -1,0 +1,23 @@
+# Single-crystal diamond material properties.
+
+diamond:
+  # --- Optical ---
+  refractive_index_1550nm: 2.40    # ~2.40 at 1550 nm (Sellmeier; weak dispersion)
+  # --- Mechanical (cubic, crystal axes) ---
+  density_kg_m3: 3515.0
+  stiffness_GPa:                   # cubic symmetry: C11, C12, C44
+    C11: 1076.0
+    C12: 125.0
+    C44: 577.0
+  # Isotropic approximation (use only for quick estimates / surrogate):
+  youngs_modulus_GPa: 1050.0
+  poisson_ratio: 0.069
+  # Bulk sound speeds (isotropic approx) for scaling estimates [m/s]:
+  v_longitudinal: 17500.0
+  v_transverse:   12800.0
+
+# NOTE on orientation: for the COMSOL solid-mechanics model, set the crystal
+# orientation so the beam axis (z) and width (y) align with chosen crystal axes
+# (commonly beam axis along <100> or <110>). The anisotropy shifts mechanical
+# bands by several %, so fix the orientation early and keep it constant.
+solver_orientation: "beam_axis_100"

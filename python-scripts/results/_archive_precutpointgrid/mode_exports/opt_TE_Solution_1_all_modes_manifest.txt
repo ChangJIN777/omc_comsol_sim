@@ -1,0 +1,16 @@
+# solnum  freq_Hz  freq_THz  confinement_ratio  exported_file
+1  1.381206e+14  138.1206  1.248  opt_TE_Solution_1_solnum1_outer1_Ey_normE_abs.txt
+2  1.620999e+14  162.0999  1.286  opt_TE_Solution_1_solnum2_outer1_Ey_normE_abs.txt
+3  1.880682e+14  188.0682  1.133  opt_TE_Solution_1_solnum3_outer1_Ey_normE_abs.txt
+4  2.093883e+14  209.3883  9.032  opt_TE_Solution_1_solnum4_outer1_Ey_normE_abs.txt
+5  2.116921e+14  211.6921  18.565  opt_TE_Solution_1_solnum5_outer1_Ey_normE_abs.txt
+6  2.312592e+14  231.2592  123.336  opt_TE_Solution_1_solnum6_outer1_Ey_normE_abs.txt
+7  2.372952e+14  237.2952  1.825  opt_TE_Solution_1_solnum7_outer1_Ey_normE_abs.txt
+8  2.640672e+14  264.0672  0.361  opt_TE_Solution_1_solnum8_outer1_Ey_normE_abs.txt
+9  2.647556e+14  264.7556  0.134  opt_TE_Solution_1_solnum9_outer1_Ey_normE_abs.txt
+10  2.668144e+14  266.8144  1.573  opt_TE_Solution_1_solnum10_outer1_Ey_normE_abs.txt
+11  2.833913e+14  283.3913  5.965  opt_TE_Solution_1_solnum11_outer1_Ey_normE_abs.txt
+12  2.841922e+14  284.1922  5.119  opt_TE_Solution_1_solnum12_outer1_Ey_normE_abs.txt
+13  2.912642e+14  291.2642  2.285  opt_TE_Solution_1_solnum13_outer1_Ey_normE_abs.txt
+14  2.949264e+14  294.9264  0.439  opt_TE_Solution_1_solnum14_outer1_Ey_normE_abs.txt
+15  3.056680e+14  305.6680  1.241  opt_TE_Solution_1_solnum15_outer1_Ey_normE_abs.txt

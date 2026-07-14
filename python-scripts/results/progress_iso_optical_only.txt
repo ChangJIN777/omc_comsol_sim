@@ -1,0 +1,26 @@
+=== OMC Optimization Progress ===
+Updated : 2026-07-02 09:00:46
+Results : results/opt_results_t5d_iso_optical_only.json
+
+Progress: [██████████████████████████████] 19/19 (100%)
+Elapsed : 8m28s  Rate: 2.01 evals/min  ETA: ~0s
+
+Best this run:
+  G_o = 15.4%   G_m = 5.7%   score = +0.8326
+  a=662nm  w=521nm  hx=189nm  hy=181nm  t=389nm
+  f_o = 1556 nm   f_m = 9.89 GHz
+
+Recent evaluations:
+  iter      a     w     t    hx    hy     G_o    G_m      f_o      f_m  score
+  ---------------------------------------------------------------------------
+  [ 18]    662   521   389   189   181   15.4%   5.7%     1556    9.89GHz  +0.8326  *** BEST
+  [ 17]    664   527   391   190   182   15.2%   4.9%     1564    9.82GHz  +0.8188
+  [ 15]    663   525   388   193   181   15.0%   4.7%     1555    9.78GHz  +0.8218
+  [ 14]    661   525   394   191   182   15.5%   4.9%     1555    9.82GHz  +0.8257
+  [ 13]    664   528   392   189   183   15.3%   5.5%     1566    9.86GHz  +0.8192
+  [ 12]    682   351   445    83   135    3.4%  49.0%     1518   10.53GHz  +0.6999
+  [ 11]    661   524   392   191   184   15.5%   5.6%     1552    9.85GHz  +0.8287
+  [ 10]    662   528   393   193   184   15.2%   4.4%     1556    9.75GHz  +0.8169
+
+Targets: G_o ≥ 15%   f_o ≈ 1550 nm   (G_m not in cost function — thinness/narrowness reward active instead, t≤150-500nm w≤300-900nm range)
+====================================

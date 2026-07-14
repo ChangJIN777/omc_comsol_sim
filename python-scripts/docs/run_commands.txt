@@ -1,0 +1,240 @@
+================================================================================
+  OMC OPTIMIZATION — COMMAND REFERENCE
+  Diamond nanobeam unit-cell co-optimization (optical + mechanical bandgap)
+  Script: scripts/run_opt_comsol.py
+================================================================================
+
+All paths are relative to the project root.  Run from there:
+    cd "OMC design optimization Claude"
+    python scripts/run_opt_comsol.py  [options]
+
+────────────────────────────────────────────────────────────────────────────────
+PARAMETER GLOSSARY
+────────────────────────────────────────────────────────────────────────────────
+
+  --n-iter N        Total number of optimizer iterations to run.
+                    Each iteration = one COMSOL solve (optical + mechanical).
+                    One iteration takes roughly 4-8 min on Mac with COMSOL open.
+                    Typical values: 20 (quick test), 60 (overnight), 120 (long run).
+                    DEFAULT: 14
+
+  --n-init N        Number of initial space-filling (quasi-random / Halton) trials
+                    before TPE Bayesian optimization takes over.
+                    Think of it as "how much random exploration upfront."
+                    Too small → TPE starts on too little data and exploits early.
+                    Too large → wastes iterations on pure random search.
+                    Recommended: 8-12 for n-iter=60, 15-20 for n-iter=120.
+                    DEFAULT: 6
+
+  --explore-every N Force a uniformly random sample every N iterations, even after
+                    TPE has taken over.  Prevents the optimizer from getting stuck
+                    near one local optimum (e.g., t stuck at ~237 nm).
+                    0 = disabled.  Recommended: 8-10 for long runs.
+                    DEFAULT: 0
+
+  --n-k N           Number of k-points used in both the optical and mechanical
+                    band-structure sweeps.  More k-points = more accurate gap
+                    edges, but slower.  7 is a good trade-off.
+                    DEFAULT: 7
+
+  --n-bands-opt N   Number of optical bands computed per k-point.
+                    4 is enough to capture the TE-like gap near 1550 nm.
+                    DEFAULT: 4
+
+  --n-bands-mech N  Number of mechanical bands computed per k-point.
+                    8 captures the breathing-mode family well.
+                    DEFAULT: 8
+
+  --no-fy           Skip the per-mode field-symmetry evaluation in the mechanical
+                    sweep.  When the COMSOL study already uses symmetric BCs that
+                    select breathing modes (study = "mech sym"), fy is not needed
+                    and skipping it saves 30-50% of mechanical solve time.
+                    USE THIS in normal optimization runs.
+                    DEFAULT: off (fy computed)
+
+  --fresh-start     Discard all prior results and start from scratch.
+                    The existing --out-json is automatically backed up to
+                    <file>.bak before being discarded, so nothing is lost.
+                    WITHOUT this flag, prior results are ALWAYS loaded
+                    automatically — you cannot accidentally erase them.
+                    DEFAULT: off  (safe: auto-resume is the default)
+
+  --resume          Legacy flag, kept for backward compatibility. Now a no-op
+                    because auto-resume is the default. Safe to omit.
+
+  --skip-characterization
+                    Skip the full characterization sweep at the end of a run.
+                    By default, after the optimization loop finishes, the script
+                    automatically re-simulates the overall best geometry with all
+                    4 studies (opt TE, opt TM, mech sym, mech antisym) over the
+                    full BZ and saves results/figures/best_characterization.png.
+                    Band-structure + mode-profile data are cached to
+                    results/figures/best_char_data.npz keyed by the geometry u-vector.
+                    If the best geometry hasn't changed, the next characterization
+                    loads from cache and skips all COMSOL sweeps.
+                    Use this flag only for quick test runs where you don't need
+                    the characterization figure.
+                    DEFAULT: off  (characterization runs automatically)
+
+  --out-json FILE   Where to write (and read with --resume) the results JSON.
+                    Each entry contains all geometry params, band gaps, score.
+                    DEFAULT: results/opt_results_t5d.json
+
+  --out-fig FILE    Where to save the progress figure (PNG) updated after each
+                    iteration.
+                    DEFAULT: results/figures/opt_progress.png
+
+  --progress-file F Human-readable text snapshot updated after every iteration.
+                    Live monitoring:  tail -f results/progress.txt
+                    DEFAULT: results/progress.txt
+
+  --study-mech STR  Name of the COMSOL study to run for mechanical eigenfrequency
+                    + Floquet sweep.  Must match a study in the .mph template.
+                    DEFAULT: "mech sym"
+
+  --study-opt STR   Name of the COMSOL study for optical TE band structure.
+                    DEFAULT: "opt TE"
+
+────────────────────────────────────────────────────────────────────────────────
+SCORE FUNCTION (for reference)
+────────────────────────────────────────────────────────────────────────────────
+
+  score = G_o + G_m
+          - 20 * max(0, 0.20 - G_o)^2     ← heavy penalty if optical gap < 20%
+          - 5  * max(0, 0.20 - G_m)^2     ← moderate penalty if mech gap < 20%
+          - 3  * ((f_o - 1550nm)/1550nm)^2 ← penalty if optical center ≠ 1550nm
+
+  Max theoretical  : 2.0   (G_o = G_m = 100%, f_o = 1550 nm)
+  Practical target : 0.40  (G_o = G_m = 20%,  f_o = 1550 nm)
+  Current best     : ~0.65 (G_o ≈ 22%, G_m ≈ 43%, a=620 nm w=874 nm t=243 nm)
+
+────────────────────────────────────────────────────────────────────────────────
+DESIGN VARIABLES (normalized u ∈ [0,1]^5, bounds in configs/bounds.yaml)
+────────────────────────────────────────────────────────────────────────────────
+
+  u[0]  a   lattice constant (period along beam)    500 – 900 nm
+  u[1]  w   beam width                              450 – 900 nm
+  u[2]  hx  ellipse semi-axis along beam axis        80 – 380 nm
+  u[3]  hy  ellipse semi-axis along beam width       100 – 400 nm
+  u[4]  t   beam thickness (out of plane, free var)  220 – 500 nm
+
+  TE confinement threshold: λ/(2n) ≈ 323 nm.  t ≥ 320 nm strongly preferred.
+
+────────────────────────────────────────────────────────────────────────────────
+MONITORING TOOLS
+────────────────────────────────────────────────────────────────────────────────
+
+  # Live text dashboard (refresh every 30s, reports best + top-5):
+  python scripts/watch_progress.py --n-iter 60
+
+  # Tail the plain-text progress file:
+  tail -f results/progress.txt
+
+  # Re-plot from saved results at any time (while a run is active or after):
+  python scripts/replot.py
+
+────────────────────────────────────────────────────────────────────────────────
+EXAMPLE COMMANDS
+────────────────────────────────────────────────────────────────────────────────
+
+# ── 1. QUICK SMOKE TEST  (verify COMSOL connection, ~2 evals) ────────────────
+python scripts/run_opt_comsol.py \
+  --n-iter 2 \
+  --n-init 2 \
+  --no-fy
+# Use when: first setup, after COMSOL update, after hardware change.
+# No --resume (fresh start).
+
+# ── 2. STANDARD OVERNIGHT RUN  (recommended) ─────────────────────────────────
+python scripts/run_opt_comsol.py \
+  --n-iter 60 \
+  --n-init 8 \
+  --explore-every 8 \
+  --no-fy \
+  --skip-characterization
+# Use when: continuing optimization from a previous session.
+# Prior results are loaded automatically — no --resume needed.
+# --explore-every 8 forces 7 random samples to escape local optima.
+# --skip-characterization avoids end-of-loop COMSOL state issues (see NOTE below).
+# ~6 hours at 6 min/eval.  Monitor with:  tail -f results/progress.txt
+# Then run characterize_best.py in a FRESH terminal for an accurate figure.
+
+# ── 3. LONG WEEKEND RUN  (deep optimization) ─────────────────────────────────
+python scripts/run_opt_comsol.py \
+  --n-iter 120 \
+  --n-init 15 \
+  --explore-every 10 \
+  --no-fy
+# Use when: have 12+ hours, want broader exploration.
+# n-init=15 gives TPE more data before it starts exploiting.
+
+# ── 4. FRESH START  (deliberately forget prior results) ──────────────────────
+python scripts/run_opt_comsol.py \
+  --n-iter 40 \
+  --n-init 20 \
+  --explore-every 8 \
+  --no-fy \
+  --fresh-start
+# Use when: current optimum is stuck and you want a completely clean slate.
+# --fresh-start backs up the existing JSON to .bak, then starts from scratch.
+# High n-init (20) = lots of random exploration before any exploitation.
+
+# ── 5. ACCURATE VERIFICATION  (slower, more k-points) ────────────────────────
+python scripts/run_opt_comsol.py \
+  --n-iter 10 \
+  --n-init 0 \
+  --n-k 13 \
+  --n-bands-opt 6 \
+  --n-bands-mech 12
+# Use when: confirming top candidates before finalizing a design.
+# n-init=0 means Optuna immediately exploits (no random phase).
+# Higher n-k and n-bands = more accurate band structure.
+# No --no-fy: computes field symmetry for mode identification.
+
+# ── 6. THICKNESS SWEEP  (diagnose t sensitivity) ─────────────────────────────
+python scripts/eval_t_sweep.py --no-fy
+# Use when: want to understand how t affects G_o and G_m at a fixed geometry.
+# Results saved to results/t_sweep.json.
+
+# ── 7. WATCH DASHBOARD  (while run is active in another terminal) ─────────────
+python scripts/watch_progress.py \
+  --n-iter 60 \
+  --interval 60
+# --interval 60: refresh every 60 seconds
+# --once: print once and exit (useful for a quick snapshot)
+
+# ── 8. STANDALONE CHARACTERIZATION  (re-plot best without re-optimizing) ──────
+python scripts/characterize_best.py
+# Loads the best result from results/opt_results_t5d.json, starts COMSOL,
+# runs the 4-study full-BZ sweep + mode profiles, saves:
+#   results/figures/best_characterization.png  (composite 2×3 panel)
+#   results/figures/best_optical.png
+#   results/figures/best_mechanical.png
+#   results/figures/best_geometry.png
+#   results/figures/best_char_data.npz         (NPZ cache for fast re-plotting)
+# On subsequent calls with the same geometry, COMSOL is skipped entirely.
+# ALWAYS run this in a FRESH terminal (not immediately after an optimization run)
+# to avoid COMSOL initial-guess state issues corrupting the band structure.
+#
+# Options:
+#   --no-cache   Force fresh COMSOL sweeps, ignore cached NPZ
+#   --json FILE  Use a different results JSON (default: opt_results_t5d.json)
+#   --mph  FILE  Use a different .mph template
+
+────────────────────────────────────────────────────────────────────────────────
+NOTE: COMSOL MODEL STATE AND CHARACTERIZATION ACCURACY
+────────────────────────────────────────────────────────────────────────────────
+
+COMSOL's eigenfrequency solver reuses the previous stored solution as an initial
+guess.  After many optimization iterations with varying geometries, this cached
+state can cause convergence to wrong modes when a new geometry is solved —
+producing incorrect band structures and gap values.
+
+RULE: always run characterization in a FRESH COMSOL session:
+  1. python scripts/run_opt_comsol.py --n-iter 60 --no-fy --skip-characterization
+  2. (new terminal) python scripts/characterize_best.py
+
+The cache also validates itself: if the stored G_o disagrees with the best-record
+value by more than 3 pp it is automatically rejected and a fresh run is triggered.
+
+================================================================================

@@ -1,0 +1,41 @@
+[
+  {
+    "id": "opt_96e8bc25423d",
+    "u": [
+      0.2801979919917656,
+      0.39438611762924,
+      0.21940017999893743,
+      0.4970445313288106,
+      0.7489799879493166
+    ],
+    "params": {
+      "a": 6.120791967967062e-07,
+      "w": 6.27473752933158e-07,
+      "t": 4.2971439662580865e-07,
+      "hx": 1.4582005399968123e-07,
+      "hy": 2.491133593986432e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.1744943798603197,
+    "G_m": 0.33227296898913206,
+    "f_o_THz": 184.85102533353768,
+    "f_o_nm": 1621.8057620133113,
+    "f_m_GHz": 7.764609585949631,
+    "G_m_largest": 0.33227296898913206,
+    "f_m_largest_GHz": 7.764609585949631,
+    "fy_computed": true,
+    "score": 0.48912471495740356,
+    "status": "success",
+    "optical_gap": 0.1744943798603197,
+    "mechanical_gap": 0.33227296898913206,
+    "optical_center_frequency": 184851025333537.7,
+    "mechanical_center_frequency": 7764609585.949631,
+    "_recompute_note": "G_m/score recomputed with new one-edge breathing_gap definition (2026-07-01), post-hoc from stored fy data",
+    "score_prev": 0.47611398178321024,
+    "require_opt": true,
+    "require_mech": true,
+    "g_min_opt": 0.15,
+    "g_min_mech": 0.2
+  }
+]

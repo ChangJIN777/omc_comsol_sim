@@ -1,0 +1,5707 @@
+[
+  {
+    "id": "opt_2ebe5ffa3659",
+    "u": [
+      0.5,
+      0.3333333333333333,
+      0.2,
+      0.14285714285714285
+    ],
+    "params": {
+      "a": 7e-07,
+      "w": 6e-07,
+      "t": 2.2e-07,
+      "hx": 1.3999999999999998e-07,
+      "hy": 1.4285714285714285e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_336eb90d6c1e",
+    "u": [
+      0.25,
+      0.6666666666666666,
+      0.4,
+      0.2857142857142857
+    ],
+    "params": {
+      "a": 6e-07,
+      "w": 7.5e-07,
+      "t": 2.2e-07,
+      "hx": 2e-07,
+      "hy": 1.857142857142857e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_0b9903152f72",
+    "u": [
+      0.75,
+      0.1111111111111111,
+      0.6000000000000001,
+      0.42857142857142855
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too wide vs beam (sidewall < f_min)",
+      "sidewall 21 nm < min 60 nm",
+      "hy exceeds hy_frac_max of half-width"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 8e-07,
+      "w": 5e-07,
+      "t": 2.2e-07,
+      "hx": 2.6000000000000005e-07,
+      "hy": 2.2857142857142855e-07
+    }
+  },
+  {
+    "id": "opt_e1da2f270e21",
+    "u": [
+      0.125,
+      0.4444444444444444,
+      0.8,
+      0.5714285714285714
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "sidewall 54 nm < min 60 nm",
+      "bridge -90 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 5.5e-07,
+      "w": 6.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.2e-07,
+      "hy": 2.714285714285714e-07
+    }
+  },
+  {
+    "id": "opt_d55ff7c99fe0",
+    "u": [
+      0.625,
+      0.7777777777777777,
+      0.04,
+      0.7142857142857142
+    ],
+    "params": {
+      "a": 7.5e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 9.2e-08,
+      "hy": 3.142857142857142e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_b72c091672d2",
+    "u": [
+      0.375,
+      0.2222222222222222,
+      0.24000000000000002,
+      0.8571428571428571
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too wide vs beam (sidewall < f_min)",
+      "sidewall -82 nm < min 60 nm",
+      "hy exceeds hy_frac_max of half-width"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 6.499999999999999e-07,
+      "w": 5.5e-07,
+      "t": 2.2e-07,
+      "hx": 1.5199999999999998e-07,
+      "hy": 3.571428571428571e-07
+    }
+  },
+  {
+    "id": "opt_f0fed3cbe1f9",
+    "u": [
+      0.875,
+      0.5555555555555556,
+      0.44,
+      0.02040816326530612
+    ],
+    "params": {
+      "a": 8.499999999999999e-07,
+      "w": 7e-07,
+      "t": 2.2e-07,
+      "hx": 2.12e-07,
+      "hy": 1.0612244897959183e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.012521411690939054,
+    "G_m": 0.0,
+    "f_o_THz": 200.77844788683743,
+    "f_o_nm": 1493.1505903909008,
+    "f_m_GHz": 0.0,
+    "score": -16.493342186542822,
+    "status": "success",
+    "optical_gap": 0.012521411690939054,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 200778447886837.44,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_edc5badf4a33",
+    "u": [
+      0.0625,
+      0.8888888888888888,
+      0.6400000000000001,
+      0.16326530612244897
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "bridge -19 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 5.25e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2.72e-07,
+      "hy": 1.4897959183673467e-07
+    }
+  },
+  {
+    "id": "opt_e1c38deb3add",
+    "u": [
+      0.5625,
+      0.037037037037037035,
+      0.8400000000000001,
+      0.30612244897959184
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "sidewall 41 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 7.249999999999999e-07,
+      "w": 4.6666666666666666e-07,
+      "t": 2.2e-07,
+      "hx": 3.3200000000000006e-07,
+      "hy": 1.9183673469387755e-07
+    }
+  },
+  {
+    "id": "opt_01170c4b19ff",
+    "u": [
+      0.3125,
+      0.37037037037037035,
+      0.08,
+      0.4489795918367347
+    ],
+    "params": {
+      "a": 6.249999999999999e-07,
+      "w": 6.166666666666667e-07,
+      "t": 2.2e-07,
+      "hx": 1.04e-07,
+      "hy": 2.346938775510204e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0010559548241698027,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 13.514821767964467,
+    "score": -3.443614516477814,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0010559548241698027,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 13514821767.964466
+  },
+  {
+    "id": "opt_88fc202bdeb5",
+    "u": [
+      0.8125,
+      0.7037037037037037,
+      0.28,
+      0.5918367346938775
+    ],
+    "params": {
+      "a": 8.249999999999999e-07,
+      "w": 7.666666666666666e-07,
+      "t": 2.2e-07,
+      "hx": 1.6399999999999999e-07,
+      "hy": 2.7755102040816325e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.024553359243459836,
+    "G_m": 0.06048652294536506,
+    "f_o_THz": 202.44888794592148,
+    "f_o_nm": 1480.8303520051,
+    "f_m_GHz": 8.789455220551625,
+    "score": -0.9242344545183322,
+    "status": "success",
+    "optical_gap": 0.024553359243459836,
+    "mechanical_gap": 0.06048652294536506,
+    "optical_center_frequency": 202448887945921.5,
+    "mechanical_center_frequency": 8789455220.551624
+  },
+  {
+    "id": "opt_13fb5ee1abe1",
+    "u": [
+      0.1875,
+      0.14814814814814814,
+      0.48000000000000004,
+      0.7346938775510203
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too wide vs beam (sidewall < f_min)",
+      "sidewall -62 nm < min 60 nm",
+      "hy exceeds hy_frac_max of half-width"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 5.75e-07,
+      "w": 5.166666666666667e-07,
+      "t": 2.2e-07,
+      "hx": 2.24e-07,
+      "hy": 3.2040816326530607e-07
+    }
+  },
+  {
+    "id": "opt_9a42ec517444",
+    "u": [
+      0.6875,
+      0.48148148148148145,
+      0.68,
+      0.8775510204081632
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too wide vs beam (sidewall < f_min)",
+      "sidewall -30 nm < min 60 nm",
+      "hy exceeds hy_frac_max of half-width"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 7.75e-07,
+      "w": 6.666666666666666e-07,
+      "t": 2.2e-07,
+      "hx": 2.84e-07,
+      "hy": 3.6326530612244895e-07
+    }
+  },
+  {
+    "id": "opt_6d0e8ffff6f4",
+    "u": [
+      0.4375,
+      0.8148148148148147,
+      0.88,
+      0.04081632653061224
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "bridge -13 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 6.75e-07,
+      "w": 8.166666666666665e-07,
+      "t": 2.2e-07,
+      "hx": 3.44e-07,
+      "hy": 1.1224489795918366e-07
+    }
+  },
+  {
+    "id": "opt_6873cd03a946",
+    "u": [
+      0.9375,
+      0.25925925925925924,
+      0.12,
+      0.18367346938775508
+    ],
+    "params": {
+      "a": 8.75e-07,
+      "w": 5.666666666666666e-07,
+      "t": 2.2e-07,
+      "hx": 1.16e-07,
+      "hy": 1.5510204081632651e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.280225100223083,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 12.526317756679628,
+    "score": -1.4771171109341341,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.280225100223083,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 12526317756.679626
+  },
+  {
+    "id": "opt_dc650bc06e2a",
+    "u": [
+      0.03125,
+      0.5925925925925926,
+      0.32,
+      0.32653061224489793
+    ],
+    "params": {
+      "a": 5.125e-07,
+      "w": 7.166666666666667e-07,
+      "t": 2.2e-07,
+      "hx": 1.76e-07,
+      "hy": 1.9795918367346937e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.03000728030296374,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 11.644545034312523,
+    "score": -1.7536224701792358,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.03000728030296374,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 11644545034.312523
+  },
+  {
+    "id": "opt_8abecfe8e74a",
+    "u": [
+      0.53125,
+      0.9259259259259258,
+      0.52,
+      0.4693877551020408
+    ],
+    "params": {
+      "a": 7.125e-07,
+      "w": 8.666666666666666e-07,
+      "t": 2.2e-07,
+      "hx": 2.36e-07,
+      "hy": 2.408163265306122e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0013592587833270553,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.756201166666383,
+    "score": -1.5878036226388579,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0013592587833270553,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8756201166.666382
+  },
+  {
+    "id": "opt_dd76dcb29b05",
+    "u": [
+      0.9787856628411079,
+      0.2899936871137333,
+      0.16224174691614002,
+      0.5864075334091574
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too wide vs beam (sidewall < f_min)",
+      "sidewall 14 nm < min 60 nm",
+      "hy exceeds hy_frac_max of half-width"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 8.915142651364431e-07,
+      "w": 5.8049715920118e-07,
+      "t": 2.2e-07,
+      "hx": 1.28672524074842e-07,
+      "hy": 2.759222600227472e-07
+    }
+  },
+  {
+    "id": "opt_73ee02972676",
+    "u": [
+      0.8137447473659275,
+      0.7211238386980561,
+      0.30919486611443353,
+      0.7078536446073905
+    ],
+    "params": {
+      "a": 8.25497898946371e-07,
+      "w": 7.745057274141252e-07,
+      "t": 2.2e-07,
+      "hx": 1.7275845983433006e-07,
+      "hy": 3.1235609338221715e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.025797835257471542,
+    "G_m": 0.058667368622583656,
+    "f_o_THz": 203.79977651771026,
+    "f_o_nm": 1471.0146552783287,
+    "f_m_GHz": 8.346103655073023,
+    "score": -0.9277271250948734,
+    "status": "success",
+    "optical_gap": 0.025797835257471542,
+    "mechanical_gap": 0.058667368622583656,
+    "optical_center_frequency": 203799776517710.25,
+    "mechanical_center_frequency": 8346103655.073023
+  },
+  {
+    "id": "opt_acce1337bd97",
+    "u": [
+      0.8095122127419692,
+      0.9939192176398295,
+      0.31215461287222185,
+      0.978987136648571
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "sidewall 55 nm < min 60 nm"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 8.238048850967876e-07,
+      "w": 8.972636479379232e-07,
+      "t": 2.2e-07,
+      "hx": 1.7364638386166656e-07,
+      "hy": 3.936961409945713e-07
+    }
+  },
+  {
+    "id": "opt_5e1b383c96c4",
+    "u": [
+      0.8193801970474697,
+      0.7444031331296543,
+      0.3048273098466947,
+      0.681933336990277
+    ],
+    "params": {
+      "a": 8.277520788189878e-07,
+      "w": 7.849814099083445e-07,
+      "t": 2.2e-07,
+      "hx": 1.7144819295400841e-07,
+      "hy": 3.045800010970831e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.023457783922374825,
+    "G_m": 0.014299097130286513,
+    "f_o_THz": 202.48001947485812,
+    "f_o_nm": 1480.602672686058,
+    "f_m_GHz": 8.377826070909357,
+    "score": -1.2796764878432543,
+    "status": "success",
+    "optical_gap": 0.023457783922374825,
+    "mechanical_gap": 0.014299097130286513,
+    "optical_center_frequency": 202480019474858.12,
+    "mechanical_center_frequency": 8377826070.909357
+  },
+  {
+    "id": "opt_5a07f80e85ba",
+    "u": [
+      0.8191934332541541,
+      0.7116277182702914,
+      0.31803789128945925,
+      0.6804860506958259
+    ],
+    "params": {
+      "a": 8.276773733016616e-07,
+      "w": 7.70232473221631e-07,
+      "t": 2.2e-07,
+      "hx": 1.7541136738683777e-07,
+      "hy": 3.0414581520874777e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.026740559373538454,
+    "G_m": 0.03173110694568835,
+    "f_o_THz": 203.54129132877327,
+    "f_o_nm": 1472.882755350881,
+    "f_m_GHz": 8.352924209749826,
+    "score": -1.1136761437435123,
+    "status": "success",
+    "optical_gap": 0.026740559373538454,
+    "mechanical_gap": 0.03173110694568835,
+    "optical_center_frequency": 203541291328773.28,
+    "mechanical_center_frequency": 8352924209.749826
+  },
+  {
+    "id": "opt_d32e4780f843",
+    "u": [
+      0.6928400020766782,
+      0.6599768600964894,
+      0.38133079100706824,
+      0.6064300821154045
+    ],
+    "params": {
+      "a": 7.771360008306712e-07,
+      "w": 7.469895870434202e-07,
+      "t": 2.2e-07,
+      "hx": 1.9439923730212048e-07,
+      "hy": 2.819290246346214e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_70980fcd0e6a",
+    "u": [
+      0.9054166464755712,
+      0.6920315078469776,
+      0.9815831491109377,
+      0.8156486139454292
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "sidewall 36 nm < min 60 nm",
+      "hy exceeds hy_frac_max of half-width"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 8.621666585902284e-07,
+      "w": 7.614141785311398e-07,
+      "t": 2.2e-07,
+      "hx": 3.744749447332813e-07,
+      "hy": 3.4469458418362875e-07
+    }
+  },
+  {
+    "id": "opt_bc004ed0aa8b",
+    "u": [
+      0.7928237768156489,
+      0.5762152482173746,
+      0.23818342752621008,
+      0.6445113735221387
+    ],
+    "params": {
+      "a": 8.171295107262595e-07,
+      "w": 7.092968616978185e-07,
+      "t": 2.2e-07,
+      "hx": 1.51455028257863e-07,
+      "hy": 2.9335341205664163e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.05023400801230516,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 9.348493365906055,
+    "score": -1.1983630391088607,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.05023400801230516,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 9348493365.906055
+  },
+  {
+    "id": "opt_777386237a13",
+    "u": [
+      0.7060040448997392,
+      0.8378149582007623,
+      0.5420738144458019,
+      0.51611169693436
+    ],
+    "params": {
+      "a": 7.824016179598956e-07,
+      "w": 8.27016731190343e-07,
+      "t": 2.2e-07,
+      "hx": 2.426221443337406e-07,
+      "hy": 2.54833509080308e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.2996336152137144,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 10.265114925014817,
+    "score": -0.5109092733061276,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.2996336152137144,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 10265114925.014816
+  },
+  {
+    "id": "opt_cab91bb01d9d",
+    "u": [
+      0.6628591106562423,
+      0.8377587012964138,
+      0.5181668201544439,
+      0.5215127263462246
+    ],
+    "params": {
+      "a": 7.651436442624968e-07,
+      "w": 8.269914155833862e-07,
+      "t": 2.2e-07,
+      "hx": 2.3545004604633317e-07,
+      "hy": 2.5645381790386735e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.30694129422614075,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 10.425680534552495,
+    "score": -0.5202392933983939,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.30694129422614075,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 10425680534.552494
+  },
+  {
+    "id": "opt_033cd5338ebb",
+    "u": [
+      0.6749858456904545,
+      0.8491147517022134,
+      0.5654723057120313,
+      0.5438109543217291
+    ],
+    "params": {
+      "a": 7.699943382761817e-07,
+      "w": 8.321016382659959e-07,
+      "t": 2.2e-07,
+      "hx": 2.496416917136094e-07,
+      "hy": 2.6314328629651873e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.3153627446202158,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 10.123702706859204,
+    "score": -0.48693260933242843,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.3153627446202158,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 10123702706.859203
+  },
+  {
+    "id": "opt_32e87ef1b950",
+    "u": [
+      0.627474184523008,
+      0.8450886014556639,
+      0.5582753323322294,
+      0.514832884216255
+    ],
+    "params": {
+      "a": 7.509896738092032e-07,
+      "w": 8.302898706550487e-07,
+      "t": 2.2e-07,
+      "hx": 2.474825996996688e-07,
+      "hy": 2.544498652648765e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.002497270441198369,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 12.004626398410517,
+    "score": -2.1804283428029927,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.002497270441198369,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 12004626398.410517
+  },
+  {
+    "id": "opt_d28b03f312f1",
+    "u": [
+      0.47375773288478346,
+      0.9724543408540034,
+      0.6978574346297148,
+      0.3845954827392529
+    ],
+    "params": {
+      "a": 6.895030931539133e-07,
+      "w": 8.876044533843015e-07,
+      "t": 2.2e-07,
+      "hx": 2.8935723038891444e-07,
+      "hy": 2.1537864482177587e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.3802366714360148,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 5.935423465018349,
+    "score": -0.41976332856398535,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.3802366714360148,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 5935423465.018349
+  },
+  {
+    "id": "opt_1a85c8589045",
+    "u": [
+      0.4631712003351634,
+      0.9933522514192136,
+      0.7000198876346182,
+      0.37809517686139305
+    ],
+    "params": {
+      "a": 6.852684801340653e-07,
+      "w": 8.970085131386461e-07,
+      "t": 2.2e-07,
+      "hx": 2.9000596629038547e-07,
+      "hy": 2.1342855305841792e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.3792288902959867,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 5.888673943224499,
+    "score": -0.42077110970401344,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.3792288902959867,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 5888673943.224499
+  },
+  {
+    "id": "opt_a2318385a8b7",
+    "u": [
+      0.45750501169117846,
+      0.9456807460269165,
+      0.7281284772758353,
+      0.3438383003273739
+    ],
+    "params": {
+      "a": 6.830020046764714e-07,
+      "w": 8.755563357121124e-07,
+      "t": 2.2e-07,
+      "hx": 2.9843854318275056e-07,
+      "hy": 2.0315149009821217e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_5312527d193c",
+    "u": [
+      0.571683209646272,
+      0.9787727979733872,
+      0.7424790938071559,
+      0.40774819219201214
+    ],
+    "params": {
+      "a": 7.286732838585087e-07,
+      "w": 8.904477590880242e-07,
+      "t": 2.2e-07,
+      "hx": 3.0274372814214673e-07,
+      "hy": 2.2232445765760363e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.3698812646122235,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 5.83672553194298,
+    "score": -0.4301187353877767,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.3698812646122235,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 5836725531.94298
+  },
+  {
+    "id": "opt_8a768a606d03",
+    "u": [
+      0.3827912759338251,
+      0.9944472634439866,
+      0.7404389585633562,
+      0.23182908937427033
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "bridge 49 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 6.5311651037353e-07,
+      "w": 8.975012685497939e-07,
+      "t": 2.2e-07,
+      "hx": 3.021316875690069e-07,
+      "hy": 1.695487268122811e-07
+    }
+  },
+  {
+    "id": "opt_adbe4d787e8f",
+    "u": [
+      0.5731247411304099,
+      0.90963575089772,
+      0.6410746598418099,
+      0.3784130362681344
+    ],
+    "params": {
+      "a": 7.29249896452164e-07,
+      "w": 8.59336087903974e-07,
+      "t": 2.2e-07,
+      "hx": 2.723223979525429e-07,
+      "hy": 2.1352391088044031e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_3b1e7f6a36f8",
+    "u": [
+      0.49069444834134435,
+      0.961867344223145,
+      0.7669760652522278,
+      0.3887531384314198
+    ],
+    "params": {
+      "a": 6.962777793365377e-07,
+      "w": 8.828403049004152e-07,
+      "t": 2.2e-07,
+      "hx": 3.1009281957566837e-07,
+      "hy": 2.1662594152942592e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_8cead181a794",
+    "u": [
+      0.3341368364719647,
+      0.8787024923562516,
+      0.8850900649796738,
+      0.2690268270871736
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "bridge -57 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 6.336547345887858e-07,
+      "w": 8.454161215603133e-07,
+      "t": 2.2e-07,
+      "hx": 3.4552701949390214e-07,
+      "hy": 1.8070804812615208e-07
+    }
+  },
+  {
+    "id": "opt_cac9508f7713",
+    "u": [
+      0.592693889178288,
+      0.7811623071973879,
+      0.6850731425607334,
+      0.3785251285006063
+    ],
+    "params": {
+      "a": 7.370775556713152e-07,
+      "w": 8.015230382388245e-07,
+      "t": 2.2e-07,
+      "hx": 2.8552194276822e-07,
+      "hy": 2.135575385501819e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_231f88bbff65",
+    "u": [
+      0.23652436805426952,
+      0.8918557345328884,
+      0.6034879256133292,
+      0.44399719550079864
+    ],
+    "params": {
+      "a": 5.946097472217078e-07,
+      "w": 8.513350805397997e-07,
+      "t": 2.2e-07,
+      "hx": 2.6104637768399876e-07,
+      "hy": 2.3319915865023957e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.6245162266238401,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 10.778634683024746,
+    "score": -0.266424568817517,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.6245162266238401,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 10778634683.024746
+  },
+  {
+    "id": "opt_065b503d1427",
+    "u": [
+      0.2413415231397667,
+      0.9021736632593198,
+      0.8204599198049187,
+      0.10590258565638311
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "bridge -56 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 5.965366092559067e-07,
+      "w": 8.559781484666938e-07,
+      "t": 2.2e-07,
+      "hx": 3.261379759414756e-07,
+      "hy": 1.317707756969149e-07
+    }
+  },
+  {
+    "id": "opt_3c92694704f3",
+    "u": [
+      0.1750506443756436,
+      0.999541506618997,
+      0.6165969168715265,
+      0.4311998458127122
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "bridge 40 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 5.700202577502575e-07,
+      "w": 8.997936779785487e-07,
+      "t": 2.2e-07,
+      "hx": 2.6497907506145797e-07,
+      "hy": 2.2935995374381364e-07
+    }
+  },
+  {
+    "id": "opt_aa3b15ea7d80",
+    "u": [
+      0.4923813398643953,
+      0.9447220384149018,
+      0.5774310641668154,
+      0.26288731059569426
+    ],
+    "params": {
+      "a": 6.969525359457581e-07,
+      "w": 8.751249172867058e-07,
+      "t": 2.2e-07,
+      "hx": 2.532293192500446e-07,
+      "hy": 1.7886619317870828e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.3619107018220878,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 6.888536009963644,
+    "score": -0.43808929817791237,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.3619107018220878,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 6888536009.963644
+  },
+  {
+    "id": "opt_0377d76f0d81",
+    "u": [
+      0.4359180577598979,
+      0.9403530829290522,
+      0.6807921433721855,
+      0.21815683442449457
+    ],
+    "params": {
+      "a": 6.743672231039592e-07,
+      "w": 8.731588873180734e-07,
+      "t": 2.2e-07,
+      "hx": 2.8423764301165563e-07,
+      "hy": 1.6544705032734836e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_17df0b2710c7",
+    "u": [
+      0.5133634802410973,
+      0.8859414927362987,
+      0.5944737509566667,
+      0.2806033762102583
+    ],
+    "params": {
+      "a": 7.053453920964389e-07,
+      "w": 8.486736717313344e-07,
+      "t": 2.2e-07,
+      "hx": 2.58342125287e-07,
+      "hy": 1.841810128630775e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.3515722091395471,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 6.911221327598232,
+    "score": -0.44842779086045303,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.3515722091395471,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 6911221327.598232
+  },
+  {
+    "id": "opt_fed67ae9b0b9",
+    "u": [
+      0.38974350944827757,
+      0.9543849931010742,
+      0.7829156238129487,
+      0.47576320745585315
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "bridge 26 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 6.55897403779311e-07,
+      "w": 8.794732468954834e-07,
+      "t": 2.2e-07,
+      "hx": 3.1487468714388456e-07,
+      "hy": 2.427289622367559e-07
+    }
+  },
+  {
+    "id": "opt_1311eeaa91d9",
+    "u": [
+      0.28957447495525496,
+      0.7862474103450829,
+      0.42936188941771647,
+      0.4090793195834096
+    ],
+    "params": {
+      "a": 6.158297899821019e-07,
+      "w": 8.038113346552873e-07,
+      "t": 2.2e-07,
+      "hx": 2.0880856682531493e-07,
+      "hy": 2.2272379587502286e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_e6d382885bc5",
+    "u": [
+      0.4664870616213861,
+      0.8887196276813585,
+      0.7178346366686381,
+      0.34507116569052615
+    ],
+    "params": {
+      "a": 6.865948246485544e-07,
+      "w": 8.499238324566113e-07,
+      "t": 2.2e-07,
+      "hx": 2.9535039100059144e-07,
+      "hy": 2.0352134970715783e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_6b16d3a73899",
+    "u": [
+      0.1111425856849329,
+      0.9539830640500004,
+      0.6449675600706039,
+      0.3080099359086877
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "bridge -3 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 5.444570342739732e-07,
+      "w": 8.792923788225002e-07,
+      "t": 2.2e-07,
+      "hx": 2.734902680211812e-07,
+      "hy": 1.924029807726063e-07
+    }
+  },
+  {
+    "id": "opt_6d86d9b5ad33",
+    "u": [
+      0.5350155098715136,
+      0.7995809551625868,
+      0.862098418878089,
+      0.23593230470118606
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "bridge 37 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 7.140062039486053e-07,
+      "w": 8.09811429823164e-07,
+      "t": 2.2e-07,
+      "hx": 3.386295256634267e-07,
+      "hy": 1.707796914103558e-07
+    }
+  },
+  {
+    "id": "opt_34aae8c3fde2",
+    "u": [
+      0.40340465029157446,
+      0.875326247498045,
+      0.6058359989047161,
+      0.10127230095229461
+    ],
+    "params": {
+      "a": 6.613618601166297e-07,
+      "w": 8.438968113741202e-07,
+      "t": 2.2e-07,
+      "hx": 2.617507996714148e-07,
+      "hy": 1.3038169028568838e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_252c698f7d65",
+    "u": [
+      0.35813955182653856,
+      0.9932769514071631,
+      0.4724653236627082,
+      0.4538363957203922
+    ],
+    "params": {
+      "a": 6.432558207306153e-07,
+      "w": 8.969746281332234e-07,
+      "t": 2.2e-07,
+      "hx": 2.2173959709881245e-07,
+      "hy": 2.3615091871611765e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.028576006920276623,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 9.325593847073982,
+    "score": -1.3591477011476645,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.028576006920276623,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 9325593847.073982
+  },
+  {
+    "id": "opt_30a4eeb8a40a",
+    "u": [
+      0.517132739345323,
+      0.9345535283862334,
+      0.5771035308360568,
+      0.285509415226828
+    ],
+    "params": {
+      "a": 7.068530957381291e-07,
+      "w": 8.70549087773805e-07,
+      "t": 2.2e-07,
+      "hx": 2.53131059250817e-07,
+      "hy": 1.856528245680484e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_9efd3912a36e",
+    "u": [
+      0.6119566211483914,
+      0.8725148837620813,
+      0.6879883228515723,
+      0.25860798203076446
+    ],
+    "params": {
+      "a": 7.447826484593566e-07,
+      "w": 8.426316976929366e-07,
+      "t": 2.2e-07,
+      "hx": 2.863964968554717e-07,
+      "hy": 1.7758239460922933e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.37116022027520507,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 6.519012073540373,
+    "score": -0.4288397797247951,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.37116022027520507,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 6519012073.540373
+  },
+  {
+    "id": "opt_80e9c12fb40a",
+    "u": [
+      0.9,
+      0.6,
+      0.933,
+      0.4
+    ],
+    "params": {
+      "a": 8.6e-07,
+      "w": 7.199999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.5990000000000004e-07,
+      "hy": 2.1999999999999998e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.2358499473162825,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 5.250798276170935,
+    "score": -0.5641500526837177,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.2358499473162825,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 5250798276.170935
+  },
+  {
+    "id": "opt_a4362e208e2c",
+    "u": [
+      0.875,
+      0.622,
+      0.9,
+      0.433
+    ],
+    "params": {
+      "a": 8.499999999999999e-07,
+      "w": 7.299e-07,
+      "t": 2.2e-07,
+      "hx": 3.5000000000000004e-07,
+      "hy": 2.299e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.2056159146575767,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 5.334695587470409,
+    "score": -0.5943840853424235,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.2056159146575767,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 5334695587.470408
+  },
+  {
+    "id": "opt_39ba67039627",
+    "u": [
+      0.85,
+      0.556,
+      0.867,
+      0.333
+    ],
+    "params": {
+      "a": 8.4e-07,
+      "w": 7.002e-07,
+      "t": 2.2e-07,
+      "hx": 3.4010000000000003e-07,
+      "hy": 1.9989999999999998e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.2795996689776453,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 5.732325355284149,
+    "score": -0.5204003310223548,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.2795996689776453,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 5732325355.284149
+  },
+  {
+    "id": "opt_e8251ee5b6f5",
+    "u": [
+      0.925,
+      0.667,
+      0.95,
+      0.467
+    ],
+    "params": {
+      "a": 8.699999999999999e-07,
+      "w": 7.501499999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.65e-07,
+      "hy": 2.401e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.19773312101584428,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 5.067759938919747,
+    "score": -0.602369653790732,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.19773312101584428,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 5067759938.919746
+  },
+  {
+    "id": "opt_e21f7742e927",
+    "u": [
+      0.825,
+      0.6,
+      0.867,
+      0.467
+    ],
+    "params": {
+      "a": 8.299999999999999e-07,
+      "w": 7.199999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.4010000000000003e-07,
+      "hy": 2.401e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.14661762914163673,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 5.3355075714378986,
+    "score": -0.71037592122756,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.14661762914163673,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 5335507571.437899
+  },
+  {
+    "id": "opt_50c02d495c99",
+    "u": [
+      0.875,
+      0.778,
+      0.9,
+      0.567
+    ],
+    "params": {
+      "a": 8.499999999999999e-07,
+      "w": 8.001e-07,
+      "t": 2.2e-07,
+      "hx": 3.5000000000000004e-07,
+      "hy": 2.7009999999999996e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.1478723905492752,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 5.143332205787933,
+    "score": -0.7064733627916708,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.1478723905492752,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 5143332205.787933
+  },
+  {
+    "id": "opt_ecdbbd88b4a8",
+    "u": [
+      0.9,
+      0.689,
+      0.933,
+      0.5
+    ],
+    "params": {
+      "a": 8.6e-07,
+      "w": 7.600499999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.5990000000000004e-07,
+      "hy": 2.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.20816153278727198,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 7.688292954499661,
+    "score": -0.5918384672127281,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.20816153278727198,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 7688292954.4996605
+  },
+  {
+    "id": "opt_1e04b98c50ca",
+    "u": [
+      0.888,
+      0.644,
+      0.917,
+      0.433
+    ],
+    "params": {
+      "a": 8.552e-07,
+      "w": 7.398e-07,
+      "t": 2.2e-07,
+      "hx": 3.551e-07,
+      "hy": 2.299e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.22445772397396588,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 5.2970422609074586,
+    "score": -0.5755422760260342,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.22445772397396588,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 5297042260.907458
+  },
+  {
+    "id": "opt_0fcfc999ef0a",
+    "u": [
+      0.4,
+      0.7777777777777778,
+      0.2,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 6.6e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 1.3999999999999998e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.00823403198368672,
+    "G_m": 0.2261412374816905,
+    "f_o_THz": 225.06932938638008,
+    "f_o_nm": 1332.0004943247577,
+    "f_m_GHz": 9.483511101290457,
+    "score": -0.5546797672130387,
+    "status": "success",
+    "optical_gap": 0.00823403198368672,
+    "mechanical_gap": 0.2261412374816905,
+    "optical_center_frequency": 225069329386380.1,
+    "mechanical_center_frequency": 9483511101.290457
+  },
+  {
+    "id": "opt_acf9d43e6a26",
+    "u": [
+      0.4,
+      0.7777777777777778,
+      0.3,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 6.6e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 1.7000000000000001e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_b173a4d3f7f0",
+    "u": [
+      0.4,
+      0.7777777777777778,
+      0.4,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 6.6e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.28880853016934427,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.265446875008067,
+    "score": -0.5111914698306559,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.28880853016934427,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8265446875.008066
+  },
+  {
+    "id": "opt_c1edc6e66884",
+    "u": [
+      0.4,
+      0.7777777777777778,
+      0.5,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 6.6e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2.3e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_c2056296f8d0",
+    "u": [
+      0.4,
+      0.7777777777777778,
+      0.6,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 6.6e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2.6e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.3540653853806146,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 6.879858422258742,
+    "score": -0.44593461461938555,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.3540653853806146,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 6879858422.258741
+  },
+  {
+    "id": "opt_0f0278eef13b",
+    "u": [
+      0.45,
+      0.7777777777777778,
+      0.2,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 6.8e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 1.3999999999999998e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0646763941054388,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.71875485909692,
+    "score": -1.1015731721406916,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0646763941054388,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8718754859.09692
+  },
+  {
+    "id": "opt_d4409c70d860",
+    "u": [
+      0.45,
+      0.7777777777777778,
+      0.3,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 6.8e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 1.7000000000000001e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.25020091885423534,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.990477601873843,
+    "score": -0.5497990811457648,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.25020091885423534,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8990477601.873842
+  },
+  {
+    "id": "opt_4f82636e8d9e",
+    "u": [
+      0.45,
+      0.7777777777777778,
+      0.4,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 6.8e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.29407845653433695,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.35087483549464,
+    "score": -0.5059215434656632,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.29407845653433695,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8350874835.494638
+  },
+  {
+    "id": "opt_4e665aca1ccf",
+    "u": [
+      0.45,
+      0.7777777777777778,
+      0.5,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 6.8e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2.3e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_5ef2a97824de",
+    "u": [
+      0.45,
+      0.7777777777777778,
+      0.6,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 6.8e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2.6e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_65b1073718bc",
+    "u": [
+      0.5,
+      0.7777777777777778,
+      0.2,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 1.3999999999999998e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.04556156001215717,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.654899917327867,
+    "score": -1.2314630749054136,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.04556156001215717,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8654899917.327868
+  },
+  {
+    "id": "opt_fd69a2b4c9d2",
+    "u": [
+      0.5,
+      0.7777777777777778,
+      0.3,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 1.7000000000000001e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.2590606709688156,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.971250246700123,
+    "score": -0.5409393290311846,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.2590606709688156,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8971250246.700123
+  },
+  {
+    "id": "opt_910e9cbdf608",
+    "u": [
+      0.5,
+      0.7777777777777778,
+      0.4,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_1bc9078c94b4",
+    "u": [
+      0.5,
+      0.7777777777777778,
+      0.5,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2.3e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_f977e3983f47",
+    "u": [
+      0.5,
+      0.7777777777777778,
+      0.6,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2.6e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_57aa448783d3",
+    "u": [
+      0.525,
+      0.7777777777777778,
+      0.2,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.1e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 1.3999999999999998e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.18017336538955395,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 9.651220133047643,
+    "score": -0.6276885434099689,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.18017336538955395,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 9651220133.047642
+  },
+  {
+    "id": "opt_64da06970904",
+    "u": [
+      0.525,
+      0.7777777777777778,
+      0.3,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.1e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 1.7000000000000001e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.25804045404747145,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.976912368156155,
+    "score": -0.5419595459525287,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.25804045404747145,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8976912368.156155
+  },
+  {
+    "id": "opt_2f8009a9712a",
+    "u": [
+      0.525,
+      0.7777777777777778,
+      0.4,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.1e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_e4318827adfb",
+    "u": [
+      0.525,
+      0.7777777777777778,
+      0.5,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.1e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2.3e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_10982778e4b7",
+    "u": [
+      0.525,
+      0.7777777777777778,
+      0.6,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.1e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2.6e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_3650a0fbc715",
+    "u": [
+      0.55,
+      0.7777777777777778,
+      0.2,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.2e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 1.3999999999999998e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.18719203777552762,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 9.613896509061703,
+    "score": -0.6160888401513428,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.18719203777552762,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 9613896509.061703
+  },
+  {
+    "id": "opt_7d90a6943c9c",
+    "u": [
+      0.55,
+      0.7777777777777778,
+      0.3,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.2e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 1.7000000000000001e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.25778071513459233,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.987432969504694,
+    "score": -0.5422192848654078,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.25778071513459233,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8987432969.504692
+  },
+  {
+    "id": "opt_89cd63de3222",
+    "u": [
+      0.55,
+      0.7777777777777778,
+      0.4,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.2e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_9b9edbbe6bb9",
+    "u": [
+      0.55,
+      0.7777777777777778,
+      0.5,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.2e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2.3e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_756006c4380b",
+    "u": [
+      0.55,
+      0.7777777777777778,
+      0.6,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.2e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2.6e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_480bf6c88b8a",
+    "u": [
+      0.6,
+      0.7777777777777778,
+      0.2,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.399999999999999e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 1.3999999999999998e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.07595719852862273,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.927070504652693,
+    "score": -1.0317751334087277,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.07595719852862273,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8927070504.652693
+  },
+  {
+    "id": "opt_af205cf2250b",
+    "u": [
+      0.6,
+      0.7777777777777778,
+      0.3,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.399999999999999e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 1.7000000000000001e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.2573084413112663,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.99726684505339,
+    "score": -0.5426915586887339,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.2573084413112663,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8997266845.05339
+  },
+  {
+    "id": "opt_83ddacebb8fa",
+    "u": [
+      0.6,
+      0.7777777777777778,
+      0.4,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.399999999999999e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_6c955b632007",
+    "u": [
+      0.6,
+      0.7777777777777778,
+      0.5,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.399999999999999e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2.3e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0072184733430099915,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 9.342450295302532,
+    "score": -1.536075867060985,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0072184733430099915,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 9342450295.302532
+  },
+  {
+    "id": "opt_c3a7b09ae746",
+    "u": [
+      0.6,
+      0.7777777777777778,
+      0.6,
+      0.3333333333333333
+    ],
+    "params": {
+      "a": 7.399999999999999e-07,
+      "w": 8e-07,
+      "t": 2.2e-07,
+      "hx": 2.6e-07,
+      "hy": 2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_a47d725e0848",
+    "u": [
+      0.5,
+      0.8888888888888888,
+      0.3,
+      0.4666666666666667
+    ],
+    "params": {
+      "a": 7e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 1.7000000000000001e-07,
+      "hy": 2.4e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_419754946997",
+    "u": [
+      0.5,
+      0.8888888888888888,
+      0.3,
+      0.6
+    ],
+    "params": {
+      "a": 7e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 1.7000000000000001e-07,
+      "hy": 2.7999999999999997e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.06633018087455791,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 7.9508898789725215,
+    "score": -1.0910222300260102,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.06633018087455791,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 7950889878.972521
+  },
+  {
+    "id": "opt_d21c956f7375",
+    "u": [
+      0.5,
+      0.8888888888888888,
+      0.4,
+      0.4666666666666667
+    ],
+    "params": {
+      "a": 7e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2e-07,
+      "hy": 2.4e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_5466a1cda08a",
+    "u": [
+      0.5,
+      0.8888888888888888,
+      0.4,
+      0.6
+    ],
+    "params": {
+      "a": 7e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2e-07,
+      "hy": 2.7999999999999997e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.34021960165106885,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 11.084748855655018,
+    "score": -0.6362824103256619,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.34021960165106885,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 11084748855.655018
+  },
+  {
+    "id": "opt_f09ae45724ec",
+    "u": [
+      0.5,
+      0.8888888888888888,
+      0.5,
+      0.4666666666666667
+    ],
+    "params": {
+      "a": 7e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2.3e-07,
+      "hy": 2.4e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_42be72810307",
+    "u": [
+      0.5,
+      0.8888888888888888,
+      0.5,
+      0.6
+    ],
+    "params": {
+      "a": 7e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2.3e-07,
+      "hy": 2.7999999999999997e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_755137146faf",
+    "u": [
+      0.55,
+      0.8888888888888888,
+      0.3,
+      0.4666666666666667
+    ],
+    "params": {
+      "a": 7.2e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 1.7000000000000001e-07,
+      "hy": 2.4e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.23477135322783965,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.599011570809628,
+    "score": -0.5652286467721606,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.23477135322783965,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8599011570.809628
+  },
+  {
+    "id": "opt_bea4a7870e66",
+    "u": [
+      0.55,
+      0.8888888888888888,
+      0.3,
+      0.6
+    ],
+    "params": {
+      "a": 7.2e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 1.7000000000000001e-07,
+      "hy": 2.7999999999999997e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.06926144961981558,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 8.381242504962248,
+    "score": -1.072589921490425,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.06926144961981558,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 8381242504.962248
+  },
+  {
+    "id": "opt_b7d799b1dc94",
+    "u": [
+      0.55,
+      0.8888888888888888,
+      0.4,
+      0.4666666666666667
+    ],
+    "params": {
+      "a": 7.2e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2e-07,
+      "hy": 2.4e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_a5c2b1806a6e",
+    "u": [
+      0.55,
+      0.8888888888888888,
+      0.4,
+      0.6
+    ],
+    "params": {
+      "a": 7.2e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2e-07,
+      "hy": 2.7999999999999997e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.3355815037974636,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 10.99875041437171,
+    "score": -0.6140438547336858,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.3355815037974636,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 10998750414.37171
+  },
+  {
+    "id": "opt_6e3cfd509737",
+    "u": [
+      0.55,
+      0.8888888888888888,
+      0.5,
+      0.4666666666666667
+    ],
+    "params": {
+      "a": 7.2e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2.3e-07,
+      "hy": 2.4e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_bc71f5ea5000",
+    "u": [
+      0.55,
+      0.8888888888888888,
+      0.5,
+      0.6
+    ],
+    "params": {
+      "a": 7.2e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2.3e-07,
+      "hy": 2.7999999999999997e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_7f3f7ee00cea",
+    "u": [
+      0.4925,
+      0.9444444444444444,
+      0.5766666666666667,
+      0.2633333333333333
+    ],
+    "params": {
+      "a": 6.97e-07,
+      "w": 8.749999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2.53e-07,
+      "hy": 1.79e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.3613405225312731,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 6.892732809220805,
+    "score": -0.4386594774687271,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.3613405225312731,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 6892732809.220804
+  },
+  {
+    "id": "opt_abf73e11a481",
+    "u": [
+      0.5125,
+      0.8866666666666667,
+      0.5933333333333334,
+      0.28
+    ],
+    "params": {
+      "a": 7.049999999999999e-07,
+      "w": 8.49e-07,
+      "t": 2.2e-07,
+      "hx": 2.58e-07,
+      "hy": 1.84e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 0.0,
+    "score": -16.6,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_2b84a75da59e",
+    "u": [
+      0.475,
+      0.9733333333333334,
+      0.6966666666666667,
+      0.38333333333333336
+    ],
+    "params": {
+      "a": 6.9e-07,
+      "w": 8.88e-07,
+      "t": 2.2e-07,
+      "hx": 2.89e-07,
+      "hy": 2.15e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0,
+    "G_m": 0.3808347401040206,
+    "f_o_THz": 193.41448903225805,
+    "f_o_nm": 1550.0,
+    "f_m_GHz": 5.943866082141315,
+    "score": -0.4191652598959796,
+    "status": "success",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.3808347401040206,
+    "optical_center_frequency": 193414489032258.06,
+    "mechanical_center_frequency": 5943866082.1413145
+  },
+  {
+    "id": "opt_b4c2ce5ebffc",
+    "u": [
+      0.6473100041226458,
+      0.973271139498344,
+      0.7079699252102559,
+      0.26043171997428577
+    ],
+    "params": {
+      "a": 7.589240016490582e-07,
+      "w": 8.879720127742547e-07,
+      "t": 2.2e-07,
+      "hx": 2.923909775630768e-07,
+      "hy": 1.781295159922857e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.015302533046215504,
+    "G_m": 0.3760605579902978,
+    "f_o_THz": 206.61567967373006,
+    "f_o_nm": 1450.966637543708,
+    "f_m_GHz": 6.275533640746725,
+    "score": -0.30021703992007354,
+    "status": "success",
+    "optical_gap": 0.015302533046215504,
+    "mechanical_gap": 0.3760605579902978,
+    "optical_center_frequency": 206615679673730.06,
+    "mechanical_center_frequency": 6275533640.746725
+  },
+  {
+    "id": "opt_6b0af397106f",
+    "u": [
+      0.4274396318857275,
+      0.9777457060492893,
+      0.6589785423767709,
+      0.2505622041870958
+    ],
+    "params": {
+      "a": 6.70975852754291e-07,
+      "w": 8.899855677221802e-07,
+      "t": 2.2e-07,
+      "hx": 2.776935627130312e-07,
+      "hy": 1.7516866125612875e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.013865105900521667,
+    "G_m": 0.0,
+    "f_o_THz": 223.71801554311062,
+    "f_o_nm": 1340.0461168592378,
+    "f_m_GHz": 0.0,
+    "score": -16.528153990513996,
+    "status": "success",
+    "optical_gap": 0.013865105900521667,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 223718015543110.62,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_40e7aeefab66",
+    "u": [
+      0.6421808413683454,
+      0.9767439876115562,
+      0.7024517519862041,
+      0.18674376739254958
+    ],
+    "params": {
+      "a": 7.568723365473381e-07,
+      "w": 8.895347944252003e-07,
+      "t": 2.2e-07,
+      "hx": 2.9073552559586125e-07,
+      "hy": 1.5602313021776488e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.01256115175398316,
+    "G_m": 0.05074227067279814,
+    "f_o_THz": 205.9840436977048,
+    "f_o_nm": 1455.4159274587562,
+    "f_m_GHz": 8.741578524208325,
+    "score": -1.0933672008719453,
+    "status": "success",
+    "optical_gap": 0.01256115175398316,
+    "mechanical_gap": 0.05074227067279814,
+    "optical_center_frequency": 205984043697704.8,
+    "mechanical_center_frequency": 8741578524.208324
+  },
+  {
+    "id": "opt_92bc0e4ae617",
+    "u": [
+      0.4694404385676974,
+      0.9230133361306291,
+      0.7655651690533258,
+      0.36737609086544837
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 6.87776175427079e-07,
+      "w": 8.65356001258783e-07,
+      "t": 2.2e-07,
+      "hx": 3.0966955071599775e-07,
+      "hy": 2.102128272596345e-07
+    }
+  },
+  {
+    "id": "opt_66a339e26e38",
+    "u": [
+      0.25808046120487926,
+      0.8588366920286209,
+      0.6622422627017939,
+      0.29867745553843866
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "bridge 46 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 6.032321844819517e-07,
+      "w": 8.364765114128794e-07,
+      "t": 2.2e-07,
+      "hx": 2.786726788105382e-07,
+      "hy": 1.896032366615316e-07
+    }
+  },
+  {
+    "id": "opt_c5dbb187535d",
+    "u": [
+      0.651227768695268,
+      0.8187541316187236,
+      0.5553397492496324,
+      0.20559338710202768
+    ],
+    "params": {
+      "a": 7.604911074781071e-07,
+      "w": 8.184393592284255e-07,
+      "t": 2.2e-07,
+      "hx": 2.466019247748897e-07,
+      "hy": 1.616780161306083e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.014098697375359145,
+    "G_m": 0.0,
+    "f_o_THz": 206.41970253901223,
+    "f_o_nm": 1452.3442012195555,
+    "f_m_GHz": 0.0,
+    "score": -16.486129656526405,
+    "status": "success",
+    "optical_gap": 0.014098697375359145,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 206419702539012.25,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_29ca1c634607",
+    "u": [
+      0.7543903880894085,
+      0.920763891546064,
+      0.7444363141960303,
+      0.2570945847890119
+    ],
+    "params": {
+      "a": 8.017561552357633e-07,
+      "w": 8.643437511957287e-07,
+      "t": 2.2e-07,
+      "hx": 3.033308942588091e-07,
+      "hy": 1.7712837543670357e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.015597729432856816,
+    "G_m": 0.36848349955680887,
+    "f_o_THz": 199.86580987928414,
+    "f_o_nm": 1499.9686949011939,
+    "f_m_GHz": 6.289651638982312,
+    "score": -0.2982278174604245,
+    "status": "success",
+    "optical_gap": 0.015597729432856816,
+    "mechanical_gap": 0.36848349955680887,
+    "optical_center_frequency": 199865809879284.16,
+    "mechanical_center_frequency": 6289651638.982311
+  },
+  {
+    "id": "opt_30cb6eb49418",
+    "u": [
+      0.3596424282600612,
+      0.9189127636787097,
+      0.7470649195421688,
+      0.24765889090933701
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "bridge 36 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 6.438569713040244e-07,
+      "w": 8.635107436554192e-07,
+      "t": 2.2e-07,
+      "hx": 3.0411947586265065e-07,
+      "hy": 1.742976672728011e-07
+    }
+  },
+  {
+    "id": "opt_c840f199e0a4",
+    "u": [
+      0.7262175456138966,
+      0.9635135904786576,
+      0.6309782376952625,
+      0.4081482444925433
+    ],
+    "params": {
+      "a": 7.904870182455587e-07,
+      "w": 8.835811157153959e-07,
+      "t": 2.2e-07,
+      "hx": 2.6929347130857875e-07,
+      "hy": 2.2244447334776298e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.020885862603336903,
+    "G_m": 0.0,
+    "f_o_THz": 202.16419620709686,
+    "f_o_nm": 1482.9156874686792,
+    "f_m_GHz": 0.0,
+    "score": -16.424844596060645,
+    "status": "success",
+    "optical_gap": 0.020885862603336903,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 202164196207096.88,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_2bba79209f73",
+    "u": [
+      0.7706893659206201,
+      0.7380212344704588,
+      0.8178070527981,
+      0.14223487969167936
+    ],
+    "params": {
+      "a": 8.082757463682481e-07,
+      "w": 7.821095555117064e-07,
+      "t": 2.2e-07,
+      "hx": 3.2534211583942995e-07,
+      "hy": 1.426704639075038e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.012335386685654086,
+    "G_m": 0.0,
+    "f_o_THz": 199.98368458328144,
+    "f_o_nm": 1499.0845809481727,
+    "f_m_GHz": 0.0,
+    "score": -16.494331907965506,
+    "status": "success",
+    "optical_gap": 0.012335386685654086,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 199983684583281.44,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_7e551f76bec8",
+    "u": [
+      0.4229580408636567,
+      0.9373750509847645,
+      0.7098070096271858,
+      0.36789453064462074
+    ],
+    "params": {
+      "a": 6.691832163454626e-07,
+      "w": 8.718187729431441e-07,
+      "t": 2.2e-07,
+      "hx": 2.9294210288815574e-07,
+      "hy": 2.1036835919338622e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.01868696450840907,
+    "G_m": 0.0,
+    "f_o_THz": 227.32790458817612,
+    "f_o_nm": 1318.7666447860838,
+    "f_m_GHz": 0.0,
+    "score": -16.50029003517157,
+    "status": "success",
+    "optical_gap": 0.01868696450840907,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 227327904588176.12,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_18436fd5ea36",
+    "u": [
+      0.5766910237398738,
+      0.9747047734250185,
+      0.6912302559663008,
+      0.2661869351544545
+    ],
+    "params": {
+      "a": 7.306764094959495e-07,
+      "w": 8.886171480412583e-07,
+      "t": 2.2e-07,
+      "hx": 2.8736907678989025e-07,
+      "hy": 1.7985608054633635e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.015597716888552354,
+    "G_m": 0.3821158645116806,
+    "f_o_THz": 211.90271919392893,
+    "f_o_nm": 1414.7645633826728,
+    "f_m_GHz": 6.252516853070452,
+    "score": -0.300644839474855,
+    "status": "success",
+    "optical_gap": 0.015597716888552354,
+    "mechanical_gap": 0.3821158645116806,
+    "optical_center_frequency": 211902719193928.94,
+    "mechanical_center_frequency": 6252516853.070451
+  },
+  {
+    "id": "opt_fdd58400dfe9",
+    "u": [
+      0.5767872528753394,
+      0.9640413654537375,
+      0.681473836386769,
+      0.269135856953829
+    ],
+    "params": {
+      "a": 7.307149011501357e-07,
+      "w": 8.838186144541819e-07,
+      "t": 2.2e-07,
+      "hx": 2.8444215091603065e-07,
+      "hy": 1.807407570861487e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.01583268752712536,
+    "G_m": 0.3777991489175982,
+    "f_o_THz": 211.98173361525684,
+    "f_o_nm": 1414.2372217038196,
+    "f_m_GHz": 6.334272772886028,
+    "score": -0.30315105850406643,
+    "status": "success",
+    "optical_gap": 0.01583268752712536,
+    "mechanical_gap": 0.3777991489175982,
+    "optical_center_frequency": 211981733615256.84,
+    "mechanical_center_frequency": 6334272772.886028
+  },
+  {
+    "id": "opt_9ff8127cc208",
+    "u": [
+      0.6285985322890744,
+      0.9740324069757222,
+      0.690985950774526,
+      0.20717238923886322
+    ],
+    "params": {
+      "a": 7.514394129156296e-07,
+      "w": 8.88314583139075e-07,
+      "t": 2.2e-07,
+      "hx": 2.872957852323578e-07,
+      "hy": 1.6215171677165896e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.01347652569669353,
+    "G_m": 0.38378511287841854,
+    "f_o_THz": 207.18820345718805,
+    "f_o_nm": 1446.957177086325,
+    "f_m_GHz": 6.361759158172157,
+    "score": -0.30870120370403886,
+    "status": "success",
+    "optical_gap": 0.01347652569669353,
+    "mechanical_gap": 0.38378511287841854,
+    "optical_center_frequency": 207188203457188.06,
+    "mechanical_center_frequency": 6361759158.172157
+  },
+  {
+    "id": "opt_e4bf8e0c383a",
+    "u": [
+      0.6272781354145163,
+      0.972941799635429,
+      0.6907574460685965,
+      0.22049286939233595
+    ],
+    "params": {
+      "a": 7.509112541658065e-07,
+      "w": 8.87823809835943e-07,
+      "t": 2.2e-07,
+      "hx": 2.872272338205789e-07,
+      "hy": 1.661478608177008e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.013926763133878535,
+    "G_m": 0.3812966332829562,
+    "f_o_THz": 207.46812244794225,
+    "f_o_nm": 1445.0049215402896,
+    "f_m_GHz": 6.357024139433659,
+    "score": -0.30780074967092147,
+    "status": "success",
+    "optical_gap": 0.013926763133878535,
+    "mechanical_gap": 0.3812966332829562,
+    "optical_center_frequency": 207468122447942.25,
+    "mechanical_center_frequency": 6357024139.433659
+  },
+  {
+    "id": "opt_89966337a1c3",
+    "u": [
+      0.6256783200767795,
+      0.9682049942267567,
+      0.6961206694656393,
+      0.1633535946723383
+    ],
+    "params": {
+      "a": 7.502713280307117e-07,
+      "w": 8.856922474020405e-07,
+      "t": 2.2e-07,
+      "hx": 2.888362008396918e-07,
+      "hy": 1.4900607840170148e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.011778400379163546,
+    "G_m": 0.0,
+    "f_o_THz": 206.95024277490836,
+    "f_o_nm": 1448.6209534244058,
+    "f_m_GHz": 0.0,
+    "score": -16.506564291358686,
+    "status": "success",
+    "optical_gap": 0.011778400379163546,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 206950242774908.38,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_3ee2aefa4bd2",
+    "u": [
+      0.6909775004615729,
+      0.9953001221287014,
+      0.7356759021021624,
+      0.21662219311692535
+    ],
+    "params": {
+      "a": 7.763910001846291e-07,
+      "w": 8.978850549579156e-07,
+      "t": 2.2e-07,
+      "hx": 3.0070277063064867e-07,
+      "hy": 1.649866579350776e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.013469477332063396,
+    "G_m": 0.38597156481136746,
+    "f_o_THz": 202.88559449386437,
+    "f_o_nm": 1477.6428989346814,
+    "f_m_GHz": 6.156283998267069,
+    "score": -0.3012273902091243,
+    "status": "success",
+    "optical_gap": 0.013469477332063396,
+    "mechanical_gap": 0.38597156481136746,
+    "optical_center_frequency": 202885594493864.38,
+    "mechanical_center_frequency": 6156283998.267069
+  },
+  {
+    "id": "opt_7a98bf0cab8a",
+    "u": [
+      0.6881848528837845,
+      0.998817156895905,
+      0.7343982911741158,
+      0.22228263994661462
+    ],
+    "params": {
+      "a": 7.752739411535137e-07,
+      "w": 8.994677206031572e-07,
+      "t": 2.2e-07,
+      "hx": 3.003194873522347e-07,
+      "hy": 1.6668479198398438e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.013646599410454565,
+    "G_m": 0.3853403871069841,
+    "f_o_THz": 203.11027173053515,
+    "f_o_nm": 1476.0083547016882,
+    "f_m_GHz": 6.152843259704984,
+    "score": -0.30059075672573327,
+    "status": "success",
+    "optical_gap": 0.013646599410454565,
+    "mechanical_gap": 0.3853403871069841,
+    "optical_center_frequency": 203110271730535.16,
+    "mechanical_center_frequency": 6152843259.704983
+  },
+  {
+    "id": "opt_945f32e46199",
+    "u": [
+      0.6819379675602915,
+      0.9829842874642094,
+      0.7264531497199473,
+      0.21504579736203377
+    ],
+    "params": {
+      "a": 7.727751870241165e-07,
+      "w": 8.923429293588942e-07,
+      "t": 2.2e-07,
+      "hx": 2.9793594491598417e-07,
+      "hy": 1.6451373920861013e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.01349775347918438,
+    "G_m": 0.3844481856168497,
+    "f_o_THz": 203.57076944510263,
+    "f_o_nm": 1472.6694741940626,
+    "f_m_GHz": 6.215720802977299,
+    "score": -0.3032305132018033,
+    "status": "success",
+    "optical_gap": 0.01349775347918438,
+    "mechanical_gap": 0.3844481856168497,
+    "optical_center_frequency": 203570769445102.62,
+    "mechanical_center_frequency": 6215720802.977299
+  },
+  {
+    "id": "opt_21f26110d069",
+    "u": [
+      0.6965493530188054,
+      0.9770290017380626,
+      0.7262731613121254,
+      0.21670088946239255
+    ],
+    "params": {
+      "a": 7.786197412075221e-07,
+      "w": 8.896630507821281e-07,
+      "t": 2.2e-07,
+      "hx": 2.978819483936376e-07,
+      "hy": 1.6501026683871776e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.01357742709493449,
+    "G_m": 0.0,
+    "f_o_THz": 202.63151299135595,
+    "f_o_nm": 1479.4957288444512,
+    "f_m_GHz": 0.0,
+    "score": -16.486031943284864,
+    "status": "success",
+    "optical_gap": 0.01357742709493449,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 202631512991355.94,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_202d05f27fdb",
+    "u": [
+      0.7212692666878475,
+      0.9874719206756434,
+      0.776067984802891,
+      0.20360231630708311
+    ],
+    "params": {
+      "a": 7.88507706675139e-07,
+      "w": 8.943623643040394e-07,
+      "t": 2.2e-07,
+      "hx": 3.128203954408673e-07,
+      "hy": 1.6108069489212494e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.01287423727364816,
+    "G_m": 0.3937051417929881,
+    "f_o_THz": 200.94691542942962,
+    "f_o_nm": 1491.8987801297394,
+    "f_m_GHz": 5.986941377402726,
+    "score": -0.2967749872529215,
+    "status": "success",
+    "optical_gap": 0.01287423727364816,
+    "mechanical_gap": 0.3937051417929881,
+    "optical_center_frequency": 200946915429429.62,
+    "mechanical_center_frequency": 5986941377.402725
+  },
+  {
+    "id": "opt_053c198c4c55",
+    "u": [
+      0.7314190376170571,
+      0.99692828499349,
+      0.7970381172656095,
+      0.19638851591012532
+    ],
+    "params": {
+      "a": 7.925676150468228e-07,
+      "w": 8.986177282470705e-07,
+      "t": 2.2e-07,
+      "hx": 3.191114351796828e-07,
+      "hy": 1.589165547730376e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.012491853164474289,
+    "G_m": 0.39900726176651347,
+    "f_o_THz": 200.17675061299522,
+    "f_o_nm": 1497.6387471669643,
+    "f_m_GHz": 5.8694233011011665,
+    "score": -0.2941317459040618,
+    "status": "success",
+    "optical_gap": 0.012491853164474289,
+    "mechanical_gap": 0.39900726176651347,
+    "optical_center_frequency": 200176750612995.22,
+    "mechanical_center_frequency": 5869423301.101166
+  },
+  {
+    "id": "opt_b2fccc922105",
+    "u": [
+      0.7204700291743174,
+      0.9994914935334844,
+      0.7890243879849727,
+      0.13871587811931751
+    ],
+    "params": {
+      "a": 7.881880116697269e-07,
+      "w": 8.99771172090068e-07,
+      "t": 2.2e-07,
+      "hx": 3.167073163954918e-07,
+      "hy": 1.4161476343579525e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.010578701564523537,
+    "G_m": 0.023524025975892378,
+    "f_o_THz": 200.17737117167138,
+    "f_o_nm": 1497.6341044208193,
+    "f_m_GHz": 7.273876425659693,
+    "score": -1.3088264335969022,
+    "status": "success",
+    "optical_gap": 0.010578701564523537,
+    "mechanical_gap": 0.023524025975892378,
+    "optical_center_frequency": 200177371171671.38,
+    "mechanical_center_frequency": 7273876425.659693
+  },
+  {
+    "id": "opt_cf49afe687f4",
+    "u": [
+      0.6722486602881822,
+      0.959155863964519,
+      0.7511403747263236,
+      0.1804692426801454
+    ],
+    "params": {
+      "a": 7.688994641152728e-07,
+      "w": 8.816201387840335e-07,
+      "t": 2.2e-07,
+      "hx": 3.053421124178971e-07,
+      "hy": 1.5414077280404361e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.012196031387246035,
+    "G_m": 0.0,
+    "f_o_THz": 204.21709298056342,
+    "f_o_nm": 1468.0086452338885,
+    "f_m_GHz": 0.0,
+    "score": -16.49944949363854,
+    "status": "success",
+    "optical_gap": 0.012196031387246035,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 204217092980563.44,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_a53c07b67df5",
+    "u": [
+      0.7477748482309855,
+      0.9148800531449517,
+      0.6702516086762299,
+      0.11117422999032019
+    ],
+    "params": {
+      "a": 7.991099392923941e-07,
+      "w": 8.616960239152282e-07,
+      "t": 2.2e-07,
+      "hx": 2.8107548260286897e-07,
+      "hy": 1.3335226899709604e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.010425046352545412,
+    "G_m": 0.0,
+    "f_o_THz": 198.40538312229017,
+    "f_o_nm": 1511.0096978327365,
+    "f_m_GHz": 0.0,
+    "score": -16.50967992169135,
+    "status": "success",
+    "optical_gap": 0.010425046352545412,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 198405383122290.2,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_68c0b049f752",
+    "u": [
+      0.7500176480271593,
+      0.9995199207674096,
+      0.8042892724277009,
+      0.22756496629909975
+    ],
+    "params": {
+      "a": 8.000070592108636e-07,
+      "w": 8.997839643453343e-07,
+      "t": 2.2e-07,
+      "hx": 3.212867817283103e-07,
+      "hy": 1.6826948988972993e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.013655518708188787,
+    "G_m": 0.39316497914782766,
+    "f_o_THz": 199.31592519566837,
+    "f_o_nm": 1504.106898160264,
+    "f_m_GHz": 5.845885668991236,
+    "score": -0.28952676372575825,
+    "status": "success",
+    "optical_gap": 0.013655518708188787,
+    "mechanical_gap": 0.39316497914782766,
+    "optical_center_frequency": 199315925195668.38,
+    "mechanical_center_frequency": 5845885668.991236
+  },
+  {
+    "id": "opt_dc6ec26c9a96",
+    "u": [
+      0.7784329702931228,
+      0.999996387470304,
+      0.7650372818826975,
+      0.19738765386704768
+    ],
+    "params": {
+      "a": 8.113731881172491e-07,
+      "w": 8.999983743616368e-07,
+      "t": 2.2e-07,
+      "hx": 3.095111845648093e-07,
+      "hy": 1.592162961601143e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.012716325900898603,
+    "G_m": 0.0,
+    "f_o_THz": 196.89881439932836,
+    "f_o_nm": 1522.5711689253453,
+    "f_m_GHz": 0.0,
+    "score": -16.489436232574676,
+    "status": "success",
+    "optical_gap": 0.012716325900898603,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 196898814399328.38,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "opt_2519968b178f",
+    "u": [
+      0.7442591468300279,
+      0.9325322006697977,
+      0.8066688293236421,
+      0.22538090422565932
+    ],
+    "params": {
+      "a": 7.977036587320111e-07,
+      "w": 8.696394903014089e-07,
+      "t": 2.2e-07,
+      "hx": 3.220006487970926e-07,
+      "hy": 1.6761427126769779e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.013927092101015743,
+    "G_m": 0.39251085560408056,
+    "f_o_THz": 200.39440399073067,
+    "f_o_nm": 1496.0121242400915,
+    "f_m_GHz": 5.923315845298536,
+    "score": -0.2886292606207294,
+    "status": "success",
+    "optical_gap": 0.013927092101015743,
+    "mechanical_gap": 0.39251085560408056,
+    "optical_center_frequency": 200394403990730.66,
+    "mechanical_center_frequency": 5923315845.298535
+  },
+  {
+    "id": "opt_ad72e7606f25",
+    "u": [
+      0.7409494703094488,
+      0.9345574701244018,
+      0.8330910201827302,
+      0.23343528677533545
+    ],
+    "params": {
+      "a": 7.963797881237795e-07,
+      "w": 8.705508615559808e-07,
+      "t": 2.2e-07,
+      "hx": 3.299273060548191e-07,
+      "hy": 1.7003058603260063e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.013958776647543851,
+    "G_m": 0.39703769233449177,
+    "f_o_THz": 200.82915959058658,
+    "f_o_nm": 1492.7735524620105,
+    "f_m_GHz": 5.749040420623728,
+    "score": -0.28416951118798034,
+    "status": "success",
+    "optical_gap": 0.013958776647543851,
+    "mechanical_gap": 0.39703769233449177,
+    "optical_center_frequency": 200829159590586.6,
+    "mechanical_center_frequency": 5749040420.623728
+  },
+  {
+    "id": "opt_fd23babb5e74",
+    "u": [
+      0.7396625139954768,
+      0.9311897184310857,
+      0.8311557861019925,
+      0.23070674400393715
+    ],
+    "params": {
+      "a": 7.958650055981906e-07,
+      "w": 8.690353732939886e-07,
+      "t": 2.2e-07,
+      "hx": 3.2934673583059774e-07,
+      "hy": 1.6921202320118112e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.013858672615249295,
+    "G_m": 0.39683690045405556,
+    "f_o_THz": 200.89454026912674,
+    "f_o_nm": 1492.2877326501032,
+    "f_m_GHz": 5.762068668215503,
+    "score": -0.28526761013563123,
+    "status": "success",
+    "optical_gap": 0.013858672615249295,
+    "mechanical_gap": 0.39683690045405556,
+    "optical_center_frequency": 200894540269126.75,
+    "mechanical_center_frequency": 5762068668.215503
+  },
+  {
+    "id": "opt_5fb39fb79540",
+    "u": [
+      0.85,
+      0.8888888888888888,
+      0.5733333333333334,
+      0.5
+    ],
+    "params": {
+      "a": 8.4e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2.52e-07,
+      "hy": 2.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.024057768696532034,
+    "G_m": 0.28181330398394966,
+    "f_o_THz": 195.1274241094913,
+    "f_o_nm": 1536.393253629886,
+    "f_m_GHz": 4.388210894735888,
+    "score": -0.5379707158272733,
+    "status": "success",
+    "optical_gap": 0.024057768696532034,
+    "mechanical_gap": 0.28181330398394966,
+    "optical_center_frequency": 195127424109491.3,
+    "mechanical_center_frequency": 4388210894.735888
+  },
+  {
+    "id": "opt_e6fd3d7388a4",
+    "u": [
+      0.85,
+      0.8888888888888888,
+      0.7133333333333334,
+      0.5
+    ],
+    "params": {
+      "a": 8.4e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2.94e-07,
+      "hy": 2.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.025512377622401584,
+    "G_m": 0.3076993723981217,
+    "f_o_THz": 196.19664786046013,
+    "f_o_nm": 1528.0202861224202,
+    "f_m_GHz": 4.307756796144714,
+    "score": -0.5636410733531424,
+    "status": "success",
+    "optical_gap": 0.025512377622401584,
+    "mechanical_gap": 0.3076993723981217,
+    "optical_center_frequency": 196196647860460.12,
+    "mechanical_center_frequency": 4307756796.144713
+  },
+  {
+    "id": "opt_d9ee05cb9bd3",
+    "u": [
+      0.85,
+      0.8888888888888888,
+      0.8533333333333334,
+      0.5
+    ],
+    "params": {
+      "a": 8.4e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.3600000000000004e-07,
+      "hy": 2.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.024945996598929838,
+    "G_m": 0.21957050710633683,
+    "f_o_THz": 197.21095438981243,
+    "f_o_nm": 1520.161285804754,
+    "f_m_GHz": 4.002537741625157,
+    "score": -0.9660907203798081,
+    "status": "success",
+    "optical_gap": 0.024945996598929838,
+    "mechanical_gap": 0.21957050710633683,
+    "optical_center_frequency": 197210954389812.44,
+    "mechanical_center_frequency": 4002537741.6251564
+  },
+  {
+    "id": "opt_1e623f13dda9",
+    "u": [
+      0.85,
+      0.8888888888888888,
+      0.9333333333333333,
+      0.6666666666666666
+    ],
+    "params": {
+      "a": 8.4e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.5999999999999994e-07,
+      "hy": 3e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03039289422096646,
+    "G_m": 0.23015689644856024,
+    "f_o_THz": 199.77499093887053,
+    "f_o_nm": 1500.6505899015858,
+    "f_m_GHz": 3.6516681555324246,
+    "score": -1.4077437652606033,
+    "status": "success",
+    "optical_gap": 0.03039289422096646,
+    "mechanical_gap": 0.23015689644856024,
+    "optical_center_frequency": 199774990938870.53,
+    "mechanical_center_frequency": 3651668155.5324244
+  },
+  {
+    "id": "opt_a47e2e2893f9",
+    "u": [
+      0.85,
+      0.8888888888888888,
+      0.7133333333333334,
+      0.7333333333333333
+    ],
+    "params": {
+      "a": 8.4e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2.94e-07,
+      "hy": 3.2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03578820208104668,
+    "G_m": 0.34307216473471414,
+    "f_o_THz": 198.45445378629825,
+    "f_o_nm": 1510.6360793637093,
+    "f_m_GHz": 4.112834739190501,
+    "score": -0.6340452672523318,
+    "status": "success",
+    "optical_gap": 0.03578820208104668,
+    "mechanical_gap": 0.34307216473471414,
+    "optical_center_frequency": 198454453786298.25,
+    "mechanical_center_frequency": 4112834739.1905007
+  },
+  {
+    "id": "opt_c7f671f617f1",
+    "u": [
+      0.85,
+      0.8888888888888888,
+      0.8533333333333334,
+      0.7333333333333333
+    ],
+    "params": {
+      "a": 8.4e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.3600000000000004e-07,
+      "hy": 3.2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03531097451857877,
+    "G_m": 0.29280676923344323,
+    "f_o_THz": 199.82277347087876,
+    "f_o_nm": 1500.2917474953892,
+    "f_m_GHz": 3.759602416668358,
+    "score": -1.139678968010728,
+    "status": "success",
+    "optical_gap": 0.03531097451857877,
+    "mechanical_gap": 0.29280676923344323,
+    "optical_center_frequency": 199822773470878.75,
+    "mechanical_center_frequency": 3759602416.668358
+  },
+  {
+    "id": "opt_f919d5dc0f4c",
+    "u": [
+      0.9,
+      0.8888888888888888,
+      0.5933333333333334,
+      0.5
+    ],
+    "params": {
+      "a": 8.6e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2.58e-07,
+      "hy": 2.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.02398828735795704,
+    "G_m": 0.2703564680858625,
+    "f_o_THz": 192.15891811496456,
+    "f_o_nm": 1560.1277366717925,
+    "f_m_GHz": 4.318004584980716,
+    "score": -0.604412633896076,
+    "status": "success",
+    "optical_gap": 0.02398828735795704,
+    "mechanical_gap": 0.2703564680858625,
+    "optical_center_frequency": 192158918114964.56,
+    "mechanical_center_frequency": 4318004584.980716
+  },
+  {
+    "id": "opt_a1a884ca10be",
+    "u": [
+      0.9,
+      0.8888888888888888,
+      0.7366666666666667,
+      0.5
+    ],
+    "params": {
+      "a": 8.6e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.01e-07,
+      "hy": 2.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.025329457861359914,
+    "G_m": 0.30392069153150153,
+    "f_o_THz": 193.1774192143273,
+    "f_o_nm": 1551.9021799715886,
+    "f_m_GHz": 4.209410639947296,
+    "score": -0.6559677428879273,
+    "status": "success",
+    "optical_gap": 0.025329457861359914,
+    "mechanical_gap": 0.30392069153150153,
+    "optical_center_frequency": 193177419214327.3,
+    "mechanical_center_frequency": 4209410639.947296
+  },
+  {
+    "id": "opt_e3ff09863c48",
+    "u": [
+      0.9,
+      0.8888888888888888,
+      0.88,
+      0.5
+    ],
+    "params": {
+      "a": 8.6e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.44e-07,
+      "hy": 2.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.024567060661357987,
+    "G_m": 0.21905011270867045,
+    "f_o_THz": 194.13457366004593,
+    "f_o_nm": 1544.2507346732289,
+    "f_m_GHz": 3.9240688762288785,
+    "score": -1.066521542238861,
+    "status": "success",
+    "optical_gap": 0.024567060661357987,
+    "mechanical_gap": 0.21905011270867045,
+    "optical_center_frequency": 194134573660045.94,
+    "mechanical_center_frequency": 3924068876.228878
+  },
+  {
+    "id": "opt_d9e475d5c944",
+    "u": [
+      0.9,
+      0.8888888888888888,
+      1.0,
+      0.6666666666666666
+    ],
+    "params": {
+      "a": 8.6e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.7999999999999996e-07,
+      "hy": 3e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.028830760409111134,
+    "G_m": 0.20324839459583396,
+    "f_o_THz": 196.89357092142075,
+    "f_o_nm": 1522.6117165585142,
+    "f_m_GHz": 3.485198981276438,
+    "score": -1.7313194071672071,
+    "status": "success",
+    "optical_gap": 0.028830760409111134,
+    "mechanical_gap": 0.20324839459583396,
+    "optical_center_frequency": 196893570921420.75,
+    "mechanical_center_frequency": 3485198981.2764378
+  },
+  {
+    "id": "opt_96c17a716d2c",
+    "u": [
+      0.9,
+      0.8888888888888888,
+      0.7366666666666667,
+      0.7333333333333333
+    ],
+    "params": {
+      "a": 8.6e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.01e-07,
+      "hy": 3.2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.035597424556952174,
+    "G_m": 0.3348867953453911,
+    "f_o_THz": 195.32126963350075,
+    "f_o_nm": 1534.8684685622213,
+    "f_m_GHz": 4.058689716490512,
+    "score": -0.7019133270799442,
+    "status": "success",
+    "optical_gap": 0.035597424556952174,
+    "mechanical_gap": 0.3348867953453911,
+    "optical_center_frequency": 195321269633500.75,
+    "mechanical_center_frequency": 4058689716.4905114
+  },
+  {
+    "id": "opt_752b837c593d",
+    "u": [
+      0.9,
+      0.8888888888888888,
+      0.88,
+      0.7333333333333333
+    ],
+    "params": {
+      "a": 8.6e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.44e-07,
+      "hy": 3.2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03485877093392312,
+    "G_m": 0.2775825106581622,
+    "f_o_THz": 196.61368011201975,
+    "f_o_nm": 1524.7792413487944,
+    "f_m_GHz": 3.6953519442580487,
+    "score": -1.2548023414532363,
+    "status": "success",
+    "optical_gap": 0.03485877093392312,
+    "mechanical_gap": 0.2775825106581622,
+    "optical_center_frequency": 196613680112019.75,
+    "mechanical_center_frequency": 3695351944.2580485
+  },
+  {
+    "id": "opt_7afc4f4c7e21",
+    "u": [
+      0.9,
+      0.8888888888888888,
+      1.0,
+      0.7333333333333333
+    ],
+    "params": {
+      "a": 8.6e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.7999999999999996e-07,
+      "hy": 3.2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03172189714945502,
+    "G_m": 0.22345276149192878,
+    "f_o_THz": 197.67868158542007,
+    "f_o_nm": 1516.5644347463688,
+    "f_m_GHz": 3.408522241365247,
+    "score": -1.8318287458853801,
+    "status": "success",
+    "optical_gap": 0.03172189714945502,
+    "mechanical_gap": 0.22345276149192878,
+    "optical_center_frequency": 197678681585420.06,
+    "mechanical_center_frequency": 3408522241.365247
+  },
+  {
+    "id": "opt_585957bbfe15",
+    "u": [
+      0.9,
+      1.0,
+      0.88,
+      0.8333333333333334
+    ],
+    "params": {
+      "a": 8.6e-07,
+      "w": 9e-07,
+      "t": 2.2e-07,
+      "hx": 3.44e-07,
+      "hy": 3.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03683865841413832,
+    "G_m": 0.34252033360217704,
+    "f_o_THz": 196.1920533891813,
+    "f_o_nm": 1528.056069657975,
+    "f_m_GHz": 3.5268317644732066,
+    "score": -1.4556207243342973,
+    "status": "success",
+    "optical_gap": 0.03683865841413832,
+    "mechanical_gap": 0.34252033360217704,
+    "optical_center_frequency": 196192053389181.3,
+    "mechanical_center_frequency": 3526831764.4732065
+  },
+  {
+    "id": "opt_e2e97486ddef",
+    "u": [
+      0.9,
+      1.0,
+      1.0,
+      0.8333333333333334
+    ],
+    "params": {
+      "a": 8.6e-07,
+      "w": 9e-07,
+      "t": 2.2e-07,
+      "hx": 3.7999999999999996e-07,
+      "hy": 3.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.033611035804893274,
+    "G_m": 0.2888375628101142,
+    "f_o_THz": 197.31082022990472,
+    "f_o_nm": 1519.3918795263467,
+    "f_m_GHz": 3.2714052039256405,
+    "score": -2.024892771427835,
+    "status": "success",
+    "optical_gap": 0.033611035804893274,
+    "mechanical_gap": 0.2888375628101142,
+    "optical_center_frequency": 197310820229904.72,
+    "mechanical_center_frequency": 3271405203.92564
+  },
+  {
+    "id": "opt_91bbcd6f0138",
+    "u": [
+      0.95,
+      0.8888888888888888,
+      0.6133333333333333,
+      0.5
+    ],
+    "params": {
+      "a": 8.799999999999999e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2.64e-07,
+      "hy": 2.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.028482334647028977,
+    "G_m": 0.261281178607342,
+    "f_o_THz": 194.44872534007538,
+    "f_o_nm": 1541.7558406499543,
+    "f_m_GHz": 4.253742557807802,
+    "score": -0.6327999655651213,
+    "status": "success",
+    "optical_gap": 0.028482334647028977,
+    "mechanical_gap": 0.261281178607342,
+    "optical_center_frequency": 194448725340075.38,
+    "mechanical_center_frequency": 4253742557.8078017
+  },
+  {
+    "id": "opt_39eea2d424dc",
+    "u": [
+      0.95,
+      0.8888888888888888,
+      0.76,
+      0.5
+    ],
+    "params": {
+      "a": 8.799999999999999e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.08e-07,
+      "hy": 2.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.02514596827892836,
+    "G_m": 0.2931023534227978,
+    "f_o_THz": 190.22185793581838,
+    "f_o_nm": 1576.01477166284,
+    "f_m_GHz": 4.132904092178324,
+    "score": -0.7448884554728039,
+    "status": "success",
+    "optical_gap": 0.02514596827892836,
+    "mechanical_gap": 0.2931023534227978,
+    "optical_center_frequency": 190221857935818.38,
+    "mechanical_center_frequency": 4132904092.1783237
+  },
+  {
+    "id": "opt_42454baf217a",
+    "u": [
+      0.95,
+      0.8888888888888888,
+      0.9066666666666666,
+      0.5
+    ],
+    "params": {
+      "a": 8.799999999999999e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.52e-07,
+      "hy": 2.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.024381582577448473,
+    "G_m": 0.21805743777514275,
+    "f_o_THz": 191.13557354080294,
+    "f_o_nm": 1568.4806990468542,
+    "f_m_GHz": 3.847685340014302,
+    "score": -1.171372652650652,
+    "status": "success",
+    "optical_gap": 0.024381582577448473,
+    "mechanical_gap": 0.21805743777514275,
+    "optical_center_frequency": 191135573540802.94,
+    "mechanical_center_frequency": 3847685340.014302
+  },
+  {
+    "id": "opt_cbf10de1ec65",
+    "u": [
+      0.95,
+      0.8888888888888888,
+      1.0,
+      0.6666666666666666
+    ],
+    "params": {
+      "a": 8.799999999999999e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.7999999999999996e-07,
+      "hy": 3e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.029565492372873228,
+    "G_m": 0.2120747715190978,
+    "f_o_THz": 193.5291204817316,
+    "f_o_nm": 1549.0819017507972,
+    "f_m_GHz": 3.486264663364989,
+    "score": -1.7141556680579515,
+    "status": "success",
+    "optical_gap": 0.029565492372873228,
+    "mechanical_gap": 0.2120747715190978,
+    "optical_center_frequency": 193529120481731.62,
+    "mechanical_center_frequency": 3486264663.364989
+  },
+  {
+    "id": "opt_25493285c098",
+    "u": [
+      0.95,
+      0.8888888888888888,
+      0.76,
+      0.7333333333333333
+    ],
+    "params": {
+      "a": 8.799999999999999e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.08e-07,
+      "hy": 3.2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.035186083900824366,
+    "G_m": 0.32477326536415363,
+    "f_o_THz": 192.257999665355,
+    "f_o_nm": 1559.3237135610475,
+    "f_m_GHz": 4.017981583491838,
+    "score": -0.7620007965635199,
+    "status": "success",
+    "optical_gap": 0.035186083900824366,
+    "mechanical_gap": 0.32477326536415363,
+    "optical_center_frequency": 192257999665355.0,
+    "mechanical_center_frequency": 4017981583.4918375
+  },
+  {
+    "id": "opt_8553d4bf5778",
+    "u": [
+      0.95,
+      0.8888888888888888,
+      0.9066666666666666,
+      0.7333333333333333
+    ],
+    "params": {
+      "a": 8.799999999999999e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.52e-07,
+      "hy": 3.2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03440452300022288,
+    "G_m": 0.263207649826319,
+    "f_o_THz": 193.48144249329795,
+    "f_o_nm": 1549.4636288458755,
+    "f_m_GHz": 3.63701673104845,
+    "score": -1.3654593417556224,
+    "status": "success",
+    "optical_gap": 0.03440452300022288,
+    "mechanical_gap": 0.263207649826319,
+    "optical_center_frequency": 193481442493297.94,
+    "mechanical_center_frequency": 3637016731.0484495
+  },
+  {
+    "id": "opt_6dd9d1c06726",
+    "u": [
+      0.95,
+      1.0,
+      0.9066666666666666,
+      0.8333333333333334
+    ],
+    "params": {
+      "a": 8.799999999999999e-07,
+      "w": 9e-07,
+      "t": 2.2e-07,
+      "hx": 3.52e-07,
+      "hy": 3.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03632637319991557,
+    "G_m": 0.32822526509823013,
+    "f_o_THz": 193.0490619039227,
+    "f_o_nm": 1552.9340316048865,
+    "f_m_GHz": 3.474253092167675,
+    "score": -1.5679787992215435,
+    "status": "success",
+    "optical_gap": 0.03632637319991557,
+    "mechanical_gap": 0.32822526509823013,
+    "optical_center_frequency": 193049061903922.72,
+    "mechanical_center_frequency": 3474253092.1676745
+  },
+  {
+    "id": "opt_8f042963a4fe",
+    "u": [
+      0.95,
+      1.0,
+      1.0,
+      0.8333333333333334
+    ],
+    "params": {
+      "a": 8.799999999999999e-07,
+      "w": 9e-07,
+      "t": 2.2e-07,
+      "hx": 3.7999999999999996e-07,
+      "hy": 3.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.034226135737951975,
+    "G_m": 0.28785901934343594,
+    "f_o_THz": 193.8515532316255,
+    "f_o_nm": 1546.5053181275773,
+    "f_m_GHz": 3.2704489903350162,
+    "score": -2.0223525561301567,
+    "status": "success",
+    "optical_gap": 0.034226135737951975,
+    "mechanical_gap": 0.28785901934343594,
+    "optical_center_frequency": 193851553231625.5,
+    "mechanical_center_frequency": 3270448990.3350163
+  },
+  {
+    "id": "opt_fcb17a99b26f",
+    "u": [
+      1.0,
+      0.8888888888888888,
+      0.6333333333333333,
+      0.5
+    ],
+    "params": {
+      "a": 9e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 2.6999999999999996e-07,
+      "hy": 2.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.026455101980381177,
+    "G_m": 0.2548872861336859,
+    "f_o_THz": 191.77455237469,
+    "f_o_nm": 1563.2546356529313,
+    "f_m_GHz": 4.194061275864591,
+    "score": -0.71088036322948,
+    "status": "success",
+    "optical_gap": 0.026455101980381177,
+    "mechanical_gap": 0.2548872861336859,
+    "optical_center_frequency": 191774552374690.0,
+    "mechanical_center_frequency": 4194061275.8645906
+  },
+  {
+    "id": "opt_e024a4d2173c",
+    "u": [
+      1.0,
+      0.8888888888888888,
+      0.7833333333333333,
+      0.5
+    ],
+    "params": {
+      "a": 9e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.15e-07,
+      "hy": 2.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.044053042586925405,
+    "G_m": 0.2820918881479175,
+    "f_o_THz": 194.0001572690713,
+    "f_o_nm": 1545.320695715718,
+    "f_m_GHz": 4.065702945120831,
+    "score": -0.6840090699884699,
+    "status": "success",
+    "optical_gap": 0.044053042586925405,
+    "mechanical_gap": 0.2820918881479175,
+    "optical_center_frequency": 194000157269071.3,
+    "mechanical_center_frequency": 4065702945.1208315
+  },
+  {
+    "id": "opt_6c6efbb4b78a",
+    "u": [
+      1.0,
+      0.8888888888888888,
+      0.9333333333333333,
+      0.6666666666666666
+    ],
+    "params": {
+      "a": 9e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.5999999999999994e-07,
+      "hy": 3e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.030975698728442937,
+    "G_m": 0.2529978837860202,
+    "f_o_THz": 189.82947359479692,
+    "f_o_nm": 1579.272450809857,
+    "f_m_GHz": 3.6407795179755404,
+    "score": -1.396586019449857,
+    "status": "success",
+    "optical_gap": 0.030975698728442937,
+    "mechanical_gap": 0.2529978837860202,
+    "optical_center_frequency": 189829473594796.94,
+    "mechanical_center_frequency": 3640779517.97554
+  },
+  {
+    "id": "opt_87fae10789c1",
+    "u": [
+      1.0,
+      0.8888888888888888,
+      1.0,
+      0.7333333333333333
+    ],
+    "params": {
+      "a": 9e-07,
+      "w": 8.499999999999999e-07,
+      "t": 2.2e-07,
+      "hx": 3.7999999999999996e-07,
+      "hy": 3.2e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0324330911984277,
+    "G_m": 0.22460901304561884,
+    "f_o_THz": 191.01322263323198,
+    "f_o_nm": 1569.4853679089906,
+    "f_m_GHz": 3.4076299047156957,
+    "score": -1.826225057477501,
+    "status": "success",
+    "optical_gap": 0.0324330911984277,
+    "mechanical_gap": 0.22460901304561884,
+    "optical_center_frequency": 191013222633231.97,
+    "mechanical_center_frequency": 3407629904.7156954
+  },
+  {
+    "id": "opt_7c363f235810",
+    "u": [
+      1.0,
+      1.0,
+      0.9333333333333333,
+      0.8333333333333334
+    ],
+    "params": {
+      "a": 9e-07,
+      "w": 9e-07,
+      "t": 2.2e-07,
+      "hx": 3.5999999999999994e-07,
+      "hy": 3.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.035935630384424835,
+    "G_m": 0.31421800107488707,
+    "f_o_THz": 190.02831947961414,
+    "f_o_nm": 1577.619898028731,
+    "f_m_GHz": 3.4219873435844037,
+    "score": -1.68287609495226,
+    "status": "success",
+    "optical_gap": 0.035935630384424835,
+    "mechanical_gap": 0.31421800107488707,
+    "optical_center_frequency": 190028319479614.16,
+    "mechanical_center_frequency": 3421987343.5844035
+  },
+  {
+    "id": "opt_34a0c5399611",
+    "u": [
+      1.0,
+      1.0,
+      1.0,
+      0.8333333333333334
+    ],
+    "params": {
+      "a": 9e-07,
+      "w": 9e-07,
+      "t": 2.2e-07,
+      "hx": 3.7999999999999996e-07,
+      "hy": 3.5e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03449014251203187,
+    "G_m": 0.2898164994471877,
+    "f_o_THz": 190.55341013744285,
+    "f_o_nm": 1573.2725947216843,
+    "f_m_GHz": 3.2638158682876455,
+    "score": -2.032602454683417,
+    "status": "success",
+    "optical_gap": 0.03449014251203187,
+    "mechanical_gap": 0.2898164994471877,
+    "optical_center_frequency": 190553410137442.84,
+    "mechanical_center_frequency": 3263815868.2876453
+  },
+  {
+    "id": "opt_b45afe3786e4",
+    "u": [
+      0.9749839569852753,
+      0.8506038168666629,
+      0.9669592391269048,
+      0.8043699929336539
+    ],
+    "params": {
+      "a": 8.899935827941101e-07,
+      "w": 8.327717175899983e-07,
+      "t": 2.2e-07,
+      "hx": 3.7008777173807144e-07,
+      "hy": 3.4131099788009613e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03762051620343361,
+    "G_m": 0.1724428366601138,
+    "f_o_THz": 193.63358912545007,
+    "f_o_nm": 1548.2461454854943,
+    "f_m_GHz": 6.95160824412472,
+    "score": -0.32107941826708913,
+    "status": "success",
+    "optical_gap": 0.03762051620343361,
+    "mechanical_gap": 0.1724428366601138,
+    "optical_center_frequency": 193633589125450.06,
+    "mechanical_center_frequency": 6951608244.12472
+  },
+  {
+    "id": "opt_c64d2599b5ab",
+    "u": [
+      0.21542008738762564,
+      0.8263300607780273,
+      0.8831022790635261,
+      0.9034279343690765
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "sidewall 40 nm < min 60 nm",
+      "bridge -104 nm < min 60 nm",
+      "hy exceeds hy_frac_max of half-width",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 5.861680349550503e-07,
+      "w": 8.218485273501122e-07,
+      "t": 2.2e-07,
+      "hx": 3.449306837190578e-07,
+      "hy": 3.7102838031072293e-07
+    }
+  },
+  {
+    "id": "opt_9612b434c37f",
+    "u": [
+      0.97036996035567,
+      0.8518418284224858,
+      0.9595159672863711,
+      0.8221380002568257
+    ],
+    "params": {
+      "a": 8.88147984142268e-07,
+      "w": 8.333288227901186e-07,
+      "t": 2.2e-07,
+      "hx": 3.6785479018591136e-07,
+      "hy": 3.466414000770477e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03845499518165657,
+    "G_m": 0.17976924551195508,
+    "f_o_THz": 194.06328274821414,
+    "f_o_nm": 1544.818029224845,
+    "f_m_GHz": 6.997358795855748,
+    "score": -0.30579170450767257,
+    "status": "success",
+    "optical_gap": 0.03845499518165657,
+    "mechanical_gap": 0.17976924551195508,
+    "optical_center_frequency": 194063282748214.12,
+    "mechanical_center_frequency": 6997358795.855747
+  },
+  {
+    "id": "opt_bc51f714fc29",
+    "u": [
+      0.9226704539030991,
+      0.8174920451827711,
+      0.8527855874008616,
+      0.7965587321230119
+    ],
+    "params": {
+      "a": 8.690681815612395e-07,
+      "w": 8.178714203322469e-07,
+      "t": 2.2e-07,
+      "hx": 3.358356762202585e-07,
+      "hy": 3.3896761963690357e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.04008492133194794,
+    "G_m": 0.18687453662541786,
+    "f_o_THz": 196.5216268354265,
+    "f_o_nm": 1525.4934677039682,
+    "f_m_GHz": 3.7553317254140857,
+    "score": -0.28613279849678364,
+    "status": "success",
+    "optical_gap": 0.04008492133194794,
+    "mechanical_gap": 0.18687453662541786,
+    "optical_center_frequency": 196521626835426.5,
+    "mechanical_center_frequency": 3755331725.4140854
+  },
+  {
+    "id": "opt_d1a500bb96bd",
+    "u": [
+      0.92709080142235,
+      0.8536394648733492,
+      0.9709297705881751,
+      0.8670902339959616
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "sidewall 57 nm < min 60 nm"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 8.7083632056894e-07,
+      "w": 8.341377591930071e-07,
+      "t": 2.2e-07,
+      "hx": 3.712789311764525e-07,
+      "hy": 3.6012707019878846e-07
+    }
+  },
+  {
+    "id": "opt_44c9a8eba378",
+    "u": [
+      0.8764459833291482,
+      0.4844045479093109,
+      0.9133979515246239,
+      0.7669317270000362
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too wide vs beam (sidewall < f_min)",
+      "sidewall 4 nm < min 60 nm",
+      "hy exceeds hy_frac_max of half-width"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 8.505783933316593e-07,
+      "w": 6.679820465591899e-07,
+      "t": 2.2e-07,
+      "hx": 3.5401938545738713e-07,
+      "hy": 3.300795181000108e-07
+    }
+  },
+  {
+    "id": "opt_b852773fb929",
+    "u": [
+      0.9734346552840261,
+      0.25231569277927446,
+      0.9474075964938837,
+      0.8502787020838493
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too wide vs beam (sidewall < f_min)",
+      "sidewall -73 nm < min 60 nm",
+      "hy exceeds hy_frac_max of half-width"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 8.893738621136104e-07,
+      "w": 5.635420617506735e-07,
+      "t": 2.2e-07,
+      "hx": 3.6422227894816515e-07,
+      "hy": 3.550836106251548e-07
+    }
+  },
+  {
+    "id": "opt_3a99b6c87d19",
+    "u": [
+      0.8222311424757511,
+      0.10803005211817351,
+      0.9742342894886137,
+      0.7653113940318418
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too wide vs beam (sidewall < f_min)",
+      "sidewall -80 nm < min 60 nm",
+      "hy exceeds hy_frac_max of half-width"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 8.288924569903005e-07,
+      "w": 4.986135234531781e-07,
+      "t": 2.2e-07,
+      "hx": 3.7227028684658414e-07,
+      "hy": 3.295934182095525e-07
+    }
+  },
+  {
+    "id": "opt_b8782761c24b",
+    "u": [
+      0.0439848483119748,
+      0.9131638764897392,
+      0.8716556766072271,
+      0.7032659859510295
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "hole too long along z (bridge < f_min)",
+      "bridge -165 nm < min 60 nm",
+      "hx exceeds hx_frac_max of half-period"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 5.175939393247899e-07,
+      "w": 8.609237444203826e-07,
+      "t": 2.2e-07,
+      "hx": 3.414967029821681e-07,
+      "hy": 3.1097979578530886e-07
+    }
+  },
+  {
+    "id": "opt_86025bc6e169",
+    "u": [
+      0.9229633605776595,
+      0.8626632741929586,
+      0.845681001241862,
+      0.8597334770107687
+    ],
+    "params": {
+      "a": 8.691853442310638e-07,
+      "w": 8.381984733868314e-07,
+      "t": 2.2e-07,
+      "hx": 3.3370430037255856e-07,
+      "hy": 3.579200431032306e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.04214467986030794,
+    "G_m": 0.17415577784110964,
+    "f_o_THz": 196.4649703921609,
+    "f_o_nm": 1525.9333885404028,
+    "f_m_GHz": 3.6262923372879143,
+    "score": -0.2861514458508435,
+    "status": "success",
+    "optical_gap": 0.04214467986030794,
+    "mechanical_gap": 0.17415577784110964,
+    "optical_center_frequency": 196464970392160.9,
+    "mechanical_center_frequency": 3626292337.2879143
+  },
+  {
+    "id": "opt_b072efd37b7f",
+    "u": [
+      0.9796618101472615,
+      0.8259433538085768,
+      8.015780612941059e-05,
+      0.9407452848891591
+    ],
+    "score": -10.0,
+    "G_o": 0.0,
+    "G_m": 0.0,
+    "status": "infeasible",
+    "reasons": [
+      "sidewall 29 nm < min 60 nm",
+      "hy exceeds hy_frac_max of half-width"
+    ],
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0,
+    "params": {
+      "a": 8.918647240589046e-07,
+      "w": 8.216745092138595e-07,
+      "t": 2.2e-07,
+      "hx": 8.002404734183882e-08,
+      "hy": 3.8222358546674774e-07
+    }
+  },
+  {
+    "id": "opt_138e806671f7",
+    "u": [
+      0.8037750615466679,
+      0.9418351221249509,
+      0.9021129381864613,
+      0.5512086381184758
+    ],
+    "params": {
+      "a": 8.215100246186672e-07,
+      "w": 8.738258049562279e-07,
+      "t": 2.2e-07,
+      "hx": 3.506338814559384e-07,
+      "hy": 2.653625914355427e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.0251960284505929,
+    "G_m": 0.19743991336632025,
+    "f_o_THz": 200.7029546661811,
+    "f_o_nm": 1493.7122300896333,
+    "f_m_GHz": 3.801069061753194,
+    "score": -0.39278545533813286,
+    "status": "success",
+    "optical_gap": 0.0251960284505929,
+    "mechanical_gap": 0.19743991336632025,
+    "optical_center_frequency": 200702954666181.12,
+    "mechanical_center_frequency": 3801069061.753194
+  },
+  {
+    "id": "opt_f46d502fd7b1",
+    "u": [
+      0.8675522622765407,
+      0.9143575714267567,
+      0.8842903242376124,
+      0.8352701460218286
+    ],
+    "params": {
+      "a": 8.470209049106162e-07,
+      "w": 8.614609071420405e-07,
+      "t": 2.2e-07,
+      "hx": 3.452870972712837e-07,
+      "hy": 3.5058104380654856e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.038916174937865804,
+    "G_m": 0.2692760431004539,
+    "f_o_THz": 199.7049747411851,
+    "f_o_nm": 1501.1767152447098,
+    "f_m_GHz": 3.5199514235244322,
+    "score": -0.21394105935476684,
+    "status": "success",
+    "optical_gap": 0.038916174937865804,
+    "mechanical_gap": 0.2692760431004539,
+    "optical_center_frequency": 199704974741185.12,
+    "mechanical_center_frequency": 3519951423.524432
+  },
+  {
+    "id": "opt_ee3038c3b998",
+    "u": [
+      0.9392001595622351,
+      0.9179557409823708,
+      0.8947574261233449,
+      0.8348852943028314
+    ],
+    "params": {
+      "a": 8.75680063824894e-07,
+      "w": 8.630800834420668e-07,
+      "t": 2.2e-07,
+      "hx": 3.4842722783700345e-07,
+      "hy": 3.5046558829084943e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03854252478876883,
+    "G_m": 0.261609960769207,
+    "f_o_THz": 194.76312900280794,
+    "f_o_nm": 1539.2670036415252,
+    "f_m_GHz": 3.5183404273957484,
+    "score": -0.22136370016810147,
+    "status": "success",
+    "optical_gap": 0.03854252478876883,
+    "mechanical_gap": 0.261609960769207,
+    "optical_center_frequency": 194763129002807.94,
+    "mechanical_center_frequency": 3518340427.395748
+  },
+  {
+    "id": "opt_665b542cb763",
+    "u": [
+      0.9358070117031786,
+      0.9217536957064334,
+      0.8860113692921383,
+      0.8246675351547681
+    ],
+    "params": {
+      "a": 8.743228046812714e-07,
+      "w": 8.647891630678949e-07,
+      "t": 2.2e-07,
+      "hx": 3.4580341078764145e-07,
+      "hy": 3.474002605464304e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.038126739785516485,
+    "G_m": 0.2754303935448301,
+    "f_o_THz": 194.75826443705256,
+    "f_o_nm": 1539.3054506136007,
+    "f_m_GHz": 3.5543026042930412,
+    "score": -0.21064672347459867,
+    "status": "success",
+    "optical_gap": 0.038126739785516485,
+    "mechanical_gap": 0.2754303935448301,
+    "optical_center_frequency": 194758264437052.56,
+    "mechanical_center_frequency": 3554302604.293041
+  },
+  {
+    "id": "opt_0cfce47c3347",
+    "u": [
+      0.9237537185029464,
+      0.9483288564776119,
+      0.89183152857165,
+      0.8879851880340315
+    ],
+    "params": {
+      "a": 8.695014874011785e-07,
+      "w": 8.767479854149253e-07,
+      "t": 2.2e-07,
+      "hx": 3.4754945857149504e-07,
+      "hy": 3.6639555641020945e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.040530152417377056,
+    "G_m": 0.24333803237223964,
+    "f_o_THz": 195.90774975385392,
+    "f_o_nm": 1530.273602635275,
+    "f_m_GHz": 3.3969584361698297,
+    "score": -0.22524297643609376,
+    "status": "success",
+    "optical_gap": 0.040530152417377056,
+    "mechanical_gap": 0.24333803237223964,
+    "optical_center_frequency": 195907749753853.94,
+    "mechanical_center_frequency": 3396958436.1698294
+  },
+  {
+    "id": "opt_c6877bc2b0b8",
+    "u": [
+      0.9357697008356662,
+      0.9524026302986124,
+      0.9456149520602869,
+      0.8832688706177931
+    ],
+    "params": {
+      "a": 8.743078803342664e-07,
+      "w": 8.785811836343756e-07,
+      "t": 2.2e-07,
+      "hx": 3.6368448561808603e-07,
+      "hy": 3.6498066118533795e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.038918339228905155,
+    "G_m": 0.22983454493597688,
+    "f_o_THz": 195.4847943393206,
+    "f_o_nm": 1533.584537934051,
+    "f_m_GHz": 3.261155922963243,
+    "score": -0.250536870295084,
+    "status": "success",
+    "optical_gap": 0.038918339228905155,
+    "mechanical_gap": 0.22983454493597688,
+    "optical_center_frequency": 195484794339320.6,
+    "mechanical_center_frequency": 3261155922.963243
+  },
+  {
+    "id": "opt_0f97b7374c2a",
+    "u": [
+      0.8741335135816063,
+      0.9283376647176028,
+      0.8850929172790768,
+      0.8300386270249659
+    ],
+    "params": {
+      "a": 8.496534054326425e-07,
+      "w": 8.677519491229213e-07,
+      "t": 2.2e-07,
+      "hx": 3.4552787518372305e-07,
+      "hy": 3.4901158810748977e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.038351682510472274,
+    "G_m": 0.28432987037796115,
+    "f_o_THz": 198.97420952013826,
+    "f_o_nm": 1506.6900314518296,
+    "f_m_GHz": 3.529233944455359,
+    "score": -0.20240086185703265,
+    "status": "success",
+    "optical_gap": 0.038351682510472274,
+    "mechanical_gap": 0.28432987037796115,
+    "optical_center_frequency": 198974209520138.25,
+    "mechanical_center_frequency": 3529233944.4553585
+  },
+  {
+    "id": "opt_1db4c6661a58",
+    "u": [
+      0.8686871913120366,
+      0.9226028761569078,
+      0.9233391820809376,
+      0.845406103459789
+    ],
+    "params": {
+      "a": 8.474748765248147e-07,
+      "w": 8.651712942706084e-07,
+      "t": 2.2e-07,
+      "hx": 3.570017546242812e-07,
+      "hy": 3.536218310379367e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03826767948817463,
+    "G_m": 0.24981820500900023,
+    "f_o_THz": 200.00717494229536,
+    "f_o_nm": 1498.908517089419,
+    "f_m_GHz": 3.377125145250953,
+    "score": -0.23854650897389323,
+    "status": "success",
+    "optical_gap": 0.03826767948817463,
+    "mechanical_gap": 0.24981820500900023,
+    "optical_center_frequency": 200007174942295.38,
+    "mechanical_center_frequency": 3377125145.2509527
+  },
+  {
+    "id": "opt_fcccd4e96de7",
+    "u": [
+      0.9686163631651135,
+      0.9508337184859541,
+      0.8919046436243789,
+      0.8321829880867496
+    ],
+    "params": {
+      "a": 8.874465452660454e-07,
+      "w": 8.778751733186793e-07,
+      "t": 2.2e-07,
+      "hx": 3.475713930873137e-07,
+      "hy": 3.496548964260249e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03761381586463627,
+    "G_m": 0.2945650089104757,
+    "f_o_THz": 192.318518384854,
+    "f_o_nm": 1558.8330261575584,
+    "f_m_GHz": 3.530982581272717,
+    "score": -0.19530295664563213,
+    "status": "success",
+    "optical_gap": 0.03761381586463627,
+    "mechanical_gap": 0.2945650089104757,
+    "optical_center_frequency": 192318518384854.0,
+    "mechanical_center_frequency": 3530982581.2727165
+  },
+  {
+    "id": "opt_87bdf6f64963",
+    "u": [
+      0.9690511565211445,
+      0.9491304590521891,
+      0.8873478839730704,
+      0.896386791814358
+    ],
+    "params": {
+      "a": 8.876204626084577e-07,
+      "w": 8.77108706573485e-07,
+      "t": 2.2e-07,
+      "hx": 3.4620436519192106e-07,
+      "hy": 3.6891603754430736e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.040827238351067684,
+    "G_m": 0.2358195462082943,
+    "f_o_THz": 192.9034040671605,
+    "f_o_nm": 1554.1066237256518,
+    "f_m_GHz": 3.4346100433921833,
+    "score": -0.23009352382727036,
+    "status": "success",
+    "optical_gap": 0.040827238351067684,
+    "mechanical_gap": 0.2358195462082943,
+    "optical_center_frequency": 192903404067160.5,
+    "mechanical_center_frequency": 3434610043.3921833
+  },
+  {
+    "id": "opt_7586d50d6772",
+    "u": [
+      0.9242635177705042,
+      0.9171808546387613,
+      0.8615401616847208,
+      0.7778556507450006
+    ],
+    "params": {
+      "a": 8.697054071082016e-07,
+      "w": 8.627313845874425e-07,
+      "t": 2.2e-07,
+      "hx": 3.384620485054162e-07,
+      "hy": 3.3335669522350017e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03637668589857718,
+    "G_m": 0.2986065305322381,
+    "f_o_THz": 194.8971255241583,
+    "f_o_nm": 1538.2087200810947,
+    "f_m_GHz": 3.6885257868674777,
+    "score": -0.20064484580582484,
+    "status": "success",
+    "optical_gap": 0.03637668589857718,
+    "mechanical_gap": 0.2986065305322381,
+    "optical_center_frequency": 194897125524158.3,
+    "mechanical_center_frequency": 3688525786.8674774
+  },
+  {
+    "id": "opt_7c5cae60b59a",
+    "u": [
+      0.9280198023206542,
+      0.9263130218927932,
+      0.8496620145259863,
+      0.7783124538202533
+    ],
+    "params": {
+      "a": 8.712079209282617e-07,
+      "w": 8.668408598517568e-07,
+      "t": 2.2e-07,
+      "hx": 3.348986043577959e-07,
+      "hy": 3.3349373614607597e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03632208968075899,
+    "G_m": 0.3110306728934832,
+    "f_o_THz": 194.40499191834556,
+    "f_o_nm": 1542.1026746366654,
+    "f_m_GHz": 3.716709414224022,
+    "score": -0.18853508221324458,
+    "status": "success",
+    "optical_gap": 0.03632208968075899,
+    "mechanical_gap": 0.3110306728934832,
+    "optical_center_frequency": 194404991918345.56,
+    "mechanical_center_frequency": 3716709414.224022
+  },
+  {
+    "id": "opt_2dc6b64915cf",
+    "u": [
+      0.8688278286688504,
+      0.9128013030888924,
+      0.8323624731967172,
+      0.7656137294069318
+    ],
+    "params": {
+      "a": 8.475311314675402e-07,
+      "w": 8.607605863900015e-07,
+      "t": 2.2e-07,
+      "hx": 3.297087419590152e-07,
+      "hy": 3.2968411882207955e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03641591589141536,
+    "G_m": 0.31355420203980405,
+    "f_o_THz": 198.37135695788695,
+    "f_o_nm": 1511.2688777122403,
+    "f_m_GHz": 3.7693340196986114,
+    "score": -0.18719534960811782,
+    "status": "success",
+    "optical_gap": 0.03641591589141536,
+    "mechanical_gap": 0.31355420203980405,
+    "optical_center_frequency": 198371356957886.94,
+    "mechanical_center_frequency": 3769334019.6986113
+  },
+  {
+    "id": "opt_91d9d548e5e7",
+    "u": [
+      0.8726819056851498,
+      0.9131091884262329,
+      0.8192232961469113,
+      0.7790587759244542
+    ],
+    "params": {
+      "a": 8.490727622740599e-07,
+      "w": 8.608991347918048e-07,
+      "t": 2.2e-07,
+      "hx": 3.257669888440733e-07,
+      "hy": 3.337176327773362e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03710569256678617,
+    "G_m": 0.3174238901109199,
+    "f_o_THz": 198.09320149965757,
+    "f_o_nm": 1513.3909479499137,
+    "f_m_GHz": 3.79383896377956,
+    "score": -0.1779170054950611,
+    "status": "success",
+    "optical_gap": 0.03710569256678617,
+    "mechanical_gap": 0.3174238901109199,
+    "optical_center_frequency": 198093201499657.56,
+    "mechanical_center_frequency": 3793838963.77956
+  },
+  {
+    "id": "opt_969712f107e9",
+    "u": [
+      0.8804629141052023,
+      0.9141342655937046,
+      0.8317665596740812,
+      0.7777056628147363
+    ],
+    "params": {
+      "a": 8.521851656420809e-07,
+      "w": 8.61360419517167e-07,
+      "t": 2.2e-07,
+      "hx": 3.295299679022244e-07,
+      "hy": 3.333116988444209e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03689180282773348,
+    "G_m": 0.3124633173237773,
+    "f_o_THz": 197.63758671715624,
+    "f_o_nm": 1516.879774640438,
+    "f_m_GHz": 3.762625757702706,
+    "score": -0.18416078828060922,
+    "status": "success",
+    "optical_gap": 0.03689180282773348,
+    "mechanical_gap": 0.3124633173237773,
+    "optical_center_frequency": 197637586717156.25,
+    "mechanical_center_frequency": 3762625757.7027054
+  },
+  {
+    "id": "opt_26946ddb8d5b",
+    "u": [
+      0.870356505365986,
+      0.9126407395296515,
+      0.8215078048717006,
+      0.78666553402669
+    ],
+    "params": {
+      "a": 8.481426021463943e-07,
+      "w": 8.606883327883432e-07,
+      "t": 2.2e-07,
+      "hx": 3.264523414615102e-07,
+      "hy": 3.35999660208007e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03751957434765756,
+    "G_m": 0.31419107756425113,
+    "f_o_THz": 198.35869120898587,
+    "f_o_nm": 1511.3653763935456,
+    "f_m_GHz": 3.775974315414263,
+    "score": -0.17824748184027692,
+    "status": "success",
+    "optical_gap": 0.03751957434765756,
+    "mechanical_gap": 0.31419107756425113,
+    "optical_center_frequency": 198358691208985.88,
+    "mechanical_center_frequency": 3775974315.414263
+  },
+  {
+    "id": "opt_7ffca8fa2198",
+    "u": [
+      0.87465766914292,
+      0.9134196743368727,
+      0.8252486986029164,
+      0.7769160991013622
+    ],
+    "params": {
+      "a": 8.498630676571679e-07,
+      "w": 8.610388534515927e-07,
+      "t": 2.2e-07,
+      "hx": 3.275746095808749e-07,
+      "hy": 3.3307482973040863e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.037026335771716656,
+    "G_m": 0.3150074449586422,
+    "f_o_THz": 197.98109172276736,
+    "f_o_nm": 1514.2479283819634,
+    "f_m_GHz": 3.7798486598737844,
+    "score": -0.18084688364065785,
+    "status": "success",
+    "optical_gap": 0.037026335771716656,
+    "mechanical_gap": 0.3150074449586422,
+    "optical_center_frequency": 197981091722767.38,
+    "mechanical_center_frequency": 3779848659.873784
+  },
+  {
+    "id": "opt_ec1e5255e5c6",
+    "u": [
+      0.8327073888377827,
+      0.8631237824177345,
+      0.831712226126738,
+      0.7802118609032472
+    ],
+    "params": {
+      "a": 8.330829555351131e-07,
+      "w": 8.384057020879805e-07,
+      "t": 2.2e-07,
+      "hx": 3.2951366783802137e-07,
+      "hy": 3.3406355827097416e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03867218592428394,
+    "G_m": 0.27113485914602914,
+    "f_o_THz": 201.76508434153382,
+    "f_o_nm": 1485.8490455788292,
+    "f_m_GHz": 3.7634647886168167,
+    "score": -0.21631836790162717,
+    "status": "success",
+    "optical_gap": 0.03867218592428394,
+    "mechanical_gap": 0.27113485914602914,
+    "optical_center_frequency": 201765084341533.8,
+    "mechanical_center_frequency": 3763464788.6168165
+  },
+  {
+    "id": "opt_a30ffeec41c0",
+    "u": [
+      0.8819446065355387,
+      0.9257667845642982,
+      0.8178628519449543,
+      0.7889734607949082
+    ],
+    "params": {
+      "a": 8.527778426142155e-07,
+      "w": 8.665950530539341e-07,
+      "t": 2.2e-07,
+      "hx": 3.253588555834863e-07,
+      "hy": 3.366920382384724e-07
+    },
+    "optical_backend": "comsol",
+    "mech_backend": "comsol",
+    "G_o": 0.03736266749463963,
+    "G_m": 0.3258753027202398,
+    "f_o_THz": 197.35373191071463,
+    "f_o_nm": 1519.061509997845,
+    "f_m_GHz": 3.7823411210369726,
+    "score": -0.1670244933745295,
+    "status": "success",
+    "optical_gap": 0.03736266749463963,
+    "mechanical_gap": 0.3258753027202398,
+    "optical_center_frequency": 197353731910714.62,
+    "mechanical_center_frequency": 3782341121.0369725
+  }
+]

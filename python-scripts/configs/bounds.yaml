@@ -1,0 +1,41 @@
+# Design-variable bounds for the 1D diamond OMC unit cell.
+# Rectangular cross-section nanobeam with a single elliptical hole per cell.
+# Optimizer works in normalized u in [0,1]; geometry.py maps u -> physical (meters).
+#
+# Geometry (see docs/strategy.md, fig. "unit cell"):
+#   a   : lattice constant (period along beam axis, z)
+#   w   : beam width (transverse, y)
+#   t   : beam thickness (out of plane, x)  -- often fixed by the wafer/film
+#   hx  : elliptical hole semi-axis along z (beam axis)
+#   hy  : elliptical hole semi-axis along y (beam width)
+#
+# Starting ranges chosen for diamond (n~2.40) targeting:
+#   optical mid-gap near 1550 nm, mechanical breathing mode near 8 GHz.
+# These are deliberately generous; tighten once the first Sobol sweep maps the
+# feasible region.
+
+variables:
+  # a: best optical results at 1550nm cluster near 880-900 nm (upper end).
+  # Keep at [500,900] nm to preserve valid u-vector mapping with stored results.
+  a:  { min: 0.50e-6, max: 0.90e-6 }   # lattice constant [m]
+  # w lower bound dropped 450->300nm (2026-07-02) to let the optical-only
+  # narrowness reward explore past the old floor.
+  w:  { min: 0.30e-6, max: 0.90e-6 }   # beam width [m]
+  hx: { min: 0.08e-6, max: 0.38e-6 }   # hole semi-axis along beam axis [m]
+  hy: { min: 0.10e-6, max: 0.40e-6 }   # hole semi-axis along beam width [m]
+  # t now a free variable (u[4]). Old 4-D results correspond to u4=0 (t=220nm).
+  # Diamond-on-insulator films commercially available at 220, 300, 350, 400nm.
+  # Larger t → stronger TE confinement → bigger optical gap at 1550nm.
+  # Lower bound dropped 220->150nm (2026-07-02) — the optical-only campaign's
+  # thinness reward was pinning t against the old 220nm floor.
+  t:  { min: 0.15e-6, max: 0.50e-6 }   # beam thickness [m]
+
+# Fabrication / feasibility constraints enforced BEFORE any simulation.
+# A candidate violating these returns a penalized "infeasible" result (no solve).
+feasibility:
+  # Single absolute minimum feature size (2026-07-02): both the sidewall
+  # (w/2 - hy) and the bridge (a - 2*hx) must be at least this thick. Replaces
+  # the old f_min/min_sidewall/min_bridge/hy_frac_max/hx_frac_max mix — a
+  # percentage of a shrinking w or a isn't a fixed nm value, which made it
+  # hard to reason about what the real minimum feature was for a given design.
+  min_feature: 0.04e-6   # [m]

@@ -1,0 +1,13 @@
+# solnum  freq_Hz  freq_THz  exported_file
+1  1.816293e+14  181.6293  opt_TE_Solution_1_solnum1_outer1_Ey_normE_abs_grid50x50.txt
+2  2.222479e+14  222.2479  opt_TE_Solution_1_solnum2_outer1_Ey_normE_abs_grid50x50.txt
+3  2.542321e+14  254.2321  opt_TE_Solution_1_solnum3_outer1_Ey_normE_abs_grid50x50.txt
+4  2.772041e+14  277.2041  opt_TE_Solution_1_solnum4_outer1_Ey_normE_abs_grid50x50.txt
+5  2.858636e+14  285.8636  opt_TE_Solution_1_solnum5_outer1_Ey_normE_abs_grid50x50.txt
+6  3.004786e+14  300.4786  opt_TE_Solution_1_solnum6_outer1_Ey_normE_abs_grid50x50.txt
+7  3.205571e+14  320.5571  opt_TE_Solution_1_solnum7_outer1_Ey_normE_abs_grid50x50.txt
+8  3.520891e+14  352.0891  opt_TE_Solution_1_solnum8_outer1_Ey_normE_abs_grid50x50.txt
+9  3.524724e+14  352.4724  opt_TE_Solution_1_solnum9_outer1_Ey_normE_abs_grid50x50.txt
+10  3.556886e+14  355.6886  opt_TE_Solution_1_solnum10_outer1_Ey_normE_abs_grid50x50.txt
+11  3.778180e+14  377.8180  opt_TE_Solution_1_solnum11_outer1_Ey_normE_abs_grid50x50.txt
+12  3.839541e+14  383.9541  opt_TE_Solution_1_solnum12_outer1_Ey_normE_abs_grid50x50.txt

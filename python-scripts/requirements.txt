@@ -1,0 +1,17 @@
+# Core (loop + surrogate + storage) -- pip install -r requirements.txt
+numpy
+pyyaml
+pandas
+matplotlib
+shapely           # optional: exact hole/outline polygon clipping in geometry plots
+
+# Optimizer (stage 2/3). 'auto' backend uses whatever is installed.
+optuna            # stage 2 (TPE)
+# botorch         # stage 3 (Bayesian optimization); also needs torch, gpytorch, ax-platform
+
+# Optical fast backend (NOT pip -- use conda on the Mac):
+#   conda create -n omc -c conda-forge pymeep pymeep-extras
+#   (provides Meep + MPB)
+
+# COMSOL driver (mechanical + fabrication-aware optical), on the Mac:
+#   pip install MPh         # needs COMSOL 6.2 + a reachable COMSOL server

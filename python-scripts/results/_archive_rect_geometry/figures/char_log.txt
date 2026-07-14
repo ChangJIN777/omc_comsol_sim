@@ -1,0 +1,17 @@
+Best result: G_o=22.2%  G_m=42.8%  score=+0.6489
+Starting COMSOL... loading /Users/guanhao/Documents/Postdoc/Diamond/OMC/Claude_optimization/OMC design optimization Claude/scripts/../comsol/omc_unitcell.mph
+
+============================================================
+CHARACTERIZING BEST GEOMETRY (full 4-study sweep + mode profiles)
+  a=620  w=874  hx=166  hy=321  t=243 nm
+  G_o=22.2%  G_m=42.8%  score=+0.6489
+============================================================
+  [cache] geometry matches — loading from NPZ, skipping COMSOL.
+  [arrows] uy_arr=shape=(3045,) max=1.889e-12
+  [arrows] uz_arr=shape=(3045,) max=1.057e-12
+  Composite -> /Users/guanhao/Documents/Postdoc/Diamond/OMC/Claude_optimization/OMC design optimization Claude/scripts/../results/figures/best_characterization.png
+  Geometry  -> /Users/guanhao/Documents/Postdoc/Diamond/OMC/Claude_optimization/OMC design optimization Claude/scripts/../results/figures/best_geometry.png
+  Optical   -> /Users/guanhao/Documents/Postdoc/Diamond/OMC/Claude_optimization/OMC design optimization Claude/scripts/../results/figures/best_optical.png
+  Mechanical -> /Users/guanhao/Documents/Postdoc/Diamond/OMC/Claude_optimization/OMC design optimization Claude/scripts/../results/figures/best_mechanical.png
+
+Figure saved to: /Users/guanhao/Documents/Postdoc/Diamond/OMC/Claude_optimization/OMC design optimization Claude/scripts/../results/figures/best_characterization.png

@@ -1,0 +1,24 @@
+# Optimization targets and scoring weights.
+
+optical:
+  target_wavelength_nm: 1550.0     # desired optical mid-gap wavelength
+  # equivalently mid-gap frequency ~ 193.4 THz
+  min_gap: 0.20                    # required normalized optical bandgap (TE-like)
+  polarization: "TE-like"          # even (y-mirror) symmetry; dominant Ey
+
+mechanical:
+  target_frequency_GHz: 8.0        # desired mid-gap mechanical frequency
+  min_gap: 0.20                    # required normalized mechanical gap...
+  # ...but a *symmetry-restricted* (quasi) gap is acceptable. See gap_mode below.
+  gap_mode: "symmetry"             # "complete" | "symmetry"
+  symmetry_class: "B1g_breathing"  # mode family to gap (even-even breathing-like)
+  # Bloch sweep band count to resolve the relevant family:
+  n_bands: 12
+
+scoring:
+  # S = min(G_o, G_m) - penalties (see src/objective.py)
+  lambda_optical: 10.0
+  lambda_mech: 10.0
+  # target-frequency penalties (keep gaps in the right spectral range)
+  lambda_optical_freq: 1.0
+  lambda_mech_freq: 1.0
