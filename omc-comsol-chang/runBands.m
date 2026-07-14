@@ -85,7 +85,7 @@ end
 % k runs from 0 to 3: 0-->1 for Gamma-X, 1-->2 for X-->M, 2-->3 for
 % M-Gamma
 model.param.set('k', '1');
-model.param.set('a', [num2str(a),'[m]']);
+model.param.set('a', sprintf('%.12g[m]', a));
 
 % define k-points
 model.param.set('kx', 'pi/a*k');

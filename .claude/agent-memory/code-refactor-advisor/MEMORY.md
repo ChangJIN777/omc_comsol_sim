@@ -1,1 +1,2 @@
 - [User profile](user_profile.md) — Harvard researcher doing optomechanical COMSOL nanobeam-cavity sims in MATLAB+LiveLink
+- [Reference iso-opt project](reference_iso_opt_project.md) — sibling Python/COMSOL OMC optimizer on Desktop using a template-driven declarative geometry pattern
