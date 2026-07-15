@@ -23,7 +23,7 @@ variables:
   w:  { min: 0.30e-6, max: 0.90e-6 }   # beam width [m]
   hx: { min: 0.08e-6, max: 0.38e-6 }   # hole semi-axis along beam axis [m]
   hy: { min: 0.10e-6, max: 0.40e-6 }   # hole semi-axis along beam width [m]
-  # t now a free variable (u[4]). Old 4-D results correspond to u4=0 (t=220nm).
+  # t now a free variable (u[4]). Old 4-D results correspond to u4=0 (t=t.min below).
   # Diamond-on-insulator films commercially available at 220, 300, 350, 400nm.
   # Larger t → stronger TE confinement → bigger optical gap at 1550nm.
   # Lower bound dropped 220->150nm (2026-07-02) — the optical-only campaign's

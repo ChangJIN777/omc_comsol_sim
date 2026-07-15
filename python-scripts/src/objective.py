@@ -41,8 +41,19 @@ def _hash_u(u, backends):
 
 def evaluate_candidate(u, *, optical_backend="surrogate",
                        mech_backend="comsol", cache=None, bounds=None,
-                       targets=None):
-    """Evaluate one normalized design vector u. Returns a result record dict."""
+                       targets=None, on_stage=None):
+    """Evaluate one normalized design vector u. Returns a result record dict.
+
+    on_stage, if given, is called as on_stage(name, event, info=None) at each
+    stage boundary (name in {"feasibility","optical","mechanical","score"},
+    event in {"start","done","skip","fail"}) -- e.g. for CLI progress
+    reporting. It is a no-op hook: evaluate_candidate never raises because
+    of it and callers that omit it see no behavior change.
+    """
+    def _stage(name, event, info=None):
+        if on_stage is not None:
+            on_stage(name, event, info)
+
     bounds = bounds or load_bounds()
     targets = targets or _load("targets.yaml")
     cid = _hash_u(u, (optical_backend, mech_backend))
@@ -50,6 +61,7 @@ def evaluate_candidate(u, *, optical_backend="surrogate",
     if cache is not None and cid in cache:
         return cache[cid]
 
+    _stage("feasibility", "start")
     g = u_to_geometry(u, bounds)
     ok, reasons = check_feasibility(g, bounds)
     rec = dict(id=cid, u=[float(x) for x in u], params=g.as_dict(),
@@ -57,17 +69,20 @@ def evaluate_candidate(u, *, optical_backend="surrogate",
                status="pending", reasons=reasons)
 
     if not ok:
+        _stage("feasibility", "fail", reasons)
         rec.update(status="infeasible", optical_gap=0.0, mechanical_gap=0.0,
                    score=-10.0,
                    optical_center_frequency=0.0, mechanical_center_frequency=0.0)
         if cache is not None:
             cache[cid] = rec
         return rec
+    _stage("feasibility", "done")
 
     f_o_target = C0 / (targets["optical"]["target_wavelength_nm"] * 1e-9)
     f_m_target = targets["mechanical"]["target_frequency_GHz"] * 1e9
 
     # ---- optical ----
+    _stage("optical", "start", optical_backend)
     try:
         if optical_backend == "surrogate":
             from optical_surrogate import optical_gap_surrogate
@@ -86,14 +101,18 @@ def evaluate_candidate(u, *, optical_backend="surrogate",
         else:
             raise ValueError(f"unknown optical_backend {optical_backend}")
     except Exception as e:  # solver failed -> record, don't crash loop
+        _stage("optical", "fail", str(e))
         rec.update(status="optical_failed", error=str(e),
                    optical_gap=0.0, mechanical_gap=0.0, score=-5.0,
                    optical_center_frequency=0.0, mechanical_center_frequency=0.0)
         if cache is not None:
             cache[cid] = rec
         return rec
+    _stage("optical", "done")
 
     # ---- mechanical ----
+    _stage("mechanical", "start" if mech_backend != "surrogate_stub" else "skip",
+           mech_backend)
     try:
         if mech_backend == "comsol":
             from acoustic_comsol import run_mechanical_comsol
@@ -105,6 +124,7 @@ def evaluate_candidate(u, *, optical_backend="surrogate",
         else:
             raise ValueError(f"unknown mech_backend {mech_backend}")
     except Exception as e:
+        _stage("mechanical", "fail", str(e))
         rec.update(status="mech_failed", error=str(e),
                    optical_gap=G_o, mechanical_gap=0.0, score=-2.0,
                    optical_center_frequency=f_o_c,
@@ -112,13 +132,17 @@ def evaluate_candidate(u, *, optical_backend="surrogate",
         if cache is not None:
             cache[cid] = rec
         return rec
+    if mech_backend != "surrogate_stub":
+        _stage("mechanical", "done")
 
+    _stage("score", "start")
     score = _score(G_o, G_m, f_o_c, f_m_c, f_o_target, f_m_target, targets)
     rec.update(status="success", optical_gap=float(G_o),
                mechanical_gap=float(G_m) if G_m == G_m else None,
                optical_center_frequency=float(f_o_c),
                mechanical_center_frequency=(float(f_m_c) if f_m_c == f_m_c else None),
                score=float(score))
+    _stage("score", "done")
     if cache is not None:
         cache[cid] = rec
     return rec

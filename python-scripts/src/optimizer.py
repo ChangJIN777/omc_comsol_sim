@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 
-N_DIM = 4  # a, w, hx, hy (normalized)
+N_DIM = 5  # a, w, hx, hy, t (normalized)
 
 
 # ----------------------------- Stage 1: numpy --------------------------------
@@ -32,7 +32,7 @@ class RandomSampler:
         return r
 
     def ask(self):
-        bases = [2, 3, 5, 7]
+        bases = [2, 3, 5, 7, 11]
         if self.count < self.n_init:
             u = [self._halton(self.count + 1, b) for b in bases[:N_DIM]]
         else:

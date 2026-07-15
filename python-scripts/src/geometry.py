@@ -67,7 +67,7 @@ def u_to_geometry(u, bounds: dict | None = None) -> Geometry:
 
     u = list(u)
     if len(u) == 4 and "t" in v:
-        u = u + [0.0]   # backward-compat: u4=0 → t = t_min = 220 nm
+        u = u + [0.0]   # backward-compat: u4=0 → t = t_min (see bounds.yaml)
     if len(u) != len(VARS):
         raise ValueError(f"expected {len(VARS)} variables {VARS}, got {len(u)}")
 
