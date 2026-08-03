@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """Closed-loop optimization: ask -> evaluate -> save -> tell.
 
-Examples (pre-screen, runs anywhere with numpy):
-    python scripts/run_loop.py --n-init 40 --n-iter 80 --optical surrogate --mech surrogate_stub
+Usage:
+    python scripts/run_loop.py                             # uses configs/run_loop.yaml
+    python scripts/run_loop.py --config path/to/run_loop.yaml
 
-Full physics (on the Mac with MPB + COMSOL):
-    python scripts/run_loop.py --n-init 60 --n-iter 200 --optical mpb --mech comsol
+All settings live in the YAML config (default: configs/run_loop.yaml): n_init,
+n_iter, optical/mech backends, and the optimizer backend. For a numpy-only
+pre-screen keep optical: surrogate + mech: surrogate_stub; for full physics on
+the Mac use optical: mpb + mech: comsol.
 """
 import argparse
 import os
 import sys
+
+import yaml
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -18,27 +23,34 @@ from database import save_result, load_completed_results, best_result  # noqa: E
 from optimizer import initialize_optimizer, ask, tell  # noqa: E402
 
 
+_DEFAULT_CONFIG = os.path.join(os.path.dirname(__file__), "..", "configs",
+                               "run_loop.yaml")
+
+
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--n-init", type=int, default=40)
-    ap.add_argument("--n-iter", type=int, default=80)
-    ap.add_argument("--optical", default="surrogate",
-                    choices=["surrogate", "mpb", "comsol"])
-    ap.add_argument("--mech", default="surrogate_stub",
-                    choices=["comsol", "surrogate_stub"])
-    ap.add_argument("--backend", default="auto",
-                    choices=["auto", "random", "optuna", "botorch"])
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--config", default=_DEFAULT_CONFIG,
+                    help="Path to the YAML config (default: configs/run_loop.yaml)")
     args = ap.parse_args()
 
+    with open(args.config) as fh:
+        cfg = yaml.safe_load(fh)
+
+    n_init = cfg["n_init"]
+    n_iter = cfg["n_iter"]
+    optical = cfg["optical"]
+    mech = cfg["mech"]
+    backend = cfg["backend"]
+
     data = load_completed_results()
-    opt = initialize_optimizer(data, backend=args.backend, n_init=args.n_init)
+    opt = initialize_optimizer(data, backend=backend, n_init=n_init)
     print(f"resuming with {len(data)} prior results; backend={type(opt).__name__}")
 
-    total = args.n_init + args.n_iter
+    total = n_init + n_iter
     for it in range(total):
         u = ask(opt)
-        rec = evaluate_candidate(u, optical_backend=args.optical,
-                                 mech_backend=args.mech)
+        rec = evaluate_candidate(u, optical_backend=optical,
+                                 mech_backend=mech)
         save_result(rec)
         tell(opt, u, rec["score"],
              constraints={"optical_gap": rec.get("optical_gap"),

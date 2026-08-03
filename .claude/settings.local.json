@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/changjin/Desktop/Research/OMC iso design optimization Claude/**)",
+      "mcp__matlab__check_matlab_code",
+      "mcp__matlab__evaluate_matlab_code",
+      "WebSearch",
+      "Read(//Users/changjin/Documents/**)",
+      "Bash(/Users/changjin/Documents/matlab-mcp-server --help)",
+      "Bash(/Users/changjin/Documents/matlab-mcp-server --version)"
+    ]
+  }
+}

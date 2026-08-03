@@ -1,0 +1,15 @@
+# Configuration for scripts/run_loop.py — closed-loop optimization
+# (ask -> evaluate -> save -> tell).
+#
+# Loaded with yaml.safe_load; the script takes a single CLI flag,
+#   --config PATH   (defaults to this file: configs/run_loop.yaml)
+# Every key below was formerly a command-line flag with the same name/semantics.
+
+n_init: 40               # space-filling / initial samples before the model kicks in
+n_iter: 80               # optimization iterations after the initial samples
+
+optical: surrogate       # optical backend: surrogate | mpb | comsol
+mech: surrogate_stub     # mechanical backend: comsol | surrogate_stub
+
+# Optimizer backend: auto (numpy fallback -> Optuna -> BoTorch), or force one.
+backend: auto            # auto | random | optuna | botorch

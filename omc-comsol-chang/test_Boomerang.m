@@ -6,10 +6,10 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 400e-9;              % lattice constant 
+P.a = 480e-9;              % lattice constant 
 P.w = 86e-9;              % unit cell width (along x)
 P.r = 160e-9;              % unit cell height (along y)
-P.th = 180e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 
 P.h = 120e-9;           % the height of the hole in the lower portion
@@ -49,22 +49,22 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 %% define the maximum number of degree of freedom to limit the simulation time
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
-% %% debugging the unit cells 
-% % import COMSOL class
-% import com.comsol.model.*
-% import com.comsol.model.util.*
-% 
-% ModelUtil.showProgress(true);
-% ModelUtil.clear();
-% clear model
-% 
-% % create COMSOL model named 'model' from which COMSOL methods can be called, 
-% % e.g. model.save
-% model = ModelUtil.create('model');
-% 
-% buildBoomerangUnitCellStrip(model,P);
-% mphlaunch(model);
-%% Single solve
-datLoc = '.\test\boomerang\022524\';
-P.datLoc = datLoc;
-bds = solveBands(P);
+%% debugging the unit cells 
+% import COMSOL class
+import com.comsol.model.*
+import com.comsol.model.util.*
+
+ModelUtil.showProgress(true);
+ModelUtil.clear();
+clear model
+
+% create COMSOL model named 'model' from which COMSOL methods can be called, 
+% e.g. model.save
+model = ModelUtil.create('model');
+
+buildBoomerangUnitCellStrip(model,P);
+mphlaunch(model);
+% %% Single solve
+% datLoc = '.\test\boomerang\022524\';
+% P.datLoc = datLoc;
+% bds = solveBands(P);

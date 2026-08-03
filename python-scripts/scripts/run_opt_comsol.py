@@ -8,9 +8,12 @@ Runs all COMSOL solves through the already-open COMSOL model (cached by
 comsol_client).  Uses Optuna (TPE) if installed, else Halton random search.
 
 Usage:
-    python scripts/run_opt_comsol.py --n-iter 20
-    python scripts/run_opt_comsol.py --n-init 8 --n-iter 30 --n-k 9
-    python scripts/run_opt_comsol.py --n-iter 5 --n-k 5   # quick test
+    python scripts/run_opt_comsol.py                              # uses configs/run_opt_comsol.yaml
+    python scripts/run_opt_comsol.py --config path/to/run_opt_comsol.yaml
+
+All settings (iteration budget, sweep resolution, study names, scoring toggles,
+output paths) live in the YAML config (default: configs/run_opt_comsol.yaml).
+For a quick test, copy the default config and lower n_iter / n_k there.
 """
 import argparse
 import hashlib
@@ -21,6 +24,7 @@ import json
 import subprocess
 import time
 import warnings
+import yaml
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
@@ -38,6 +42,8 @@ C0 = 299_792_458.0
 _TEMPLATE    = os.path.join(os.path.dirname(__file__), "..", "comsol",
                             "omc_unitcell_iso.mph")
 _CHAR_SCRIPT = os.path.join(os.path.dirname(__file__), "characterize_best.py")
+_DEFAULT_CONFIG = os.path.join(os.path.dirname(__file__), "..", "configs",
+                               "run_opt_comsol.yaml")
 
 # ── Scoring constants ─────────────────────────────────────────────────────────
 OPT_F_TARGET   = C0 / 1550e-9      # 193.4 THz
@@ -2505,68 +2511,38 @@ def _save_progress(st, path, out_json, require_opt=True, require_mech=True,
 def main():
     ap = argparse.ArgumentParser(
         description="Co-optimize optical + mechanical OMC bandgaps via COMSOL.")
-    ap.add_argument("--n-init",  type=int, default=6,
-                    help="Space-filling / Halton trials before TPE kicks in")
-    ap.add_argument("--n-iter",  type=int, default=14,
-                    help="Total iterations (including n-init)")
-    ap.add_argument("--n-k",     type=int, default=7,
-                    help="k-points for optical zone-edge sweep (k∈[0.5,1.0]×π/a) "
-                         "and full mechanical sweep; 7 is a good default")
-    ap.add_argument("--n-bands-mech", type=int, default=8)
-    ap.add_argument("--n-bands-opt",  type=int, default=6,
-                    help="Optical bands kept per k-point during the OPTIMIZATION "
-                         "loop (_opt_sweep; neigs floor is also 6 there). Only "
-                         "the fundamental TE gap is scored, plus margin for the "
-                         "1-3 near-zero scattering-boundary pseudo-modes that "
-                         "get filtered out — 6 is enough; 10 was excessive. "
-                         "The end-of-run/standalone characterization sweep "
-                         "(_full_opt_sweep) keeps its own wider neigs floor of "
-                         "10 for accurate plotting, independent of this flag.")
-    ap.add_argument("--study-mech",   default="mech sym")
-    ap.add_argument("--study-opt",    default="opt TE")
-    ap.add_argument("--no-fy", action="store_true",
-                    help="Skip per-mode fy field evaluation in mechanical sweep. "
-                         "Use when mech sym BCs already select breathing modes — "
-                         "saves ~30-50%% of total COMSOL time per evaluation.")
-    ap.add_argument("--out-fig",      default="results/figures/opt_progress_iso.png")
-    ap.add_argument("--out-json",     default="results/opt_results_t5d_iso.json")
-    ap.add_argument("--progress-file", default="results/progress_iso.txt",
-                    help="Human-readable status file updated after each iteration. "
-                         "Monitor live with:  tail -f results/progress_iso.txt")
-    ap.add_argument("--explore-every", type=int, default=0,
-                    help="Force a random exploration sample every N iterations "
-                         "(0=off). Prevents TPE from getting stuck in a local "
-                         "optimum. Example: --explore-every 8 gives ~12%% random "
-                         "samples in a 60-iteration run.")
-    ap.add_argument("--resume", action="store_true",
-                    help="(Legacy flag, now a no-op: prior results are always loaded "
-                         "automatically if --out-json exists.)")
-    ap.add_argument("--fresh-start", action="store_true",
-                    help="Discard all prior results and start from scratch. "
-                         "The existing --out-json is backed up to <file>.bak first. "
-                         "Without this flag, prior results are always loaded automatically.")
-    ap.add_argument("--skip-characterization", action="store_true",
-                    help="Skip the end-of-run full characterization sweep "
-                         "(opt TE+TM, mech sym+antisym over the full BZ). "
-                         "Use for quick test runs where you don't need the figure.")
-    ap.add_argument("--no-require-mech", action="store_true",
-                    help="Exclude mechanical gap from the score entirely: no +G_m "
-                         "reward, no gap-size penalty, no frequency penalty. The "
-                         "mechanical sweep still runs and G_m/f_m are still "
-                         "recorded (so you can inspect 'free' mechanical gaps "
-                         "later) — this only changes what's optimized for.")
-    ap.add_argument("--no-require-opt", action="store_true",
-                    help="Symmetric to --no-require-mech, for optical gap. "
-                         "Rarely used but supported for consistency.")
-    ap.add_argument("--g-min-opt", type=float, default=G_MIN_OPT,
-                    help=f"Minimum acceptable optical gap for scoring "
-                         f"(default {G_MIN_OPT}). Ignored if --no-require-opt.")
-    ap.add_argument("--g-min-mech", type=float, default=G_MIN_MECH,
-                    help=f"Minimum acceptable mechanical gap for scoring "
-                         f"(default {G_MIN_MECH}). Ignored if --no-require-mech.")
-    args = ap.parse_args()
-    require_opt  = not args.no_require_opt
-    require_mech = not args.no_require_mech
+    ap.add_argument("--config", default=_DEFAULT_CONFIG,
+                    help="Path to the YAML config "
+                         "(default: configs/run_opt_comsol.yaml)")
+    cli = ap.parse_args()
+
+    with open(cli.config) as fh:
+        cfg = yaml.safe_load(fh)
+
+    # Populate a Namespace so the rest of main() keeps referring to args.<key>.
+    # `resume` is intentionally not read: it was already a legacy no-op (prior
+    # results are auto-loaded whenever out_json exists), so it stays a documented
+    # key in the YAML for backward-compat clarity but has no effect here.
+    args = argparse.Namespace(
+        n_init=cfg["n_init"],
+        n_iter=cfg["n_iter"],
+        n_k=cfg["n_k"],
+        n_bands_mech=cfg["n_bands_mech"],
+        n_bands_opt=cfg["n_bands_opt"],
+        study_mech=cfg["study_mech"],
+        study_opt=cfg["study_opt"],
+        compute_fy=cfg["compute_fy"],
+        out_fig=cfg["out_fig"],
+        out_json=cfg["out_json"],
+        progress_file=cfg["progress_file"],
+        explore_every=cfg["explore_every"],
+        fresh_start=cfg["fresh_start"],
+        skip_characterization=cfg["skip_characterization"],
+        g_min_opt=cfg["g_min_opt"],
+        g_min_mech=cfg["g_min_mech"],
+    )
+    require_opt  = cfg["require_opt"]
+    require_mech = cfg["require_mech"]
 
     if not os.path.exists(_TEMPLATE):
         print(f"[FAIL] COMSOL template not found: {_TEMPLATE}")
@@ -2594,7 +2570,7 @@ def main():
                 prior = json.load(fh)
             print(f"Auto-resumed: loaded {len(prior)} prior results from {args.out_json}")
 
-    compute_fy = not args.no_fy
+    compute_fy = args.compute_fy
     optimizer = make_optimizer(args.n_init, prior_results=prior, bounds=bounds,
                                require_opt=require_opt, require_mech=require_mech,
                                g_min_opt=args.g_min_opt, g_min_mech=args.g_min_mech)
@@ -2749,7 +2725,7 @@ def main():
                "--out-dir",    out_dir,
                "--study-opt",  args.study_opt,
                "--study-mech", args.study_mech]
-        if getattr(args, "no_fy", False):
+        if not args.compute_fy:
             cmd.append("--no-fy")
         with open(char_log, "w") as char_log_fh:
             proc = subprocess.run(cmd, stdout=char_log_fh, stderr=subprocess.STDOUT)

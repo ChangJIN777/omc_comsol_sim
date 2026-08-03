@@ -81,7 +81,8 @@ def main():
               f"(build it per comsol/README_template.md)")
 
     print("\nAll critical steps passed -> you can run:")
-    print("   python scripts/run_loop.py --optical mpb --mech comsol")
+    print("   python scripts/run_loop.py --config configs/run_loop.yaml"
+          "   # set optical: mpb, mech: comsol in the config")
     return 0
 
 

@@ -6,16 +6,16 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang_strip';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 400e-9;              % lattice constant 
-P.w = 86e-9;              % unit cell width (along x)
-P.r = 160e-9;              % unit cell height (along y)
-P.th = 160e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.a = 480e-9;              % lattice constant 
+P.w = 138e-9;              % unit cell width (along x)
+P.r = 150e-9;              % unit cell height (along y)
+P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 % for the center unit cells v2 
 P.wo = 320e-9;
-P.wi = 144e-9;
-P.ho = 170e-9;
-P.hi = 100e-9;
+P.wi = 94e-9;
+P.ho = 210e-9;
+P.hi = 196e-9;
 P.d = sqrt(3)*P.a/2;
 % center unit cell parameters
 
@@ -51,7 +51,7 @@ P.optical_freq = 100;       % specify the target frequency (THz)
 
 % for the optical bandgap 
 P.add_airDisk = 1;
-P.airDiskH = 4000e-9;
+P.airDiskH = 5000e-9;
 P.mbevenz = 0;
 
 %% mechanical simulation parameters 
@@ -69,27 +69,27 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 %% define the maximum number of degree of freedom to limit the simulation time
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
-% %% debugging the unit cells 
-% % import COMSOL class
-% import com.comsol.model.*
-% import com.comsol.model.util.*
-% 
-% ModelUtil.showProgress(true);
-% ModelUtil.clear();
-% clear model
-% 
-% % create COMSOL model named 'model' from which COMSOL methods can be called, 
-% % e.g. model.save
-% model = ModelUtil.create('model');
-% 
-% buildBoomerangStrip_3D(model,P);
-% mphlaunch(model);
-%% Single solve
-currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\boomerang_strip\',currentDate,'\'];
-P.datLoc = datLoc;
-% optical band
-% bds = solveOpticalBands(P);
-% mechanical band 
-P.add_airDisk = 0;
-bds = solveBands(P);
+%% debugging the unit cells 
+% import COMSOL class
+import com.comsol.model.*
+import com.comsol.model.util.*
+
+ModelUtil.showProgress(true);
+ModelUtil.clear();
+clear model
+
+% create COMSOL model named 'model' from which COMSOL methods can be called, 
+% e.g. model.save
+model = ModelUtil.create('model');
+
+buildBoomerangStrip_3D(model,P);
+mphlaunch(model);
+% %% Single solve
+% currentDate = datestr(now,'mmddyyyy');
+% datLoc = ['.\test\boomerang_strip\',currentDate,'\'];
+% P.datLoc = datLoc;
+% % optical band
+% % bds = solveOpticalBands(P);
+% % mechanical band 
+% P.add_airDisk = 0;
+% bds = solveBands(P);

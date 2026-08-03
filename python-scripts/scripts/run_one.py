@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
 """Evaluate ONE candidate and save the result.
 
-Examples:
-    python scripts/run_one.py --u 0.5 0.6 0.5 0.6 0.5 --optical surrogate --mech surrogate_stub
-    python scripts/run_one.py --u 0.5 0.6 0.5 0.6 0.5 --optical mpb --mech comsol
+Usage:
+    python scripts/run_one.py                             # uses configs/run_one.yaml
+    python scripts/run_one.py --config path/to/run_one.yaml
 
---u takes 5 normalized values (ua, uw, uhx, uhy, ut), each in [0,1], mapping
-to (a, w, hx, hy, t) via src/geometry.py:u_to_geometry -- see configs/bounds.yaml
-for the physical ranges. A legacy 4-value --u is still accepted for
+All settings live in the YAML config (default: configs/run_one.yaml). The `u`
+key takes 5 normalized values (ua, uw, uhx, uhy, ut), each in [0,1], mapping to
+(a, w, hx, hy, t) via src/geometry.py:u_to_geometry -- see configs/bounds.yaml
+for the physical ranges. A legacy 4-value `u` is still accepted for
 backward compatibility and pins thickness t to its minimum (t=t_min).
 
 Stage progress (feasibility / optical / mechanical / score) is printed to
 stderr as each stage starts and finishes, so stdout stays pure JSON even when
-redirected to a file. Pass --quiet to suppress it.
+redirected to a file. Set `quiet: true` in the config to suppress it.
 """
 import argparse
 import json
 import os
 import sys
 import time
+
+import yaml
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -63,34 +66,37 @@ def make_stderr_reporter():
     return report
 
 
+_DEFAULT_CONFIG = os.path.join(os.path.dirname(__file__), "..", "configs",
+                               "run_one.yaml")
+
+
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--u", nargs="+", type=float, required=True,
-                    metavar="UA UW UHX UHY [UT]",
-                    help="5 normalized values (ua uw uhx uhy ut), each in "
-                         "[0,1]. A legacy 4-value form is also accepted and "
-                         "pins thickness t to its minimum.")
-    ap.add_argument("--optical", default="surrogate",
-                    choices=["surrogate", "mpb", "comsol"])
-    ap.add_argument("--mech", default="surrogate_stub",
-                    choices=["comsol", "surrogate_stub"])
-    ap.add_argument("--quiet", action="store_true",
-                    help="suppress stage progress on stderr")
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--config", default=_DEFAULT_CONFIG,
+                    help="Path to the YAML config (default: configs/run_one.yaml)")
     args = ap.parse_args()
 
-    if len(args.u) not in (4, 5):
-        ap.error(f"--u takes 4 (legacy) or 5 values (ua uw uhx uhy [ut]), got {len(args.u)}")
+    with open(args.config) as fh:
+        cfg = yaml.safe_load(fh)
 
-    on_stage = None if args.quiet else make_stderr_reporter()
+    u = [float(x) for x in cfg["u"]]
+    optical = cfg["optical"]
+    mech = cfg["mech"]
+    quiet = cfg["quiet"]
 
-    rec = evaluate_candidate(args.u, optical_backend=args.optical,
-                             mech_backend=args.mech, on_stage=on_stage)
+    if len(u) not in (4, 5):
+        ap.error(f"config `u` takes 4 (legacy) or 5 values (ua uw uhx uhy [ut]), got {len(u)}")
 
-    if not args.quiet:
+    on_stage = None if quiet else make_stderr_reporter()
+
+    rec = evaluate_candidate(u, optical_backend=optical,
+                             mech_backend=mech, on_stage=on_stage)
+
+    if not quiet:
         t0 = time.time()
         print("[saving] writing result record ... running", file=sys.stderr)
     save_result(rec)
-    if not args.quiet:
+    if not quiet:
         print(f"[saving] writing result record ... done ({_fmt_time(time.time()-t0)})",
               file=sys.stderr)
 
