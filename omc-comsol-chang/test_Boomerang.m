@@ -7,13 +7,10 @@ P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
 P.a = 480e-9;              % lattice constant 
-P.w = 86e-9;              % unit cell width (along x)
-P.r = 160e-9;              % unit cell height (along y)
+P.w = 140e-9;              % unit cell width (along x)
+P.r = 177e-9;              % unit cell height (along y)
 P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
-                            % or of inner block (for celltype = 'solid')
-
-P.h = 120e-9;           % the height of the hole in the lower portion
-P.d = 86e-9;           % the width of the hole in the lower portion                            
+                            % or of inner block (for celltype = 'solid')                   
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype = 'hollow')
@@ -36,10 +33,11 @@ P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
+P.TwoSymPlanes = 1;             % if we are solving for band structures with two symmetry planes
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
-P.meshSize = 4;                         % mesh quality for mechanical simulations
+P.meshSize = 3;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
 P.anisoMat = 1;
@@ -50,21 +48,21 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
 %% debugging the unit cells 
-% import COMSOL class
-import com.comsol.model.*
-import com.comsol.model.util.*
-
-ModelUtil.showProgress(true);
-ModelUtil.clear();
-clear model
-
-% create COMSOL model named 'model' from which COMSOL methods can be called, 
-% e.g. model.save
-model = ModelUtil.create('model');
-
-buildBoomerangUnitCellStrip(model,P);
-mphlaunch(model);
-% %% Single solve
-% datLoc = '.\test\boomerang\022524\';
-% P.datLoc = datLoc;
-% bds = solveBands(P);
+% % import COMSOL class
+% import com.comsol.model.*
+% import com.comsol.model.util.*
+% 
+% ModelUtil.showProgress(true);
+% ModelUtil.clear();
+% clear model
+% 
+% % create COMSOL model named 'model' from which COMSOL methods can be called, 
+% % e.g. model.save
+% model = ModelUtil.create('model');
+% 
+% buildBoomerangUnitCellStrip(model,P);
+% mphlaunch(model);
+%% Single solve
+datLoc = '.\test\boomerang\022524\';
+P.datLoc = datLoc;
+bds = solveBands(P);

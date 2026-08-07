@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Visualize the simulated unit cell: top view (x-y... actually z-y) + cross-section.
 
-    python scripts/plot_geometry.py --u 0.5 0.6 0.5 0.6
-    python scripts/plot_geometry.py --u 0.5 0.6 0.5 0.6 --periods 5 --out results/figures/cell.png
+Usage:
+    python scripts/plot_geometry.py                              # uses configs/plot_geometry.yaml
+    python scripts/plot_geometry.py --config path/to/plot_geometry.yaml
 
+All settings live in the YAML config (default: configs/plot_geometry.yaml).
 Draws (a) a top view of the beam along the periodic z-axis with the elliptical
 hole(s) and the feasibility margins (bridge, sidewall), and (b) the rectangular
 cross-section (y-x) with the hole footprint. Pure matplotlib; runs anywhere.
@@ -12,6 +14,7 @@ import argparse
 import os
 import sys
 
+import yaml
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -20,15 +23,24 @@ from matplotlib.patches import Rectangle, Ellipse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from geometry import u_to_geometry, check_feasibility  # noqa: E402
 
+_DEFAULT_CONFIG = os.path.join(os.path.dirname(__file__), "..", "configs",
+                               "plot_geometry.yaml")
+
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--u", nargs=4, type=float, required=True)
-    ap.add_argument("--periods", type=int, default=3)
-    ap.add_argument("--out", default="results/figures/geometry.png")
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--config", default=_DEFAULT_CONFIG,
+                    help="Path to the YAML config (default: configs/plot_geometry.yaml)")
     args = ap.parse_args()
 
-    g = u_to_geometry(args.u)
+    with open(args.config) as fh:
+        cfg = yaml.safe_load(fh)
+
+    u = [float(x) for x in cfg["u"]]
+    periods = cfg["periods"]
+    out = cfg["out"]
+
+    g = u_to_geometry(u)
     ok, reasons = check_feasibility(g)
     nm = 1e9
     a, w, t, hx, hy = g.a*nm, g.w*nm, g.t*nm, g.hx*nm, g.hy*nm
@@ -37,7 +49,7 @@ def main():
                                    gridspec_kw={"width_ratios": [3, 1]})
 
     # --- top view: beam along z, width y ---
-    N = args.periods
+    N = periods
     axt.add_patch(Rectangle((-N*a/2, -w/2), N*a, w, facecolor="#cfe8ff",
                             edgecolor="#1f5fa6", lw=1.5, zorder=1))
     for i in range(N):
@@ -78,10 +90,10 @@ def main():
     fig.suptitle(f"Diamond OMC unit cell  |  {status}", color=color, fontsize=12)
     fig.tight_layout(rect=[0, 0, 1, 0.95])
 
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    fig.savefig(args.out, dpi=150)
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    fig.savefig(out, dpi=150)
     print(f"geometry (nm): a={a:.0f} w={w:.0f} t={t:.0f} hx={hx:.0f} hy={hy:.0f}")
-    print(f"feasible={ok}  saved -> {args.out}")
+    print(f"feasible={ok}  saved -> {out}")
 
 
 if __name__ == "__main__":

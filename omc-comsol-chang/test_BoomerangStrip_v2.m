@@ -61,7 +61,7 @@ P.airDiskH = 4000e-9;
 %% define the maximum number of degree of freedom to limit the simulation time
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
-%% debugging the unit cells 
+% % debugging the unit cells 
 % % import COMSOL class
 % import com.comsol.model.*
 % import com.comsol.model.util.*

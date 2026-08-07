@@ -44,13 +44,13 @@ P.saveMPH = 0;
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
 % the symmetry condition parameters 
 P.TwoSymPlanes = 1; % if we are solving for band structures with two symmetry planes
-P.zSymCondition = 0;
+P.zSymCondition = 1;
 % for optical simulation
 P.bandStructureDim=1;           % specify the dimension of the band structure 
 P.optical_freq = 100;       % specify the target frequency (THz)
 
 % for the optical bandgap 
-P.add_airDisk = 1;
+P.add_airDisk = 0;
 P.airDiskH = 5000e-9;
 P.mbevenz = 0;
 
@@ -69,27 +69,27 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 %% define the maximum number of degree of freedom to limit the simulation time
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
-%% debugging the unit cells 
-% import COMSOL class
-import com.comsol.model.*
-import com.comsol.model.util.*
-
-ModelUtil.showProgress(true);
-ModelUtil.clear();
-clear model
-
-% create COMSOL model named 'model' from which COMSOL methods can be called, 
-% e.g. model.save
-model = ModelUtil.create('model');
-
-buildBoomerangStrip_3D(model,P);
-mphlaunch(model);
-% %% Single solve
-% currentDate = datestr(now,'mmddyyyy');
-% datLoc = ['.\test\boomerang_strip\',currentDate,'\'];
-% P.datLoc = datLoc;
-% % optical band
-% % bds = solveOpticalBands(P);
-% % mechanical band 
-% P.add_airDisk = 0;
-% bds = solveBands(P);
+% %% debugging the unit cells 
+% % import COMSOL class
+% import com.comsol.model.*
+% import com.comsol.model.util.*
+% 
+% ModelUtil.showProgress(true);
+% ModelUtil.clear();
+% clear model
+% 
+% % create COMSOL model named 'model' from which COMSOL methods can be called, 
+% % e.g. model.save
+% model = ModelUtil.create('model');
+% 
+% buildBoomerangStrip_3D(model,P);
+% mphlaunch(model);
+%% Single solve
+currentDate = datestr(now,'mmddyyyy');
+datLoc = ['.\test\boomerang_strip\',currentDate,'\'];
+P.datLoc = datLoc;
+% optical band
+% bds = solveOpticalBands(P);
+% mechanical band 
+P.add_airDisk = 0;
+bds = solveBands(P);

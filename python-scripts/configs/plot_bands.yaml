@@ -1,0 +1,28 @@
+# Configuration for scripts/plot_bands.py — plot a band diagram (Gamma -> X)
+# and shade the bandgap.
+#
+# Loaded with yaml.safe_load; the script takes a single CLI flag,
+#   --config PATH   (defaults to this file: configs/plot_bands.yaml)
+# Every key below was formerly a command-line flag with the same name/semantics.
+#
+# Two input modes, selected by `kind`:
+#   (A) kind: optical | mechanical  -> load saved bands from `npz`
+#       (.npz must contain `k_frac` [n_k] and `freqs_hz` [n_k, n_bands]).
+#   (B) kind: optical-surrogate     -> demo from the numpy TMM surrogate,
+#       geometry taken from `u`; runs anywhere with no external solver.
+
+# Path to a saved band array (.npz). Only used when kind is optical/mechanical;
+# leave null for the optical-surrogate demo mode.
+npz: null
+
+# 4 normalized values (ua, uw, uhx, uhy), each in [0,1], mapped to geometry via
+# src/geometry.py:u_to_geometry. Only used by the optical-surrogate mode.
+u: [0.5, 0.6, 0.5, 0.6]
+
+# Which bands to plot: optical | mechanical | optical-surrogate.
+kind: optical-surrogate
+
+target_nm: 1550.0        # optical gap target wavelength [nm] (kind: optical / optical-surrogate)
+target_GHz: 8.0          # mechanical gap target frequency [GHz] (kind: mechanical)
+
+out: results/figures/bands.png   # output figure path

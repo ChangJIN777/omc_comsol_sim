@@ -32,13 +32,21 @@ redirected to a file. Set `quiet: true` in the config to suppress the progress l
 
 ## Visualization (runs anywhere)
 ```bash
-python scripts/plot_geometry.py --u 0.5 0.6 0.5 0.6 --periods 5   # unit cell: top view + cross-section
-python scripts/plot_bands.py    --u 0.5 0.6 0.5 0.6 --kind optical-surrogate   # band diagram + gap
-python scripts/plot_mode.py     --demo                            # mode-field rendering (synthetic)
+python scripts/plot_geometry.py   # unit cell: top view + cross-section
+python scripts/plot_bands.py      # band diagram + gap (kind: optical-surrogate by default)
+python scripts/plot_mode.py       # mode-field rendering (demo: true by default)
 ```
+Like `run_one.py`/`run_loop.py`, each script takes a single `--config PATH` flag
+defaulting to its own YAML in `configs/`, so the commands above run with no
+external solver needed. Edit the YAML to change settings that used to be CLI
+flags: `u`, `periods` in `configs/plot_geometry.yaml`; `u`, `kind`,
+`target_nm`/`target_GHz` in `configs/plot_bands.yaml`; `demo` in
+`configs/plot_mode.yaml`; and `npz`/`out` in the relevant config.
+
 For real band/mode figures, the MPB and COMSOL backends expose `save_bands(...)`
-and `export_mode_grid(...)`; feed the resulting `.npz` to `plot_bands.py --npz`
-/ `plot_mode.py --npz`.
+and `export_mode_grid(...)`; instead of a `--npz` flag, set
+`npz: path/to/file.npz` in `configs/plot_bands.yaml` / `configs/plot_mode.yaml`
+(and for `plot_bands.py`, set `kind: optical` or `kind: mechanical`).
 
 ## Real physics (on the Mac)
 COMSOL runs on your Mac, not in any sandbox. **Setup + diagnostic:** see
@@ -61,9 +69,11 @@ Mechanical + fabrication-aware optical -- COMSOL 6.2:
 ```
 configs/   bounds.yaml  targets.yaml  materials.yaml
            run_one.yaml  run_loop.yaml  run_opt_comsol.yaml  (per-script --config)
+           plot_bands.yaml  plot_geometry.yaml  plot_mode.yaml
 src/       geometry  bandgap  optical_{surrogate,mpb,comsol}  acoustic_comsol
            objective  optimizer  database
 scripts/   run_one.py  run_loop.py  run_opt_comsol.py
+           plot_bands.py  plot_geometry.py  plot_mode.py
 comsol/    template recipe + MATLAB LiveLink driver
 tests/     test_pipeline.py  (numpy-only)
 results/   runs.sqlite (+ .jsonl fallback)
