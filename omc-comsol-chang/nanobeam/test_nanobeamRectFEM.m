@@ -9,18 +9,18 @@ P.celltype = 'hole';                    % specify what type of unit cells we are
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a = 605e-9;                           % nominal lattice constant
-P.w = 600e-9;                           % beam width
+P.a = 529e-9;                           % nominal lattice constant
+P.w = 750e-9*1.1;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 400e-9;                          % beam thickness
-P.hx = 220e-9;                          % nominal hole height (along x-axis)
-P.hy = 330e-9;                          % nominal hole width (along y-axis)
+P.th = 500e-9;                          % beam thickness
+P.hx = 196e-9;                          % nominal hole height (along x-axis)
+P.hy = 578e-9;                          % nominal hole width (along y-axis)
 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.15;                     % defect percentage
-P.oblong = 0.7265;                      % oblong parameter (zero if holes are not changed)
+P.maxdef = 0.17;                     % defect percentage
+P.oblong = 2.7;                      % oblong parameter (zero if holes are not changed)
 
 % cavity taper params
 P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle
@@ -49,7 +49,7 @@ P.wgmTaper.hy_end = 300e-9;             % for endtype = 'custom': hole width of 
 
 % asymmetric cavity - specify param data struct P.PL with similar fields to
 % P, for left half of asymmetric cavity
-P.asymCav = 1;                          % 1 to e-nable asymmetric cavity
+P.asymCav = 0;                          % 1 to e-nable asymmetric cavity
 if P.asymCav                
     P.PL = P;
     P.PL.nholes = 3+P.ndef;
@@ -66,10 +66,11 @@ P.asym = 0;                             % cross-section asymmetry (target y-offs
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
-P.solveOpt = 0;                         % 1 to solve for optics
+P.solveOpt = 1;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
 P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)
+P.extractLocMechModes = 1;              % if we are filtering mode based on how confined they are
 
 % plotting & saving
 P.plotgeom = 0;                         % 1 to plot the geometry
@@ -83,7 +84,7 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 10e9;                           % target mechanical frequency
+P.freq = 7e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof

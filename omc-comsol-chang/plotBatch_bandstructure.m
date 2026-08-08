@@ -74,13 +74,12 @@ function fh = plotBandStruct(ds)
 if isfield(ds,'P')
     P = ds.P;
 else 
-    P = ds.sym.P;
+    P = ds.symy_symz.P;
 end
 
 fh = figure; hold on
 
 % ------------------------------------------------------------------ bands ---
-if P.TwoSymPlanes
     symy_symz   = ds.symy_symz;
     symy_asymz  = ds.symy_asymz;
     asymy_symz  = ds.asymy_symz;
@@ -92,37 +91,54 @@ if P.TwoSymPlanes
     p4 = plot(asymy_asymz.k_norm,asymy_asymz.F*1e-9,'--m','linewidth',2,'DisplayName','asymy_asymz');
     % one line handle per group is enough for the legend
     legHandles = [p1(1) p2(1) p3(1) p4(1)];
-else
-    sym = ds.sym;
-    p1  = plot(sym.k_norm,ds.sym.F*1e-9,'-k','linewidth',2,'DisplayName','sym');
-    legHandles = p1(1);
-    if P.solveasym && isfield(ds,'asym') && ~isempty(ds.asym)
-        asym = ds.asym;
-        p2 = plot(asym.k_norm,asym.F*1e-9,'--b','linewidth',2,'DisplayName','asym');
-        legHandles = [legHandles p2(1)];
-    end
-end
+    
+    % sym = ds.sym;
+    % p1  = plot(sym.k_norm,ds.sym.F*1e-9,'-k','linewidth',2,'DisplayName','sym');
+    % legHandles = p1(1);
+    % if P.solveasym && isfield(ds,'asym') && ~isempty(ds.asym)
+    %     asym = ds.asym;
+    %     p2 = plot(asym.k_norm,asym.F*1e-9,'--b','linewidth',2,'DisplayName','asym');
+    %     legHandles = [legHandles p2(1)];
+    % end
 
 full = ds.full;
 
 % ------------------------------------------------------------ gaps + axes ---
 if P.bandStruct_2D
     % ============================ 2D case ===============================
-    % symmetric bandgaps
-    if isfield(sym,'gapSize')
-        for k = 1:length(sym.gapSize)
-            bgp = patch([0 3 3 0],1e-9.*(sym.midGap(k) + 0.5*[sym.gapSize(k) ...
-                sym.gapSize(k) -sym.gapSize(k) -sym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+    % symmetric y and z
+    if isfield(symy_symz,'gapSize')
+        for k = 1:length(symy_symz.gapSize)
+            bgp = patch([0 3 3 0],1e-9.*(symy_symz.midGap(k) + 0.5*[symy_symz.gapSize(k) ...
+                symy_symz.gapSize(k) -symy_symz.gapSize(k) -symy_symz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+            alpha(bgp,0.5);
+        end
+    end
+    
+    % asymmetric y and symmetric z
+    if isfield(asymy_symz,'gapSize')
+        for k = 1:length(asymy_symz.gapSize)
+            bgp = patch([0 3 3 0],1e-9.*(asymy_symz.midGap(k) + 0.5*[asymy_symz.gapSize(k) ...
+                asymy_symz.gapSize(k) -asymy_symz.gapSize(k) -asymy_symz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
             alpha(bgp,0.5);
         end
     end
 
-    % asymmetric bandgaps
-    if exist('asym','var') && isfield(asym,'gapSize')
-        for k = 1:length(asym.gapSize)
-            bgp = patch([0 3 3 0],1e-9.*(asym.midGap(k) + 0.5*[asym.gapSize(k) ...
-                asym.gapSize(k) -asym.gapSize(k) -asym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
-            alpha(bgp,0.2);
+    % symmetric y and asymmetric z
+    if isfield(symy_asymz,'gapSize')
+        for k = 1:length(symy_asymz.gapSize)
+            bgp = patch([0 3 3 0],1e-9.*(symy_asymz.midGap(k) + 0.5*[symy_asymz.gapSize(k) ...
+                symy_asymz.gapSize(k) -symy_asymz.gapSize(k) -symy_asymz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+            alpha(bgp,0.5);
+        end
+    end
+
+     % asymmetric y and asymmetric z
+    if isfield(asymy_asymz,'gapSize')
+        for k = 1:length(asymy_asymz.gapSize)
+            bgp = patch([0 3 3 0],1e-9.*(asymy_asymz.midGap(k) + 0.5*[asymy_asymz.gapSize(k) ...
+                asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+            alpha(bgp,0.5);
         end
     end
 

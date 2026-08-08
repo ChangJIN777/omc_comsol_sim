@@ -271,16 +271,30 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
         if P.bandStruct_2D
 
             % plot symmetric bandgaps
-            for k = 1:length(sym.gapSize)
-                bgp = patch([0 3 3 0],1e-9.*(sym.midGap(k) + 0.5*[sym.gapSize(k) ...
-                    sym.gapSize(k) -sym.gapSize(k) -sym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+            for k = 1:length(symy_symz.gapSize)
+                bgp = patch([0 3 3 0],1e-9.*(symy_symz.midGap(k) + 0.5*[symy_symz.gapSize(k) ...
+                    symy_symz.gapSize(k) -symy_symz.gapSize(k) -symy_symz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
                 alpha(bgp,0.5);
             end
 
             % plot asymmetric bandgaps
-            for k = 1:length(asym.gapSize)
-                bgp = patch([0 3 3 0],1e-9.*(asym.midGap(k) + 0.5*[asym.gapSize(k) ...
-                    asym.gapSize(k) -asym.gapSize(k) -asym.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+            for k = 1:length(symy_asymz.gapSize)
+                bgp = patch([0 3 3 0],1e-9.*(symy_asymz.midGap(k) + 0.5*[symy_asymz.gapSize(k) ...
+                    symy_asymz.gapSize(k) -symy_asymz.gapSize(k) -symy_asymz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+                alpha(bgp,0.2);
+            end
+
+            % plot asymmetric bandgaps
+            for k = 1:length(asymy_symz.gapSize)
+                bgp = patch([0 3 3 0],1e-9.*(asymy_asymz.midGap(k) + 0.5*[asymy_asymz.gapSize(k) ...
+                    asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
+                alpha(bgp,0.2);
+            end
+
+            % plot asymmetric bandgaps
+            for k = 1:length(asymy_asymz.gapSize)
+                bgp = patch([0 3 3 0],1e-9.*(asymy_asymz.midGap(k) + 0.5*[asymy_asymz.gapSize(k) ...
+                    asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
                 alpha(bgp,0.2);
             end
 
