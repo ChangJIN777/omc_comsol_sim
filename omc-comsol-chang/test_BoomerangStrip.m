@@ -7,21 +7,21 @@ P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang_strip';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
 P.a = 480e-9;              % lattice constant 
-P.w = 138e-9;              % unit cell width (along x)
-P.r = 150e-9;              % unit cell height (along y)
+P.w = 140e-9;              % unit cell width (along x)
+P.r = 177e-9;              % unit cell height (along y)
 P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 % for the center unit cells v2 
-P.wo = 320e-9;
-P.wi = 94e-9;
-P.ho = 210e-9;
+P.wo = 372e-9;
+P.wi = 91e-9;
+P.ho = 210.7e-9;
 P.hi = 196e-9;
 P.d = sqrt(3)*P.a/2;
 % center unit cell parameters
 
 % for the center unit cells v1 
-P.h = 250e-9;
-P.d1 = 120e-9;
+P.h = 210.7e-9;
+P.d1 = 140.7e-9;
 
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -31,7 +31,7 @@ P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
-P.kpts = 15;                             % no. of k-points, EXCLUDING gamma point
+P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 20;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
