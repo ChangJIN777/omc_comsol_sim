@@ -143,8 +143,9 @@ P.max_dof = 5e9;                        % max # of degrees of freedom
 
 % single run
 % data location to save files in
-datLoc = '.\testing'; 
-[ds,model] = RunNanobeamFEM(P,datLoc);
+currentDate = datestr(now,'mmddyyyy');
+datLoc = ['.\test\',currentDate,'\'];
+P.datLoc = datLoc;[ds,model] = RunNanobeamFEM(P,datLoc);
 
 % %% test the model building function 
 % % import COMSOL class

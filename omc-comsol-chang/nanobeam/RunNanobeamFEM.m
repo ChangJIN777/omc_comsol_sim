@@ -6,13 +6,27 @@
 function [ds,model] = RunNanobeamFEM(P,datLoc)
 tStart = tic;
 %% Init
-%append \ to end of datLoc if not present
-if ~strcmp(datLoc(end),'\')
-    datLoc = [datLoc,'\'];
+%normalize separators (test scripts hardcode '\') and append one to the end
+%of datLoc if not present -- use filesep so this works on Windows and on
+%macOS/Linux, where '\' is just a literal character, not a path separator
+datLoc = strrep(strrep(datLoc,'\',filesep),'/',filesep);
+if ~strcmp(datLoc(end),filesep)
+    datLoc = [datLoc,filesep];
 end
 % create directory to save files
 if ~exist(datLoc,'dir')
     mkdir(datLoc)
+end
+
+% ensure P.datLoc (if set) also points to an existing directory
+if isfield(P,'datLoc') && ~isempty(P.datLoc)
+    P.datLoc = strrep(strrep(P.datLoc,'\',filesep),'/',filesep);
+    if ~strcmp(P.datLoc(end),filesep)
+        P.datLoc = [P.datLoc,filesep];
+    end
+    if ~exist(P.datLoc,'dir')
+        mkdir(P.datLoc)
+    end
 end
 
 % import COMSOL class
