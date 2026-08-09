@@ -69,6 +69,8 @@ elseif strcmp(P.celltype,'boomerang')
     [model,P] = buildBoomerangUnitCellStrip_v2(model,P);
 elseif strcmp(P.celltype,'boomerang_strip_v2')
     [model,P] = buildBoomerangUnitCellStrip_v2(model,P);
+elseif strcmp(P.celltype,'boomerang_strip')
+    [model,P] = buildBoomerangUnitCellStrip(model,P);
 elseif strcmp(P.celltype,'hole_strip')
     [model,P] = buildHoleStrip_3D(model,P);
 elseif strcmp(P.celltype,'hole_strip_wvg')

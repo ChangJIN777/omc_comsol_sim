@@ -50,7 +50,7 @@ P.bandStructureDim=1;           % specify the dimension of the band structure
 P.optical_freq = 100;       % specify the target frequency (THz)
 
 % for the optical bandgap 
-P.add_airDisk = 0;
+P.add_airDisk = 1;
 P.airDiskH = 5000e-9;
 P.mbevenz = 0;
 
@@ -89,7 +89,8 @@ currentDate = datestr(now,'mmddyyyy');
 datLoc = ['.\test\boomerang_strip\',currentDate,'\'];
 P.datLoc = datLoc;
 % optical band
-% bds = solveOpticalBands(P);
-% mechanical band 
-P.add_airDisk = 0;
-bds = solveBands(P);
+
+bds = solveOpticalBands(P);
+% % mechanical band 
+% P.add_airDisk = 0;
+% bds = solveBands(P);
