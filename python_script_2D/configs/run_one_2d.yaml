@@ -1,0 +1,19 @@
+# Configuration for scripts/run_one_2d.py -- evaluate ONE candidate and save it.
+#
+# Loaded with yaml.safe_load; the script takes a single CLI flag,
+#   --config PATH   (defaults to this file: configs/run_one_2d.yaml)
+
+# 6 normalized values (ua, uw, ur, ur1, ur2, uth), each in [0,1], mapping to
+# (a, w, r, r1, r2, th) via src/geometry2d.py:u_to_geometry -- see
+# configs/bounds_2d.yaml for the physical ranges.
+u: [0.5, 0.5, 0.5, 0.3, 0.3, 0.5]
+
+mech_backend: comsol       # mechanical backend: comsol (only backend implemented)
+optical_backend: none      # optical backend: none (not yet implemented) | comsol
+
+require_mech: true         # include the mechanical gap in the score
+require_opt: false         # leave off until src/optical_comsol_2d.py exists
+
+# Suppress per-stage progress printed to stderr (feasibility/mechanical/optical/
+# score). stdout stays pure JSON regardless.
+quiet: false

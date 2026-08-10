@@ -1,0 +1,17 @@
+# Configuration for scripts/run_loop_2d.py -- closed-loop optimization
+# (ask -> evaluate -> save -> tell).
+#
+# Loaded with yaml.safe_load; the script takes a single CLI flag,
+#   --config PATH   (defaults to this file: configs/run_loop_2d.yaml)
+
+n_init: 20                 # space-filling / initial samples before the model kicks in
+n_iter: 40                 # optimization iterations after the initial samples
+
+mech_backend: comsol       # mechanical backend: comsol (only backend implemented)
+optical_backend: none      # optical backend: none (not yet implemented) | comsol
+
+require_mech: true
+require_opt: false         # leave off until src/optical_comsol_2d.py exists
+
+# Optimizer backend: auto (numpy fallback -> Optuna), or force one.
+backend: auto               # auto | random | optuna

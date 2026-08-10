@@ -1,0 +1,31 @@
+# Single-crystal diamond material properties.
+# Copied from python-scripts/configs/materials.yaml (same material, same
+# elastic constants) -- see that file for the 1D project's version. The only
+# change here is the orientation note below, which is 2D-specific.
+
+diamond:
+  # --- Optical (for future optical-bandgap work; not yet used, see
+  #     ../docs/optical_2d_plan.md) ---
+  refractive_index_1550nm: 2.40    # ~2.40 at 1550 nm (Sellmeier; weak dispersion)
+  # --- Mechanical (cubic, crystal axes) ---
+  density_kg_m3: 3515.0
+  stiffness_GPa:                   # cubic symmetry: C11, C12, C44
+    C11: 1076.0
+    C12: 125.0
+    C44: 577.0
+  # Isotropic approximation (use only for quick estimates):
+  youngs_modulus_GPa: 1050.0
+  poisson_ratio: 0.069
+  v_longitudinal: 17500.0
+  v_transverse:   12800.0
+
+# NOTE on orientation (2D-specific, differs from the 1D project): here BOTH
+# in-plane lattice directions x and y carry Bloch periodicity (unlike the 1D
+# beam, which is periodic only along its axis z). The crystal orientation is
+# set by a single in-plane rotation angle `rxtal` (degrees, about the
+# out-of-plane z axis) applied to the elasticity tensor -- matches
+# omc-comsol-chang's P.rxtal / RotateXtalTensor.m convention
+# (test_Boomerang.m uses P.rxtal = 45). This rotation is a FIXED solver
+# setting, not an optimizable geometry variable (see configs/bounds_2d.yaml).
+rxtal_deg: 45.0
+anisotropic: true   # matches P.anisoMat = 1 in test_Boomerang.m

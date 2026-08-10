@@ -1,0 +1,42 @@
+# Optimization targets and scoring weights for the 2D boomerang phononic
+# crystal. Mirrors python-scripts/configs/targets.yaml's structure and
+# scoring formula (see src/objective2d.py), adapted for:
+#   - mechanical gap_mode keyed on Z-PARITY (evenz/oddz) instead of a
+#     breathing-mode fy fraction (there is no analogous in-plane symmetry
+#     family here -- the cell is fully 2D-Bloch-periodic in x and y).
+#   - optical NOT YET IMPLEMENTED (require_opt below defaults to false).
+#     See docs/optical_2d_plan.md for the planned approach.
+
+mechanical:
+  target_frequency_GHz: 8.0        # desired mid-gap mechanical frequency (placeholder;
+                                    # pick a value appropriate to your slab thickness)
+  min_gap: 0.20                    # required normalized mechanical gap
+  # "complete": no band of EITHER z-parity in the gap (a true full phononic gap).
+  # "symmetry": largest gap within a single z-parity family is acceptable (a
+  #             quasi/symmetry-restricted gap) -- easier to obtain, and often
+  #             the practically relevant one if only evenz (or oddz) modes
+  #             couple to your transducer/actuation scheme.
+  gap_mode: "symmetry"             # "complete" | "symmetry"
+  # Number of bands to resolve per z-parity family (see acoustic_comsol_2d.py).
+  n_bands: 10
+
+optical:
+  # NOT YET IMPLEMENTED -- placeholders only. See docs/optical_2d_plan.md.
+  # A 2D slab photonic band structure (in-plane Bloch kx,ky + light-line
+  # filtering) is substantially more involved than the 1D nanobeam's TE-like
+  # 1D Bragg gap and is left for future work. Keep require_opt: false in
+  # run configs until src/optical_comsol_2d.py is implemented.
+  target_wavelength_nm: 1550.0
+  min_gap: 0.20
+  polarization: "TE-like"          # even (z-mirror) symmetry; planned convention,
+                                    # analogous to the mechanical evenz/oddz split
+
+scoring:
+  # S = (G_m if require_mech else 0) + (G_o if require_opt else 0) - penalties
+  # See src/objective2d.py:_score for the exact formula (mirrors
+  # python-scripts/src/objective.py, extended with require_opt/require_mech
+  # toggles from python-scripts/scripts/run_opt_comsol.py).
+  lambda_mech: 10.0
+  lambda_mech_freq: 1.0
+  lambda_optical: 10.0
+  lambda_optical_freq: 1.0

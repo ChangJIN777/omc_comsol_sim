@@ -1,0 +1,14 @@
+# Core (loop + storage) -- pip install -r requirements.txt
+numpy
+pyyaml
+
+# Optimizer stage 2 (TPE). 'auto' backend uses whatever is installed,
+# falling back to the numpy-only random/Halton sampler if not present.
+optuna
+
+# COMSOL driver (mechanical), on the Mac:
+#   pip install MPh         # needs COMSOL 6.2+ and a reachable COMSOL server
+#   comsol mphserver         # start the server in a separate terminal
+
+# Optical backend: NOT YET IMPLEMENTED -- see docs/optical_2d_plan.md and
+# src/optical_comsol_2d.py. No extra dependency needed until that lands.

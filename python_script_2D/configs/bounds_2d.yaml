@@ -1,0 +1,45 @@
+# Design-variable bounds for the 2D diamond phononic-crystal "boomerang" unit
+# cell (hexagonal lattice), matching the geometry built by
+# omc-comsol-chang/buildBoomerangUnitCell.m (MATLAB, celltype='boomerang',
+# unitcell='hexagonal') and driven with test_Boomerang.m + runBands_2D.m.
+#
+# Optimizer works in normalized u in [0,1]; src/geometry2d.py maps u -> physical
+# (meters). Unlike the 1D nanobeam project (python-scripts/), the periodicity is
+# TRUE 2D (Bloch wavevector kx,ky in-plane), and the slab has a finite thickness
+# `th` with a z=0 mirror plane -- mechanical modes split into z-EVEN and z-ODD
+# families (see docs in ../comsol/README_template_2d.md). There is no separate
+# in-plane mirror reduction here (unlike the 1D beam's y-even/y-odd split): the
+# hexagonal cell is fully Bloch-periodic in both x and y.
+#
+# Geometry (see buildBoomerangUnitCell.m for the exact construction):
+#   a  : lattice constant (hexagonal primitive vectors of length a)
+#   w  : width of each of the 3 boomerang "leg" rectangles
+#   r  : length of each leg rectangle (extent from the hole center)
+#   r1 : fillet radius at the leg tips (outer corners)
+#   r2 : fillet radius at the leg junctions near the hole center
+#   th : slab thickness (out-of-plane, z)
+#
+# Starting ranges are loosely centered on test_Boomerang.m's values
+# (a=480nm, w=140nm, r=177nm, r1=r2=10nm, th=220nm) with headroom for the
+# optimizer to explore. Tighten once the first sweep maps the feasible region.
+
+variables:
+  a:  { min: 0.30e-6, max: 0.70e-6 }   # lattice constant [m]
+  w:  { min: 0.06e-6, max: 0.22e-6 }   # boomerang leg width [m]
+  r:  { min: 0.10e-6, max: 0.28e-6 }   # boomerang leg length [m]
+  r1: { min: 0.005e-6, max: 0.035e-6 } # tip fillet radius [m]
+  r2: { min: 0.005e-6, max: 0.035e-6 } # junction fillet radius [m]
+  th: { min: 0.15e-6, max: 0.35e-6 }   # slab thickness [m]
+
+# Fabrication / feasibility constraints enforced BEFORE any COMSOL solve.
+# A candidate violating these returns a penalized "infeasible" result (no solve).
+#
+# NOTE (adaptation caveat): unlike the 1D project's exact sidewall/bridge
+# formulas (which map directly onto that geometry's Boolean construction),
+# the boomerang hole's remaining-solid-material calculation here is a
+# CONSERVATIVE HEURISTIC (see check_feasibility() in src/geometry2d.py) --
+# it has not been cross-validated against the actual COMSOL Boolean geometry
+# (mphgeom) at the bounds' extremes. Re-derive exactly, or tighten these
+# bounds empirically, before trusting results near the edges of the range.
+feasibility:
+  min_feature: 0.03e-6   # [m] minimum remaining solid width anywhere

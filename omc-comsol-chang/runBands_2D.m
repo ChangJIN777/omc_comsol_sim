@@ -27,6 +27,19 @@ max_dof = P.max_dof;
 meshSize = P.meshSize;
 holeatedge = P.holeatedge; % 1/0 if unit cell terminates in middle of hole/dielectric
 
+% create P.datLoc if it does not already exist -- normalize separators
+% first (test scripts hardcode '\', which is just a literal character, not
+% a path separator, on macOS/Linux) so mkdir actually creates the intended
+% nested directory rather than a single oddly-named folder
+if isfield(P,'datLoc') && ~isempty(P.datLoc)
+    P.datLoc = strrep(strrep(P.datLoc,'\',filesep),'/',filesep);
+    if ~strcmp(P.datLoc(end),filesep)
+        P.datLoc = [P.datLoc,filesep];
+    end
+    if ~exist(P.datLoc,'dir')
+        mkdir(P.datLoc)
+    end
+end
 
 % prefixes for filenames
 if evenz == 1
@@ -321,7 +334,7 @@ while (~mesh_ok) && (mesh_quality < 10)
     end
     mesh_ok = 1;
 end
-mphsave('test_geom')
+% mphsave('test_geom')
 mbfem.mbMesh = mesh_quality;
 
 % debugging 
