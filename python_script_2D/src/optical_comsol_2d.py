@@ -29,7 +29,7 @@ Planned interface (mirrors acoustic_comsol_2d.run_mechanical_comsol_2d):
         (once implemented) a per-(k,band) boolean `below_light_line` mask so
         objective2d.py can discard leaky bands before calling bandgap.py.'''
 
-Planned template additions (comsol/omc2d_boomerang.mph), see
+Planned template additions (comsol/trusty_boomerang.mph), see
 comsol/README_template_2d.md section 5 for the up-to-date recipe once
 written:
   - Physics: Electromagnetic Waves, Frequency Domain (or Mode Analysis).
@@ -52,8 +52,8 @@ from __future__ import annotations
 
 import os
 
-_TEMPLATE = os.path.join(os.path.dirname(__file__), "..", "comsol",
-                         "omc2d_boomerang.mph")
+_TEMPLATE = os.environ.get("OMC2D_TEMPLATE") or os.path.join(
+    os.path.dirname(__file__), "..", "comsol", "trusty_boomerang.mph")
 
 
 def run_optical_comsol_2d(*args, **kwargs):

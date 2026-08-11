@@ -38,7 +38,7 @@ import numpy as np
 import yaml
 
 from geometry2d import u_to_geometry, check_feasibility, load_bounds
-from bandgap import gap_near_frequency, largest_gap
+from bandgap import Gap, gap_near_frequency, largest_gap
 
 _CFG = os.path.join(os.path.dirname(__file__), "..", "configs")
 C0 = 299_792_458.0
@@ -54,20 +54,64 @@ def _hash_u(u, backends):
     return "cand2d_" + hashlib.sha1(key.encode()).hexdigest()[:12]
 
 
+def _combined_bands(freqs_evenz, freqs_oddz):
+    """Stack both z-parity families, truncated to where the union is COMPLETE.
+
+    Each family is solved for its own n_bands lowest modes, so at a given
+    k-point the union of the two families is only complete up to
+    min(evenz[k, -1], oddz[k, -1]) -- above that, at least one family has run
+    out of computed modes. A gap must hold at EVERY k, so the usable ceiling is
+
+        ceiling = min over k of min(evenz[k, -1], oddz[k, -1])
+
+    Above it, any apparent gap is a truncation artifact rather than a real
+    absence of states -- e.g. if oddz is only resolved to 13 GHz at one k-point,
+    an oddz gap at 16-19 GHz looks "complete" because nothing was ever computed
+    there to contradict it.
+
+    NOTE: reducing with max-over-k instead of min-over-k is wrong and was the
+    original bug here -- max_k is the frequency below which a family SOMETIMES
+    has all its modes; a gap needs ALWAYS. Fuzzing 40k random spectra against a
+    known ground truth: max-over-k admitted 419 false-positive complete gaps,
+    min-over-k admitted 0.
+
+    Entries above the ceiling are NaN'd and the trailing columns dropped.
+    np.sort puts NaN at the end of each row, so the `keep` mask is a contiguous
+    True-prefix -- that placement is what makes slicing to n_keep valid.
+    """
+    evenz = np.asarray(freqs_evenz, dtype=float)
+    oddz = np.asarray(freqs_oddz, dtype=float)
+    ceiling = float(np.nanmin(np.minimum(evenz[:, -1], oddz[:, -1])))
+    combined = np.sort(np.hstack([evenz, oddz]), axis=1)
+    combined = np.where(combined <= ceiling, combined, np.nan)
+    keep = np.all(np.isfinite(combined), axis=0)
+    n_keep = int(np.count_nonzero(keep))
+    return combined[:, :n_keep], ceiling
+
+
 def _mechanical_gap(freqs_evenz, freqs_oddz, f_target, gap_mode):
     """Gap selection keyed on z-parity, per targets_2d.yaml's gap_mode.
 
+    Returns (Gap, info) where info carries the diagnostics needed to tell
+    "no gap exists" apart from "not enough bands were solved to say":
+    truncation_ceiling_hz and n_bands_usable (both None in 'symmetry' mode).
+
     'symmetry': best single-family gap (evenz or oddz, whichever is larger
                 near f_target) -- a quasi/symmetry-restricted gap.
-    'complete': a gap with NO band of EITHER parity -- stack both families'
-                bands together before searching.
+    'complete': a gap with NO band of EITHER parity -- both families stacked,
+                truncated to where the union is complete (see _combined_bands).
     """
     if gap_mode == "complete":
-        combined = np.hstack([freqs_evenz, freqs_oddz])
-        return gap_near_frequency(combined, f_target)
+        combined, ceiling = _combined_bands(freqs_evenz, freqs_oddz)
+        info = dict(truncation_ceiling_hz=float(ceiling),
+                    n_bands_usable=int(combined.shape[1]))
+        if combined.shape[1] < 2:
+            return Gap.empty(), info   # nothing usable below the ceiling
+        return gap_near_frequency(combined, f_target), info
     gp_evenz = gap_near_frequency(freqs_evenz, f_target)
     gp_oddz = gap_near_frequency(freqs_oddz, f_target)
-    return gp_evenz if gp_evenz.normalized_gap >= gp_oddz.normalized_gap else gp_oddz
+    best = gp_evenz if gp_evenz.normalized_gap >= gp_oddz.normalized_gap else gp_oddz
+    return best, dict(truncation_ceiling_hz=None, n_bands_usable=None)
 
 
 def evaluate_candidate(u, *, mech_backend="comsol", optical_backend="none",
@@ -122,9 +166,10 @@ def evaluate_candidate(u, *, mech_backend="comsol", optical_backend="none",
             if mech_backend == "comsol":
                 from acoustic_comsol_2d import run_mechanical_comsol_2d
                 d = run_mechanical_comsol_2d(g, n_bands=n_bands_mech)
-                gp = _mechanical_gap(d["freqs_evenz"], d["freqs_oddz"],
-                                     f_m_target, gap_mode)
+                gp, gap_info = _mechanical_gap(d["freqs_evenz"], d["freqs_oddz"],
+                                               f_m_target, gap_mode)
                 G_m, f_m_c = gp.normalized_gap, gp.f_center
+                rec.update(gap_mode=gap_mode, **gap_info)
             else:
                 raise ValueError(f"unknown mech_backend {mech_backend!r}")
         except Exception as e:  # solver failed -> record, don't crash loop

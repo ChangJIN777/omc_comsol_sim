@@ -12,24 +12,56 @@
 # hexagonal cell is fully Bloch-periodic in both x and y.
 #
 # Geometry (see buildBoomerangUnitCell.m for the exact construction):
-#   a  : lattice constant (hexagonal primitive vectors of length a)
-#   w  : width of each of the 3 boomerang "leg" rectangles
-#   r  : length of each leg rectangle (extent from the hole center)
-#   r1 : fillet radius at the leg tips (outer corners)
-#   r2 : fillet radius at the leg junctions near the hole center
-#   th : slab thickness (out-of-plane, z)
+#   a  : lattice constant. The primitive cell is a RHOMBUS of side a with
+#        vertices (0,0), (a/2, a*sqrt(3)/2), (3a/2, a*sqrt(3)/2), (a,0);
+#        its center-to-edge distance (in-radius) is a*sqrt(3)/4.
+#   w  : width of each of the 3 boomerang "leg" rectangles (TRANSVERSE to the
+#        leg -- the radial extent is r, so the tip corner is at hypot(r, w/2))
+#   r  : radial length of each leg rectangle, measured from the hole center
+#   r1 : fillet radius at the leg JUNCTIONS (inner corners, at w/2 from the
+#        hole center -- selected by h_disksel1)
+#   r2 : fillet radius at the leg TIPS (outer corners, at hypot(r, w/2) --
+#        selected by h_disksel2)
+#   th : slab thickness (out-of-plane, z) -- FULL thickness; the COMSOL model
+#        meshes only the top half and applies a parity BC at z=0
+#
+# NOTE: r1/r2 were documented backwards here until cross-checked against
+# addFillet() at buildBoomerangUnitCell.m:119-149. r1 -> h_fil1 -> the annulus
+# [w/(2*sqrt(2)), w] (junction corners at w/2); r2 -> h_fil2 -> the annulus
+# [r-25nm, r+25nm] (tip corners). Invisible while r1 == r2; wrong as soon as
+# the optimizer separates them.
 #
 # Starting ranges are loosely centered on test_Boomerang.m's values
 # (a=480nm, w=140nm, r=177nm, r1=r2=10nm, th=220nm) with headroom for the
 # optimizer to explore. Tighten once the first sweep maps the feasible region.
 
+# FREE design variables -- the optimizer's normalized u vector, in this order.
+# src/geometry2d.py:VARS must match these keys and their order.
 variables:
-  a:  { min: 0.30e-6, max: 0.70e-6 }   # lattice constant [m]
-  w:  { min: 0.06e-6, max: 0.22e-6 }   # boomerang leg width [m]
-  r:  { min: 0.10e-6, max: 0.28e-6 }   # boomerang leg length [m]
-  r1: { min: 0.005e-6, max: 0.035e-6 } # tip fillet radius [m]
-  r2: { min: 0.005e-6, max: 0.035e-6 } # junction fillet radius [m]
-  th: { min: 0.15e-6, max: 0.35e-6 }   # slab thickness [m]
+  a:  { min: 0.30e-6, max: 0.70e-6 }   # lattice constant (rhombic cell side) [m]
+  w:  { min: 0.06e-6, max: 0.22e-6 }   # boomerang leg width, transverse [m]
+  r:  { min: 0.10e-6, max: 0.28e-6 }   # boomerang leg radial length [m]
+
+# FIXED geometry -- held constant, NOT optimized. Values from
+# omc-comsol-chang/test_Boomerang.m:12,14,16, matching the defaults in
+# comsol/trusty_boomerang_script.m.
+#
+# Why fixed:
+#   r1, r2 - fillet radii are process artifacts rather than design freedoms;
+#            they mainly perturb the mode frequencies rather than opening or
+#            closing a gap, and letting them float would burn optimizer budget
+#            on the fillet-selection-validity boundary (see check_feasibility).
+#   th     - slab thickness is set by the wafer/membrane you actually have, so
+#            it is a fabrication input, not something to optimize over.
+#
+# To promote one back to a free variable: move its entry into `variables:` with
+# min/max, add its name to geometry2d.VARS in the same position, and bump
+# optimizer.N_DIM. u vectors stored in the database are NOT comparable across
+# that change -- start a fresh results DB (OMC2D_DB_PATH).
+fixed:
+  r1: 0.010e-6   # JUNCTION fillet radius (inner corners, at w/2) [m]
+  r2: 0.010e-6   # TIP fillet radius (outer corners, at hypot(r, w/2)) [m]
+  th: 0.220e-6   # slab thickness (FULL; COMSOL meshes the top half) [m]
 
 # Fabrication / feasibility constraints enforced BEFORE any COMSOL solve.
 # A candidate violating these returns a penalized "infeasible" result (no solve).
@@ -42,4 +74,36 @@ variables:
 # (mphgeom) at the bounds' extremes. Re-derive exactly, or tighten these
 # bounds empirically, before trusting results near the edges of the range.
 feasibility:
-  min_feature: 0.03e-6   # [m] minimum remaining solid width anywhere
+  min_feature: 0.03e-6   # [m] minimum leg width / leg length
+
+  # [m] minimum solid material between the hole and the cell wall, measured as
+  #   a*sqrt(3)/4 - hypot(r, w/2)
+  # (cell in-radius minus the distance to the leg tip's sharp corner).
+  #
+  # ---- THIS NUMBER IS CALIBRATED, NOT DERIVED. READ BEFORE TRUSTING. ----
+  # The MATLAB reference design (a=480, w=140, r=177 nm) has only 17.5 nm of
+  # clearance by this measure -- below min_feature. Two readings, unresolved:
+  #   (a) 30 nm is simply the wrong threshold for a *corner* clearance (the
+  #       corner is rounded by the r2 fillet, so the true material width there
+  #       is larger than the sharp-corner estimate), or
+  #   (b) the reference design really is that tight and min_feature should
+  #       apply, in which case the reference is not fabricable as drawn.
+  # 15 nm is set so the reference design passes with a small margin, which
+  # keeps the pipeline runnable. Resolve this against COMSOL's mphgeom before
+  # trusting any optimizer result that sits near the constraint boundary.
+  min_web: 0.015e-6
+
+  # [m] half-width of the disk annulus the MATLAB builder uses to select tip
+  # vertices for filleting: addFillet() sets rin/r to r -/+ selection_width/2
+  # with selection_width = 50e-9 (buildBoomerangUnitCell.m:52,144-145). This is
+  # a property of the BUILDER, not of fabrication -- if the fillet selection is
+  # ever replaced with a geometry-derived one, drop the corresponding checks in
+  # check_feasibility() along with it.
+  #
+  # !! DUPLICATED VALUE !! The same constant lives as the `selw` parameter in
+  # comsol/trusty_boomerang_script.m. Nothing enforces that they agree, and
+  # check_feasibility() gates on THIS copy -- so if they drift, Python accepts
+  # candidates whose fillets COMSOL will mis-select. Once the driver can set
+  # template parameters, push selw from here instead of duplicating it; until
+  # then tests/test_pipeline_2d.py asserts the two match.
+  fillet_select_halfwidth: 0.025e-6

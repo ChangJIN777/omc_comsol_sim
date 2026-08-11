@@ -6,9 +6,10 @@ Usage:
     python scripts/run_one_2d.py --config path/to/config.yaml
 
 All settings live in the YAML config (default: configs/run_one_2d.yaml). The
-`u` key takes 6 normalized values (ua, uw, ur, ur1, ur2, uth), each in [0,1],
-mapping to (a, w, r, r1, r2, th) via src/geometry2d.py:u_to_geometry -- see
-configs/bounds_2d.yaml for the physical ranges.
+`u` key takes 3 normalized values (ua, uw, ur), each in [0,1], mapping to the
+free variables (a, w, r) via src/geometry2d.py:u_to_geometry. r1, r2 and th are
+FIXED in configs/bounds_2d.yaml and have no u component -- see that file for
+the physical ranges and the fixed values.
 
 Stage progress (feasibility / mechanical / optical / score) is printed to
 stderr as each stage starts and finishes, so stdout stays pure JSON even when
@@ -77,9 +78,13 @@ def main():
     with open(args.config) as fh:
         cfg = yaml.safe_load(fh)
 
+    from geometry2d import VARS, FIXED_VARS                    # noqa: E402
     u = [float(x) for x in cfg["u"]]
-    if len(u) != 6:
-        ap.error(f"config `u` takes 6 values (ua uw ur ur1 ur2 uth), got {len(u)}")
+    if len(u) != len(VARS):
+        ap.error(f"config `u` takes {len(VARS)} values "
+                 f"({' '.join('u' + v for v in VARS)}), got {len(u)}. "
+                 f"{FIXED_VARS} are fixed in configs/bounds_2d.yaml and have "
+                 f"no u component.")
 
     quiet = cfg.get("quiet", False)
     on_stage = None if quiet else make_stderr_reporter()

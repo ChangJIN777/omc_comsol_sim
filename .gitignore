@@ -2,3 +2,10 @@
 *.png
 *.fig
 *.mat
+
+# COMSOL working files
+*.mph.lock
+*.mph.recovery*
+
+# macOS
+.DS_Store

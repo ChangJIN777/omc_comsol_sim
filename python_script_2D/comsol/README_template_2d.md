@@ -1,4 +1,20 @@
-# Building the 2D boomerang unit-cell template (`omc2d_boomerang.mph`)
+# Building the 2D boomerang unit-cell template (`trusty_boomerang.mph`)
+
+> **STATUS: the template on disk does not satisfy this recipe yet.**
+> `comsol/trusty_boomerang.mph` (exported as `trusty_boomerang_script.m`) is a
+> *solved snapshot of one fixed design*, not a parametric template:
+> - only `k`, `a`, `kx`, `ky` are real parameters; every geometry dimension is
+>   a hard-coded literal, so `w,r,r1,r2,th` cannot be driven at all (and `a`
+>   feeds only `kx`/`ky`, not the geometry);
+> - the studies are labelled `Study_symmetric` / `Study 1`, not
+>   `mech evenz` / `mech oddz`;
+> - the periodic and parity BCs use absolute face indices (`[1 22]`, `[2 9]`,
+>   `[3]`) rather than geometric selections, so they will attach to the wrong
+>   faces as soon as the geometry changes.
+>
+> `src/acoustic_comsol_2d.py` now refuses to run against it (see
+> `_require_parameters` / `_require_studies`) instead of silently solving the
+> frozen cell for every candidate. See the to-do list for the plan.
 
 Build this ONCE in the COMSOL 6.2+ GUI on your Mac, then
 `src/acoustic_comsol_2d.py` just sets parameters and solves. The geometry and
@@ -18,26 +34,48 @@ whole file before building; don't reuse the 1D template's node names as-is.
 
 | name | expr      | meaning |
 |------|-----------|---------|
-| a    | 480[nm]   | hexagonal lattice constant |
-| w    | 140[nm]   | width of each boomerang leg rectangle |
-| r    | 177[nm]   | length of each boomerang leg rectangle |
-| r1   | 10[nm]    | fillet radius at leg tips |
-| r2   | 10[nm]    | fillet radius at leg junctions (near hole center) |
-| th   | 220[nm]   | slab thickness (out-of-plane, z) |
-| kx   | 0[1/m]    | in-plane Floquet wavevector, x (swept by the Python driver) |
-| ky   | 0[1/m]    | in-plane Floquet wavevector, y (swept by the Python driver) |
+| a    | 480[nm]   | lattice constant (rhombic primitive cell side) |
+| w    | 140[nm]   | width of each boomerang leg rectangle (transverse) |
+| r    | 177[nm]   | radial length of each leg, from the hole center |
+| r1   | 10[nm]    | fillet radius at the leg **JUNCTIONS** (inner corners) |
+| r2   | 10[nm]    | fillet radius at the leg **TIPS** (outer corners) |
+| th   | 220[nm]   | slab thickness (out-of-plane, z), FULL thickness |
+| k    | 0         | Brillouin-zone path parameter in [0,3), swept by the study |
+| kx   | *expr*    | `if(k<1,(-1/sqrt(3))*k*(pi/a),if(k<2,(1/sqrt(3))*pi/a*(k-2),0))` |
+| ky   | *expr*    | `if(k<1,(pi/a)*k,if(k<2,(k+2)*pi/(3*a),(3-k)*4*pi/(3*a)))` |
 
 Values above match `test_Boomerang.m`'s defaults, for a sanity-check
 cross-comparison against the MATLAB pipeline once both are built.
 
-Note the departure from the MATLAB pipeline here: `runBands_2D.m` sweeps a
-single scalar `k` and computes `kx`,`ky` from it via COMSOL expressions
-(`if(k<1, ..., if(k<2, ..., ...))`) so that COMSOL's own GUI parametric-batch
-solver can do the sweep natively. The Python/MPh driver instead computes
-`kx`,`ky` directly in Python (see `src/acoustic_comsol_2d.py:bz_path`, an
-exact port of those same piecewise expressions) and sets them per solve --
-simpler here since MPh already drives point-by-point. **You do not need a
-`k` parameter or COMSOL's Parametric Sweep/Batch node in this template.**
+**All six geometry parameters must exist in the template, but only `a`, `w`
+and `r` are swept.** `r1`, `r2` and `th` are fixed on the Python side
+(`configs/bounds_2d.yaml:fixed`) and are not part of the optimizer's `u`
+vector; the driver still writes all six so the template and Python can never
+disagree about what was solved. To optimize one of them, move its entry into
+`bounds_2d.yaml:variables`, add it to `geometry2d.VARS`, and bump
+`optimizer.N_DIM` — stored `u` vectors are not comparable across that change.
+
+**`r1` and `r2` were documented backwards in earlier revisions of this file.**
+The authority is `addFillet()` at `buildBoomerangUnitCell.m:119-149`:
+`h_disksel1` is the annulus `[w/(2*sqrt(2)), w]` about the hole center, which
+catches the vertices at `w/2` -- the **junction** corners -- and `h_fil1`
+applies `r1`. `h_disksel2` is `[r-25nm, r+25nm]`, catching the vertices at
+`hypot(r, w/2)` -- the **tip** corners -- and `h_fil2` applies `r2`. The
+mistake is invisible while `r1 == r2` and silently swaps two design variables
+the moment the optimizer separates them.
+
+**Keep the `k` parameter and the Parametric Sweep** (this file previously said
+the opposite). `kx`/`ky` must stay COMSOL *expressions* of `k`, exactly as in
+`runBands_2D.m:63-64`, for two reasons: it makes the sweep a single solve per
+parity rather than one solve per k-point (54 eigensolves per candidate at
+`kpts=9` vs 92 for a Python-driven point-by-point loop), and it keeps the
+Python and MATLAB pipelines byte-comparable. `src/acoustic_comsol_2d.py`
+still contains the older point-by-point loop that *overwrites* `kx`/`ky` with
+literals -- that must be replaced with "set `k`, solve once, read the
+parametric dataset" as part of this work. Writing literals into `kx`/`ky`
+destroys the expressions for the rest of the process (`comsol_client.py`
+caches the model), and every point of the study's own sweep then solves the
+same wavevector.
 
 ## 2. Geometry (one hexagonal unit cell)
 
@@ -52,12 +90,18 @@ Mirrors `buildBoomerangUnitCell.m`'s Work Plane construction:
    `(a*(1/2+1/4), a*sqrt(3)/4)`, rotated 0 deg / 120 deg / 240 deg from each
    other (`rec_1`/`rec_2`/`rec_3` in `buildBoomerangUnitCell.m`). Boolean
    **Difference** them from the base polygon.
-3. **Fillets**: round the leg tips with radius `r1`, and the junctions near
-   the hole center with radius `r2` (see `addFillet()` in
-   `buildBoomerangUnitCell.m` for the exact selection logic -- it uses a disk
-   selection around the hole center to pick the right vertices).
-4. **Extrude** the 2D profile through thickness `th` (centered at z=0, i.e.
-   from `z=-th/2` to `z=+th/2`).
+3. **Fillets**: round the leg **junctions** with radius `r1` and the leg
+   **tips** with radius `r2` (see `addFillet()` in `buildBoomerangUnitCell.m`
+   for the exact selection logic -- two disk annuli around the hole center).
+   The MATLAB annulus half-width is a fixed 25 nm, which mis-selects over part
+   of `configs/bounds_2d.yaml`'s box; `check_feasibility()` now rejects that
+   region, but a geometry-derived half-width (e.g.
+   `min(r - w/2, hypot(r,w/2) - r)/2`) would be strictly better.
+4. **Extrude** the 2D profile through thickness `th`, then subtract the lower
+   half so only `z` in `[0, th/2]` is meshed, with the parity BC on the `z=0`
+   face. (This is what the exported model does: work plane at `-th/2`, extrude
+   `th`, then `symZComp = ext1 - symZPlaneExt`. Both work-plane `z` values and
+   both extrude distances must become expressions in `th`.)
 
 Build and visually check this against `mphgeom` output from the MATLAB
 `buildBoomerangUnitCell.m` (run `test_Boomerang.m`'s commented-out debug
@@ -66,8 +110,11 @@ finicky enough that a visual cross-check is worth the five minutes.
 
 ## 3. Material
 
-Diamond, anisotropic (cubic): `C11=1076[GPa]`, `C12=125[GPa]`, `C44=577[GPa]`,
-density `3515[kg/m^3]` (see `configs/materials.yaml`). Set the material
+Diamond, anisotropic (cubic): `C11=1076[GPa]`, `C12=125[GPa]`, `C44=578[GPa]`,
+density `3500[kg/m^3]`. The authority is
+`omc-comsol-chang/LoadMaterialParams.m:17,24-26`, which the exported `.mph`
+matches; `configs/materials.yaml` disagreed on both `C44` and density until
+corrected, and is currently dead config that nothing in `src/` reads. Set the material
 coordinate system's in-plane rotation to `rxtal = 45[deg]` about z (matches
 `test_Boomerang.m`'s `P.anisoMat=1, P.rxtal=45` and
 `omc-comsol-chang/RotateXtalTensor.m`). **Unlike the 1D project** (where only
@@ -97,8 +144,22 @@ Physics: **Solid Mechanics**, applied to the extruded domain.
     `buildBoomerangUnitCell.m`/`runBands_2D.m`, not those comments. In the
     GUI, identify the two pairs of parallel slanted faces visually (there are
     exactly 4 side walls beyond the top/bottom slab faces).
+- **Face selections must be geometric, not index-based.** The exported model
+  pins them to absolute indices (`pbcX [1 22]`, `pbcY [2 9]`, parity `[3]`),
+  which COMSOL renumbers whenever the geometry changes -- and *every* design
+  variable changes it (growing `r` past the wall splits a side face; changing
+  `r1`/`r2` adds or removes fillet faces). The MATLAB pipeline instead
+  resolves faces by coordinate and normal via `bndindex(...)`
+  (`buildBoomerangUnitCell.m:106-112`); port that, or use named/box selections
+  built inside the geometry sequence so COMSOL re-evaluates them per rebuild.
 - **z=0 midplane selection**: a Box/plane selection picking out the z=0
-  cross-section of the slab (matches `ZsymSel` in `buildBoomerangUnitCell.m`).
+  cross-section of the slab. **Do not copy `ZsymSel` from
+  `buildBoomerangUnitCell.m:93-101`** -- it spans `x,y` in `[-a/2, +a/2]` with
+  `condition='allvertices'`, but this cell spans `x` in `[0, 3a/2]` and `y` in
+  `[0, a*sqrt(3)/2]`, so it selects nothing. It is dead code in MATLAB too
+  (`runBands_2D.m` uses `P.zEnd` from `bndindex`, never `P.bndSel.Zsym`), which
+  is why nobody noticed. The correct box is `x` in `[-d, 3a/2+d]`, `y` in
+  `[-d, a*sqrt(3)/2+d]`, `z` in `[-d, +d]`.
   Apply, on that selection:
   - **Study "mech evenz"**: `Symmetry` boundary condition on that plane
     (z-even / symmetric modes).
@@ -121,11 +182,32 @@ slab photonic band structure is a materially bigger lift than the 1D
 project's optical study, mainly because of light-line filtering at every
 in-plane `(kx,ky)` -- worth reading before starting).
 
-## 6. Save as `comsol/omc2d_boomerang.mph`
+## 6. Save as `comsol/trusty_boomerang.mph`
 
-`src/acoustic_comsol_2d.py` references parameter names `a,w,r,r1,r2,th,kx,ky`
-and study names `"mech evenz"` / `"mech oddz"`. Keep these names, or update
-`STUDY_EVENZ`/`STUDY_ODDZ` in that module to match whatever you name them.
+`src/acoustic_comsol_2d.py` requires parameters `a,w,r,r1,r2,th` (checked by
+`_require_parameters`, plus `k,kx,ky`) and study **labels** `"mech evenz"` /
+`"mech oddz"` (checked by `_require_studies`). MPh resolves studies by label,
+not by COMSOL tag. Keep these names, or override at run time:
+
+```sh
+OMC2D_STUDY_EVENZ="Study_symmetric" OMC2D_STUDY_ODDZ="Study 1" \
+OMC2D_TEMPLATE=/path/to/other.mph python scripts/run_one_2d.py
+```
+
+Relabelling in the GUI is safer than hard-coding `"Study 1"`, which COMSOL
+re-derives whenever another study is added.
+
+**Save a solution-free, mesh-free copy for Python.** The current file is
+1.1 GB because it stores 27 sweep points x 10 modes x 2 studies of solution
+vectors plus a fine mesh. In *File > Save As*, uncheck "Save solutions in
+model file" and "Save mesh in model file"; that should land in the low
+hundreds of KB, small enough to commit and fast enough to load per process.
+
+Also consider reverting `geomRep('cadps')` (Parasolid) to the default COMSOL
+kernel: Parasolid needs the CAD Import Module / Design Module / a LiveLink-CAD
+product, and a headless `comsol mphserver` on a Structural-Mechanics-only
+licence will fail at geometry rebuild. It doesn't fail today only because the
+geometry is never rebuilt. `buildBoomerangUnitCell.m` never sets `geomRep`.
 
 ## Brillouin-zone sweep convention
 

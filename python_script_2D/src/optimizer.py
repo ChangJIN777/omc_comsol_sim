@@ -1,8 +1,9 @@
 """Ask/tell optimizer with a clean interface and graceful fallbacks.
 
 Ported unchanged in structure from python-scripts/src/optimizer.py -- only
-N_DIM changes (6 design variables here: a,w,r,r1,r2,th, vs. 5 for the 1D
-project). See src/geometry2d.py:VARS for the exact ordering.
+N_DIM changes (3 FREE design variables here: a, w, r; r1/r2/th are fixed in
+configs/bounds_2d.yaml and are not part of u). See src/geometry2d.py:VARS for
+the exact ordering -- N_DIM is asserted against it at import.
 
 Stage 1 (always available, numpy-only): Sobol/LHS-ish space-filling + random.
 Stage 2 (if installed): Optuna TPE.
@@ -14,7 +15,18 @@ from __future__ import annotations
 
 import numpy as np
 
-N_DIM = 6  # a, w, r, r1, r2, th (normalized) -- see geometry2d.VARS
+N_DIM = 3  # a, w, r (normalized) -- see geometry2d.VARS
+
+try:  # keep N_DIM and VARS from drifting apart; geometry2d is dependency-light
+    from geometry2d import VARS as _VARS
+    if len(_VARS) != N_DIM:
+        raise AssertionError(
+            f"optimizer.N_DIM={N_DIM} but geometry2d.VARS has {len(_VARS)} "
+            f"entries {_VARS}. Update both together, and start a fresh results "
+            f"DB -- stored u vectors are not comparable across a dimension "
+            f"change.")
+except ImportError:  # optimizer is usable standalone
+    pass
 
 
 # ----------------------------- Stage 1: numpy --------------------------------

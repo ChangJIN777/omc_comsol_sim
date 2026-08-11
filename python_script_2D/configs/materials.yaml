@@ -1,4 +1,12 @@
 # Single-crystal diamond material properties.
+#
+# !! CURRENTLY DEAD CONFIG !! Nothing in src/ reads this file. The mechanical
+# path takes its material straight from the COMSOL template's `diamond`
+# material node, so editing this file changes NOTHING about a solve. It is
+# kept accurate so it can (a) serve as the documented reference and (b) be
+# wired into the template once the template is parameterized -- see the
+# to-do list. Until then, changing a constant here without also changing it
+# in the .mph silently desynchronizes the two.
 # Copied from python-scripts/configs/materials.yaml (same material, same
 # elastic constants) -- see that file for the 1D project's version. The only
 # change here is the orientation note below, which is 2D-specific.
@@ -8,11 +16,22 @@ diamond:
   #     ../docs/optical_2d_plan.md) ---
   refractive_index_1550nm: 2.40    # ~2.40 at 1550 nm (Sellmeier; weak dispersion)
   # --- Mechanical (cubic, crystal axes) ---
-  density_kg_m3: 3515.0
+  #
+  # AUTHORITATIVE SOURCE: omc-comsol-chang/LoadMaterialParams.m:17,24-26.
+  # These values MUST match what the .mph carries, or Python and MATLAB will
+  # never quite agree and you will chase the difference. Previously 3515 /
+  # C44=577 here, which matched neither MATLAB nor comsol/trusty_boomerang.mph
+  # (a ~0.3% systematic frequency bias, ~24 MHz at 8 GHz).
+  #
+  # Verified: rotating (C11,C12,C44) = (1076,125,578) GPa by rxtal=45 deg
+  # about z via RotateXtalTensor.m reproduces the DVo tensor stored in
+  # trusty_boomerang.mph exactly (C11'=1178.5, C12'=22.5, C13'=125,
+  # C33'=1076, C44'=C55'=578, C66'=475.5 GPa).
+  density_kg_m3: 3500.0
   stiffness_GPa:                   # cubic symmetry: C11, C12, C44
     C11: 1076.0
     C12: 125.0
-    C44: 577.0
+    C44: 578.0
   # Isotropic approximation (use only for quick estimates):
   youngs_modulus_GPa: 1050.0
   poisson_ratio: 0.069
