@@ -25,6 +25,16 @@ optical_backend: none      # optical backend: none (not yet implemented) | comso
 require_mech: true         # include the mechanical gap in the score
 require_opt: false         # leave off until src/optical_comsol_2d.py exists
 
+# Dump the full [n_k, n_bands] band structure of a successful mechanical solve
+# to results/bands/<id>.npz and record the path as `bands_npz` in the result.
+# ON by default: a solve is ~54 eigensolves and the record otherwise keeps only
+# two scalars, so this is the cheapest way to stop discarding the run's most
+# expensive output. Feed the .npz to scripts/plot_bands_2d.py (kind: npz), or
+# re-score 'symmetry' vs 'complete' later without re-solving. results/ is
+# git-ignored. Override the directory with bands_dir or $OMC2D_BANDS_DIR.
+save_bands: true
+# bands_dir: results/bands
+
 # Suppress per-stage progress printed to stderr (feasibility/mechanical/optical/
 # score). stdout stays pure JSON regardless.
 quiet: false

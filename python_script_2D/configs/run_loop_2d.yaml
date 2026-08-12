@@ -13,5 +13,12 @@ optical_backend: none      # optical backend: none (not yet implemented) | comso
 require_mech: true
 require_opt: false         # leave off until src/optical_comsol_2d.py exists
 
+# Save each successful solve's band structure to results/bands/<id>.npz (path
+# recorded as `bands_npz`). See configs/run_one_2d.yaml for the rationale. At
+# n_init + n_iter candidates this is a few hundred KB per run; results/ is
+# git-ignored.
+save_bands: true
+# bands_dir: results/bands
+
 # Optimizer backend: auto (numpy fallback -> Optuna), or force one.
 backend: auto               # auto | random | optuna

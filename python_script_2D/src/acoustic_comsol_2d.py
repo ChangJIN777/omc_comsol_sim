@@ -273,9 +273,29 @@ def run_mechanical_comsol_2d(g, *, n_per_segment=15, n_bands=10,
 
 
 def save_bands(data, path):
-    """Save a band-structure dict to .npz for later plotting."""
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    np.savez(path, **{k: v for k, v in data.items() if isinstance(v, np.ndarray)})
+    """Save a band-structure dict to .npz for later plotting. Returns `path`.
+
+    Scalars are stored as 0-d arrays. The previous version filtered on
+    `isinstance(v, np.ndarray)`, which silently dropped `a` -- the lattice
+    constant is a plain Python float in the dict this module returns, and it is
+    exactly what scripts/plot_bands_2d.py needs for the BZ annotation. A
+    dropped key is invisible until something downstream KeyErrors on it, so
+    coerce rather than filter.
+
+    Anything that is neither array nor scalar is still skipped: np.savez would
+    pickle it, and np.load would then need allow_pickle=True to read the file
+    back, which turns a data file into a code-execution surface.
+    """
+    out = {}
+    for key, val in data.items():
+        if isinstance(val, np.ndarray):
+            out[key] = val
+        elif isinstance(val, (bool, int, float, np.bool_, np.integer, np.floating)):
+            out[key] = np.asarray(val)
+    parent = os.path.dirname(os.path.abspath(path))
+    os.makedirs(parent, exist_ok=True)   # abspath so a bare filename works too
+    np.savez(path, **out)
+    return path
 
 
 if __name__ == "__main__":

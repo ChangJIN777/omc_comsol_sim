@@ -93,6 +93,8 @@ def main():
                              optical_backend=cfg.get("optical_backend", "none"),
                              require_mech=cfg.get("require_mech", True),
                              require_opt=cfg.get("require_opt", False),
+                             save_bands=cfg.get("save_bands", True),
+                             bands_dir=cfg.get("bands_dir"),
                              on_stage=on_stage)
 
     if not quiet:

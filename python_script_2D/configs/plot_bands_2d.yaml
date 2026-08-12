@@ -1,0 +1,71 @@
+# Configuration for scripts/plot_bands_2d.py -- render a 2D phononic band
+# diagram over the hexagonal BZ path (Gamma -> M -> K -> Gamma) and shade the
+# gap the scorer would use.
+#
+# Loaded with yaml.safe_load; the script takes a single CLI flag,
+#   --config PATH   (defaults to this file: configs/plot_bands_2d.yaml)
+
+# Input mode.
+#   baseline-csv : tests/data/baseline_oddz_reference.csv -- the real 27x10
+#                  odd-z band structure of the MATLAB reference design,
+#                  extracted from the solved pre-parameterization .mph. RUNS
+#                  TODAY with no COMSOL. This is the default because it is the
+#                  only genuine band data the project currently has.
+#   npz          : an .npz written by acoustic_comsol_2d.save_bands. Every
+#                  successful mechanical solve writes one and records the path
+#                  as `bands_npz` in the result record (see
+#                  objective2d.evaluate_candidate).
+# There is deliberately NO optical mode: src/optical_comsol_2d.py is a stub,
+# so an `optical` kind here would be dead code (see docs/optical_2d_plan.md).
+kind: baseline-csv
+
+# Used when kind: baseline-csv. Defaults to tests/data/baseline_oddz_reference.csv.
+# csv: tests/data/baseline_oddz_reference.csv
+
+# Used when kind: npz. Paste the `bands_npz` value out of a result record, e.g.
+#   python scripts/run_one_2d.py | python -c 'import json,sys;print(json.load(sys.stdin)["bands_npz"])'
+# npz: results/bands/cand2d_xxxxxxxxxxxx.npz
+
+# Output PNG. results/ is git-ignored (see .gitignore), so figures stay local.
+out: results/figures/bands_2d.png
+dpi: 150
+
+# Which z-parity families to draw. Omit (or leave commented) to plot whatever
+# the input contains -- the baseline CSV has odd-z only; a solved candidate has
+# both. Order does not matter.
+# parities: ["evenz", "oddz"]
+
+# Gap shading mode. Defaults to configs/targets_2d.yaml's mechanical.gap_mode.
+#   symmetry : shade the larger single-family gap, and name the family.
+#   complete : stack both families via objective2d._combined_bands and also
+#              draw the TRUNCATION CEILING as a dotted line. Above that line at
+#              least one family ran out of computed modes, so any apparent gap
+#              is an artifact of finite n_bands rather than a real absence of
+#              states -- drawing it is the point. Requires BOTH parities; it
+#              errors out on single-parity data rather than quietly falling
+#              back to a symmetry gap.
+# gap_mode: symmetry
+
+# Target frequency and acceptance window. Both default to
+# configs/targets_2d.yaml (target_frequency_GHz) and to bandgap.py's
+# gap_near_frequency default (rel_tol = 0.5, i.e. +/-50% around the target).
+#
+# READ THIS BEFORE TRUSTING A FIGURE. On the baseline data the window is
+# [4, 12] GHz, and the reference design's LARGEST odd-z gap is 12.29 -> 16.64
+# GHz (30%) -- centred at 14.46 GHz, i.e. OUTSIDE the window. The scorer
+# instead picks a smaller 19% gap centred at 5.86 GHz, which is inside. The
+# figure draws both (solid amber = scored, green hatched = largest but not
+# scored) precisely so this disagreement is visible rather than inferred. The
+# 8 GHz value in targets_2d.yaml is flagged in that file as a placeholder;
+# this is the data to replace it from.
+# target_GHz: 8.0
+# rel_tol: 0.5
+show_target_window: true
+
+# Axis / title overrides. Omit for data-driven limits (0 .. 1.04*max) and an
+# auto title naming the families, gap_mode and lattice constant.
+# ylim_GHz: [0, 35]
+# title: "Boomerang unit cell, reference design"
+
+# Where to read gap_mode / target_frequency_GHz from. Rarely worth changing.
+# targets: ../configs/targets_2d.yaml

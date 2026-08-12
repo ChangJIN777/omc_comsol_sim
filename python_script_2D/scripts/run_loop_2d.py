@@ -56,7 +56,9 @@ def main():
         rec = evaluate_candidate(u, mech_backend=mech_backend,
                                  optical_backend=optical_backend,
                                  require_mech=require_mech,
-                                 require_opt=require_opt)
+                                 require_opt=require_opt,
+                                 save_bands=cfg.get("save_bands", True),
+                                 bands_dir=cfg.get("bands_dir"))
         save_result(rec)
         tell(opt, u, rec["score"],
              constraints={"mechanical_gap": rec.get("mechanical_gap"),

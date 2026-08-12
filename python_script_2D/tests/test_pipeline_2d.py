@@ -361,6 +361,138 @@ def test_bz_path_is_continuous_across_segment_joins():
     assert step.max() < 3 * np.median(step), "discontinuity at a segment join"
 
 
+def test_save_bands_keeps_scalar_lattice_constant():
+    """save_bands must not drop `a`.
+
+    run_mechanical_comsol_2d returns `a` as a plain Python float, and an
+    earlier version filtered the dict on isinstance(v, np.ndarray), so the
+    lattice constant vanished from every .npz. scripts/plot_bands_2d.py reads
+    it for the BZ annotation, and a missing key is invisible until something
+    downstream raises.
+    """
+    import tempfile
+    from acoustic_comsol_2d import save_bands
+
+    k_norm, kx, ky = bz_path(480e-9, n_per_segment=3)
+    data = dict(k_norm=k_norm, kx=kx, ky=ky, a=480e-9,
+                freqs_oddz=np.zeros((len(k_norm), 4)),
+                skipped_because_not_numeric={"nope": 1})
+    with tempfile.TemporaryDirectory() as td:
+        # nested path exercises the makedirs branch
+        path = save_bands(data, os.path.join(td, "sub", "bands.npz"))
+        assert os.path.isfile(path)
+        with np.load(path) as d:          # no allow_pickle: nothing may pickle
+            assert "a" in d, f"lattice constant dropped; keys={list(d.keys())}"
+            assert np.isclose(float(d["a"]), 480e-9)
+            assert d["freqs_oddz"].shape == (len(k_norm), 4)
+            assert "skipped_because_not_numeric" not in d
+
+
+def test_plot_bands_2d_renders_the_baseline_csv():
+    """Smoke-test the plotter end to end on real data, with no COMSOL.
+
+    The baseline CSV is odd-z only, so this also covers the single-family path.
+    Asserts a non-empty PNG and that the reported gaps are the two the baseline
+    is known to contain -- so the figure cannot silently start shading nothing.
+    """
+    import tempfile
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+    import plot_bands_2d as pb
+
+    k_norm, families, a = pb.load_baseline_csv()
+    assert sorted(families) == ["oddz"] and np.isclose(a, 480e-9)
+
+    with tempfile.TemporaryDirectory() as td:
+        out = os.path.join(td, "figs", "bands_2d.png")
+        info = pb.render(k_norm, families, out, a=a, f_target_hz=8.0e9,
+                         rel_tol=0.5, gap_mode="symmetry")
+        assert os.path.isfile(out)
+        assert os.path.getsize(out) > 5000, "PNG is suspiciously small"
+
+    # scored gap is the one inside the [4, 12] GHz window (5.86 GHz, ~19%);
+    # the largest gap anywhere is the 30% one at 14.46 GHz, outside it. Both
+    # must be reported, and they must be different -- that difference is the
+    # trap the figure exists to show.
+    assert np.isclose(info["scored"].f_center / 1e9, 5.855, atol=1e-3)
+    assert np.isclose(info["best"].f_center / 1e9, 14.464, atol=1e-3)
+    assert info["best"].normalized_gap > info["scored"].normalized_gap
+    assert info["ceiling_hz"] is None       # symmetry mode has no ceiling
+
+
+def test_plot_bands_2d_renders_complete_mode_with_ceiling():
+    """Cover the two-parity 'complete' path, including the ceiling line.
+
+    Synthesizes an even-z family from the baseline by shifting it, so both
+    parities exist. The point is that render() reports a finite truncation
+    ceiling and draws it -- a gap above that line is an artifact of finite
+    n_bands, and the line is what makes it recognizable in the figure.
+    """
+    import tempfile
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+    import plot_bands_2d as pb
+
+    k_norm, families, a = pb.load_baseline_csv()
+    oddz = families["oddz"]
+    families = {"oddz": oddz, "evenz": oddz * 0.83 + 0.4e9}
+
+    with tempfile.TemporaryDirectory() as td:
+        out = os.path.join(td, "complete.png")
+        info = pb.render(k_norm, families, out, a=a, f_target_hz=8.0e9,
+                         gap_mode="complete")
+        assert os.path.isfile(out) and os.path.getsize(out) > 5000
+
+    assert info["ceiling_hz"] is not None
+    assert info["n_bands_usable"] >= 2
+    ceiling = info["ceiling_hz"]
+    # the ceiling must be min over k of min(top_evenz, top_oddz) -- never above
+    # either family's lowest top band, or it would license artifact gaps
+    assert ceiling <= min(oddz[:, -1].min(), families["evenz"][:, -1].min()) + 1.0
+    for key in ("scored", "best"):
+        if info[key] is not None:
+            assert info[key].f_upper <= ceiling + 1.0, (
+                f"{key} gap edge {info[key].f_upper:.3e} is above the "
+                f"truncation ceiling {ceiling:.3e}")
+
+
+def test_plot_bands_2d_refuses_complete_mode_on_one_parity():
+    """'complete' with a single family must fail loudly, not fall back.
+
+    A complete gap is one no band of EITHER parity crosses; evaluating it from
+    one family would silently report a symmetry gap under the wrong name.
+    """
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+    import plot_bands_2d as pb
+
+    _, families, _ = pb.load_baseline_csv()
+    try:
+        pb.select_gaps(families, 8.0e9, 0.5, "complete")
+    except SystemExit as exc:
+        assert "both parities" in str(exc)
+    else:
+        raise AssertionError("complete mode accepted single-parity data")
+
+
+def test_plot_bands_2d_closes_the_bz_loop():
+    """The COMSOL sweep stops at 3 - 1/kpts; the plot must reach Gamma.
+
+    runBands_2D.m:556 closes the path by copying row 0. Duplicating an existing
+    row cannot change any max_k/min_k, so gaps are unaffected -- assert that.
+    """
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+    import plot_bands_2d as pb
+
+    k_norm, families, _ = pb.load_baseline_csv()
+    assert k_norm[-1] < 3.0
+    k2, f2 = pb.close_bz_loop(k_norm, families)
+    assert np.isclose(k2[-1], 3.0) and len(k2) == len(k_norm) + 1
+    assert np.allclose(f2["oddz"][-1], families["oddz"][0])
+    assert np.isclose(largest_gap(f2["oddz"]).normalized_gap,
+                      largest_gap(families["oddz"]).normalized_gap)
+    # idempotent once already closed
+    k3, f3 = pb.close_bz_loop(k2, f2)
+    assert len(k3) == len(k2)
+
+
 if __name__ == "__main__":
     for name, fn in sorted(list(globals().items())):
         if name.startswith("test_") and callable(fn):

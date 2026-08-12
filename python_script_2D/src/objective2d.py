@@ -43,6 +43,13 @@ from bandgap import Gap, gap_near_frequency, largest_gap
 _CFG = os.path.join(os.path.dirname(__file__), "..", "configs")
 C0 = 299_792_458.0
 
+# Where per-candidate band-structure .npz files go. results/ is git-ignored, so
+# these stay local; override with OMC2D_BANDS_DIR (mirrors database.py's
+# OMC2D_DB_PATH convention).
+_BANDS_DIR = os.environ.get(
+    "OMC2D_BANDS_DIR",
+    os.path.join(os.path.dirname(__file__), "..", "results", "bands"))
+
 
 def _load(name):
     with open(os.path.join(_CFG, name)) as fh:
@@ -117,13 +124,25 @@ def _mechanical_gap(freqs_evenz, freqs_oddz, f_target, gap_mode):
 def evaluate_candidate(u, *, mech_backend="comsol", optical_backend="none",
                        require_mech=True, require_opt=False,
                        n_bands_mech=None, cache=None, bounds=None,
-                       targets=None, on_stage=None):
+                       targets=None, on_stage=None,
+                       save_bands=True, bands_dir=None):
     """Evaluate one normalized design vector u. Returns a result record dict.
 
     on_stage, if given, is called as on_stage(name, event, info=None) at each
     stage boundary (name in {"feasibility","mechanical","optical","score"},
     event in {"start","done","skip","fail"}) -- see scripts/run_one_2d.py for
     a stderr-reporting implementation. Never raises because of this hook.
+
+    save_bands (default True) dumps the full [n_k, n_bands] band structure of
+    every successful mechanical solve to `bands_dir`/<id>.npz and records the
+    path as `bands_npz` in the result record. Defaulting to ON is deliberate:
+    a mechanical solve is ~54 eigensolves, and the record otherwise keeps only
+    two scalars (G_m, f_center), so the bands were the most expensive thing
+    being thrown away. Keeping them also makes this module's "re-score
+    'symmetry' vs 'complete' without re-solving" claim true instead of
+    aspirational, and gives scripts/plot_bands_2d.py something to plot.
+    Set save_bands=False for throwaway runs. Failing to write the .npz never
+    fails the candidate -- it is recorded in `bands_error` and the solve stands.
     """
     def _stage(name, event, info=None):
         if on_stage is not None:
@@ -165,7 +184,15 @@ def evaluate_candidate(u, *, mech_backend="comsol", optical_backend="none",
         try:
             if mech_backend == "comsol":
                 from acoustic_comsol_2d import run_mechanical_comsol_2d
+                from acoustic_comsol_2d import save_bands as _write_bands
                 d = run_mechanical_comsol_2d(g, n_bands=n_bands_mech)
+                if save_bands:
+                    dest = os.path.join(bands_dir or _BANDS_DIR, f"{cid}.npz")
+                    try:
+                        rec["bands_npz"] = os.path.abspath(_write_bands(d, dest))
+                    except Exception as exc:      # disk full, bad path, ...
+                        rec["bands_npz"] = None   # never lose a good solve to a
+                        rec["bands_error"] = str(exc)   # failed side-effect
                 gp, gap_info = _mechanical_gap(d["freqs_evenz"], d["freqs_oddz"],
                                                f_m_target, gap_mode)
                 G_m, f_m_c = gp.normalized_gap, gp.f_center

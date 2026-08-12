@@ -162,6 +162,50 @@ Applies to the export script only; the `.mph` has not been regenerated.
       that every free/fixed name is present and that none appears in both.
 - [x] Tests: 23 passing.
 
+## ✅ Done (tranche 4 — band persistence + the 2D band plotter)
+
+- [x] **Band persistence wired in.** `evaluate_candidate` now takes
+      `save_bands=True` (default) / `bands_dir`, dumps every successful
+      mechanical solve to `results/bands/<id>.npz` via
+      `acoustic_comsol_2d.save_bands`, and records the absolute path as
+      `bands_npz`. A write failure is recorded as `bands_error` and never fails
+      the candidate — a side effect must not cost a 54-eigensolve run.
+      Both additions are new keys only, per the CLAUDE.md schema rule. Threaded
+      through `run_one_2d.py` / `run_loop_2d.py` from `save_bands:` /
+      `bands_dir:` in their configs; `$OMC2D_BANDS_DIR` overrides the default,
+      mirroring `database.py`'s `$OMC2D_DB_PATH`. This also makes
+      `objective2d.py`'s "re-score `symmetry` vs `complete` without re-solving"
+      claim true rather than aspirational.
+- [x] **`save_bands` no longer drops scalars.** It filtered on
+      `isinstance(v, np.ndarray)`, so `a` — a plain Python float in the dict
+      `run_mechanical_comsol_2d` returns — vanished from every `.npz`, which is
+      exactly the key the plotter needs. Scalars are now stored as 0-d arrays;
+      non-numeric values are still skipped so `np.load` never needs
+      `allow_pickle=True`. `os.makedirs` uses `abspath` so a bare filename
+      works. Returns the path. Guarded by
+      `test_save_bands_keeps_scalar_lattice_constant`.
+- [x] **`scripts/plot_bands_2d.py` + `configs/plot_bands_2d.yaml`.** Two input
+      kinds: `baseline-csv` (the real 27×10 odd-z fixture — runs today, no
+      COMSOL) and `npz`. Ticks Γ/M/K/Γ at k = 0/1/2/3 with separators at the
+      segment joins; both parities in distinguishable colours; gap shading per
+      `targets_2d.yaml`'s `gap_mode`; the truncation ceiling drawn as a dotted
+      line in `complete` mode with an "any gap above this is an artifact"
+      annotation. **`complete` mode errors out on single-parity data** instead
+      of quietly reporting a symmetry gap under the wrong name. No optical
+      kind. Not a copy of the 1D plotter — see its module docstring for the
+      four things that differ and why each would have been wrong.
+- [x] **The target-frequency trap is now a figure, not a paragraph.** The plot
+      draws `target_frequency_GHz` and its ±`rel_tol` window, and shades BOTH
+      the gap the scorer picks and the largest gap anywhere whenever they
+      differ. On the baseline that is immediately legible: a 19.3% gap at
+      5.86 GHz shaded amber inside the [4, 12] GHz window, and the real 30%
+      gap at 12.29→16.64 GHz hatched green above it, unscored. That figure is
+      the argument for section 6's `target_frequency_GHz` decision.
+- [x] Tests: **30 passing** (+7). New: `save_bands` scalar retention, plotter
+      smoke render of the baseline CSV to PNG, `complete`-mode render including
+      the ceiling invariant, `complete`-on-one-parity refusal, and BZ-loop
+      closure being gap-neutral and idempotent.
+
 ---
 
 ## 1. Residual single-source-of-truth issue
@@ -334,11 +378,14 @@ two-thirds of its budget on rejections.
 
 ## 7. Persist what the solves cost
 
-- [ ] Save band data. `save_bands()` exists and is never called;
-      `evaluate_candidate` keeps only `(G_m, f_c)`. At ~54 eigensolves per
-      candidate that is the most expensive thing being discarded, and it makes
-      `objective2d.py`'s "re-score `symmetry` vs `complete` without re-solving"
-      claim false. Write an `.npz` and put its path in the record.
+Band data is now saved (tranche 4). What remains:
+
+- [ ] Nothing prunes `results/bands/`. One `.npz` per candidate at
+      2 parities × 28 k × 10 bands ≈ 5 KB, so a 60-candidate loop is ~300 KB —
+      not urgent, but there is no retention policy and `_hash_u` reuses the id,
+      so a re-run silently overwrites the previous bands for that `u`. Decide
+      whether that is wanted before the provenance change below lands (it will
+      change the ids and orphan every existing file).
 - [ ] Stamp config provenance into the record **and** into `_hash_u`:
       `gap_mode`, `n_bands`, `min_gap`, `target_frequency_GHz`, bounds file.
       `database.py` is `INSERT OR REPLACE` on that id, so re-running a `u`
