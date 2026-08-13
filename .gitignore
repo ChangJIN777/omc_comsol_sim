@@ -9,3 +9,5 @@
 
 # macOS
 .DS_Store
+omc-comsol-chang/test/
+*bayesopt*log.txt
