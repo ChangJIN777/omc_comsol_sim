@@ -4,7 +4,7 @@ Bayesian optimization of the boomerang unit cell for a complete **mechanical** b
 
 Searches four geometry parameters — lattice constant `a`, hole arm length `r`, hole arm width `w`, and slab thickness `th` — using MATLAB's `bayesopt`, where each objective evaluation is a full COMSOL eigenfrequency band structure solve.
 
-> **Status: partially verified.** `checkcode` passes with **no messages** (MATLAB R2026a). The whole **visualization** section has been exercised end-to-end against synthetic data — figures render and all graceful-degradation paths were tested. What has **not** run is the optimization itself: the **Statistics and Machine Learning Toolbox is not installed** on this machine, so `bayesopt` and `optimizableVariable` do not resolve here, and COMSOL LiveLink was not driven either. Install the toolbox before the first study, and treat that run as a shakedown.
+> **Status: partially verified.** `checkcode` passes with **no messages** (MATLAB R2026a). The whole **visualization** section has been exercised end-to-end against synthetic data — figures render and all graceful-degradation paths were tested. The [dry-run backends](#dry-run-mode) have been exercised through the real objective, constraint, log, checkpoint and figure code, with cache isolation demonstrated and the real-run figures confirmed **pixel-identical** to the version of the file before the mode was added. What has **not** run is the optimization itself: the **Statistics and Machine Learning Toolbox is not installed** on this machine, so `bayesopt` and `optimizableVariable` do not resolve here, and COMSOL LiveLink was not driven either. Install the toolbox before the first study, and treat that run as a shakedown — a dry run first (see below) will shake out everything except the solve.
 
 ---
 
@@ -13,6 +13,11 @@ Searches four geometry parameters — lattice constant `a`, hole arm length `r`,
 - [Why bayesopt](#why-bayesopt)
 - [Requirements](#requirements)
 - [Quick start](#quick-start)
+- [Dry-run mode](#dry-run-mode)
+  - [The three backends](#the-three-backends)
+  - [How cache isolation is enforced](#how-cache-isolation-is-enforced)
+  - [How a synthetic result is labelled](#how-a-synthetic-result-is-labelled)
+  - [What the surrogate actually computes](#what-the-surrogate-actually-computes)
 - [Read this before your first real run](#read-this-before-your-first-real-run)
 - [Unit cell geometry](#unit-cell-geometry)
 - [The objective](#the-objective)
@@ -52,8 +57,8 @@ That last row matters here: the objective is exactly zero everywhere no complete
 
 ## Requirements
 
-- **Statistics and Machine Learning Toolbox** — for `bayesopt` and `optimizableVariable`. There is no base-MATLAB fallback; without it the script cannot run.
-- **COMSOL with LiveLink for MATLAB, already running** before you start the script. `solveBands` → `runBands_2D` calls the COMSOL Java API directly.
+- **Statistics and Machine Learning Toolbox** — for `bayesopt` and `optimizableVariable`. There is no base-MATLAB fallback; without it the script cannot run. **This is required for a [dry run](#dry-run-mode) too** — the dry run replaces the *solver*, not the optimizer.
+- **COMSOL with LiveLink for MATLAB, already running** before you start the script. `solveBands` → `runBands_2D` calls the COMSOL Java API directly. **Not** needed for a dry run.
 - MATLAB R2017b or newer (`isfile`).
 - Must be run from the `omc-comsol-chang/` directory, so `solveBands`, `runBands_2D`, `buildBoomerangUnitCell`, `findGaps`, and `LoadMaterialParams` are all on the path.
 
@@ -76,6 +81,101 @@ run('bayesopt_boomerang.m')
 The script prints a per-evaluation summary, keeps two live `bayesopt` plots open, and leaves `results` (a `BayesianOptimization` object) in the base workspace.
 
 **Before spending a long run, time a single solve** with `test_Boomerang.m` at the same `meshSize` and `nbands`. Default settings cost `cfg.maxEvaluations × 2` COMSOL band-structure runs — 40 evaluations is **80 runs**, since each design point solves two symmetry sectors (even and odd about z). Multiply your single-solve time by that.
+
+Before that, though, do a **dry run** — the whole loop in seconds instead of hours:
+
+```matlab
+% Edit one line near the top of the cfg block:
+cfg.solverBackend = 'surrogate';
+run('bayesopt_boomerang.m')
+% ... then set it back to 'comsol' for the real study.
+```
+
+---
+
+## Dry-run mode
+
+A mode that drives the **entire optimization loop with no COMSOL solves at all**, so the plumbing around the solve — the objective, `XConstraintFcn`, the iteration log, the checkpoint, the report and all four summary figures — can be validated in seconds rather than over a multi-hour study.
+
+It is selected by an explicit **string**, `cfg.solverBackend`, not a boolean `dryRun` flag. That follows `mech_backend` in `python-scripts/src/objective.py` (`'comsol'` vs `'surrogate_stub'`): three tiers do not fit in a boolean, a fourth would not either, and a name self-documents everywhere it is printed, logged or saved instead of becoming an anonymous `1`.
+
+An unrecognised name is an **error**, never a silent fall-through — the MATLAB counterpart of that file's `raise ValueError(f"unknown mech_backend {mech_backend}")`. There is no safe default: falling back to `'comsol'` would spend hours of solve time on a typo, and falling back to `'surrogate'` would hand back a folder of fabricated results that look exactly like a study. The check runs **twice** — once at configuration time, before any path is derived from the name, and again in the backend dispatcher, for a `cfg` that was hand-edited or reloaded from an old results `.mat` afterwards.
+
+```matlab
+cfg.solverBackend = 'surrogate';    % or 'comsol' (default), or 'stub'
+cfg.dryRunDelay     = 0;            % artificial seconds per evaluation
+cfg.dryRunFailEvery = 0;            % >0 injects deterministic pseudo-failures
+cfg.dryRunSaveBands = 1;            % 0 = write no .mat at all
+```
+
+`cfg.isDryRun` is derived once, as `~strcmp(cfg.solverBackend,'comsol')`, and is the single flag everything downstream tests — so there is exactly one place in the file where the real backend is distinguished from the cheap ones.
+
+### The three backends
+
+| `cfg.solverBackend` | Cost / evaluation | Returns | What it exercises |
+|---|---|---|---|
+| `'comsol'` *(default)* | minutes | real band structure | the actual study. **The only backend whose numbers mean anything.** |
+| `'surrogate'` | microseconds | analytic fake `ds` | the **success** path: `gapFitness` scores a correctly-shaped gap, the log fills, the checkpoint writes, all four figures draw from data |
+| `'stub'` | microseconds | nothing (`objective = NaN`) | the **failure/skip** path: `solver-error` status, the red ✗ markers on the convergence panel, and `visualizeBestDesign`'s `band-data-unavailable` degradation |
+
+Two cheap tiers are not redundant, and the distinction is the same one `objective.py` draws between its analytic `optical_surrogate` and its `surrogate_stub`. A dry run that only ever *succeeded* would leave the failure paths untested — and those are the branches that only execute on a bad day, which makes them the ones most likely to be broken. `'stub'` is this file's shorter name for `objective.py`'s `'surrogate_stub'`.
+
+`cfg.dryRunFailEvery = N` lets the surrogate tier reach the failure path too: any design whose `a+r+w+th` (in nm) is divisible by `N` reports a simulated solver failure. It is keyed on the **design**, never on an evaluation counter or a random draw, because `bayesopt` is told `'IsObjectiveDeterministic', true` and a counter would make the second visit to a design succeed where the first failed — inventing observation noise the real solver does not have. Off by default.
+
+`cfg.dryRunDelay` inserts an artificial `pause` per evaluation, on the cheap backends only. Default `0`; set `0.5`–`2` s when the thing being debugged is the live `bayesopt` plots themselves, which are hard to watch fill in at thousands of evaluations a minute.
+
+### How cache isolation is enforced
+
+⚠️ **This is the hazard that matters.** `solveBands` caches by **filename** — it skips the solve entirely whenever `[datLoc fileBase '_bds.mat']` exists — and `boomerangParams` deliberately reproduces the sweep scripts' filename byte-for-byte so real sweep data gets reused (see [How caching works](#how-caching-works)). A dry run that wrote those same filenames would make **every later real run at those geometries silently load fabricated band data**: invisible, permanent corruption of the one thing this directory exists to produce.
+
+Four independent guards prevent it. Any one would be sufficient; they are layered because the first two are conventions about filenames, and a convention is only as strong as the last person who moved a file.
+
+| # | Guard | Mechanism |
+|---|---|---|
+| 1 | **Separate folder** | Dry-run output goes to `.\test\boomerang_bayesopt\DRYRUN_<backend>_<date>\`. A real run never looks inside it, so the two namespaces do not intersect at all |
+| 2 | **Filename prefix** | Every synthetic `_bds.mat` is named `DRYRUN_boomerang_a_...`. `cfg.dryRunPrefname` is also set as `P.prefname`, and the prefix is applied by hand exactly as `solveBands` would (`[prefname '_' fBase]`) — necessary because `solveBands` only applies `P.prefname` when `P.fileBase` is unset, and this script sets it |
+| 3 | **In-file provenance marker** | Every synthetic `ds` carries `ds.isSynthetic = true` plus `syntheticBackend`, `syntheticWarning` and `syntheticCreated`. `assertBandDataProvenance` checks **every** cache load, on both the objective path and the figure path. Synthetic data reaching a real run is an **error**, not a warning — stopping a study that can be resumed from its checkpoint is a far smaller loss than finishing one whose numbers cannot be trusted. The reverse (real data reaching a dry run) only warns: it wastes the dry run but corrupts nothing |
+| 4 | **Write nothing** | `cfg.dryRunSaveBands = 0` writes no `.mat` at all. The default is `1` because saving is what lets the dry run also exercise the cache-hit branch and `loadCachedBandData`, i.e. the code paths that read band data back off disk |
+
+The same separation covers the log, the checkpoint, the results `.mat` and every figure, all of which are named through **`cfg.filePrefix`** (`bayesopt_boomerang` → `bayesopt_boomerang_DRYRUN`). For `'comsol'` that prefix reproduces exactly the literal that used to be hard-coded at each use site, so a real study writes byte-identical filenames to before this option existed.
+
+### How a synthetic result is labelled
+
+A result must be unmistakably synthetic from every direction someone could approach it from:
+
+- **Console** — a boxed banner at the start *and* at the end of the run (the start banner has scrolled away by the time the best design prints), plus a per-evaluation `[DRY RUN] backend = surrogate : SYNTHETIC result, not physics`.
+- **Log** — a trailing `backend` column reading `surrogate-SYNTHETIC` / `stub-SYNTHETIC` (a real row is the bare `comsol`).
+- **`bayesopt` record** — `userData.backend`, so `results.UserDataTrace{k}.backend` answers "was this number real?" for any evaluation in a saved study.
+- **Folder** — a `DRYRUN_README.txt` dropped beside the data, in plain text, readable without MATLAB.
+- **Figures** — a red `*** DRY RUN: SYNTHETIC ... DATA - NOT PHYSICS - DO NOT USE FOR DESIGN ***` line in every figure headline, in the band panel's title, and at the top of the summary text panel; plus a `[DRY RUN - SYNTHETIC]` tag in each figure window name. Colour is load-bearing here, not decoration: a PNG pasted into an email arrives with no folder name and no console output attached.
+- **Saved data** — `ds.isSynthetic` and `ds.syntheticWarning` inside every `_bds.mat`, and `cfg` (hence `cfg.solverBackend`) inside the results `.mat`.
+
+### What the surrogate actually computes
+
+**Nothing physical.** `surrogateBoomerangBands` solves no eigenproblem and is a fit to nothing; it evaluates a handful of closed-form expressions chosen to *look* like a band structure. The same disclaimer, for the same reasons, as `python-scripts/src/optical_surrogate.py` ("a cheap, dependency-free estimator … use it only as a cheap pre-screen and to exercise the loop") — except weaker still, since that one at least models a Bragg stack.
+
+What it does get right is what makes it useful as a test:
+
+1. **Shape.** Returns the same `ds` a real two-sector solve does: `ds.sym` / `ds.asym` each with `F` `[nk × nbands]` in Hz and `k_norm` `[nk × 1]` running 0→3, and `ds.full` with `F`, `midGap` and `gapSize`. `nk = 3*cfg.kpts + 1` (28 by default), matching the Γ–M–K–Γ circuit `runBands_2D` walks plus the wrapped final Γ.
+2. **Determinism.** No `rand`, no clock, no counters. Required: `'IsObjectiveDeterministic', true` is passed to `bayesopt`, and a surrogate that answered differently on a repeated point would corrupt the GP fit — exactly the class of bug a dry run exists to find, not to introduce.
+3. **Self-consistency.** `midGap`/`gapSize` are **not** hand-written. The synthesized band matrix is passed through the real `findGaps`, the way `solveBands` does it, which keeps the shaded gaps consistent with the plotted bands and exercises `findGaps` too.
+4. **A non-trivial optimum.** A flat or monotone surface would make the convergence trace and the four design slices meaningless as tests — a plot of nothing renders perfectly well.
+
+The spectrum is built as a ladder of `2*cfg.nbands` pass bands with centres going as `m^0.55` (so high orders crowd, as a folded spectrum does), split odd/even between the two symmetry sectors, and given a periodic `k` dependence that returns to its starting value at `k = 3`. A gap is opened between rungs 3 and 4 whose width is driven by a `gapStrength ∈ [0,1]`, itself a product of five Gaussian factors:
+
+| factor | optimum | role |
+|---|---|---|
+| air filling fraction `fill` | 0.0823 | gap width |
+| slab aspect ratio `th/a` | 0.390 | gap width |
+| arm aspect ratio `w/r` | 0.425 | gap width |
+| hole reach `r/a` | 0.250 | gap width; breaks the `(a,r,w)` ridge the other ratios leave |
+| absolute thickness `th` | 312 nm | gap width; the only **non**-dimensionless factor, and the only thing that breaks the `(a,th)` scaling degeneracy |
+
+plus one scaling law — frequencies go as **1/a** — so the Gaussian target-frequency penalty in `gapFitness` has real work to do and *fights* the gap-width factors instead of agreeing with them.
+
+Every optimum is placed so the peak lands at the **centre of the default bounds**: `a = 800`, `r = 200`, `w = 85`, `th ≈ 312` nm, fitness ≈ 0.24, mid-gap 13.0 GHz (= `cfg.targetFreq`, by construction). Centring matters — an optimum near a bound makes the best design *on* that bound almost as good as the peak, and the corresponding design slice then looks flat and reports `[at bound]`. Measured on a grid scan of the feasible box, the peak beats the best design available on each bound face by **2.5× (`a`), 1.9× (`r`), 2.4× (`w`), 1.5× (`th`)**, and about **64%** of the box has no complete gap at all — so the gapless branch of `gapFitness` gets exercised too.
+
+> If you change `cfg.bounds`, `cfg.targetFreq` or `cfg.sigma`, re-check that the surrogate optimum is still interior. It is tuned against the shipped values, and the absolute-thickness factor in particular does not follow `cfg.bounds.th`. A surrogate whose optimum has drifted onto a bound tests considerably less than it appears to.
 
 ---
 
@@ -234,6 +334,20 @@ The `min(a - r, ...)` fabrication proxy used in `boomerang_optimize_sweep_diamon
 
 All settings live in the `cfg` struct at the top of the script.
 
+### Solver backend / dry run
+
+The first block in `cfg`, because it is the most consequential switch in the file. See [Dry-run mode](#dry-run-mode) for the full story.
+
+| field | default | meaning |
+|---|---|---|
+| `cfg.solverBackend` | `'comsol'` | `'comsol'` \| `'surrogate'` \| `'stub'`. Anything else is an **error**, checked at configuration time and again in the dispatcher |
+| `cfg.isDryRun` | *derived* | `~strcmp(cfg.solverBackend,'comsol')`. Single source of truth; do not set by hand |
+| `cfg.dryRunDelay` | `0` | Artificial seconds per evaluation, cheap backends only. `0.5`–`2` to watch the live plots at human speed |
+| `cfg.dryRunFailEvery` | `0` | `0` = off. `N` > 0 makes any design with `mod(a+r+w+th, N) == 0` report a simulated solver failure. Keyed on the design, not a counter, so `IsObjectiveDeterministic` still holds |
+| `cfg.dryRunSaveBands` | `1` | `1` writes the synthetic `ds` to a `_bds.mat` under the dry-run folder, which is what exercises the cache-hit branch and `loadCachedBandData`. `0` touches nothing but the log, and the visualization then degrades to its `band-data-unavailable` path |
+| `cfg.dryRunPrefname` | `'DRYRUN'` | Filename prefix stamped onto synthetic band data. Applied by hand rather than left to `solveBands`' `P.prefname` — see guard 2 above |
+| `cfg.filePrefix` | *derived* | `bayesopt_boomerang`, or `bayesopt_boomerang_DRYRUN` in a dry run. Used for the log, checkpoint, results `.mat` and all four figures |
+
 ### Objective
 
 | field | default | meaning |
@@ -289,7 +403,7 @@ Other `bayesopt` options are set inline: `'expected-improvement-plus'` acquisiti
 
 | field | default | meaning |
 |---|---|---|
-| `cfg.datLoc` | `.\test\boomerang_bayesopt\<mmddyyyy>\` | Output folder. **The trailing separator is required** |
+| `cfg.datLoc` | `.\test\boomerang_bayesopt\<mmddyyyy>\` | Output folder. **The trailing separator is required.** A dry run gets `...\DRYRUN_<backend>_<mmddyyyy>\` instead |
 | `cfg.plotgeom` | `0` | 1 to plot geometry every evaluation (slow, noisy) |
 | `cfg.savebndplot` | `1` | 1 to save a band diagram per evaluation |
 | `cfg.closeSolveFigures` | `1` | Close figures the solve opened, keeping the `bayesopt` live plots alive |
@@ -309,25 +423,28 @@ That last option exists because a plain `close all` would also destroy the `baye
 
 ## Outputs
 
-Everything lands under `cfg.datLoc`.
+Everything lands under `cfg.datLoc`. `<prefix>` below is `cfg.filePrefix`: `bayesopt_boomerang` for a real study, `bayesopt_boomerang_DRYRUN` for a [dry run](#dry-run-mode).
 
 | file | contents |
 |---|---|
 | `<fileBase>_bds.mat` | Per-evaluation band structure `ds` struct, written by `solveBands`. Also the cache — see below |
-| `<fileBase>_fullBands.png` / `.fig` | Band diagram per evaluation, when `cfg.savebndplot = 1` |
-| `bayesopt_boomerang_log.txt` | One tab-separated row per evaluation |
-| `bayesopt_boomerang_state.mat` | Checkpoint of the `BayesianOptimization` object, rewritten every iteration |
-| `bayesopt_boomerang_results.mat` | Final `results`, `cfg`, and `xBest` |
-| `bayesopt_boomerang_summary.png` / `.fig` | Composite 3×4 figure — see [Visualization](#visualization) |
-| `bayesopt_boomerang_geometry.png` / `.fig` | Standalone best-cell geometry, tiled over `cfg.figNPeriods` |
-| `bayesopt_boomerang_bestbands.png` / `.fig` | Standalone band structure of the best design, gaps shaded |
-| `bayesopt_boomerang_progress.png` / `.fig` | Standalone convergence trace + per-variable design slices |
+| `<fileBase>_fullBands.png` / `.fig` | Band diagram per evaluation, when `cfg.savebndplot = 1`. Real runs only — the cheap backends never call `solveBands` |
+| `<prefix>_log.txt` | One tab-separated row per evaluation |
+| `<prefix>_state.mat` | Checkpoint of the `BayesianOptimization` object, rewritten every iteration |
+| `<prefix>_results.mat` | Final `results`, `cfg`, and `xBest` |
+| `<prefix>_summary.png` / `.fig` | Composite 3×4 figure — see [Visualization](#visualization) |
+| `<prefix>_geometry.png` / `.fig` | Standalone best-cell geometry, tiled over `cfg.figNPeriods` |
+| `<prefix>_bestbands.png` / `.fig` | Standalone band structure of the best design, gaps shaded |
+| `<prefix>_progress.png` / `.fig` | Standalone convergence trace + per-variable design slices |
+| `DRYRUN_README.txt` | **Dry runs only.** Plain-text warning that everything in the folder is synthetic |
 
 `<fileBase>` is e.g. `boomerang_a_700nm_r_262nmw_99nm_th_300nm_r1_10nm_r2_10nm_`. The script sets `P.fileBase` explicitly, reproducing byte-for-byte the string `solveBands` builds for `celltype = 'boomerang'` — including its missing `_` after the `r` field. That is intentional: it lets the script predict the cache path, and keeps filenames interchangeable with data already produced by the sweep scripts.
 
+In a dry run `<fileBase>` additionally gains a `DRYRUN_` prefix and the whole folder changes, so nothing here can collide with a real study — see [How cache isolation is enforced](#how-cache-isolation-is-enforced).
+
 ### Log columns
 
-`bayesopt_boomerang_log.txt` is written and closed once per evaluation rather than buffered, so a run killed mid-study still leaves a complete record.
+`<prefix>_log.txt` is written and closed once per evaluation rather than buffered, so a run killed mid-study still leaves a complete record.
 
 | column | notes |
 |---|---|
@@ -340,8 +457,11 @@ Everything lands under `cfg.datLoc`.
 | `cached` | 1 if the band structure was reloaded from an existing `.mat` |
 | `evalTime_min` | Wall-clock minutes for this evaluation |
 | `status` | `target-in-gap`, `nearest-gap`, `no-complete-gap`, or `solver-error` |
+| `backend` | `comsol` for a real solve; `surrogate-SYNTHETIC` / `stub-SYNTHETIC` for a [dry run](#dry-run-mode) |
 
-Load it with `readtable('bayesopt_boomerang_log.txt')`.
+Load it with `readtable('<prefix>_log.txt')` — 14 columns.
+
+The `backend` column is appended last, so a log written before the column existed still lines up for its first 13 fields. A dry run writes to a different folder anyway, so the column is not what keeps the two apart — but a row that has been copied, pasted or `readtable`'d out of its folder has lost every other clue, and a table of gap ratios with no provenance is precisely the artifact that gets believed.
 
 ---
 
@@ -370,6 +490,8 @@ Band data is reloaded from the best design's cached `_bds.mat`. The whole sectio
 
 It never calls a bare `close all`, which would destroy the live `bayesopt` plot windows; only figure handles it created are closed, and only when `cfg.closeSummaryFigures = 1`.
 
+In a [dry run](#dry-run-mode) every figure gains a red banner line, and the summary text panel drops its blank separator lines to make room — the panel's 21 lines fill its tile exactly, and a 22nd is clipped by the tile below rather than scaled, landing on the design-slice titles. If you add a line to that panel, re-render and look at the PNG.
+
 ---
 
 ## Resuming an interrupted study
@@ -389,6 +511,8 @@ results = resume(results, 'MaxObjectiveEvaluations', 20);
 
 Note that `resume` continues with the surrogate already fitted — it does not re-spend seed points.
 
+⚠️ A checkpoint written **before** the dry-run option existed cannot be resumed: `resume` re-resolves the stored objective handle against the current file, so the old `cfg` (which has no `solverBackend` field) meets the new dispatcher. You get an explicit error saying so. Re-run the script instead — it rebuilds `cfg` and the handle, and the existing `_bds.mat` files under `cfg.datLoc` are reused, so no solve time is lost.
+
 ---
 
 ## How caching works
@@ -401,6 +525,8 @@ Note that `resume` continues with the surrogate already fitted — it does not r
 **This is why the design variables are declared as integer nanometres rather than continuous metres.** `solveBands` names its files by rounding every dimension to whole nm (`'%.0f'`). With continuous variables, many distinct GP query points would alias onto one cached result, silently feeding the surrogate stale data for design points it never actually evaluated. On an integer-nm grid the rounding is exact, so a repeated point is a genuine cache hit.
 
 The flip side: **editing physics settings without changing geometry will silently reuse old results.** Clear the dated folder — or point `cfg.datLoc` somewhere new — whenever you change `kpts`, `nbands`, `meshSize`, or the symmetry settings.
+
+This filename-keyed cache is also the reason a dry run is dangerous if left unguarded, and why four separate guards keep synthetic band data out of it — see [How cache isolation is enforced](#how-cache-isolation-is-enforced). Note the contrast with the Python pipeline, which sidesteps the problem by folding the backend into the cache key itself (`cid = _hash_u(u, (optical_backend, mech_backend))` in `objective.py`); here the key is a filename that must stay byte-compatible with the sweep scripts, so isolation is enforced around the cache rather than inside it.
 
 ---
 
@@ -425,14 +551,34 @@ Recorded here because they are easy to trip over again.
 | function | role |
 |---|---|
 | `boomerangFabConstraint` | Vectorized deterministic feasibility test on a candidate table |
-| `boomerangObjective` | Solve one design point and score it; returns `-fitness` |
-| `boomerangParams` | Build the `P` struct for one design point, ported from `sweep_boomerang_thickness` |
-| `solveBoomerangBands` | Call `solveBands` and always return a usable gap struct, handling the cache-hit stub |
+| `boomerangObjective` | Evaluate one design point and score it; returns `-fitness` |
+| `boomerangParams` | Build the `P` struct for one design point, ported from `sweep_boomerang_thickness`; applies the `DRYRUN` filename prefix |
+| `solveBoomerangBands` | **Dispatcher** on `cfg.solverBackend` — the single seam between the loop and whatever stands in for the physics. Errors on an unknown backend |
+| `solveBandsViaComsol` | The real path: call `solveBands` and always return a usable gap struct, handling the cache-hit stub |
 | `closeNewFigures` | Close only the figures a solve opened, preserving `bayesopt` plots |
 | `gapFitness` | Score every complete gap against the target, keep the best |
 | `initIterationLog` | Create the log with its header row |
 | `logIteration` | Append one evaluation, flushed immediately |
+| `logBackendLabel` | Value for the log's `backend` column |
 | `checkpointState` | `OutputFcn` saving the optimizer state every iteration |
+
+[Dry-run backends](#dry-run-mode) — inert unless `cfg.solverBackend` is a cheap tier, except for the provenance guard, which a real run calls precisely so it can refuse synthetic data:
+
+| function | role |
+|---|---|
+| `solveBandsViaSurrogate` | Cheap tier 1: analytic fake bands, walking the same cache/save/return path as the real solve |
+| `solveBandsViaStub` | Cheap tier 2: no bands at all, every evaluation reported as a failure |
+| `surrogateBoomerangBands` | The analytic band-structure generator. **Not physics** — see [what it computes](#what-the-surrogate-actually-computes) |
+| `simulatedSolverFailure` | Deterministic pseudo-failure predicate, keyed on the design |
+| `assertKnownBackend` | Reject an unrecognised `cfg.solverBackend`, loudly |
+| `formatBackendForError` | Describe whatever was found in `cfg.solverBackend`, without assuming it is printable |
+| `isSyntheticBandData` | True if a `ds` carries the dry-run provenance marker |
+| `assertBandDataProvenance` | Refuse to mix synthetic and real band data — error one way, warning the other |
+| `printDryRunBanner` | Boxed console notice, printed at the start *and* the end of the run |
+| `writeDryRunMarker` | Write `DRYRUN_README.txt` into the output folder |
+| `dryRunBannerText` | One-line figure banner, or `{}` outside a dry run |
+| `withDryRunHeadline` | Prefix a figure headline with the banner and grow its reserved strip |
+| `dryRunHeadlineColor` | Red in a dry run, `[]` (no opinion) otherwise |
 
 Visualization (all best-effort, none on the optimization path):
 
@@ -449,7 +595,8 @@ Visualization (all best-effort, none on the optimization path):
 | `writeSummaryPanel` | Monospace text summary |
 | `loadCachedBandData` | Reloads the best design's `_bds.mat` |
 | `newSummaryFigure` | Creates a themed figure of a given size |
-| `addFigureHeadline` | Figure-level suptitle that cannot collide with axes titles |
+| `summaryFigureName` | Figure window title, tagged when the data behind it is synthetic |
+| `addFigureHeadline` | Figure-level suptitle that cannot collide with axes titles; optional text colour |
 | `saveFigurePair` | Writes `.png` + `.fig` |
 | `tryPanel` | Wraps one panel so its failure cannot take down the figure |
 
@@ -465,6 +612,8 @@ Visualization (all best-effort, none on the optimization path):
 
 **`cfg.maxEvaluations`** is a hard stop, not a convergence criterion. Prefer a modest first run followed by `resume`, since that lets you inspect the log before committing more solve time.
 
+**Do a dry run first.** `cfg.solverBackend = 'surrogate'` walks the whole loop in seconds, so every mistake that is not about physics — a bad bound, a constraint that prunes everything, a `datLoc` that cannot be written, a budget split that spends everything on seed points — surfaces before you spend a solve on it. Then `'stub'` for the failure paths, then `'comsol'`.
+
 ---
 
 ## Related files
@@ -478,4 +627,6 @@ Visualization (all best-effort, none on the optimization path):
 | `solveBands.m` | Symmetry-sector driver, calls `findGaps` |
 | `runBands_2D.m` | 2D band structure solve; builds the COMSOL model |
 | `buildBoomerangUnitCell.m` | The geometry builder actually used for `celltype = 'boomerang'` |
-| `findGaps.m` | Locates complete gaps in an assembled band matrix |
+| `findGaps.m` | Locates complete gaps in an assembled band matrix — used by the surrogate too, so the synthetic gaps are found the same way the real ones are |
+| `python-scripts/src/objective.py` | Source of the string-valued backend selection, the fail-loud-on-unknown-backend rule, and the backend-in-the-cache-key idea |
+| `python-scripts/src/optical_surrogate.py` | Source of the "analytic surrogate, loop debugging only" pattern the surrogate backend follows |

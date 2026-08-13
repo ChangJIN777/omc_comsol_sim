@@ -48,6 +48,51 @@
 % Zero means "no usable complete gap", which is the worst attainable value
 % since the fitness is non-negative by construction.
 %
+% SOLVER BACKEND / DRY-RUN MODE
+% cfg.solverBackend selects what actually produces the band structure:
+%   'comsol'     the real COMSOL eigenfrequency solve. Minutes per evaluation,
+%                and the ONLY backend whose numbers mean anything. Default.
+%   'surrogate'  a closed-form ANALYTIC fake band structure, microseconds per
+%                evaluation (surrogateBoomerangBands). It exists to debug the
+%                LOOP - the objective plumbing, XConstraintFcn, the iteration
+%                log, the checkpoint and all four summary figures get exercised
+%                end to end in seconds instead of hours. It is not physics.
+%   'stub'       no bands at all: every evaluation reports a solver failure
+%                (NaN). That is the other path worth testing - the skip/failure
+%                branch the success path never touches.
+% Anything else is an error, never a silent fall-through: a typo'd backend name
+% must not be able to start a multi-hour real study, nor to silently fake one.
+%
+% The string-valued backend (rather than a bare boolean dryRun flag) follows
+% python-scripts/src/objective.py, which selects with mech_backend='comsol' vs
+% 'surrogate_stub' and raises ValueError on anything else. A string scales past
+% two tiers and self-documents wherever it is printed, logged or saved; 'stub'
+% is this file's shorter name for that file's 'surrogate_stub'.
+%
+% CACHE ISOLATION - the one hazard that matters here.
+% solveBands caches by FILENAME: it skips the solve entirely whenever
+% [datLoc fileBase '_bds.mat'] exists, and boomerangParams reproduces the sweep
+% scripts' filename byte-for-byte precisely so that real sweep data is reused.
+% A dry run that wrote those same filenames would therefore make every later
+% REAL run at those geometries silently load fabricated band data - invisible,
+% permanent corruption of the one thing this directory exists to produce. Four
+% independent guards prevent it, any one of which would be sufficient:
+%   (1) a separate output folder, DRYRUN_<backend>_<date>/, so a real run never
+%       even looks in the directory the synthetic files live in;
+%   (2) a DRYRUN filename prefix on every synthetic _bds.mat, so the two could
+%       not collide even if the folders were merged by hand;
+%   (3) a provenance marker (ds.isSynthetic) inside every synthetic .mat, which
+%       assertBandDataProvenance checks on EVERY cache load - a real run that is
+%       somehow handed synthetic data errors out instead of using it;
+%   (4) cfg.dryRunSaveBands = 0 writes no .mat at all, for the paranoid.
+% The same separation applies to the iteration log, the checkpoint, the results
+% .mat and every figure, all of which are named through cfg.filePrefix.
+%
+% Synthetic results are additionally labelled everywhere a human might meet
+% them: the console banner, a 'backend' column in the log, a DRYRUN_README.txt
+% dropped in the output folder, the figure names, the figure headlines and the
+% summary text panel.
+%
 % REQUIREMENTS
 %   * Statistics and Machine Learning Toolbox (bayesopt, optimizableVariable)
 %   * COMSOL with LiveLink for MATLAB, already running, before this script is
@@ -57,6 +102,8 @@
 %   >> run('bayesopt_boomerang.m')
 % then, to spend more solves on the same surrogate:
 %   >> results = resume(results,'MaxObjectiveEvaluations',20);
+% To debug the loop without COMSOL, set cfg.solverBackend = 'surrogate' (or
+% 'stub') in the configuration block below and run exactly the same way.
 %
 % OUTPUTS written under cfg.datLoc
 %   *_bds.mat                    per-evaluation band structure (via solveBands)
@@ -68,6 +115,8 @@
 %   bayesopt_boomerang_geometry.*    best unit cell, top view
 %   bayesopt_boomerang_bestbands.*   band structure of the best design
 %   bayesopt_boomerang_progress.*    convergence + design-space slices
+% In a dry run every one of these moves to a DRYRUN_<backend>_<date>/ folder and
+% gains a _DRYRUN infix (cfg.filePrefix), plus a DRYRUN_README.txt beside them.
 % Each figure is written as both .png and .fig, matching what solveBands does
 % with its per-evaluation band diagrams.
 %
@@ -84,6 +133,71 @@ clear all; clc; close all;                                                  %#ok
 %  Configuration
 %  ------------------------------------------------------------------------
 cfg = struct();
+
+% --- solver backend / dry run --------------------------------------------
+% What actually produces the band structure for one design point. A STRING
+% rather than a boolean dryRun flag, mirroring mech_backend in
+% python-scripts/src/objective.py: three tiers do not fit in a boolean, a fourth
+% would not either, and the name self-documents everywhere it is printed, logged
+% or saved rather than becoming an anonymous "1".
+%
+%   'comsol'     the real solve. Minutes per evaluation, and the only backend
+%                whose numbers mean anything.
+%   'surrogate'  analytic FAKE bands (surrogateBoomerangBands), microseconds per
+%                evaluation. Correctly shaped and plausibly trending, physically
+%                meaningless. Exercises everything downstream of the solve:
+%                gapFitness, the log, the checkpoint, all four summary figures.
+%   'stub'       no bands at all; every evaluation reports a solver failure
+%                (NaN). Exercises the failure/skip path, which the surrogate -
+%                by succeeding - never reaches. objective.py calls this tier
+%                'surrogate_stub'.
+%
+% Read the CACHE ISOLATION note in the header block before using either cheap
+% backend. Short version: dry-run output lives in its own folder, under its own
+% filename prefix, carrying an in-file provenance marker, so no real run can
+% ever load it.
+cfg.solverBackend = 'comsol';
+
+% Fail loud on an unknown backend BEFORE anything is derived from the name -
+% the same intent as `raise ValueError(f"unknown mech_backend {mech_backend}")`
+% in objective.py. Without this, a typo would fall through the strcmp below to
+% isDryRun = true and quietly produce a whole folder of fabricated results;
+% mistype it the other way and you would be waiting on real COMSOL solves you
+% did not ask for. Neither failure is acceptable, so it is an error, here, first.
+assertKnownBackend(cfg.solverBackend);
+
+% Single source of truth for "is this a dry run". Everything downstream tests
+% this flag instead of re-comparing strings, so there is exactly one place where
+% the real backend is distinguished from the cheap ones.
+cfg.isDryRun = ~strcmp(cfg.solverBackend,'comsol');
+
+% --- dry-run options (all ignored unless cfg.isDryRun) -------------------
+cfg.dryRunDelay = 0;        % artificial seconds per evaluation. 0 = as fast as
+                            % MATLAB can go, which is the point of the mode.
+                            % 0.5-2 s is useful when the thing being debugged is
+                            % the live bayesopt plots themselves, which are hard
+                            % to watch fill in at 10 000 evaluations a minute.
+cfg.dryRunFailEvery = 0;    % 0 = off. N > 0 makes any design whose
+                            % a+r+w+th (in nm) is divisible by N report a
+                            % simulated solver failure, so the NaN branch of
+                            % boomerangObjective, the 'solver-error' log status
+                            % and the red error markers on the convergence panel
+                            % all get exercised. Keyed on the DESIGN, never on
+                            % an evaluation counter: bayesopt is told
+                            % 'IsObjectiveDeterministic',true, and a counter
+                            % would make a repeated design point return a
+                            % different value, violating that contract.
+cfg.dryRunSaveBands = 1;    % 1 writes the synthetic ds to a _bds.mat under the
+                            % dry-run folder. That is what lets a dry run also
+                            % exercise the cache-hit branch and
+                            % loadCachedBandData, i.e. the code paths that read
+                            % band data back off disk. Set 0 to touch nothing
+                            % but the log; the visualization then degrades to
+                            % its 'band-data-unavailable' path, which is itself
+                            % worth testing.
+cfg.dryRunPrefname = 'DRYRUN';  % filename prefix stamped onto synthetic band
+                            % data. See boomerangParams for why it is applied by
+                            % hand rather than left to solveBands' P.prefname.
 
 % --- objective definition -------------------------------------------------
 cfg.targetFreq = 13e9;      % target mechanical mid-gap frequency [Hz]
@@ -126,9 +240,28 @@ cfg.numSeedPoints  = 8;     % random design points before the GP takes over
 % local variable but then writes the .mat with the raw P.datLoc, so a missing
 % separator silently drops output into the parent folder.
 currentDate = datestr(now,'mmddyyyy');                                      %#ok<TNOW1,DATST>
-cfg.datLoc  = ['.\test\boomerang_bayesopt\',currentDate,'\'];
-cfg.logPath   = [cfg.datLoc,'bayesopt_boomerang_log.txt'];
-cfg.statePath = [cfg.datLoc,'bayesopt_boomerang_state.mat'];
+
+% Guard (1) of the four cache-isolation guards listed in the header block: a dry
+% run gets its OWN dated folder, named for the backend that produced it. A real
+% run therefore never looks inside the directory the synthetic _bds.mat files
+% live in, which is what makes it structurally impossible for solveBands' filename
+% cache to serve fabricated bands to a real study - the two namespaces do not
+% intersect at all, rather than merely being unlikely to collide.
+%
+% cfg.filePrefix exists so the per-study artifacts follow the same switch. For
+% 'comsol' it is exactly the literal that used to be hard-coded at each use
+% site, so a real study writes byte-identical filenames to before this option
+% existed. That equality is deliberate and worth preserving if these lines are
+% ever edited: it is what makes "dry run off" mean "unchanged".
+if cfg.isDryRun
+    cfg.datLoc     = ['.\test\boomerang_bayesopt\DRYRUN_',cfg.solverBackend,'_',currentDate,'\'];
+    cfg.filePrefix = 'bayesopt_boomerang_DRYRUN';
+else
+    cfg.datLoc     = ['.\test\boomerang_bayesopt\',currentDate,'\'];
+    cfg.filePrefix = 'bayesopt_boomerang';
+end
+cfg.logPath   = [cfg.datLoc,cfg.filePrefix,'_log.txt'];
+cfg.statePath = [cfg.datLoc,cfg.filePrefix,'_state.mat'];
 
 cfg.plotgeom          = 0;  % 1 to plot geometry each evaluation (slow, noisy)
 cfg.savebndplot       = 1;  % 1 to save a band diagram per evaluation
@@ -158,6 +291,16 @@ cfg.closeSummaryFigures = 0;    % 0 leaves the saved figures on screen, which is
 if ~exist(cfg.datLoc,'dir')
     mkdir(cfg.datLoc);
 end
+
+% Drop a plain-text warning next to the synthetic data and shout at the console.
+% Both are for the same reader: whoever opens this folder in a month, having
+% forgotten which run was which. The folder name already says DRYRUN, but a name
+% is easy to skim past and a file called DRYRUN_README.txt is not.
+if cfg.isDryRun
+    writeDryRunMarker(cfg);
+    printDryRunBanner(cfg);
+end
+
 initIterationLog(cfg.logPath);
 
 %% ------------------------------------------------------------------------
@@ -203,7 +346,16 @@ fprintf('  objective = %.6f  (fitness = %.6f)\n', ...
     results.MinObjective, -results.MinObjective);
 fprintf('  iteration log: %s\n', cfg.logPath);
 
-save([cfg.datLoc,'bayesopt_boomerang_results.mat'],'results','cfg','xBest');
+save([cfg.datLoc,cfg.filePrefix,'_results.mat'],'results','cfg','xBest');
+
+% Repeated at the END as well as the start. The start-of-run banner has scrolled
+% far off the top of the console by now, and "best boomerang unit cell" above is
+% exactly the block someone would screenshot - so the disclaimer has to be next
+% to it, not thousands of lines earlier. cfg is saved inside the .mat too, so the
+% backend travels with the results.
+if cfg.isDryRun
+    printDryRunBanner(cfg);
+end
 
 %% ------------------------------------------------------------------------
 %  Visualization
@@ -278,10 +430,20 @@ function [objective,coupledConstraints,userData] = boomerangObjective(x,cfg)
 coupledConstraints = [];    % all constraints are deterministic (XConstraintFcn)
 userData = struct();
 
+% The backend is recorded on every point bayesopt keeps, exactly as the Python
+% result record carries mech_backend. results.UserDataTrace{k}.backend then
+% answers "was this number real?" for any evaluation in a saved study, without
+% having to remember what cfg said at the time.
+userData.backend = cfg.solverBackend;
+
 P = boomerangParams(x,cfg);
 
 fprintf('\n----- evaluating a=%dnm r=%dnm w=%dnm th=%dnm -----\n', ...
     x.a, x.r, x.w, x.th);
+if cfg.isDryRun
+    fprintf('  [DRY RUN] backend = %s : SYNTHETIC result, not physics\n', ...
+        cfg.solverBackend);
+end
 
 tEval = tic;
 [gapData,wasCached] = solveBoomerangBands(P,cfg);
@@ -384,12 +546,90 @@ P.fileBase = ['boomerang_','a_',num2str(P.a*1e9,'%.0f'),'nm_',...
     'th_',num2str(P.th*1e9,'%.0f'),'nm_', ...
     'r1_',num2str(P.r1*1e9,'%.0f'),'nm_', ...
     'r2_',num2str(P.r2*1e9,'%.0f'),'nm_'];
+
+% Guard (2) of the cache-isolation guards. In a dry run the SAME geometry gets a
+% different filename, so a synthetic _bds.mat and a real one for one design can
+% coexist in one folder without either shadowing the other - which matters
+% because guard (1) (the separate folder) survives only until someone tidies up
+% by hand, and file moves are exactly the operation nobody thinks twice about.
+%
+% solveBands has this mechanism already: it prepends P.prefname to the fileBase
+% it builds. It only does so when P.fileBase is UNSET, though, and the whole
+% point of the block above is that this script sets fileBase itself. So
+% P.prefname is set for anything that reads it, and the same transformation
+% solveBands would have applied ([prefname '_' fBase]) is applied here by hand.
+% Keep the two spellings identical if either ever changes.
+if cfg.isDryRun
+    P.prefname = cfg.dryRunPrefname;
+    P.fileBase = [P.prefname,'_',P.fileBase];
+end
 end
 
 % -------------------------------------------------------------------------
 
 function [gapData,wasCached] = solveBoomerangBands(P,cfg)
-%SOLVEBOOMERANGBANDS Call solveBands and always return a usable gap struct.
+%SOLVEBOOMERANGBANDS Produce the gap struct for one design, via cfg.solverBackend.
+%
+% This is the single seam between the optimization loop and whatever is standing
+% in for the physics. Everything above it - the objective, gapFitness, the log,
+% the checkpoint, the figures - is identical in every mode, which is the only
+% reason a dry run is worth anything as a test: if the cheap path went round the
+% loop instead of through it, passing the dry run would prove nothing.
+%
+% Contract, unchanged from before this switch existed: gapData is the ds.full
+% struct (fields midGap, gapSize), or [] to mean "this evaluation failed";
+% wasCached is true when the result came off disk rather than being computed.
+%
+% The otherwise-branch is intentionally an error and not a warning-plus-default.
+% Defaulting to 'comsol' would make a typo cost hours of solve time nobody asked
+% for; defaulting to 'surrogate' would fabricate a study. Both are worse than
+% stopping. assertKnownBackend already ran at configuration time, so this is the
+% second line of defence, for a cfg that was hand-edited or loaded from an old
+% results .mat afterwards.
+
+% A cfg saved before this option existed has no solverBackend field, and
+% `resume` on such a checkpoint re-resolves the stored objective handle against
+% the CURRENT file - so the old cfg meets the new code. Left unguarded that is a
+% bare "Unrecognized field name 'solverBackend'" thrown from inside a resumed
+% study, which says nothing about the cause. Note this is not the unknown-backend
+% case and is not defaulted for the same reason: a missing field means the caller
+% has not decided, and deciding on their behalf is what the whole switch exists to
+% avoid.
+if ~isfield(cfg,'solverBackend')
+    error('bayesopt_boomerang:missingBackend', ...
+        ['cfg has no solverBackend field. This cfg predates the dry-run ' ...
+         'option - most likely a checkpoint or results .mat written by an ' ...
+         'earlier version of this script. Re-run the script (which rebuilds ' ...
+         'cfg and the objective handle) rather than resuming that state; ' ...
+         'existing _bds.mat files under cfg.datLoc will be reused, so no ' ...
+         'solve time is lost.']);
+end
+
+switch cfg.solverBackend
+    case 'comsol'
+        [gapData,wasCached] = solveBandsViaComsol(P,cfg);
+    case 'surrogate'
+        [gapData,wasCached] = solveBandsViaSurrogate(P,cfg);
+    case 'stub'
+        [gapData,wasCached] = solveBandsViaStub();
+    otherwise
+        error('bayesopt_boomerang:unknownBackend', ...
+            ['Unknown cfg.solverBackend ''%s''. Expected ''comsol'', ' ...
+             '''surrogate'' or ''stub''.'],char(string(cfg.solverBackend)));
+end
+
+% Optional pacing, cheap backends only. A real solve already takes minutes, so
+% slowing it down further would be nothing but cruelty; a surrogate evaluation
+% takes microseconds, which is too fast to watch anything happen.
+if cfg.isDryRun && cfg.dryRunDelay > 0
+    pause(cfg.dryRunDelay);
+end
+end
+
+% -------------------------------------------------------------------------
+
+function [gapData,wasCached] = solveBandsViaComsol(P,cfg)
+%SOLVEBANDSVIACOMSOL Call solveBands and always return a usable gap struct.
 %
 % gapData is the ds.full struct (fields midGap, gapSize), or [] if the solve
 % failed. wasCached is true when the result came from an existing _bds.mat.
@@ -435,6 +675,16 @@ if ~cacheHitExpected
 end
 
 cached = load(matPath,'ds');
+
+% Guard (3): every cache load is checked for the synthetic provenance marker
+% before its numbers are believed. Guards (1) and (2) already make this
+% unreachable in normal use; it is here because they are both conventions about
+% filenames, and a convention is only as strong as the last person who moved a
+% file. This check is not - it inspects the data itself.
+if isfield(cached,'ds')
+    assertBandDataProvenance(cached.ds,matPath,cfg);
+end
+
 if isfield(cached,'ds') && isfield(cached.ds,'full')
     gapData = cached.ds.full;
     fprintf('  (reused cached band structure)\n');
@@ -444,7 +694,584 @@ else
 end
 end
 
+%% ========================================================================
+%  Dry-run backends - local functions
+%  ========================================================================
+% Everything below this banner is inert unless cfg.solverBackend is set to one
+% of the cheap tiers. None of it is reachable from a 'comsol' run: the switch in
+% solveBoomerangBands is the only caller, apart from the provenance check, which
+% is reachable from a real run precisely so that it can refuse synthetic data.
+
+function [gapData,wasCached] = solveBandsViaSurrogate(P,cfg)
+%SOLVEBANDSVIASURROGATE Cheap tier 1: analytic fake bands, full success path.
+%
+% Deliberately shaped like solveBandsViaComsol, including the cache-hit branch,
+% because the point is to walk the same plumbing rather than to shortcut it. The
+% synthetic .mat it writes lives under the dry-run folder and carries the DRYRUN
+% filename prefix and the in-file provenance marker - see the CACHE ISOLATION
+% note in the header block.
+
+gapData   = [];
+wasCached = false;
+
+% Optional simulated failure, checked FIRST so that a "failed" design never
+% reaches the disk. A failure that still left a cache file behind would heal
+% itself on the next visit to the same point, which is the opposite of
+% deterministic.
+if simulatedSolverFailure(P,cfg)
+    warning('bayesopt_boomerang:simulatedFailure', ...
+        ['SIMULATED solver failure (cfg.dryRunFailEvery = %d) for %s. ' ...
+         'This is a dry-run test of the NaN path, not a real problem.'], ...
+        cfg.dryRunFailEvery,P.fileBase);
+    return
+end
+
+matPath = [P.datLoc,P.fileBase,'_bds.mat'];
+
+% Cache hit. Worth reproducing rather than skipping: the `cached` column of the
+% log, the (:) shapes that come back off disk rather than out of memory, and
+% loadCachedBandData's assumptions about what a saved ds looks like are all
+% things a dry run should be able to check.
+if cfg.dryRunSaveBands && isfile(matPath)
+    cached = struct();
+    try
+        cached = load(matPath,'ds');
+    catch ME
+        warning('bayesopt_boomerang:badDryRunCache', ...
+            'Could not load synthetic cache %s: %s',matPath,ME.message);
+    end
+    if isfield(cached,'ds')
+        assertBandDataProvenance(cached.ds,matPath,cfg);
+        if isfield(cached.ds,'full') && isstruct(cached.ds.full)
+            gapData   = cached.ds.full;
+            wasCached = true;
+            fprintf('  (reused cached SYNTHETIC band structure)\n');
+            return
+        end
+    end
+end
+
+ds = surrogateBoomerangBands(P,cfg);
+gapData = ds.full;
+
+if cfg.dryRunSaveBands
+    try
+        save(matPath,'ds');
+    catch ME
+        % Not fatal: the surrogate result is already in hand, and the only thing
+        % lost is the cache-hit exercise on a later visit to this design.
+        warning('bayesopt_boomerang:dryRunSave', ...
+            'Could not write synthetic band data to %s: %s',matPath,ME.message);
+    end
+end
+end
+
 % -------------------------------------------------------------------------
+
+function [gapData,wasCached] = solveBandsViaStub()
+%SOLVEBANDSVIASTUB Cheap tier 2: no bands at all, every evaluation "fails".
+%
+% The counterpart of mech_backend='surrogate_stub' in
+% python-scripts/src/objective.py, which returns NaN and skips the stage rather
+% than estimating it. Two cheap tiers are not redundant: 'surrogate' walks the
+% SUCCESS path (gapFitness scores a real-shaped gap, figures get drawn from data)
+% while this one walks the FAILURE path - objective = NaN, status
+% 'solver-error', the red error markers on the convergence panel, and the
+% band-data-unavailable degradation inside visualizeBestDesign. A dry run that
+% only ever succeeded would leave all of that untested, and those are the paths
+% that only ever execute on a bad day, i.e. the ones most likely to be broken.
+%
+% Takes no arguments on purpose: there is nothing about the design or the
+% configuration that could change the answer.
+
+gapData   = [];
+wasCached = false;
+fprintf(['  [stub backend] band solve SKIPPED - reporting a solver failure ' ...
+         '(objective = NaN)\n']);
+end
+
+% -------------------------------------------------------------------------
+
+function ds = surrogateBoomerangBands(P,cfg)
+%SURROGATEBOOMERANGBANDS Analytic stand-in for a band structure. NOT PHYSICS.
+%
+% =========================================================================
+%  THIS FUNCTION DOES NOT COMPUTE A BAND STRUCTURE. It evaluates a handful of
+%  closed-form expressions chosen to LOOK like one. The frequencies it returns
+%  are not approximations of the boomerang cell's modes, they are not converged,
+%  they are not even derived from an elastic model - there is no eigenproblem
+%  anywhere below. Nothing that comes out of here may be used to judge a design.
+%  Its only purpose is to make the optimization loop run in microseconds so the
+%  loop itself can be debugged. Same disclaimer, same reasons, as the docstring
+%  of python-scripts/src/optical_surrogate.py ("a cheap, dependency-free
+%  estimator ... use it only as a cheap pre-screen and to exercise the loop") -
+%  except that this one is weaker still, being a fit to nothing at all.
+% =========================================================================
+%
+% WHAT IT MUST GET RIGHT, and why:
+%
+% 1. SHAPE. Returns the same ds a real 2-sector solve does: ds.sym and ds.asym
+%    each with F [nk x nbands] in Hz and k_norm [nk x 1] running 0->3, and
+%    ds.full with F, midGap and gapSize. nk = 3*kpts+1, matching the
+%    Gamma-M-K-Gamma circuit runBands_2D walks plus the wrapped final Gamma. Get
+%    this wrong and the dry run tests the surrogate instead of the pipeline.
+%
+% 2. DETERMINISM. No rand, no clock, no counters - the value depends on
+%    (a,r,w,th) and on cfg.kpts/cfg.nbands and on nothing else. bayesopt is told
+%    'IsObjectiveDeterministic',true, and a surrogate that answered differently
+%    on a repeated design point would violate that contract and quietly corrupt
+%    the GP fit, which is exactly the class of bug a dry run exists to find
+%    rather than to introduce.
+%
+% 3. A NON-TRIVIAL OPTIMUM. A flat or monotone surface would make the
+%    convergence trace and the four design slices meaningless as tests - a plot
+%    of nothing renders perfectly well. So the fitness has an interior maximum in
+%    all four variables, produced by five competing gap-width factors:
+%      * air filling fraction  fill  -> best near 0.0823
+%      * slab aspect ratio     th/a  -> best near 0.390
+%      * arm aspect ratio      w/r   -> best near 0.425
+%      * hole reach            r/a   -> best near 0.250
+%      * absolute thickness    th    -> best near 312 nm  (see the note at the
+%                                       gapStrength expression for why one
+%                                       non-dimensionless factor is needed)
+%    and one scaling law:
+%      * frequencies ~ 1/a           -> the Gaussian target-frequency penalty in
+%                                       gapFitness has real work to do, and it
+%                                       FIGHTS the gap-width factors rather than
+%                                       agreeing with them.
+%    Every one of those optima is placed so the peak lands at the CENTRE of the
+%    default bounds: a = 800, r = 200, w = 85, th ~ 312 nm, fitness ~ 0.24,
+%    mid-gap 13.0 GHz. Measured on a grid scan of the feasible box, the peak beats
+%    the best design available on each bound FACE by 2.5x (a), 1.9x (r), 2.4x (w)
+%    and 1.5x (th) - so all four design slices show a real interior peak rather
+%    than a plateau running into a wall. About 64% of the feasible box has NO
+%    complete gap at all, so the gapless branch of gapFitness is exercised too.
+%    If you change cfg.bounds, cfg.targetFreq or cfg.sigma, re-check that the
+%    optimum is still interior: a surrogate whose optimum has drifted onto a
+%    bound tests considerably less than it appears to.
+%
+% 4. SELF-CONSISTENCY. midGap and gapSize are NOT written by hand: the
+%    synthesized band matrix is passed through the real findGaps, the same way
+%    solveBands does it. Hand-written gap values could disagree with the bands
+%    plotted beside them, and would leave findGaps itself untested.
+%
+% The trends are chosen to be plausible rather than correct: bigger cells give
+% lower frequencies, more air softens the medium, and there is a best filling
+% fraction beyond which the gap closes again. Real boomerang cells do behave
+% qualitatively like that. The numbers still mean nothing.
+
+nm   = 1e9;
+aNm  = P.a*nm;
+rNm  = P.r*nm;
+wNm  = P.w*nm;
+thNm = P.th*nm;
+
+% --- three dimensionless shape descriptors -------------------------------
+% Rhombic primitive cell of side a, 60 deg interior angle.
+cellArea = (sqrt(3)/2)*aNm^2;
+
+% Union of the three w-by-r arms meeting at 120 deg. The -0.75*w^2 is a crude
+% correction for their mutual overlap at the cell centre; the exact constant is
+% irrelevant, all that is needed is a quantity that rises with w and r and falls
+% with a. (drawBoomerangCell builds the same shape exactly, with polyshape - not
+% reused here because the objective path should not depend on graphics.)
+holeArea   = max(3*wNm*rNm - 0.75*wNm^2, 0);
+fill       = min(max(holeArea/cellArea, 0), 0.85);   % air filling fraction
+slabAspect = thNm/aNm;      % slab thickness against cell size
+armAspect  = wNm/rNm;       % how stubby each arm is
+holeReach  = rNm/aNm;       % how far the arms get across the cell
+
+% --- frequency scale: everything scales as 1/a ---------------------------
+% cRef is NOT a material property. It is a fitting constant, picked so that the
+% engineered gap lands on the default cfg.targetFreq of 13 GHz at a = 800 nm,
+% which is the middle of the default a range - so the frequency penalty pulls the
+% optimum to the centre of the box rather than to a bound. (Measured: 12.995 GHz
+% at the intended optimum.) It happens to be of the same order as a shear speed
+% in diamond; that is a coincidence, not a justification.
+cRef = 9650;                            % [m/s]
+cEff = cRef*sqrt(1-fill);                % more air -> softer -> slower
+f1   = cEff/(2*aNm*1e-9);                % [Hz] first-rung frequency scale, ~1/a
+
+% --- gap strength, in [0,1] ---------------------------------------------
+% Product of four Gaussians in four DIFFERENT dimensionless ratios, so the
+% optimum is interior in every variable and the surface is smooth - a GP has
+% something to fit and a finite-difference probe of the loop would behave.
+% gapStrength = 1 is the widest gap the surrogate can produce; below about 0.34
+% the gap closes entirely (see the ladder below), which is what gives the dry
+% run a genuine no-complete-gap region to fall into - about 64% of the feasible
+% box, on a grid scan.
+%
+% Every optimum below is set so that the peak lands at the CENTRE of each of the
+% default bounds (a = 800, r = 200, w = 85, th ~ 312 nm). That is not cosmetic: an
+% optimum near a bound makes the "best design on that bound face" almost as good
+% as the peak, and the corresponding design slice then looks flat and reports
+% "[at bound]". Centring the peak is what buys the 1.5-2.5x margins quoted above.
+%
+% Four RATIOS rather than two or three because the smaller sets left a RIDGE:
+% fill and armAspect between them can be held at their optima while (a,r,w) all
+% slide together, so the optimum was a curve and the w design slice came out
+% nearly flat. holeReach pins r against a and closes it. Four constraints on four
+% variables also means no design satisfies all of them exactly, so the peak is a
+% genuine compromise rather than a point where everything happens to agree.
+%
+% The FIFTH factor is different in kind and frankly arbitrary: a preference for
+% an absolute thickness near 320 nm. It is here for one reason. Every
+% dimensionless ratio is blind to scaling a and th together, so with ratios alone
+% a design pushed to the th bound simply rescales a to keep th/a optimal and pays
+% nothing but the (broad, sigma = 5 GHz) frequency penalty - measured margin over
+% the th bound face was 1.05x, i.e. the th slice was very nearly featureless. One
+% absolute length scale breaks that degeneracy and takes the margin to ~2.6x.
+% Note the consequence: unlike the four ratios, this factor does not follow
+% cfg.bounds.th, so moving those bounds far from ~320 nm will push the optimum
+% onto a bound. Re-run a grid scan if you move them.
+gapStrength = exp(-((fill       - 0.0823)/0.065)^2) ...
+            * exp(-((slabAspect - 0.390 )/0.110)^2) ...
+            * exp(-((armAspect  - 0.425 )/0.200)^2) ...
+            * exp(-((holeReach  - 0.250 )/0.065)^2) ...
+            * exp(-((thNm       - 312   )/75   )^2);
+gapStrength = min(max(gapStrength,0),1);
+
+% --- ladder of pass bands ------------------------------------------------
+% The spectrum is built as a ladder of 2*nbands non-dispersive "pass bands",
+% each given a k dependence afterwards. Rung centres go as m^0.55 so successive
+% bands crowd together at high order, the way a real folded spectrum does; a
+% linear ladder would put the top band at 30x the first and squash the
+% interesting region of the band plot into the bottom 3% of the axes.
+nBandTot = 2*cfg.nbands;
+m        = 1:nBandTot;
+mGap     = 3;                   % the gap is opened between rungs 3 and 4
+
+cLad = m.^0.55;                 % rung centres, in units of f1
+hLad = (0.08 + 0.07*(1-gapStrength)).*cLad;     % rung half-widths
+
+% Rungs below the engineered gap are deliberately made wide enough to overlap
+% each other. Without this the ladder's own spacing leaves an accidental gap
+% between rungs 1 and 2 at every design, gapFitness would always find SOMETHING,
+% and the 'no-complete-gap' status would be unreachable in a dry run. Widening
+% the low rungs is also the honest choice physically: the acoustic branches near
+% Gamma are the ones that really do overlap.
+hLad(m < mGap) = 3*hLad(m < mGap);
+
+% Open the gap by lifting every rung above mGap. Half-widths were computed from
+% the UNSHIFTED centres on purpose, so the shift moves the gap edges and not the
+% band widths.
+cLad(m > mGap) = cLad(m > mGap) + 0.55*gapStrength;
+
+% --- k dependence --------------------------------------------------------
+% k_norm runs 0->3 over Gamma-M-K-Gamma, so the dispersion must return to its
+% starting value at k=3. A single cosine would do that but looks obviously fake;
+% adding a second harmonic bends the curves without breaking periodicity. It is
+% then renormalised to span exactly [-1,1] so each rung's extremes are exactly
+% its centre +/- its half-width - which is what makes the resulting gaps
+% predictable, and therefore testable, in a harness.
+nk    = 3*cfg.kpts + 1;
+kNorm = linspace(0,3,nk)';
+theta = 2*pi*kNorm/3;
+raw   = 0.8*cos(theta) + 0.2*cos(2*theta);      % range [-0.6, 1]
+shape = (raw + 0.6)/0.8 - 1;                    % range [-1, 1] exactly
+
+% Alternating curvature so neighbouring bands bend opposite ways, as folded
+% bands do. Outer product: [nk x 1] * [1 x nBandTot] -> [nk x nBandTot].
+curvature = (-1).^m;
+F = f1*(repmat(cLad,nk,1) + shape*(hLad.*curvature));
+
+% --- split into symmetry sectors ----------------------------------------
+% Odd rungs to the even-about-z sector, even rungs to the odd-about-z sector, so
+% each gets exactly cfg.nbands columns and the two edges of the engineered gap
+% come from DIFFERENT sectors. That last detail matters: it makes the gap a
+% genuinely complete gap - empty in both sectors - rather than one that only
+% looks complete because a single sector was plotted.
+symSector        = struct();
+symSector.k_norm = kNorm;
+symSector.F      = F(:,1:2:end);
+
+asymSector        = struct();
+asymSector.k_norm = kNorm;
+asymSector.F      = F(:,2:2:end);
+
+% Per-sector gaps, then the complete gaps, exactly as solveBands does it -
+% including the [sym asym] column order of full.F.
+[symSector.midGap, symSector.gapSize]  = findGaps(symSector);
+[asymSector.midGap,asymSector.gapSize] = findGaps(asymSector);
+
+fullBands    = struct();
+fullBands.F  = [symSector.F, asymSector.F];
+[fullBands.midGap,fullBands.gapSize] = findGaps(fullBands);
+
+ds      = struct();
+ds.sym  = symSector;
+ds.asym = asymSector;
+ds.full = fullBands;
+
+% Provenance marker - guard (3). Travels inside the data, so it survives being
+% renamed, moved, emailed or loaded by a script that has never heard of dry runs.
+% assertBandDataProvenance refuses to let a real run consume anything carrying
+% it. Kept as plain fields on ds rather than a nested struct so that a bare
+% `load(f); ds` at the command line shows the warning immediately.
+ds.isSynthetic      = true;
+ds.syntheticBackend = cfg.solverBackend;
+ds.syntheticWarning = ['SYNTHETIC band data from surrogateBoomerangBands in ' ...
+    'bayesopt_boomerang.m. This was NEVER solved in COMSOL. The frequencies ' ...
+    'are analytic placeholders for loop debugging and mean nothing physically. ' ...
+    'Do not use for design, publication, or comparison with real sweeps.'];
+ds.syntheticCreated = char(datetime('now'));
+end
+
+% -------------------------------------------------------------------------
+
+function tf = simulatedSolverFailure(P,cfg)
+%SIMULATEDSOLVERFAILURE Deterministic pseudo-failure for exercising the NaN path.
+%
+% Keyed on the DESIGN, not on an evaluation counter or a random draw. bayesopt is
+% told 'IsObjectiveDeterministic',true, so the same design must always produce
+% the same answer; a counter would make the second visit to a design succeed
+% where the first failed, teaching the GP that the objective is noisy and
+% inventing a bug the real solver does not have.
+%
+% The sum a+r+w+th is a poor hash but a perfectly good one here: designs are
+% integers in nm, the bayesopt trace visits them in no particular order, so
+% "every Nth value of the sum" scatters failures through the run without
+% clustering them anywhere the optimizer would notice.
+
+tf = false;
+if ~cfg.isDryRun || cfg.dryRunFailEvery <= 0
+    return
+end
+nm  = 1e9;
+key = round(P.a*nm) + round(P.r*nm) + round(P.w*nm) + round(P.th*nm);
+tf  = mod(key,round(cfg.dryRunFailEvery)) == 0;
+end
+
+% -------------------------------------------------------------------------
+
+function assertKnownBackend(backend)
+%ASSERTKNOWNBACKEND Reject an unrecognised cfg.solverBackend, loudly.
+%
+% The MATLAB equivalent of `raise ValueError(f"unknown mech_backend ...")` in
+% python-scripts/src/objective.py, and it is an error rather than a warning for
+% the same reason: there is no safe default. Falling back to 'comsol' would spend
+% hours of solve time on a typo; falling back to 'surrogate' would hand back a
+% folder full of fabricated results that look exactly like a study. Stopping is
+% the only option that cannot mislead.
+
+known = {'comsol','surrogate','stub'};
+if ~(ischar(backend) || (isstring(backend) && isscalar(backend))) ...
+        || ~any(strcmp(char(backend),known))
+    error('bayesopt_boomerang:unknownBackend', ...
+        ['Unknown cfg.solverBackend. Expected one of: %s.\n' ...
+         'Got: %s\n' ...
+         '  ''comsol''    - the real COMSOL solve (the only real physics)\n' ...
+         '  ''surrogate'' - analytic fake bands, for debugging the loop\n' ...
+         '  ''stub''      - no bands at all, every evaluation returns NaN'], ...
+        strjoin(cellfun(@(s) ['''',s,''''],known,'UniformOutput',false),', '), ...
+        formatBackendForError(backend));
+end
+end
+
+% -------------------------------------------------------------------------
+
+function txt = formatBackendForError(backend)
+%FORMATBACKENDFORERROR Describe whatever was found in cfg.solverBackend.
+%
+% Split out so assertKnownBackend's message can name the offending value without
+% assuming it is printable. The whole point of that function is to catch a value
+% nobody expected, and a sprintf('%s',...) on a struct or a cell would throw from
+% inside the error handler - replacing a clear diagnostic with a confusing one.
+
+try
+    if ischar(backend) || (isstring(backend) && isscalar(backend))
+        txt = ['''',char(backend),''''];
+    else
+        txt = ['a ',class(backend),' of size ',mat2str(size(backend))];
+    end
+catch
+    txt = '<unprintable>';
+end
+end
+
+% -------------------------------------------------------------------------
+
+function tf = isSyntheticBandData(ds)
+%ISSYNTHETICBANDDATA True if a ds struct carries the dry-run provenance marker.
+%
+% Written to answer "false" for anything that is not clearly marked, including
+% [], a non-struct, and every real _bds.mat ever written by solveBands - none of
+% which have the field. The asymmetry is the safe one: an unmarked file is
+% treated as real (and a real run proceeds), a marked file is treated as
+% synthetic (and a real run stops).
+
+tf = isstruct(ds) && isscalar(ds) && isfield(ds,'isSynthetic') ...
+    && ~isempty(ds.isSynthetic) && all(logical(ds.isSynthetic(:)));
+end
+
+% -------------------------------------------------------------------------
+
+function assertBandDataProvenance(ds,matPath,cfg)
+%ASSERTBANDDATAPROVENANCE Refuse to mix synthetic and real band data.
+%
+% Guard (3) of the four cache-isolation guards, and the only one that inspects
+% the data rather than trusting a filename convention. Called on every path that
+% reads a _bds.mat back off disk.
+%
+% Synthetic data reaching a real run is an ERROR, not a warning. The failure mode
+% being prevented is silent and permanent: fabricated frequencies entering a real
+% study's GP, its log and its results .mat, indistinguishable afterwards from
+% solved ones. Stopping a study that can be resumed from its checkpoint is a far
+% smaller loss than finishing one whose numbers cannot be trusted.
+%
+% The reverse - real data reaching a dry run - is only a warning. It wastes the
+% dry run (it is now testing whatever that file contains) but corrupts nothing,
+% and it usually means cfg.datLoc was pointed at a real folder by hand, which is
+% a thing someone might do on purpose to test the visualization against real
+% bands.
+
+if isSyntheticBandData(ds)
+    if ~cfg.isDryRun
+        error('bayesopt_boomerang:syntheticDataInRealRun', ...
+            ['REFUSING to use %s: it carries the synthetic dry-run marker ' ...
+             '(ds.isSynthetic), so these frequencies were never solved.\n' ...
+             'A real study must not consume dry-run output. Delete or move ' ...
+             'the file, or point cfg.datLoc at a clean folder, and resume ' ...
+             'from cfg.statePath.'],matPath);
+    end
+elseif cfg.isDryRun
+    warning('bayesopt_boomerang:realDataInDryRun', ...
+        ['%s carries no synthetic marker, so it looks like REAL solved data ' ...
+         'being read by a dry run (cfg.solverBackend = %s). The dry run is ' ...
+         'now exercising that file rather than the surrogate.'], ...
+        matPath,cfg.solverBackend);
+end
+end
+
+% -------------------------------------------------------------------------
+
+function printDryRunBanner(cfg)
+%PRINTDRYRUNBANNER Unmissable console notice that nothing here is physics.
+%
+% Deliberately loud and deliberately repeated (start and end of the run). The
+% console is where the numbers are first read, usually while they are still
+% scrolling, and the single most expensive mistake this whole mode can cause is
+% someone believing one of them.
+
+bar = repmat('=',1,74);
+fprintf('\n%s\n',bar);
+fprintf('  *** DRY RUN - cfg.solverBackend = ''%s'' ***\n',cfg.solverBackend);
+fprintf('  NO COMSOL SOLVE IS PERFORMED. Every frequency, gap, fitness and\n');
+fprintf('  figure produced by this run is SYNTHETIC and means NOTHING\n');
+fprintf('  physically. The mode exists to debug the optimization loop.\n');
+fprintf('  Output is isolated under: %s\n',cfg.datLoc);
+fprintf('  Set cfg.solverBackend = ''comsol'' for a real study.\n');
+fprintf('%s\n',bar);
+end
+
+% -------------------------------------------------------------------------
+
+function writeDryRunMarker(cfg)
+%WRITEDRYRUNMARKER Leave a plain-text warning inside the dry-run output folder.
+%
+% For the reader who finds this folder in a month with no memory of the run and
+% no console scrollback. The folder name and the filenames already say DRYRUN,
+% but names get skimmed; a file that has to be actively ignored is better. Kept
+% to plain text on purpose - readable from Finder, Explorer, git and a terminal
+% without MATLAB.
+%
+% Best-effort: a failure here must not cost the run, since the run is a debugging
+% exercise and the data it produces is worthless by design anyway.
+
+markerPath = [cfg.datLoc,'DRYRUN_README.txt'];
+fid = fopen(markerPath,'wt+');
+if fid < 0
+    warning('bayesopt_boomerang:dryRunMarker', ...
+        'Could not write the dry-run marker %s',markerPath);
+    return
+end
+fprintf(fid,'SYNTHETIC DATA - DO NOT TRUST ANYTHING IN THIS FOLDER\r\n');
+fprintf(fid,'====================================================\r\n\r\n');
+fprintf(fid,'Written by bayesopt_boomerang.m running with\r\n');
+fprintf(fid,'    cfg.solverBackend = ''%s''\r\n',cfg.solverBackend);
+fprintf(fid,'on %s.\r\n\r\n',char(datetime('now')));
+fprintf(fid,'No COMSOL solve was performed. Every band structure, gap,\r\n');
+fprintf(fid,'fitness value, log row and figure in this folder was produced\r\n');
+fprintf(fid,'by an analytic placeholder (surrogateBoomerangBands), or is a\r\n');
+fprintf(fid,'deliberate failure (the ''stub'' backend). The numbers are not\r\n');
+fprintf(fid,'approximations of the real cell - they are not physics at all.\r\n\r\n');
+fprintf(fid,'This folder exists only to debug the optimization loop:\r\n');
+fprintf(fid,'objective plumbing, constraints, logging, checkpointing and the\r\n');
+fprintf(fid,'post-run figures, without spending hours of COMSOL time.\r\n\r\n');
+fprintf(fid,'Every _bds.mat here additionally carries ds.isSynthetic = true,\r\n');
+fprintf(fid,'and a real run refuses to load a file marked that way. Do not\r\n');
+fprintf(fid,'strip that field, and do not move these files into a real\r\n');
+fprintf(fid,'results folder.\r\n');
+fclose(fid);
+end
+
+% -------------------------------------------------------------------------
+
+function bannerLines = dryRunBannerText(cfg)
+%DRYRUNBANNERTEXT One-line figure banner, or {} outside a dry run.
+%
+% Returns a cell array so callers can concatenate it onto an existing headline
+% with no conditional of their own, and so that returning {} in the normal case
+% leaves a real run's figures byte-for-byte as they were.
+
+if ~cfg.isDryRun
+    bannerLines = {};
+    return
+end
+bannerLines = {sprintf(['*** DRY RUN: SYNTHETIC %s DATA - NOT PHYSICS - ' ...
+    'DO NOT USE FOR DESIGN ***'],upper(cfg.solverBackend))};
+end
+
+% -------------------------------------------------------------------------
+
+function [headlineText,fracHeight] = withDryRunHeadline(headlineText,fracHeight,cfg)
+%WITHDRYRUNHEADLINE Prefix a figure headline with the synthetic-data banner.
+%
+% Also grows the strip addFigureHeadline reserves at the top of the figure, since
+% the headline just gained a line and the whole reason that strip is sized
+% explicitly is that a headline which outgrows it collides with the axes titles
+% underneath.
+%
+% Returns its inputs untouched outside a dry run, including leaving a char
+% headline as a char rather than promoting it to a 1x1 cellstr - so a real run's
+% figures are unchanged rather than merely equivalent.
+
+if ~cfg.isDryRun
+    return
+end
+if ~iscell(headlineText)
+    headlineText = {headlineText};
+end
+headlineText = [dryRunBannerText(cfg), headlineText];
+fracHeight   = fracHeight + 0.035;
+end
+
+% -------------------------------------------------------------------------
+
+function rgb = dryRunHeadlineColor(cfg)
+%DRYRUNHEADLINECOLOR Red headline text in a dry run, and NO opinion otherwise.
+%
+% Colour is doing real work here rather than decoration: a PNG pasted into an
+% email or a lab notebook arrives with no folder name, no filename and no console
+% output attached, so the figure itself has to carry the disclaimer. Red plus the
+% banner line survives that trip; a subtly different title does not.
+%
+% Returns [] - not black - outside a dry run, so that addFigureHeadline leaves the
+% Color property untouched and a real run's figures are unchanged. See the note
+% there for why "black" and "the default" are not the same colour.
+
+if cfg.isDryRun
+    rgb = [0.75 0 0];
+else
+    rgb = [];
+end
+end
+
+%% ========================================================================
+%  Shared helpers - local functions
+%  ========================================================================
+% Backend-independent: these run identically whichever backend produced the
+% numbers, which is the property that makes the dry run a test of them.
 
 function closeNewFigures(figsBefore,cfg)
 %CLOSENEWFIGURES Close only the figures a solve opened.
@@ -529,6 +1356,12 @@ end
 
 function initIterationLog(logPath)
 %INITITERATIONLOG Create the tab-separated evaluation log with a header row.
+%
+% The trailing 'backend' column is the log's answer to "is this row physics?".
+% A dry run writes its log to a different folder entirely, so the column is not
+% what keeps the two apart - but a log row that has been copied, pasted or
+% readtable'd out of its folder has lost every other clue, and a table of gap
+% ratios with no provenance is precisely the artifact that gets believed.
 
 if isfile(logPath)
     return
@@ -539,7 +1372,8 @@ if fid < 0
     return
 end
 fprintf(fid,['a_nm\tr_nm\tw_nm\tth_nm\tmidGap_GHz\tgapSize_GHz\t' ...
-    'gapRatio\tpenalty\tfitness\tobjective\tcached\tevalTime_min\tstatus\r\n']);
+    'gapRatio\tpenalty\tfitness\tobjective\tcached\tevalTime_min\tstatus\t' ...
+    'backend\r\n']);
 fclose(fid);
 end
 
@@ -560,11 +1394,32 @@ status = 'solver-error';
 if isfield(detail,'status')
     status = detail.status;
 end
-fprintf(fid,'%d\t%d\t%d\t%d\t%.6g\t%.6g\t%.6g\t%.6g\t%.6g\t%.6g\t%d\t%.3f\t%s\r\n', ...
+% Backend last, matching the header written by initIterationLog. Appended rather
+% than inserted so an existing log from before this column existed still lines up
+% for its first 13 fields.
+fprintf(fid,'%d\t%d\t%d\t%d\t%.6g\t%.6g\t%.6g\t%.6g\t%.6g\t%.6g\t%d\t%.3f\t%s\t%s\r\n', ...
     x.a, x.r, x.w, x.th, ...
     detail.midGap/1e9, detail.gapSize/1e9, detail.gapRatio, ...
-    detail.penalty, detail.fitness, objective, wasCached, evalTime/60, status);
+    detail.penalty, detail.fitness, objective, wasCached, evalTime/60, status, ...
+    logBackendLabel(cfg));
 fclose(fid);
+end
+
+% -------------------------------------------------------------------------
+
+function label = logBackendLabel(cfg)
+%LOGBACKENDLABEL Value for the log's backend column.
+%
+% A dry-run row says e.g. 'surrogate-SYNTHETIC' rather than plain 'surrogate'.
+% The suffix is redundant to anyone who knows what the backends are, and that is
+% the point: the reader who does not know is the one at risk, and 'SYNTHETIC'
+% needs no glossary. A real row is the bare 'comsol', so nothing is added to the
+% format a real study writes beyond the backend name itself.
+
+label = cfg.solverBackend;
+if cfg.isDryRun
+    label = [label,'-SYNTHETIC'];
+end
 end
 
 % -------------------------------------------------------------------------
@@ -612,7 +1467,7 @@ function visualizeBestDesign(results,xBest,cfg)
 % explicitly in boomerangParams rather than left to CreateFileBase.
 
 P  = boomerangParams(xBest,cfg);
-ds = loadCachedBandData(P);
+ds = loadCachedBandData(P,cfg);
 
 % Re-score the winning gap with the SAME helper the objective used instead of
 % re-deriving the formula here. A second copy of the fitness expression would
@@ -646,7 +1501,7 @@ end
 % four design variables mean, the second shows the ligament between holes,
 % which is what actually opens or closes the gap.
 try
-    figG = newSummaryFigure('boomerang geometry',12,5.5);
+    figG = newSummaryFigure(summaryFigureName('boomerang geometry',cfg),12,5.5);
     figs(end+1) = figG;
     % Default (loose) Padding here, not 'compact': both panels carry two-line
     % axes titles, and compact padding shrinks the strip reserved for the
@@ -656,10 +1511,15 @@ try
     tryPanel(@() drawBoomerangCell(axG1,P,1,true),'geometry (single cell)');
     axG2 = nexttile(tlG);
     tryPanel(@() drawBoomerangCell(axG2,P,cfg.figNPeriods,false),'geometry (tiled)');
-    addFigureHeadline(figG,tlG,sprintf( ...
+    % The geometry sketch itself is honest in every mode - polyshape draws the
+    % real cell from the real dimensions, with or without COMSOL. It still gets
+    % the banner, because the DESIGN it is showing is the winner of a synthetic
+    % search, and that is the part someone would act on.
+    [headG,fracG] = withDryRunHeadline(sprintf( ...
         'Boomerang unit cell  |  a = %.0f   r = %.0f   w = %.0f   th = %.0f nm', ...
-        P.a*1e9,P.r*1e9,P.w*1e9,P.th*1e9),0.09);
-    saveFigurePair(figG,[cfg.datLoc,'bayesopt_boomerang_geometry'],cfg);
+        P.a*1e9,P.r*1e9,P.w*1e9,P.th*1e9),0.09,cfg);
+    addFigureHeadline(figG,tlG,headG,fracG,dryRunHeadlineColor(cfg));
+    saveFigurePair(figG,[cfg.datLoc,cfg.filePrefix,'_geometry'],cfg);
 catch ME
     warning('bayesopt_boomerang:geometryFigure', ...
         'Could not build the geometry figure: %s',ME.message);
@@ -667,13 +1527,16 @@ end
 
 % --- standalone band structure figure -----------------------------------
 try
-    figB = newSummaryFigure('boomerang best bands',8,6);
+    figB = newSummaryFigure(summaryFigureName('boomerang best bands',cfg),8,6);
     figs(end+1) = figB;
     % 'Parent' name-value rather than axes(figB): the positional form was only
     % added in R2016a and this is the one place a plain single axes is wanted.
     axB = axes('Parent',figB);
+    % No addFigureHeadline on this one - it is a bare axes, not a tiledlayout, so
+    % there is no OuterPosition to shrink. plotBestBands carries the dry-run
+    % banner in its axes title instead.
     tryPanel(@() plotBestBands(axB,ds,cfg,detail),'band structure');
-    saveFigurePair(figB,[cfg.datLoc,'bayesopt_boomerang_bestbands'],cfg);
+    saveFigurePair(figB,[cfg.datLoc,cfg.filePrefix,'_bestbands'],cfg);
 catch ME
     warning('bayesopt_boomerang:bandFigure', ...
         'Could not build the band structure figure: %s',ME.message);
@@ -684,16 +1547,17 @@ end
 % together: a flat convergence curve plus a variable pinned at its bound means
 % the bound is setting the answer, not the physics.
 try
-    figP = newSummaryFigure('boomerang optimizer progress',13,7);
+    figP = newSummaryFigure(summaryFigureName('boomerang optimizer progress',cfg),13,7);
     figs(end+1) = figP;
     tlP = tiledlayout(figP,2,4,'TileSpacing','compact','Padding','compact');
     axP = nexttile(tlP,[1 4]);
     tryPanel(@() plotConvergenceTrace(axP,results),'convergence');
     drawDesignSpaceRow(tlP,results,cfg);
-    addFigureHeadline(figP,tlP,sprintf( ...
+    [headP,fracP] = withDryRunHeadline(sprintf( ...
         'Optimizer progress  |  %d evaluations  |  best fitness = %.4f', ...
-        numel(results.ObjectiveTrace),-results.MinObjective),0.07);
-    saveFigurePair(figP,[cfg.datLoc,'bayesopt_boomerang_progress'],cfg);
+        numel(results.ObjectiveTrace),-results.MinObjective),0.07,cfg);
+    addFigureHeadline(figP,tlP,headP,fracP,dryRunHeadlineColor(cfg));
+    saveFigurePair(figP,[cfg.datLoc,cfg.filePrefix,'_progress'],cfg);
 catch ME
     warning('bayesopt_boomerang:progressFigure', ...
         'Could not build the progress figure: %s',ME.message);
@@ -709,7 +1573,7 @@ end
 
 % -------------------------------------------------------------------------
 
-function ds = loadCachedBandData(P)
+function ds = loadCachedBandData(P,cfg)
 %LOADCACHEDBANDDATA Reload the _bds.mat solveBands wrote for one design.
 %
 % Returns [] rather than throwing whenever the data cannot be had, so a missing
@@ -741,6 +1605,13 @@ if ~isfield(S,'ds')
         '%s contains no variable ds',matPath);
     return
 end
+
+% Guard (3) again, on the figure path this time. The figures are the artifact most
+% likely to outlive the folder they were written in, so band data reaching them
+% is checked exactly as band data reaching the objective is. In a real run this
+% throws rather than drawing a plausible-looking band diagram from fabricated
+% frequencies - a figure is believed far more readily than a .mat file.
+assertBandDataProvenance(S.ds,matPath,cfg);
 
 ds = S.ds;
 fprintf('  band data <- %s\n',matPath);
@@ -798,7 +1669,22 @@ end
 
 % -------------------------------------------------------------------------
 
-function addFigureHeadline(figH,tl,headlineText,fracHeight)
+function figName = summaryFigureName(baseName,cfg)
+%SUMMARYFIGURENAME Figure window title, marked when the data behind it is fake.
+%
+% The window title bar is where a figure is identified while it is still on
+% screen, before anyone has looked at the file it came from - so it is worth
+% marking. Returns baseName untouched outside a dry run.
+
+figName = baseName;
+if cfg.isDryRun
+    figName = ['[DRY RUN - SYNTHETIC] ',baseName];
+end
+end
+
+% -------------------------------------------------------------------------
+
+function addFigureHeadline(figH,tl,headlineText,fracHeight,textColor)
 %ADDFIGUREHEADLINE Suptitle above a tiledlayout, guaranteed not to overlap it.
 %
 % The obvious route - title(tl,...) - reserves exactly ONE line of space at the
@@ -813,13 +1699,28 @@ function addFigureHeadline(figH,tl,headlineText,fracHeight)
 % tiledlayout by many releases, so nothing new is required.
 %
 % headlineText may be a char row or a cell array of lines.
+%
+% textColor is optional, and when it is absent or empty the Color property is not
+% set AT ALL rather than being set to black. That distinction is not pedantic: an
+% annotation textbox does not default to pure black (it inherits a dark grey), so
+% passing [0 0 0] "for the default" visibly changes every headline. Caught by a
+% pixel-diff of the exported PNGs against the pre-change version - 18 000 pixels
+% differed on the composite, maximum channel difference 33 - which is exactly the
+% class of silent change this option is not allowed to make. Omitting the property
+% reproduces the previous output bit for bit.
+
+colorArgs = {};
+if nargin >= 5 && ~isempty(textColor)
+    colorArgs = {'Color',textColor};
+end
 
 tl.OuterPosition = [0, 0, 1, 1-fracHeight];
 annotation(figH,'textbox',[0, 1-fracHeight, 1, fracHeight], ...
     'String',headlineText, ...
     'HorizontalAlignment','center','VerticalAlignment','middle', ...
     'EdgeColor','none','FitBoxToText','off', ...
-    'FontWeight','bold','FontSize',11,'Interpreter','none');
+    'FontWeight','bold','FontSize',11,'Interpreter','none', ...
+    colorArgs{:});
 end
 
 % -------------------------------------------------------------------------
@@ -869,7 +1770,7 @@ function figH = buildCompositeFigure(results,xBest,P,ds,detail,cfg)
 
 % 16x10 rather than 16x9: with three rows, 9 in leaves the text panel too short
 % for its ~20 lines at a legible font size.
-figH = newSummaryFigure('bayesopt boomerang summary',16,10);
+figH = newSummaryFigure(summaryFigureName('bayesopt boomerang summary',cfg),16,10);
 tl = tiledlayout(figH,3,4,'TileSpacing','compact','Padding','compact');
 
 % Row 1: what was designed, and how it behaves.
@@ -897,16 +1798,17 @@ drawDesignSpaceRow(tl,results,cfg);
 % suptitle equivalent, carrying the headline metrics the way the Python script's
 % fig.suptitle does - so the figure is self-describing once it has left the
 % folder it was written into.
-addFigureHeadline(figH,tl,{ ...
+[headC,fracC] = withDryRunHeadline({ ...
     sprintf('Best boomerang unit cell   |   fitness = %.4f   (objective = %.4f)', ...
         -results.MinObjective,results.MinObjective), ...
     sprintf(['a=%d  r=%d  w=%d  th=%d nm   |   mid-gap = %.3f GHz   ' ...
              'gap ratio = %.2f%%   target = %.2f GHz   |   %d evaluations   |   %s'], ...
         xBest.a,xBest.r,xBest.w,xBest.th, ...
         detail.midGap/1e9,detail.gapRatio*100,cfg.targetFreq/1e9, ...
-        numel(results.ObjectiveTrace),detail.status)},0.075);
+        numel(results.ObjectiveTrace),detail.status)},0.075,cfg);
+addFigureHeadline(figH,tl,headC,fracC,dryRunHeadlineColor(cfg));
 
-saveFigurePair(figH,[cfg.datLoc,'bayesopt_boomerang_summary'],cfg);
+saveFigurePair(figH,[cfg.datLoc,cfg.filePrefix,'_summary'],cfg);
 end
 
 % -------------------------------------------------------------------------
@@ -1197,7 +2099,20 @@ if isfield(detail,'gapRatio') && isfinite(detail.gapRatio)
 else
     ttl2 = 'no complete gap scored';
 end
-title(ax,{'Mechanical band structure of the best design',ttl2},'FontSize',9);
+% The banner goes in the TITLE of this panel rather than a figure annotation,
+% because plotBestBands is used both standalone (bare axes, nothing to annotate
+% around) and as one tile of the composite. A title line travels with the axes in
+% both cases. This is the one panel where the curves themselves are fabricated,
+% so it is the one that most needs saying so - and in the standalone figure it is
+% the ONLY marking inside the image, since a bare axes has no headline. Hence the
+% colour, which is applied only in a dry run: title() would otherwise inherit the
+% axes TitleColor, and passing an explicit black would change a real run's figure.
+ttlArgs = {'FontSize',9};
+if cfg.isDryRun
+    ttlArgs = [ttlArgs,{'Color',dryRunHeadlineColor(cfg)}];
+end
+title(ax,[dryRunBannerText(cfg), ...
+    {'Mechanical band structure of the best design',ttl2}],ttlArgs{:});
 
 if ~isempty(legH)
     % legend(subset,labels) attaches to the axes owning the handles, and
@@ -1375,6 +2290,23 @@ lines = { ...
     sprintf('          %d k-points, %d bands, mesh %d, max %g DOF', ...
         cfg.kpts,cfg.nbands,cfg.meshSize,cfg.maxDof), ...
     sprintf('          %s',cfg.datLoc)};
+
+% The dry-run banner goes at the TOP, where it is read first - and the block has
+% to get SHORTER, not longer, to fit it. Two effects were measured on the rendered
+% PNG rather than guessed at, and both push the same way:
+%   * the 21 lines above already fill this tile exactly, so a 22nd is not scaled
+%     to fit, it is clipped by the tile below - and what it lands on is the row of
+%     design-slice titles;
+%   * the dry-run headline is one line taller, which shrinks the whole
+%     tiledlayout and costs this tile roughly one further line.
+% So all three blank separators are dropped in dry-run mode, buying three lines
+% for the cost of one, which leaves the block with real slack instead of sitting
+% on the limit again. The section headers are unindented and their contents are
+% indented, so the structure survives losing the blank lines.
+% If you add a line here, re-render and look at the PNG.
+if cfg.isDryRun
+    lines = [dryRunBannerText(cfg), lines(~strcmp(lines,''))];
+end
 
 % Interpreter 'none': the status strings, field names and folder paths are full
 % of underscores, which the default TeX interpreter would turn into subscripts.
