@@ -4,7 +4,7 @@ Bayesian optimization of the boomerang unit cell for a complete **mechanical** b
 
 Searches four geometry parameters — lattice constant `a`, hole arm length `r`, hole arm width `w`, and slab thickness `th` — using MATLAB's `bayesopt`, where each objective evaluation is a full COMSOL eigenfrequency band structure solve.
 
-> **Status: partially verified.** `checkcode` passes with **no messages** (MATLAB R2026a). The whole **visualization** section has been exercised end-to-end against synthetic data — figures render and all graceful-degradation paths were tested. The [dry-run backends](#dry-run-mode) have been exercised through the real objective, constraint, log, checkpoint and figure code, with cache isolation demonstrated and the real-run figures confirmed **pixel-identical** to the version of the file before the mode was added. What has **not** run is the optimization itself: the **Statistics and Machine Learning Toolbox is not installed** on this machine, so `bayesopt` and `optimizableVariable` do not resolve here, and COMSOL LiveLink was not driven either. Install the toolbox before the first study, and treat that run as a shakedown — a dry run first (see below) will shake out everything except the solve.
+> **Status: verified except for the COMSOL solve.** `checkcode` passes with **no messages** (MATLAB R2026a). A full **dry run has been executed end-to-end** — real `bayesopt`, 12 evaluations, the surrogate backend — producing all four figures, the log, the checkpoint and the results `.mat` in a correctly-formed directory tree. Cache isolation is demonstrated, the provenance guard was tested by planting synthetic data at a real filename, and the real-run figures are **pixel-identical** to the version of the file before the dry-run mode was added. What has **not** run is a real study: COMSOL LiveLink was never driven, so `solveBandsViaComsol` is exercised only on its cache path. Do a dry run first, then treat the first real study as a shakedown of the solve alone.
 
 ---
 
@@ -27,6 +27,7 @@ Searches four geometry parameters — lattice constant `a`, hole arm length `r`,
 - [Constraints](#constraints)
 - [Configuration reference](#configuration-reference)
 - [Outputs](#outputs)
+- [Cross-platform paths](#cross-platform-paths)
 - [Visualization](#visualization)
 - [Resuming an interrupted study](#resuming-an-interrupted-study)
 - [How caching works](#how-caching-works)
@@ -58,6 +59,13 @@ That last row matters here: the objective is exactly zero everywhere no complete
 ## Requirements
 
 - **Statistics and Machine Learning Toolbox** — for `bayesopt` and `optimizableVariable`. There is no base-MATLAB fallback; without it the script cannot run. **This is required for a [dry run](#dry-run-mode) too** — the dry run replaces the *solver*, not the optimizer.
+  > If you get `Unrecognized function or variable 'optimizableVariable'` (or the same for `bayesopt`), the toolbox is not necessarily missing — check whether the **licence** simply failed to check out, which is intermittent on a shared or network licence:
+  > ```matlab
+  > license('test','Statistics_Toolbox')             % 1 = licensed
+  > [ok,msg] = license('checkout','Statistics_Toolbox')
+  > isfolder(fullfile(matlabroot,'toolbox','stats'))  % 1 = installed on disk
+  > ```
+  > All three returning 1 while the script still fails means a transient checkout failure: just re-run.
 - **COMSOL with LiveLink for MATLAB, already running** before you start the script. `solveBands` → `runBands_2D` calls the COMSOL Java API directly. **Not** needed for a dry run.
 - MATLAB R2017b or newer (`isfile`).
 - Must be run from the `omc-comsol-chang/` directory, so `solveBands`, `runBands_2D`, `buildBoomerangUnitCell`, `findGaps`, and `LoadMaterialParams` are all on the path.
@@ -132,7 +140,7 @@ Four independent guards prevent it. Any one would be sufficient; they are layere
 
 | # | Guard | Mechanism |
 |---|---|---|
-| 1 | **Separate folder** | Dry-run output goes to `.\test\boomerang_bayesopt\DRYRUN_<backend>_<date>\`. A real run never looks inside it, so the two namespaces do not intersect at all |
+| 1 | **Separate folder** | Dry-run output goes to `test/boomerang_bayesopt/DRYRUN_<backend>_<date>/`. A real run never looks inside it, so the two namespaces do not intersect at all |
 | 2 | **Filename prefix** | Every synthetic `_bds.mat` is named `DRYRUN_boomerang_a_...`. `cfg.dryRunPrefname` is also set as `P.prefname`, and the prefix is applied by hand exactly as `solveBands` would (`[prefname '_' fBase]`) — necessary because `solveBands` only applies `P.prefname` when `P.fileBase` is unset, and this script sets it |
 | 3 | **In-file provenance marker** | Every synthetic `ds` carries `ds.isSynthetic = true` plus `syntheticBackend`, `syntheticWarning` and `syntheticCreated`. `assertBandDataProvenance` checks **every** cache load, on both the objective path and the figure path. Synthetic data reaching a real run is an **error**, not a warning — stopping a study that can be resumed from its checkpoint is a far smaller loss than finishing one whose numbers cannot be trusted. The reverse (real data reaching a dry run) only warns: it wastes the dry run but corrupts nothing |
 | 4 | **Write nothing** | `cfg.dryRunSaveBands = 0` writes no `.mat` at all. The default is `1` because saving is what lets the dry run also exercise the cache-hit branch and `loadCachedBandData`, i.e. the code paths that read band data back off disk |
@@ -176,6 +184,8 @@ plus one scaling law — frequencies go as **1/a** — so the Gaussian target-fr
 Every optimum is placed so the peak lands at the **centre of the default bounds**: `a = 800`, `r = 200`, `w = 85`, `th ≈ 312` nm, fitness ≈ 0.24, mid-gap 13.0 GHz (= `cfg.targetFreq`, by construction). Centring matters — an optimum near a bound makes the best design *on* that bound almost as good as the peak, and the corresponding design slice then looks flat and reports `[at bound]`. Measured on a grid scan of the feasible box, the peak beats the best design available on each bound face by **2.5× (`a`), 1.9× (`r`), 2.4× (`w`), 1.5× (`th`)**, and about **64%** of the box has no complete gap at all — so the gapless branch of `gapFitness` gets exercised too.
 
 > If you change `cfg.bounds`, `cfg.targetFreq` or `cfg.sigma`, re-check that the surrogate optimum is still interior. It is tuned against the shipped values, and the absolute-thickness factor in particular does not follow `cfg.bounds.th`. A surrogate whose optimum has drifted onto a bound tests considerably less than it appears to.
+>
+> A measured example, since this is easy to hit in practice: retargeting to `cfg.targetFreq = 7e9`, `cfg.sigma = 3e9` with `cfg.nbands = 10` and `cfg.bounds.r = [100 250]` still leaves the surrogate working — 20 % of a 3969-design scan score nonzero, best fitness 0.0515 — but the optimum moves to `a = 1000`, `r = 250`, i.e. **pinned on both upper bounds**, versus an interior `a = 800, r = 200, w = 85, th = 312` at fitness 0.2427 under the shipped 13 GHz / 5 GHz. The cause is structural: surrogate frequencies scale as 1/a and the ladder is centred so that 13 GHz falls at a = 800, so a lower target can only be reached with a bigger cell and `a` runs to the ceiling. The loop is still fully exercised and the run is still valid as a *plumbing* test — but the `a` and `r` slices will look bound-limited, and that says nothing whatever about where the real COMSOL optimum lies.
 
 ---
 
@@ -403,7 +413,7 @@ Other `bayesopt` options are set inline: `'expected-improvement-plus'` acquisiti
 
 | field | default | meaning |
 |---|---|---|
-| `cfg.datLoc` | `.\test\boomerang_bayesopt\<mmddyyyy>\` | Output folder. **The trailing separator is required.** A dry run gets `...\DRYRUN_<backend>_<mmddyyyy>\` instead |
+| `cfg.datLoc` | `test/boomerang_bayesopt/<mmddyyyy>/` (host separators) | Output folder, built with `fullfile` — see [Cross-platform paths](#cross-platform-paths). **The trailing separator is required.** A dry run gets `DRYRUN_<backend>_<mmddyyyy>/` instead |
 | `cfg.plotgeom` | `0` | 1 to plot geometry every evaluation (slow, noisy) |
 | `cfg.savebndplot` | `1` | 1 to save a band diagram per evaluation |
 | `cfg.closeSolveFigures` | `1` | Close figures the solve opened, keeping the `bayesopt` live plots alive |
@@ -465,6 +475,30 @@ The `backend` column is appended last, so a log written before the column existe
 
 ---
 
+## Cross-platform paths
+
+Every path in this script is built with `fullfile`, never by pasting a separator in by hand, so the same file produces a proper nested directory on Windows, macOS and Linux alike:
+
+```matlab
+cfg.datLoc  = [fullfile('.','test','boomerang_bayesopt',datedFolder), filesep];
+cfg.logPath = fullfile(cfg.datLoc,[cfg.filePrefix,'_log.txt']);
+```
+
+This matters because the rest of this directory hard-codes `'.\test\...'`, and that form is only correct on Windows. On macOS and Linux a backslash is an ordinary filename character rather than a separator, so those scripts create a **single file literally named** `test\boomerang_sweep\08132026\...` instead of a folder tree — and that name cannot even be represented on Windows, so the artifacts stop being portable in both directions. `fullfile` emits `filesep` for the host and collapses duplicate separators.
+
+**On Windows the result is byte-identical to the old hard-coded literal** (`.\test\boomerang_bayesopt\<date>\`), which is asserted in the verification, so nothing about an existing Windows workflow changes.
+
+Two deliberate exceptions:
+
+- **`cfg.datLoc` keeps a trailing separator** (a `filesep`, not a literal `'\'`), because `solveBands` needs one — see [quirk 2](#solvebands-quirks-this-script-works-around).
+- **Extensions are still appended by concatenation** (`[pathNoExt '.png']`). That is a suffix, not a path join, so `fullfile` would be wrong there.
+
+> **The sibling scripts have not been converted.** `test_Boomerang.m`, `sweep_boomerang_code.m` and the other `test_*`/`sweep_*` scripts still hard-code `'.\test\...'`, so their output is still Windows-only. Only `bayesopt_boomerang.m` was in scope here.
+
+Note that `runBands_2D.m` independently normalises `P.datLoc` with `strrep(...,'\',filesep)` before creating directories, while `solveBands.m` does not — which is why, before this change, a macOS run scattered its band diagrams into a real directory tree and its `.mat` files into a backslash-named file beside it.
+
+---
+
 ## Visualization
 
 After the study finishes, the script draws a **composite 3×4 figure** plus three standalone figures, modelled on the multi-panel characterization figure in `python-scripts/scripts/run_opt_comsol.py`.
@@ -499,7 +533,7 @@ In a [dry run](#dry-run-mode) every figure gains a red banner line, and the summ
 The `BayesianOptimization` object is checkpointed after **every** iteration, because losing a partly finished study to a dropped LiveLink connection is expensive at these evaluation costs.
 
 ```matlab
-S = load('.\test\boomerang_bayesopt\<date>\bayesopt_boomerang_state.mat');
+S = load(fullfile('test','boomerang_bayesopt','<date>','bayesopt_boomerang_state.mat'));
 results = resume(S.results, 'MaxObjectiveEvaluations', 20);
 ```
 
@@ -536,7 +570,9 @@ Recorded here because they are easy to trip over again.
 
 1. **Two different return shapes.** A fresh solve returns `ds` with a `.full` field, but a cache hit prints `Data folder exists in working directory` and returns a stub with only empty `.sym`/`.asym`. Reading `ds.full` off that stub throws `Unrecognized field name` — which over an optimization run, where revisiting a design point is routine, would abort the whole study. `solveBoomerangBands` detects this and reloads the cached `.mat` instead.
 
-2. **`P.datLoc` needs its trailing separator.** `solveBands` normalises a separator into a local variable but then writes the `.mat` using the raw `P.datLoc`, so a missing separator drops output into the parent folder under a mangled name.
+2. **`P.datLoc` needs its trailing separator.** `solveBands` normalises a separator into a local variable but then writes the `.mat` using the raw `P.datLoc`, so a missing separator drops output into the parent folder under a mangled name. This is why `cfg.datLoc` keeps a trailing `filesep` even though every other path here is built with `fullfile`.
+
+6. **`solveBands` decides its own cache hit with `strcmp(P.datLoc(end),'\')`** — a hard-coded backslash. On macOS and Linux that test fails for a correctly-formed path, so it appends a literal backslash to the path it then uses for its `dir()` probe and `mkdir`, producing a stray directory named `\` and a probe that can never match the file it just wrote. This script therefore answers the cache question itself before calling `solveBands`, which makes caching behave identically on all three platforms; on Windows the only difference is that one no-op call into `solveBands` is skipped.
 
 3. **`P.savedat` must stay `1`.** It is what writes the `.mat`, and therefore what makes caching work at all.
 

@@ -237,9 +237,22 @@ cfg.maxEvaluations = 40;    % total COMSOL solves bayesopt may spend
 cfg.numSeedPoints  = 8;     % random design points before the GP takes over
 
 % --- I/O ---------------------------------------------------------------
-% NOTE the trailing '\' is required. solveBands normalises a separator into a
-% local variable but then writes the .mat with the raw P.datLoc, so a missing
-% separator silently drops output into the parent folder.
+% Paths are built with fullfile, never by pasting a separator in by hand, so the
+% same script produces a real nested directory on Windows, macOS and Linux
+% alike. The rest of this directory hard-codes '.\test\...' and that is why its
+% output is only correct on Windows: on macOS and Linux a backslash is an
+% ordinary filename character, not a separator, so those scripts create a single
+% file literally called "test\boomerang_sweep\08132026\..." instead of a folder
+% tree - a name Windows cannot even represent, so the artifacts stop being
+% portable in both directions. fullfile emits filesep for the host platform and
+% collapses duplicate separators, which is what makes the outputs readable
+% wherever they are opened.
+%
+% The one deliberate exception is the TRAILING separator on cfg.datLoc, which is
+% kept because solveBands needs it: it normalises a separator into a local
+% variable but then writes the .mat with the raw P.datLoc, so without one the
+% band data lands in the parent folder under a mangled name. filesep is used for
+% that too rather than a literal '\'.
 currentDate = datestr(now,'mmddyyyy');                                      %#ok<TNOW1,DATST>
 
 % Guard (1) of the four cache-isolation guards listed in the header block: a dry
@@ -255,14 +268,16 @@ currentDate = datestr(now,'mmddyyyy');                                      %#ok
 % existed. That equality is deliberate and worth preserving if these lines are
 % ever edited: it is what makes "dry run off" mean "unchanged".
 if cfg.isDryRun
-    cfg.datLoc     = ['.\test\boomerang_bayesopt\DRYRUN_',cfg.solverBackend,'_',currentDate,'\'];
+    datedFolder    = ['DRYRUN_',cfg.solverBackend,'_',currentDate];
     cfg.filePrefix = 'bayesopt_boomerang_DRYRUN';
 else
-    cfg.datLoc     = ['.\test\boomerang_bayesopt\',currentDate,'\'];
+    datedFolder    = currentDate;
     cfg.filePrefix = 'bayesopt_boomerang';
 end
-cfg.logPath   = [cfg.datLoc,cfg.filePrefix,'_log.txt'];
-cfg.statePath = [cfg.datLoc,cfg.filePrefix,'_state.mat'];
+% Trailing filesep appended deliberately - see the note above on solveBands.
+cfg.datLoc    = [fullfile('.','test','boomerang_bayesopt',datedFolder),filesep];
+cfg.logPath   = fullfile(cfg.datLoc,[cfg.filePrefix,'_log.txt']);
+cfg.statePath = fullfile(cfg.datLoc,[cfg.filePrefix,'_state.mat']);
 
 cfg.plotgeom          = 0;  % 1 to plot geometry each evaluation (slow, noisy)
 cfg.savebndplot       = 1;  % 1 to save a band diagram per evaluation
@@ -347,7 +362,7 @@ fprintf('  objective = %.6f  (fitness = %.6f)\n', ...
     results.MinObjective, -results.MinObjective);
 fprintf('  iteration log: %s\n', cfg.logPath);
 
-save([cfg.datLoc,cfg.filePrefix,'_results.mat'],'results','cfg','xBest');
+save(fullfile(cfg.datLoc,[cfg.filePrefix,'_results.mat']),'results','cfg','xBest');
 
 % Repeated at the END as well as the start. The start-of-run banner has scrolled
 % far off the top of the console by now, and "best boomerang unit cell" above is
@@ -646,8 +661,26 @@ function [gapData,wasCached] = solveBandsViaComsol(P,cfg)
 gapData   = [];
 wasCached = false;
 
-matPath = [P.datLoc,P.fileBase,'_bds.mat'];
-cacheHitExpected = isfile(matPath);
+matPath = fullfile(P.datLoc,[P.fileBase,'_bds.mat']);
+
+% Answer the cache question HERE rather than leaving it to solveBands.
+% solveBands decides it with strcmp(P.datLoc(end),'\'), so on a platform whose
+% filesep is '/' it appends a literal backslash to the path it then uses for its
+% own dir() probe and mkdir. On macOS and Linux that yields a stray directory
+% named '\' and a probe that can never match the file solveBands itself wrote,
+% so every design would be re-solved however many times it was visited - the
+% cache would look present and do nothing. Owning the decision here makes the
+% cache behave identically on all three platforms, and on Windows it changes
+% nothing except skipping one call into solveBands that would have returned its
+% stub anyway.
+if isfile(matPath)
+    wasCached = true;
+    gapData   = loadBandDataFromCache(matPath,cfg);
+    if ~isempty(gapData)
+        fprintf('  (reused cached band structure)\n');
+    end
+    return
+end
 
 figsBefore = findall(groot,'Type','figure');
 
@@ -667,15 +700,25 @@ if isfield(ds,'full') && isstruct(ds.full)
     return
 end
 
-% No .full field: solveBands short-circuited on the existing file.
+% solveBands returned its cache-hit stub even though nothing was on disk when we
+% looked a moment ago - a concurrent run, or a filename we failed to predict.
+% Read whatever is there now rather than throwing the evaluation away.
 wasCached = true;
-if ~cacheHitExpected
+if ~isfile(matPath)
     warning('bayesopt_boomerang:noGapData', ...
         'solveBands returned no .full field and no cache at %s', matPath);
     return
 end
+gapData = loadBandDataFromCache(matPath,cfg);
+end
 
-cached = load(matPath,'ds');
+% -------------------------------------------------------------------------
+
+function gapData = loadBandDataFromCache(matPath,cfg)
+%LOADBANDDATAFROMCACHE Read ds.full out of a cached _bds.mat, provenance-checked.
+
+gapData = [];
+cached  = load(matPath,'ds');
 
 % Guard (3): every cache load is checked for the synthetic provenance marker
 % before its numbers are believed. Guards (1) and (2) already make this
@@ -688,7 +731,6 @@ end
 
 if isfield(cached,'ds') && isfield(cached.ds,'full')
     gapData = cached.ds.full;
-    fprintf('  (reused cached band structure)\n');
 else
     warning('bayesopt_boomerang:badCache', ...
         'Cached file %s contains no ds.full', matPath);
@@ -727,7 +769,7 @@ if simulatedSolverFailure(P,cfg)
     return
 end
 
-matPath = [P.datLoc,P.fileBase,'_bds.mat'];
+matPath = fullfile(P.datLoc,[P.fileBase,'_bds.mat']);
 
 % Cache hit. Worth reproducing rather than skipping: the `cached` column of the
 % log, the (:) shapes that come back off disk rather than out of memory, and
@@ -1179,7 +1221,7 @@ function writeDryRunMarker(cfg)
 % Best-effort: a failure here must not cost the run, since the run is a debugging
 % exercise and the data it produces is worthless by design anyway.
 
-markerPath = [cfg.datLoc,'DRYRUN_README.txt'];
+markerPath = fullfile(cfg.datLoc,'DRYRUN_README.txt');
 fid = fopen(markerPath,'wt+');
 if fid < 0
     warning('bayesopt_boomerang:dryRunMarker', ...
@@ -1520,7 +1562,7 @@ try
         'Boomerang unit cell  |  a = %.0f   r = %.0f   w = %.0f   th = %.0f nm', ...
         P.a*1e9,P.r*1e9,P.w*1e9,P.th*1e9),0.09,cfg);
     addFigureHeadline(figG,tlG,headG,fracG,dryRunHeadlineColor(cfg));
-    saveFigurePair(figG,[cfg.datLoc,cfg.filePrefix,'_geometry'],cfg);
+    saveFigurePair(figG,fullfile(cfg.datLoc,[cfg.filePrefix,'_geometry']),cfg);
 catch ME
     warning('bayesopt_boomerang:geometryFigure', ...
         'Could not build the geometry figure: %s',ME.message);
@@ -1537,7 +1579,7 @@ try
     % there is no OuterPosition to shrink. plotBestBands carries the dry-run
     % banner in its axes title instead.
     tryPanel(@() plotBestBands(axB,ds,cfg,detail),'band structure');
-    saveFigurePair(figB,[cfg.datLoc,cfg.filePrefix,'_bestbands'],cfg);
+    saveFigurePair(figB,fullfile(cfg.datLoc,[cfg.filePrefix,'_bestbands']),cfg);
 catch ME
     warning('bayesopt_boomerang:bandFigure', ...
         'Could not build the band structure figure: %s',ME.message);
@@ -1558,7 +1600,7 @@ try
         'Optimizer progress  |  %d evaluations  |  best fitness = %.4f', ...
         numel(results.ObjectiveTrace),-results.MinObjective),0.07,cfg);
     addFigureHeadline(figP,tlP,headP,fracP,dryRunHeadlineColor(cfg));
-    saveFigurePair(figP,[cfg.datLoc,cfg.filePrefix,'_progress'],cfg);
+    saveFigurePair(figP,fullfile(cfg.datLoc,[cfg.filePrefix,'_progress']),cfg);
 catch ME
     warning('bayesopt_boomerang:progressFigure', ...
         'Could not build the progress figure: %s',ME.message);
@@ -1585,7 +1627,7 @@ function ds = loadCachedBandData(P,cfg)
 % folder.
 
 ds = [];
-matPath = [P.datLoc,P.fileBase,'_bds.mat'];
+matPath = fullfile(P.datLoc,[P.fileBase,'_bds.mat']);
 
 if ~isfile(matPath)
     warning('bayesopt_boomerang:noBandCache', ...
@@ -1736,9 +1778,10 @@ function saveFigurePair(figH,pathNoExt,cfg)
 % print(...,'-dpng','-r<dpi>') is used instead of saveas because saveas always
 % writes at screen resolution and ignores cfg.figResolution.
 %
-% pathNoExt is built by concatenating onto cfg.datLoc, whose trailing separator
-% is deliberate - see the note at the cfg.datLoc definition. Do not insert
-% another one here.
+% pathNoExt already comes from fullfile at the call sites, so it carries the
+% host platform's separators and no directory part needs adding here. Only the
+% extension is appended, which is a suffix rather than a path join and so is one
+% of the few places plain concatenation is correct.
 
 try
     print(figH,[pathNoExt,'.png'],'-dpng',['-r',num2str(cfg.figResolution)]);
@@ -1809,7 +1852,7 @@ drawDesignSpaceRow(tl,results,cfg);
         numel(results.ObjectiveTrace),detail.status)},0.075,cfg);
 addFigureHeadline(figH,tl,headC,fracC,dryRunHeadlineColor(cfg));
 
-saveFigurePair(figH,[cfg.datLoc,cfg.filePrefix,'_summary'],cfg);
+saveFigurePair(figH,fullfile(cfg.datLoc,[cfg.filePrefix,'_summary']),cfg);
 end
 
 % -------------------------------------------------------------------------
