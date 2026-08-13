@@ -157,6 +157,7 @@ cfg = struct();
 % filename prefix, carrying an in-file provenance marker, so no real run can
 % ever load it.
 cfg.solverBackend = 'comsol';
+% cfg.solverBackend = 'surrogate';
 
 % Fail loud on an unknown backend BEFORE anything is derived from the name -
 % the same intent as `raise ValueError(f"unknown mech_backend {mech_backend}")`
@@ -200,8 +201,8 @@ cfg.dryRunPrefname = 'DRYRUN';  % filename prefix stamped onto synthetic band
                             % hand rather than left to solveBands' P.prefname.
 
 % --- objective definition -------------------------------------------------
-cfg.targetFreq = 13e9;      % target mechanical mid-gap frequency [Hz]
-cfg.sigma      = 5e9;       % width of the Gaussian frequency penalty [Hz]
+cfg.targetFreq = 7e9;      % target mechanical mid-gap frequency [Hz]
+cfg.sigma      = 3e9;       % width of the Gaussian frequency penalty [Hz]
 
 % --- fabrication tolerance ------------------------------------------------
 % Minimum feature size, applied to the hole arm width w - the narrowest
@@ -216,7 +217,7 @@ cfg.minFeatureNm = 50;      % [nm]
 
 % --- search space, in integer nm (ranges from sweep_boomerang_code.m) -----
 cfg.bounds.a  = [600 1000];
-cfg.bounds.r  = [150  250];   % sweep used r in [0.6*250, 250] nm
+cfg.bounds.r  = [100  250];   % sweep used r in [0.6*250, 250] nm
 cfg.bounds.w  = [ 50  120];
 cfg.bounds.th = [275  350];
 
@@ -227,7 +228,7 @@ cfg.r2 = 10e-9;             % fillet radius at the OUTER arm tips
 
 % --- solver fidelity (kept identical to sweep_boomerang_code.m) ----------
 cfg.kpts     = 9;           % k-points EXCLUDING gamma
-cfg.nbands   = 15;
+cfg.nbands   = 10;
 cfg.meshSize = 4;
 cfg.maxDof   = 3e6;
 
