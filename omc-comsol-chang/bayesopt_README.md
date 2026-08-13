@@ -4,7 +4,7 @@ Bayesian optimization of the boomerang unit cell for a complete **mechanical** b
 
 Searches four geometry parameters — lattice constant `a`, hole arm length `r`, hole arm width `w`, and slab thickness `th` — using MATLAB's `bayesopt`, where each objective evaluation is a full COMSOL eigenfrequency band structure solve.
 
-> **Status: written but never executed.** No MATLAB or COMSOL was available in the environment where this was authored, so it has not been run and `checkcode` has not been passed over it. It has been reviewed by hand and structurally checked (all nine local functions balance), but treat the first run as a shakedown. Run `checkcode('bayesopt_boomerang.m')` before committing to a long study.
+> **Status: partially verified.** `checkcode` passes with **no messages** (MATLAB R2026a). The whole **visualization** section has been exercised end-to-end against synthetic data — figures render and all graceful-degradation paths were tested. What has **not** run is the optimization itself: the **Statistics and Machine Learning Toolbox is not installed** on this machine, so `bayesopt` and `optimizableVariable` do not resolve here, and COMSOL LiveLink was not driven either. Install the toolbox before the first study, and treat that run as a shakedown.
 
 ---
 
@@ -16,9 +16,13 @@ Searches four geometry parameters — lattice constant `a`, hole arm length `r`,
 - [Read this before your first real run](#read-this-before-your-first-real-run)
 - [Unit cell geometry](#unit-cell-geometry)
 - [The objective](#the-objective)
+  - [The fitness function](#the-fitness-function)
+  - [Symbols](#symbols)
+  - [Properties worth knowing](#properties-worth-knowing)
 - [Constraints](#constraints)
 - [Configuration reference](#configuration-reference)
 - [Outputs](#outputs)
+- [Visualization](#visualization)
 - [Resuming an interrupted study](#resuming-an-interrupted-study)
 - [How caching works](#how-caching-works)
 - [`solveBands` quirks this script works around](#solvebands-quirks-this-script-works-around)
@@ -135,14 +139,57 @@ On `th` and symmetry: because `P.mbevenz` is nonzero, the builder subtracts the 
 
 ## The objective
 
-`bayesopt` minimizes, so the script returns a negated fitness:
+### The fitness function
+
+For a design $\mathbf{x} = (a,\, r,\, w,\, t_h)$, `solveBands` returns a set of complete mechanical bandgaps. Index them by $k$, and let gap $k$ have lower and upper edges $f_k^-$ and $f_k^+$. `findGaps` reports each gap as a mid-gap frequency and a width:
+
+$$\Omega_k \;=\; \frac{f_k^+ + f_k^-}{2}, \qquad \Delta_k \;=\; f_k^+ - f_k^-$$
+
+Each gap is scored by its **fractional gap width** times a **Gaussian frequency penalty**:
+
+$$\eta_k \;=\; \frac{\Delta_k}{\Omega_k} \;=\; \frac{2\,(f_k^+ - f_k^-)}{f_k^+ + f_k^-}, \qquad p_k \;=\; \exp\!\left[-\left(\frac{f_\mathrm{target} - \Omega_k}{\sigma}\right)^{\!2}\right]$$
+
+The **fitness** is the best score over all admissible gaps, and since `bayesopt` minimizes, the **objective** is its negation:
+
+$$\boxed{\;F(\mathbf{x}) \;=\; \max_{k \in \mathcal{G}(\mathbf{x})} \; \frac{\Delta_k}{\Omega_k} \cdot \exp\!\left[-\left(\frac{f_\mathrm{target} - \Omega_k}{\sigma}\right)^{\!2}\right] \;}$$
+
+$$\text{objective}(\mathbf{x}) \;=\; -F(\mathbf{x})$$
+
+where $\mathcal{G}(\mathbf{x}) = \\{\, k : \Omega_k > 0 \ \wedge\ \Delta_k > 0 \,\\}$ is the set of admissible complete gaps, and $F(\mathbf{x}) = 0$ by definition when $\mathcal{G}(\mathbf{x}) = \varnothing$.
+
+In plain text, for anyone reading this file unrendered:
 
 ```
-objective = -max over all complete gaps of
-              (gapSize / midGap) * exp( -((f_target - midGap) / sigma)^2 )
+eta_k     = gapSize(k) / midGap(k)                                  % fractional gap width
+p_k       = exp( -((f_target - midGap(k)) / sigma)^2 )              % frequency penalty
+F         = max_k ( eta_k * p_k )                                   % fitness,  F >= 0
+objective = -F                                                      % bayesopt minimizes
 ```
 
-Two factors: the **fractional gap width** `gapSize/midGap`, which is the thing you actually want maximised, and a **Gaussian penalty** pulling the mid-gap frequency toward `cfg.targetFreq` with width `cfg.sigma`.
+### Symbols
+
+| symbol | code | meaning |
+|---|---|---|
+| $a,\ r,\ w,\ t_h$ | `x.a`, `x.r`, `x.w`, `x.th` | Design variables [integer nm] |
+| $f_k^\pm$ | — | Lower / upper edge of gap $k$ [Hz] |
+| $\Omega_k$ | `gapData.midGap(k)` | Mid-gap frequency of gap $k$ [Hz] |
+| $\Delta_k$ | `gapData.gapSize(k)` | Width of gap $k$ [Hz] |
+| $\eta_k$ | `gapRatios(k)` | Fractional gap width, dimensionless |
+| $p_k$ | `penalties(k)` | Gaussian frequency penalty, $p_k \in (0,\,1]$ |
+| $f_\mathrm{target}$ | `cfg.targetFreq` | Target mid-gap frequency [Hz], default 13 GHz |
+| $\sigma$ | `cfg.sigma` | Penalty width [Hz], default 5 GHz |
+| $F$ | `fitness` | Fitness, maximised |
+| $-F$ | `objective` | What `bayesopt` minimizes |
+
+### Properties worth knowing
+
+- **$F \geq 0$ always**, since $\eta_k > 0$ and $p_k > 0$ on $\mathcal{G}$. So `objective` $\leq 0$, and `objective = 0` is the worst attainable value.
+- **$p_k \leq 1$, with equality iff $\Omega_k = f_\mathrm{target}$.** The penalty can only ever discount the fractional gap width, never inflate it — so $F \leq \max_k \eta_k$, and $F = \eta_k$ exactly when gap $k$ is centred on the target.
+- **$\eta_k$ is the standard fractional bandwidth** $2(f^+ - f^-)/(f^+ + f^-)$, so it is scale-free: two geometrically similar cells differing only in overall scale have the same $\eta$ but different $\Omega$. The penalty term is what breaks that degeneracy and pins down an absolute frequency.
+- **$\sigma$ sets how far off-target a gap may sit before it stops counting.** At $|f_\mathrm{target} - \Omega_k| = \sigma$ the score is already down by $e^{-1} \approx 0.37$; at $2\sigma$ by $e^{-4} \approx 0.018$. With the defaults ($f_\mathrm{target} = 13$ GHz, $\sigma = 5$ GHz), a gap centred at 23 GHz retains under 2 % of its fractional width.
+- **This is the same functional form as `optimization_client.m`** (`mech_cont = mGap/mFreq*freq_penalty; F = -1*mech_cont`). What changed is only *which* gap enters the formula — see below.
+
+Two factors, then: the **fractional gap width** $\eta_k$, which is what you actually want maximised, and a **Gaussian penalty** $p_k$ pulling the mid-gap frequency toward `cfg.targetFreq` with width `cfg.sigma`.
 
 Every complete gap returned by `findGaps` is scored and the best is kept. This deliberately replaces the gap-*selection* step in `optimization_client.m`, which had two defects:
 
@@ -249,6 +296,15 @@ Other `bayesopt` options are set inline: `'expected-improvement-plus'` acquisiti
 
 That last option exists because a plain `close all` would also destroy the `bayesopt` plot windows. Instead the figure list is differenced against a snapshot taken before each solve, so only figures the solve created get closed.
 
+### Figures
+
+| field | default | meaning |
+|---|---|---|
+| `cfg.makeSummaryFigures` | `1` | Master switch for the whole post-run [visualization](#visualization) |
+| `cfg.figResolution` | `150` | PNG export resolution [dpi], matching the Python scripts |
+| `cfg.figNPeriods` | `3` | Lattice periods tiled in the geometry panel. `1` draws the bare cell; ≥2 makes the inter-hole ligament visible |
+| `cfg.closeSummaryFigures` | `0` | `0` leaves the saved figures on screen; `1` closes **only** the handles it created |
+
 ---
 
 ## Outputs
@@ -262,6 +318,10 @@ Everything lands under `cfg.datLoc`.
 | `bayesopt_boomerang_log.txt` | One tab-separated row per evaluation |
 | `bayesopt_boomerang_state.mat` | Checkpoint of the `BayesianOptimization` object, rewritten every iteration |
 | `bayesopt_boomerang_results.mat` | Final `results`, `cfg`, and `xBest` |
+| `bayesopt_boomerang_summary.png` / `.fig` | Composite 3×4 figure — see [Visualization](#visualization) |
+| `bayesopt_boomerang_geometry.png` / `.fig` | Standalone best-cell geometry, tiled over `cfg.figNPeriods` |
+| `bayesopt_boomerang_bestbands.png` / `.fig` | Standalone band structure of the best design, gaps shaded |
+| `bayesopt_boomerang_progress.png` / `.fig` | Standalone convergence trace + per-variable design slices |
 
 `<fileBase>` is e.g. `boomerang_a_700nm_r_262nmw_99nm_th_300nm_r1_10nm_r2_10nm_`. The script sets `P.fileBase` explicitly, reproducing byte-for-byte the string `solveBands` builds for `celltype = 'boomerang'` — including its missing `_` after the `r` field. That is intentional: it lets the script predict the cache path, and keeps filenames interchangeable with data already produced by the sweep scripts.
 
@@ -282,6 +342,33 @@ Everything lands under `cfg.datLoc`.
 | `status` | `target-in-gap`, `nearest-gap`, `no-complete-gap`, or `solver-error` |
 
 Load it with `readtable('bayesopt_boomerang_log.txt')`.
+
+---
+
+## Visualization
+
+After the study finishes, the script draws a **composite 3×4 figure** plus three standalone figures, modelled on the multi-panel characterization figure in `python-scripts/scripts/run_opt_comsol.py`.
+
+The composite layout:
+
+| row | contents |
+|---|---|
+| 1 | Best-cell **geometry** (2 tiles, tiled over `cfg.figNPeriods` periods) \| **band structure** of the best design (2 tiles, complete gaps shaded) |
+| 2 | **Convergence** trace (2 tiles) \| **summary** text panel (2 tiles, monospace) |
+| 3 | **Design slices** — fitness vs `a`, `r`, `w`, `th`, one tile each, with the search bounds drawn |
+
+Notes on reading these:
+
+- Everything is plotted as **fitness** (= `-objective`) so up is better, matching the sign convention you actually care about. The axis labels say so.
+- The **design slices** exist to show whether the optimizer pinned a variable against a bound. If the best point sits on a bound, the bound — not the physics — is setting your design, and the box should be widened.
+- Errored evaluations (`NaN`) are marked with a red ✗ on the convergence panel rather than silently dropped.
+- The band panel marks the target frequency and the specific mid-gap the fitness scored. With several complete gaps shaded it is otherwise ambiguous which one produced the number.
+- The y-axis is extended to keep the target line on screen even when the solved bands stop below it, with an explicit note in that case — otherwise the marker vanishes in exactly the situation where it matters most.
+- The geometry panel **omits the `r1`/`r2` fillets** (noted in grey inside the axes). It is drawn from `polyshape` in pure MATLAB, so it needs no COMSOL and costs nothing.
+
+Band data is reloaded from the best design's cached `_bds.mat`. The whole section is **best-effort**: it runs *after* `bayesopt_boomerang_results.mat` is written, and it is wrapped at three levels (the block, each figure, each panel), so a plotting failure can only ever cost you a panel — never a finished multi-hour study. Missing cache, a cache-hit stub with no `.full`, a gapless result, and an all-`NaN` trace were all tested and each degrades to a warning plus a labelled empty panel.
+
+It never calls a bare `close all`, which would destroy the live `bayesopt` plot windows; only figure handles it created are closed, and only when `cfg.closeSummaryFigures = 1`.
 
 ---
 
@@ -346,6 +433,25 @@ Recorded here because they are easy to trip over again.
 | `initIterationLog` | Create the log with its header row |
 | `logIteration` | Append one evaluation, flushed immediately |
 | `checkpointState` | `OutputFcn` saving the optimizer state every iteration |
+
+Visualization (all best-effort, none on the optimization path):
+
+| function | role |
+|---|---|
+| `visualizeBestDesign` | Entry point; builds and saves all four figures |
+| `buildCompositeFigure` | Assembles the 3×4 composite |
+| `drawBoomerangCell` | Draws the rhombic cell minus the tri-arm hole, tiled, via `polyshape` |
+| `plotBestBands` | Band structure with shaded complete gaps and reference lines |
+| `plotBandSector` | Draws one symmetry sector's bands |
+| `plotConvergenceTrace` | Best-so-far fitness plus per-evaluation points |
+| `plotDesignSlice` | Fitness vs one design variable, with bounds |
+| `drawDesignSpaceRow` | Lays out the four slices |
+| `writeSummaryPanel` | Monospace text summary |
+| `loadCachedBandData` | Reloads the best design's `_bds.mat` |
+| `newSummaryFigure` | Creates a themed figure of a given size |
+| `addFigureHeadline` | Figure-level suptitle that cannot collide with axes titles |
+| `saveFigurePair` | Writes `.png` + `.fig` |
+| `tryPanel` | Wraps one panel so its failure cannot take down the figure |
 
 ---
 
