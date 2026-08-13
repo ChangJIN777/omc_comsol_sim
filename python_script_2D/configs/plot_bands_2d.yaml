@@ -35,7 +35,8 @@ dpi: 150
 # both. Order does not matter.
 # parities: ["evenz", "oddz"]
 
-# Gap shading mode. Defaults to configs/targets_2d.yaml's mechanical.gap_mode.
+# Gap shading mode. Falls back to configs/targets_2d.yaml's mechanical.gap_mode
+# when unset -- which is now "complete".
 #   symmetry : shade the larger single-family gap, and name the family.
 #   complete : stack both families via objective2d._combined_bands and also
 #              draw the TRUNCATION CEILING as a dotted line. Above that line at
@@ -44,7 +45,15 @@ dpi: 150
 #              states -- drawing it is the point. Requires BOTH parities; it
 #              errors out on single-parity data rather than quietly falling
 #              back to a symmetry gap.
-# gap_mode: symmetry
+#
+# SET EXPLICITLY TO symmetry HERE, ON PURPOSE. The default input above is the
+# odd-z-only baseline CSV, and "complete" is undefined for one family -- the
+# plotter raises rather than mislabelling a symmetry gap as complete. Without
+# this line, flipping targets_2d.yaml to complete mode would break the one
+# thing in this project that runs today with no COMSOL, and break it via a
+# guard that is working correctly. Change this to complete (or delete the line
+# to inherit) once you point `npz:` at a candidate solved for BOTH parities.
+gap_mode: symmetry
 
 # Target frequency and acceptance window. Both default to
 # configs/targets_2d.yaml (target_frequency_GHz) and to bandgap.py's

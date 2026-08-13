@@ -8,6 +8,14 @@ changes specific to this 2D phononic-crystal project:
    `_mechanical_gap` below. Both parities are always solved (the mechanical
    backend is cheap relative to optical) so "symmetry" vs "complete" gap_mode
    can be selected/re-scored after the fact without re-solving.
+
+   `gap_mode` defaults to **"complete"**: `mechanical_gap` and `score` refer to
+   a gap clear of BOTH parity families, which is what a phononic shield or a
+   clamping-loss-free cavity actually requires. "symmetry" remains supported for
+   the case where only one parity couples to the transducer, and the per-family
+   diagnostics (`mechanical_gap_{evenz,oddz}` and their edges) are recorded in
+   BOTH modes -- in complete mode they are what explains a small complete gap,
+   so do not treat them as symmetry-mode-only.
 2. Optical is NOT YET IMPLEMENTED (src/optical_comsol_2d.py is a documented
    stub). `optical_backend="none"` (the default) simply excludes it from the
    score -- no solve attempted. Set `require_opt=True` and
@@ -27,6 +35,12 @@ need a fake optical term):
       - lo  * max(0, gmin_o - G_o)^2                 [if require_opt]
       - lof * ((f_o,c - f_o,target)/f_o,target)^2    [if require_opt]
 Infeasible geometry -> large negative score, no solve.
+
+"Is a complete gap the OVERLAP of the evenz and oddz gaps?" -- not quite, and
+the difference matters. See the EQUIVALENT FORMULATIONS section of
+`_combined_bands`'s docstring below for the precise statement (short version:
+stack-then-search returns a strict superset of the pairwise overlaps, and the
+extra windows are real ones the overlap recipe cannot express).
 """
 from __future__ import annotations
 
@@ -49,6 +63,11 @@ C0 = 299_792_458.0
 _BANDS_DIR = os.environ.get(
     "OMC2D_BANDS_DIR",
     os.path.join(os.path.dirname(__file__), "..", "results", "bands"))
+
+# z-parity families, in TIE-BREAK ORDER. Both are always solved (see
+# acoustic_comsol_2d.run_mechanical_comsol_2d's `parities` default), so a
+# symmetry-mode score always has a loser worth recording.
+PARITY_ORDER = ("evenz", "oddz")
 
 
 def _load(name):
@@ -85,6 +104,73 @@ def _combined_bands(freqs_evenz, freqs_oddz):
     Entries above the ceiling are NaN'd and the trailing columns dropped.
     np.sort puts NaN at the end of each row, so the `keep` mask is a contiguous
     True-prefix -- that placement is what makes slicing to n_keep valid.
+
+    EQUIVALENT FORMULATIONS -- "isn't a complete gap just the OVERLAP of the
+    two families' gaps?" This question comes up every time; the answer is that
+    stack-then-search (what this function feeds) returns a strict SUPERSET of
+    the pairwise-intersection recipe, and the superset is the correct one.
+
+    Write e_1(k) <= ... <= e_nE(k) for the evenz states at k and o_1..o_nO for
+    oddz. `bandgap.all_gaps` reports a gap of a single family between its bands
+    i and i+1 as (max_k e_i, min_k e_{i+1}), nonempty iff that is a real
+    interval. Because e_i(k) <= e_{i+1}(k) pointwise, both endpoints of the
+    band RANGES B_i = [min_k e_i, max_k e_i] are nondecreasing in i, so the
+    ranges are ordered and the holes in their union are exactly those gaps.
+    Hence:
+
+        {f : no evenz state at any k}  =  [0, min_k e_1)                    (i)
+                                       U  the evenz gaps                   (ii)
+                                       U  (max_k e_nE, inf)                (iii)
+
+    and likewise for oddz. A complete gap is a frequency free of BOTH families,
+    i.e. the intersection of two sets of that shape. Expanding gives four kinds
+    of term, only ONE of which is a pairwise intersection of named gaps:
+
+        (evenz gap_i) ∩ (oddz gap_j)        <- the "overlap" recipe
+        (evenz gap_i) ∩ [0, min_k o_1)      <- free because it is BELOW oddz
+        [0, min_k e_1) ∩ (oddz gap_j)       <- free because it is BELOW evenz
+        [0, min_k e_1) ∩ [0, min_k o_1)     <- below both; not reportable as a
+                                               gap (no lower band brackets it)
+
+    Term (iii) is the untrustworthy region the `ceiling` above exists to
+    exclude: one family simply ran out of computed modes there.
+
+    So the pairwise-overlap recipe MISSES any window that is clear of a family
+    because it sits below that family's lowest band rather than inside one of
+    that family's gaps. That is not a corner case: if one family has no gap at
+    all, the overlap recipe returns nothing while a real complete gap can still
+    exist below that family's first band. Measured on 4 000 random band pairs,
+    84% produced at least one complete gap that is not any pairwise
+    intersection.
+
+    The containment direction holds exactly, with one qualifier. Let c_m(k) be
+    the m-th smallest state of the union at k and N = n_keep. Then:
+
+        every pairwise intersection (evenz gap_i ∩ oddz gap_j), restricted to
+        below min_k c_N, is contained in exactly ONE gap returned by
+        all_gaps(_combined_bands(...)[0]).
+
+    Proof sketch: for f free of both families, m(f) = #{states < f} is constant
+    in k (a change would require a state to cross f, making f an eigenvalue),
+    so f sits in the single combined gap (max_k c_m, min_k c_{m+1}); it is
+    retained iff m <= N-1, i.e. iff f < min_k c_N. Verified by
+    test_complete_gap_contains_every_pairwise_intersection over 30 000 random
+    band pairs (48 283 intersections, 0 misses, 0 multi-coverage), spanning flat
+    and dispersive bands and unequal nE/nO.
+
+    The qualifier is NOT the ceiling but min_k c_N, which can be well below it:
+    a band straddling the ceiling is dropped by the `keep` mask, taking with it
+    any gap whose upper edge was that band's bottom. Concretely, with evenz
+    bands ranging 4-5, 6-6.4, 12-22 and oddz 4.5-5, 6.8-7.2, 24-30, the
+    intersection 7.2->12 GHz is real but is NOT reported: the ceiling is 12.0
+    (evenz's top band bottoms there), min_k c_N is 6.8, so nothing above
+    6.8 GHz survives. Give both families a band above 12 and the 7.2->12 gap
+    appears as expected. This is one-sided conservatism -- it can hide a real
+    complete gap, never invent one -- and the fix is more bands (`neigs`), not
+    a different reduction.
+
+    Requires both arrays to have the same number of k-points; nE and nO may
+    differ freely (the ceiling uses each family's own top band).
     """
     evenz = np.asarray(freqs_evenz, dtype=float)
     oddz = np.asarray(freqs_oddz, dtype=float)
@@ -96,29 +182,108 @@ def _combined_bands(freqs_evenz, freqs_oddz):
     return combined[:, :n_keep], ceiling
 
 
+def best_parity(gaps):
+    """Pick the winning family from a {parity: Gap} mapping -> (parity, Gap).
+
+    Ties break toward the EARLIER entry in PARITY_ORDER, i.e. evenz. That is a
+    deliberate choice, not a side effect of a `>=`: an exact tie is entirely
+    plausible for a structure close to z-symmetric, and a parity label that
+    flipped between runs of the same design would be a miserable thing to
+    debug. Shared with scripts/plot_bands_2d.py so a figure's legend and a
+    result record can never disagree about which family won.
+
+    Accepts a subset of PARITY_ORDER (the plotter is often given one family).
+    """
+    ordered = [(p, gaps[p]) for p in PARITY_ORDER if p in gaps]
+    if not ordered:
+        raise ValueError(f"no parity to choose from; got {sorted(gaps)}, "
+                         f"expected some of {list(PARITY_ORDER)}")
+    best_p, best_g = ordered[0]
+    for p, g in ordered[1:]:
+        if g.normalized_gap > best_g.normalized_gap:   # strict: see docstring
+            best_p, best_g = p, g
+    return best_p, best_g
+
+
 def _mechanical_gap(freqs_evenz, freqs_oddz, f_target, gap_mode):
     """Gap selection keyed on z-parity, per targets_2d.yaml's gap_mode.
 
-    Returns (Gap, info) where info carries the diagnostics needed to tell
-    "no gap exists" apart from "not enough bands were solved to say":
-    truncation_ceiling_hz and n_bands_usable (both None in 'symmetry' mode).
+    Returns (Gap, info). The Gap is the SCORED one; `info` is merged straight
+    into the result record and carries:
+
+      mech_parity       "evenz" / "oddz" (symmetry mode) or "complete".
+      mechanical_gap_{evenz,oddz}, mechanical_center_frequency_{evenz,oddz},
+      mechanical_gap_lower_frequency_{evenz,oddz},
+      mechanical_gap_upper_frequency_{evenz,oddz}
+                        each family's own gap, ALWAYS populated in both modes.
+      mechanical_gap_lower_frequency, mechanical_gap_upper_frequency
+                        edges of the SCORED gap (the one `mechanical_gap` and
+                        `mechanical_center_frequency` describe).
+      truncation_ceiling_hz, n_bands_usable
+                        complete mode only (None in symmetry mode) -- what
+                        tells "no gap exists" apart from "not enough bands
+                        were solved to say".
+
+    All frequencies are Hz. Gap EDGES are stored, not just (centre, normalized
+    width), even though the edges are algebraically recoverable as
+    centre*(1 -+ G/2) -- that identity only holds for THIS project's
+    normalization (G = (hi-lo)/mean(hi,lo), see bandgap.Gap), and "is
+    Delta f / f_lower" is a common enough alternative convention that a reader
+    reconstructing edges from the record could be quietly wrong. Storing them
+    also makes the natural question -- "do the two families' gaps overlap, and
+    where?" -- answerable by reading two numbers per family instead of doing
+    algebra. A family with no gap reports 0.0 for all four of its fields.
 
     'symmetry': best single-family gap (evenz or oddz, whichever is larger
                 near f_target) -- a quasi/symmetry-restricted gap.
     'complete': a gap with NO band of EITHER parity -- both families stacked,
                 truncated to where the union is complete (see _combined_bands).
+
+    The per-family numbers are recorded in BOTH modes because they are pure
+    post-processing on data already in hand, and because the record otherwise
+    collapses to one scalar with no way to tell which family earned it. The
+    premise of gap_mode 'symmetry' is that a family-restricted gap is
+    acceptable *because only one parity couples to the transducer* -- so
+    without the label a scored candidate cannot be judged usable at all. In
+    'complete' mode they answer "what would each family have given alone?",
+    which is exactly the question when a complete gap comes back empty.
+
+    Note the per-family gaps are computed on the UNTRUNCATED family arrays.
+    That is correct and not an inconsistency with _combined_bands: within one
+    family the n_bands lowest modes are all known, so any gap between
+    consecutive bands of that family is real. The truncation ceiling exists
+    only because *stacking* two families leaves the interleaving unknown above
+    the point where either one runs out.
     """
+    per = {"evenz": gap_near_frequency(freqs_evenz, f_target),
+           "oddz": gap_near_frequency(freqs_oddz, f_target)}
+    info = {}
+    for p in PARITY_ORDER:
+        # Gap.empty() carries normalized_gap=0.0 and f_lower/f_upper/f_center=0,
+        # so a family with no gap reports 0.0 rather than NaN or a missing key.
+        info[f"mechanical_gap_{p}"] = float(per[p].normalized_gap)
+        info[f"mechanical_center_frequency_{p}"] = float(per[p].f_center)
+        info[f"mechanical_gap_lower_frequency_{p}"] = float(per[p].f_lower)
+        info[f"mechanical_gap_upper_frequency_{p}"] = float(per[p].f_upper)
+
+    def _with_scored_edges(gap):
+        info["mechanical_gap_lower_frequency"] = float(gap.f_lower)
+        info["mechanical_gap_upper_frequency"] = float(gap.f_upper)
+        return gap, info
+
     if gap_mode == "complete":
         combined, ceiling = _combined_bands(freqs_evenz, freqs_oddz)
-        info = dict(truncation_ceiling_hz=float(ceiling),
+        info.update(mech_parity="complete",
+                    truncation_ceiling_hz=float(ceiling),
                     n_bands_usable=int(combined.shape[1]))
         if combined.shape[1] < 2:
-            return Gap.empty(), info   # nothing usable below the ceiling
-        return gap_near_frequency(combined, f_target), info
-    gp_evenz = gap_near_frequency(freqs_evenz, f_target)
-    gp_oddz = gap_near_frequency(freqs_oddz, f_target)
-    best = gp_evenz if gp_evenz.normalized_gap >= gp_oddz.normalized_gap else gp_oddz
-    return best, dict(truncation_ceiling_hz=None, n_bands_usable=None)
+            return _with_scored_edges(Gap.empty())  # nothing below the ceiling
+        return _with_scored_edges(gap_near_frequency(combined, f_target))
+
+    best_p, best = best_parity(per)
+    info.update(mech_parity=best_p, truncation_ceiling_hz=None,
+                n_bands_usable=None)
+    return _with_scored_edges(best)
 
 
 def evaluate_candidate(u, *, mech_backend="comsol", optical_backend="none",
@@ -143,6 +308,16 @@ def evaluate_candidate(u, *, mech_backend="comsol", optical_backend="none",
     aspirational, and gives scripts/plot_bands_2d.py something to plot.
     Set save_bands=False for throwaway runs. Failing to write the .npz never
     fails the candidate -- it is recorded in `bands_error` and the solve stands.
+
+    Mechanical fields in the record. `mechanical_gap` /
+    `mechanical_center_frequency` are the SCORED gap and keep that meaning;
+    alongside them, `mech_parity` names which family earned it ("evenz",
+    "oddz", or "complete"), `mechanical_gap_lower_frequency` /
+    `..._upper_frequency` give its edges, and the same four quantities suffixed
+    `_evenz` / `_oddz` give both families' own gaps in either mode -- so
+    "do the two families' gaps overlap, and where?" is answerable straight from
+    a record. See _mechanical_gap for why the losing family is kept, and its
+    EQUIVALENT FORMULATIONS note for how an overlap relates to a complete gap.
     """
     def _stage(name, event, info=None):
         if on_stage is not None:
@@ -174,12 +349,13 @@ def evaluate_candidate(u, *, mech_backend="comsol", optical_backend="none",
 
     f_m_target = targets["mechanical"]["target_frequency_GHz"] * 1e9
     f_o_target = C0 / (targets["optical"]["target_wavelength_nm"] * 1e-9)
-    gap_mode = targets["mechanical"].get("gap_mode", "symmetry")
+    gap_mode = targets["mechanical"].get("gap_mode", "complete")
     n_bands_mech = n_bands_mech or targets["mechanical"].get("n_bands", 10)
 
     # ---- mechanical (always solved when require_mech, both z-parities) ----
     _stage("mechanical", "start" if require_mech else "skip", mech_backend)
     G_m, f_m_c = 0.0, 0.0
+    mech_summary = None
     if require_mech:
         try:
             if mech_backend == "comsol":
@@ -197,6 +373,11 @@ def evaluate_candidate(u, *, mech_backend="comsol", optical_backend="none",
                                                f_m_target, gap_mode)
                 G_m, f_m_c = gp.normalized_gap, gp.f_center
                 rec.update(gap_mode=gap_mode, **gap_info)
+                mech_summary = (
+                    f"{gap_info['mech_parity']}: "
+                    f"{G_m*100:.1f}% @ {f_m_c/1e9:.2f} GHz | "
+                    f"evenz {gap_info['mechanical_gap_evenz']*100:.1f}% "
+                    f"oddz {gap_info['mechanical_gap_oddz']*100:.1f}%")
             else:
                 raise ValueError(f"unknown mech_backend {mech_backend!r}")
         except Exception as e:  # solver failed -> record, don't crash loop
@@ -208,7 +389,7 @@ def evaluate_candidate(u, *, mech_backend="comsol", optical_backend="none",
             if cache is not None:
                 cache[cid] = rec
             return rec
-        _stage("mechanical", "done")
+        _stage("mechanical", "done", mech_summary)
 
     # ---- optical (not yet implemented; "none" = excluded from score) ------
     _stage("optical", "start" if require_opt else "skip", optical_backend)

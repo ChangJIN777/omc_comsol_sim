@@ -5,6 +5,20 @@ optical/mechanical-gap-first to mechanical/optical-gap-first (mechanical is
 the implemented backend in this project; optical is a future stub -- see
 src/optical_comsol_2d.py) and a distinct env var / default path so this
 project's results never collide with python-scripts/results/runs.sqlite.
+
+The column list is fixed; every other record key rides in the `record` JSON
+blob. That is not a limitation worth working around -- SQLite's JSON1 functions
+make the blob queryable, e.g.
+
+    SELECT id, score,
+           json_extract(record, '$.mech_parity')          AS parity,
+           json_extract(record, '$.mechanical_gap_oddz')  AS gap_oddz
+    FROM candidates WHERE parity = 'oddz' ORDER BY score DESC;
+
+Prefer that over adding a column. `CREATE TABLE IF NOT EXISTS` does NOT migrate
+an existing runs2d.sqlite, so a new column needs an `ALTER TABLE` guarded by a
+`PRAGMA table_info(candidates)` check, and every already-saved row would read
+NULL for it.
 """
 from __future__ import annotations
 

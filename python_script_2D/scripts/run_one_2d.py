@@ -13,7 +13,27 @@ the physical ranges and the fixed values.
 
 Stage progress (feasibility / mechanical / optical / score) is printed to
 stderr as each stage starts and finishes, so stdout stays pure JSON even when
-redirected to a file. Set `quiet: true` in the config to suppress it.
+redirected to a file. Set `quiet: true` in the config to suppress it. The
+mechanical stage's "done" line also reports the winning z-parity and both
+families' gaps.
+
+The scored quantity is the COMPLETE gap (`gap_mode: "complete"` in
+configs/targets_2d.yaml) -- a gap clear of both z-parity families. Set
+gap_mode: "symmetry" there to score the better single-family gap instead.
+
+BOTH z-parity families are always solved, and the JSON on stdout reports both:
+`mechanical_gap` / `mechanical_center_frequency` /
+`mechanical_gap_{lower,upper}_frequency` are the SCORED values, `mech_parity`
+says which family earned them ("evenz" / "oddz", or "complete" when gap_mode is
+complete), and the same four quantities suffixed `_evenz` / `_oddz` carry each
+family's own gap regardless of which was scored -- so the two families' gap
+edges (Hz) are readable directly and their overlap is
+`max(lower_*) .. min(upper_*)`. A family with no gap reports 0.0, not null.
+The full [n_k, n_bands] bands of both families go to `bands_npz`.
+
+Note that an overlap of the two families' gaps is NOT the same thing as a
+complete gap, and is not what gap_mode: complete scores -- see the EQUIVALENT
+FORMULATIONS note in src/objective2d.py:_combined_bands.
 """
 import argparse
 import json
@@ -56,7 +76,13 @@ def make_stderr_reporter():
             print(f"[{idx}/{n}] {label} ... skipped", file=sys.stderr)
         elif event == "done":
             dt = time.time() - t_start.get(name, time.time())
-            print(f"[{idx}/{n}] {name} ... done ({_fmt_time(dt)})", file=sys.stderr)
+            # `info` on a "done" event is an optional one-line summary. The
+            # mechanical stage uses it to report the winning z-parity and both
+            # families' gaps, so a long run shows which family is carrying the
+            # score without waiting for the JSON at the end.
+            extra = f" [{info}]" if info else ""
+            print(f"[{idx}/{n}] {name} ... done{extra} ({_fmt_time(dt)})",
+                  file=sys.stderr)
         elif event == "fail":
             dt = time.time() - t_start.get(name, time.time())
             print(f"[{idx}/{n}] {name} ... FAILED ({_fmt_time(dt)}): {info}",

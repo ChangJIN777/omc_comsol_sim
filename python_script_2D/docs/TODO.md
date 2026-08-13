@@ -206,6 +206,130 @@ Applies to the export script only; the `.mph` has not been regenerated.
       the ceiling invariant, `complete`-on-one-parity refusal, and BZ-loop
       closure being gap-neutral and idempotent.
 
+## ✅ Done (tranche 5 — per-parity results in the record)
+
+- [x] **Both z-parity families are now reported, not just the winner.** The
+      record gained `mech_parity` (`"evenz"` / `"oddz"`, or `"complete"`),
+      `mechanical_gap_{evenz,oddz}` and
+      `mechanical_center_frequency_{evenz,oddz}`. `mechanical_gap` /
+      `mechanical_center_frequency` keep their existing meaning as the *scored*
+      values, so this is additive per the CLAUDE.md schema rule. Both parities
+      were always solved and both were already in the `.npz`; the record simply
+      threw the loser away and never said which family had won — which makes a
+      scored candidate impossible to judge, since `gap_mode: symmetry` is only
+      acceptable *because a single parity couples to the transducer*.
+- [x] Per-family gaps are populated in **`complete` mode too** (they answer
+      "what would each family have given alone?", the first question when a
+      complete gap comes back empty). They are computed on the *untruncated*
+      family arrays, which is correct: within one family every mode below its
+      top band is known, so a single-family gap needs no ceiling — the
+      `_combined_bands` ceiling exists only because *stacking* leaves the
+      interleaving unknown.
+- [x] **Tie-break made explicit.** `objective2d.best_parity` (public) picks the
+      winner and breaks exact ties toward `PARITY_ORDER[0]` = `evenz`,
+      deliberately, so the label cannot flip between runs of a near-z-symmetric
+      design. `scripts/plot_bands_2d.py:select_gaps` now calls the same helper
+      instead of re-implementing the comparison, so a figure legend and a
+      record can no longer disagree about which family won — previously they
+      agreed only by coincidence (`sorted()` + a strict `>`).
+- [x] `mech_parity` rides in `database.py`'s `record` JSON blob — **no new
+      column, deliberately.** SQLite's JSON1 is built in here (3.53.3), so it is
+      already queryable:
+      `SELECT id, score, json_extract(record,'$.mech_parity') AS parity,
+      json_extract(record,'$.mechanical_gap_oddz') FROM candidates
+      WHERE parity='oddz' ORDER BY score DESC;`
+      A real column would need an `ALTER TABLE` guarded by `PRAGMA table_info`,
+      since `CREATE TABLE IF NOT EXISTS` will not migrate an existing
+      `runs2d.sqlite`. Not worth it for a field that is queryable as-is;
+      revisit only if parity ends up in a hot query path.
+- [x] Progress output surfaces it: `run_one_2d.py`'s mechanical "done" line now
+      carries `[oddz: 24.8% @ 7.99 GHz | evenz 2.3% oddz 24.8%]`, and
+      `run_loop_2d.py`'s per-iteration line prints `parity=`. Both docstrings
+      updated to describe the record's mechanical fields.
+- [x] Tests: **35 passing** (+5). Winning-family label; losing family with no
+      gap reporting `0.0` rather than NaN or a missing key; `complete` mode
+      still carrying both families; the evenz tie-break pinned (plus
+      `best_parity` on a single-family subset); and plotter-vs-record agreement
+      checked on data where *evenz* wins, the reverse of the other fixture.
+
+## ✅ Done (tranche 6 — "is a complete gap the overlap of the two gaps?")
+
+- [x] **Answered and written down at the code.** `_combined_bands`'s docstring
+      gained an EQUIVALENT FORMULATIONS section with the derivation, and
+      `objective2d`'s module docstring points at it, because this question will
+      be asked again. Short answer: stack-then-search returns a **strict
+      superset** of `union over (i,j) of (evenz_gap_i ∩ oddz_gap_j)`. A window
+      can be free of a family because it lies *below that family's lowest band*,
+      not only because it is inside one of that family's named gaps — the
+      overlap recipe cannot express those. 84% of random band pairs contain at
+      least one such window, and one can be the **largest** complete gap
+      (fixture in the suite: overlap 2.3%, correct answer 11.8%, a 5× miss).
+- [x] The containment direction is exact and now enforced:
+      `test_complete_gap_contains_every_pairwise_intersection` fuzzes random
+      flat/dispersive families with unequal band counts and asserts every
+      pairwise overlap below `min_k c_N` lands in exactly one combined gap.
+      Verified over 30 000 pairs / 48 283 overlaps offline: 0 misses, 0
+      multi-coverage.
+- [x] **The qualifier is `min_k c_N`, not the ceiling** — a band straddling the
+      ceiling is dropped by the `keep` mask, taking any gap that ended at its
+      bottom with it. Pinned by `test_ceiling_can_hide_a_real_overlap`. One-sided
+      conservatism: it can hide a real complete gap, never invent one, and the
+      fix is more `neigs` rather than a different reduction. **This is a live
+      argument for raising `neigs` above 10 in both studies** (already flagged
+      in tranche 3 for a different reason).
+- [x] **Gap EDGES added to the record** (Hz): `mechanical_gap_{lower,upper}_frequency`
+      for the scored gap and `..._{lower,upper}_frequency_{evenz,oddz}` per
+      family. Additive. They were algebraically recoverable as
+      `centre*(1 ∓ G/2)`, but only under *this* project's normalization
+      (`G = Δf/mean`, see `bandgap.Gap`) — `Δf/f_lower` is a common enough
+      alternative that a reader reconstructing edges could be quietly wrong.
+      Flat keys, not a nested dict, to match the existing
+      `mechanical_gap_{evenz,oddz}` naming; `json_extract` reaches either, so
+      nesting would only break the symmetry. Now
+      `max(lower_*) .. min(upper_*)` reads the overlap straight off a record.
+- [x] Tests: **40 passing** (+5). Fuzzeed containment; strict-superset via a
+      family with no gap at all; an extra beating the overlap 5×; the ceiling
+      hiding an overlap and reappearing when both families get another band;
+      and gap edges present for the scored gap and both families, including the
+      `centre*(1 ∓ G/2)` identity and all-zeros for a gapless family.
+- [x] **Decided against an "intersection view" in the plotter** — see the report;
+      in `complete` mode the shaded span already *is* the correct answer, and
+      drawing the overlap alongside it would advertise a quantity the code
+      deliberately does not score.
+
+## ✅ Done (tranche 7 — the COMPLETE gap is now what this pipeline scores)
+
+- [x] `configs/targets_2d.yaml`: **`gap_mode: "complete"`**. `mechanical_gap`,
+      `mechanical_center_frequency`, `mechanical_gap_{lower,upper}_frequency`
+      and `score` now all refer to the two-family gap. `"symmetry"` remains
+      fully supported and the YAML now argues *why* it exists as an option
+      (only one parity couples to the transducer) rather than presenting it as
+      the sane default.
+- [x] **Per-family diagnostics kept, and now load-bearing.**
+      `mechanical_gap_{evenz,oddz}`, their edges, and `mech_parity` are recorded
+      in complete mode too — they are the explanation for a narrow complete gap.
+      `test_targets_yaml_scores_the_complete_gap` asserts they survive, so a
+      future tidy-up cannot drop them.
+- [x] In-code fallbacks flipped to match the shipped config
+      (`objective2d.py:344`, `plot_bands_2d.py:330`), so a targets file missing
+      the key cannot silently switch modes back. Pinned by a test that greps for
+      the fallback string.
+- [x] **The no-COMSOL demo still works.** `configs/plot_bands_2d.yaml` now pins
+      `gap_mode: symmetry` explicitly, with a comment saying why: its default
+      input is the odd-z-only baseline, and complete mode correctly *raises* on
+      single-parity data. Verified both ways — the default invocation renders,
+      and removing the pin reproduces the guard's actionable message.
+- [x] Docs made coherent: `objective2d`'s module docstring, both run scripts'
+      docstrings (including the expected `parity=complete` and the plateau
+      warning), `plot_bands_2d.py`'s docstring, and `CLAUDE.md` — which now says
+      plainly that a complete gap **is** required here, and flags that
+      `../python-scripts/CLAUDE.md` says the opposite for the 1D project so the
+      language is not carried over. `README.md` needed no change (it never
+      described `gap_mode`).
+- [x] Tests: **42 passing** (+2) — the shipped `gap_mode` matches what the code
+      paths expect and takes the complete branch with diagnostics intact; and
+      the default plot config both pins `symmetry` and actually renders.
+
 ---
 
 ## 1. Residual single-source-of-truth issue
@@ -415,16 +539,92 @@ config rather than *wrong* dead config, which is an improvement but not a fix.
 
 ## 9. Validation — the gate on trusting anything
 
-- [ ] Run one candidate at the reference design with `kpts=9` and diff the
-      band structure against `runBands_2D.m`'s output. **This single
-      comparison validates sections 2, 3 and 5 simultaneously. Nothing
-      downstream should be trusted until it passes.**
+**The first end-to-end run must solve BOTH studies, not one.** Now that
+`gap_mode` is `"complete"`, a single-parity solve cannot produce a score at all.
+And there is no even-z band structure anywhere in this repo: `std1` (odd-z) was
+the only study ever solved, and `tests/data/baseline_oddz_reference.csv` is
+odd-z only. **The reference design's complete gap is therefore unknown**, and no
+config or doc should be read as claiming otherwise. The `.m`'s solve tail
+(`model.study('std1').runNoGen`) also only computes odd-z — see section 3.
+
+- [ ] Run one candidate at the reference design with `kpts=9`, **both
+      parities**, and diff the odd-z bands against
+      `tests/data/baseline_oddz_reference.csv` (27×10, and readable without
+      COMSOL). **This single comparison validates sections 2, 3 and 5
+      simultaneously. Nothing downstream should be trusted until it passes.**
+- [ ] Record the reference design's first-ever **even-z** spectrum and its
+      **complete** gap. Two numbers to write down from that record:
+      `truncation_ceiling_hz` and `n_bands_usable` — they decide whether
+      `n_bands`/`neigs` = 10 is enough (section 11), and there is currently no
+      way to know from one parity.
 - [ ] Then perturb one variable at a time (start with `th`, which changes no
       in-plane topology) and confirm the resolved face indices track. This is
       the cheapest test that section 2 actually worked.
 - [ ] Only then let the optimizer vary anything.
 
-## 10. Cleanup, last
+## 10. Consequences of scoring the COMPLETE gap (new, from tranche 7)
+
+Ordered by how much they can distort a run.
+
+- [ ] **The gapless plateau — the real optimizer risk, and `min_gap` does not
+      fix it.** Every candidate with no complete gap in the target window gets
+      `G_m = 0` *and* `f_center = 0`; the frequency penalty
+      `lambda_mech_freq*((f_c - f_t)/f_t)^2` then saturates at exactly 1.0, so
+      all of them score an identical **−1.40**. Complete mode makes that
+      plateau much larger than symmetry mode did. Note what is *not* wrong: the
+      quadratic hinge gives a *steeper* `dS/dG` below threshold (5.0 at `G=0`
+      for `min_gap=0.20`, vs 1.0 above threshold), so candidates that *do* have
+      a gap are well separated. The problems are the flat plateau and a **+1.05
+      score cliff** between "no gap" and "any gap at all", which is bad for any
+      surrogate that assumes smoothness (Optuna/TPE copes; a GP would not).
+      Fix by giving gapless candidates a weak ordering signal, e.g. score the
+      best single-family gap at a small weight, or use the largest complete gap
+      *anywhere* so `f_center` is not identically 0. This is a scoring-design
+      change; do it before switching the optimizer backend to anything
+      model-based.
+- [ ] **Decide `min_gap` deliberately.** 0.20 was inherited from symmetry mode,
+      not chosen for complete mode, and is flagged as such in
+      `configs/targets_2d.yaml`. **Recommendation: 0.10**, applied only once
+      someone owns the decision — see the report and the YAML commentary. It is
+      a low-stakes knob for optimizer behaviour (it shifts the plateau and
+      changes the sub-threshold slope) and a high-stakes one for
+      interpretability, so set it to the gap you would actually accept.
+- [ ] **Re-target `target_frequency_GHz` using two-parity data.** The 8 GHz
+      placeholder was already suspect from the odd-z baseline (whose real 30%
+      gap sits at 14.46 GHz, outside the [4, 12] GHz window — see
+      `results/figures/bands_2d.png`). A complete gap will sit at a different
+      frequency again, so re-derive it from the first two-parity solve rather
+      than from the odd-z figure.
+
+## 11. `neigs` / `n_bands` — verify, don't pre-emptively raise
+
+Complete mode is truncation-sensitive in a way symmetry mode is not: the usable
+range ends at `min_k c_N`, which sits below the ceiling, and a band straddling
+the ceiling silently removes any gap whose upper edge was that band's bottom
+(`test_ceiling_can_hide_a_real_overlap`). One-sided: it hides real gaps, never
+invents them.
+
+**Recommendation: keep 10 for now, and verify empirically rather than guessing.**
+The odd-z baseline's 10th band bottoms at 30.03 GHz, ~2.5× above the [4, 12] GHz
+scoring window, so the target region has ample headroom from the one parity we
+can see. Raising `neigs` on that basis alone would buy unmeasured safety at a
+real cost.
+
+- [ ] After the first two-parity solve, read `truncation_ceiling_hz` and
+      `n_bands_usable` out of the record (stored for exactly this purpose). If
+      the ceiling is within ~1.5× of the scoring window's upper edge, raise.
+- [ ] If raising: **change all four together or the change does nothing.**
+      `n_bands` in `configs/targets_2d.yaml`, plus `neigs` on `std_eigv` and
+      `std_eigv1` (the two study steps) and on `solv_eigv` (the solver feature)
+      in `comsol/trusty_boomerang_script.m` — then rebuild the `.mph`.
+      `n_bands` > `neigs` makes `run_mechanical_comsol_2d` raise; `neigs` >
+      `n_bands` computes modes that are then discarded and leaves the ceiling
+      where it was.
+- [ ] Cost if it comes to it: 10 → 16 is roughly +60% on the dominant
+      eigensolve cost, i.e. ~54 → ~86 eigensolve-equivalents per candidate at
+      `kpts=9`. Worth it to stop hiding gaps; not worth it speculatively.
+
+## 12. Cleanup, last
 
 - [ ] Rewrite `README_template_2d.md` from the *rebuilt* model rather than from
       intent. It has been patched (r1/r2, C44=578/rho=3500, "keep the `k`

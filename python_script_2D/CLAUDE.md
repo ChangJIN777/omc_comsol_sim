@@ -20,6 +20,16 @@ solver physics):
   z-odd ("mech oddz") families. A gap can be required across BOTH
   (`gap_mode: "complete"`) or within just one (`gap_mode: "symmetry"`) --
   see `configs/targets_2d.yaml`.
+  **A complete gap IS required here: `gap_mode` defaults to `"complete"`**, so
+  `mechanical_gap` and `score` mean the two-family gap. (Note this differs from
+  `../python-scripts/CLAUDE.md`, where a complete phononic gap is explicitly
+  NOT required -- do not carry that statement over.) Both parities are solved
+  either way, and the per-family gaps and their edges
+  (`mechanical_gap_{evenz,oddz}`, `mechanical_gap_{lower,upper}_frequency_*`,
+  `mech_parity`) are recorded in both modes -- in complete mode they are the
+  diagnostic that explains *why* a complete gap came out narrow.
+  A complete gap is **not** the overlap of the two families' gaps; it is a
+  strict superset. See `src/objective2d.py:_combined_bands`.
 
 Optical (photonic) bandgap optimization is **planned but not implemented**
 -- see `docs/optical_2d_plan.md`. `src/optical_comsol_2d.py` is a stub that

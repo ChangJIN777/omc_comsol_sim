@@ -11,6 +11,20 @@ n_init, n_iter, mech/optical backends and require flags, and the optimizer
 backend. Only the mechanical backend is implemented so far -- keep
 require_opt: false / optical_backend: none until src/optical_comsol_2d.py is
 built (see docs/optical_2d_plan.md).
+
+The scored quantity is the COMPLETE gap (`gap_mode: "complete"` in
+configs/targets_2d.yaml), so `parity=complete` on every line is expected; it
+becomes `evenz`/`oddz` only under gap_mode: "symmetry".
+
+The per-iteration line prints the scored gap; each family's own gap is in the
+saved record (`mechanical_gap_{evenz,oddz}` and their edges -- see
+objective2d._mechanical_gap), which is what to re-rank on later, or to explain a
+narrow complete gap, rather than re-reading every `bands_npz`.
+
+Expect a plateau early on: every candidate with no complete gap in the target
+window scores an identical -1.40 (G_m = 0 and f_center = 0 together saturate the
+frequency penalty). That is a property of the scoring function, not of the
+sampler -- see configs/targets_2d.yaml's min_gap commentary.
 """
 import argparse
 import os
@@ -64,7 +78,9 @@ def main():
              constraints={"mechanical_gap": rec.get("mechanical_gap"),
                           "optical_gap": rec.get("optical_gap")})
         print(f"[{it:3d}] score={rec['score']:+.4f} "
-              f"Gm={rec.get('mechanical_gap')} Go={rec.get('optical_gap')} "
+              f"Gm={rec.get('mechanical_gap')} "
+              f"parity={rec.get('mech_parity')} "
+              f"Go={rec.get('optical_gap')} "
               f"status={rec['status']}")
 
     b = best_result()

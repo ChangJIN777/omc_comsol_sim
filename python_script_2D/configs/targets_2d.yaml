@@ -10,14 +10,68 @@
 mechanical:
   target_frequency_GHz: 8.0        # desired mid-gap mechanical frequency (placeholder;
                                     # pick a value appropriate to your slab thickness)
+
+  # ---- min_gap: INHERITED FROM SYMMETRY MODE, NOT CHOSEN FOR COMPLETE ----
+  # 0.20 was set when gap_mode was "symmetry". It is a far stricter bar for a
+  # COMPLETE gap: a complete gap must be clear of BOTH z-parity families, so it
+  # is bounded by (and usually much narrower than) the better single-family gap.
+  # We cannot yet say by how much for THIS cell -- see the note under gap_mode.
+  #
+  # Recommendation is 0.10, deliberately NOT applied here so the change is a
+  # decision rather than a silent retune. Two things to know before deciding:
+  #   * min_gap barely affects optimizer behaviour. The penalty is a quadratic
+  #     hinge, lambda_mech*max(0, min_gap - G)^2, so a LARGER min_gap gives a
+  #     STEEPER dS/dG below threshold (5.0 at G=0 for min_gap=0.20 vs 3.0 for
+  #     0.10, against 1.0 above threshold). It does not flatten the landscape.
+  #   * What does flatten it is candidates with NO gap in the window at all:
+  #     those get G_m = 0 AND f_center = 0, the frequency penalty saturates at
+  #     exactly 1.0, and every one of them scores an identical -1.40 (-1.10 at
+  #     min_gap 0.10). Lowering min_gap shifts that plateau but does not remove
+  #     it, and there is a +1.05 score cliff between "no gap" and "any gap".
+  #     In complete mode the gapless fraction of the design space is larger, so
+  #     this plateau is the real optimizer risk -- fixing it means changing the
+  #     scoring (e.g. a weak secondary term for gapless candidates), not tuning
+  #     this number. Tracked in docs/TODO.md.
+  # So set min_gap to the gap you would actually ACCEPT, not to something that
+  # makes the numbers look better.
   min_gap: 0.20                    # required normalized mechanical gap
-  # "complete": no band of EITHER z-parity in the gap (a true full phononic gap).
-  # "symmetry": largest gap within a single z-parity family is acceptable (a
-  #             quasi/symmetry-restricted gap) -- easier to obtain, and often
-  #             the practically relevant one if only evenz (or oddz) modes
-  #             couple to your transducer/actuation scheme.
-  gap_mode: "symmetry"             # "complete" | "symmetry"
-  # Number of bands to resolve per z-parity family (see acoustic_comsol_2d.py).
+
+  # "complete": no band of EITHER z-parity in the gap -- a true full phononic
+  #             gap. THIS IS THE DEFAULT. It is the physically demanding and
+  #             unambiguous requirement: any mode of either parity crossing the
+  #             window can scatter, so a complete gap is what a phononic shield
+  #             or a clamping-loss-free cavity actually needs.
+  # "symmetry": largest gap within a single z-parity family. Still supported and
+  #             still a legitimate ask -- if only evenz (or oddz) modes couple
+  #             to your transducer/actuation scheme, the other family's bands
+  #             are harmless and requiring them to be clear over-constrains the
+  #             design. Use it deliberately, and read `mech_parity` in the
+  #             result record to see which family a score came from.
+  #
+  # NOTE: a complete gap is NOT the overlap of the two families' gaps -- it is
+  # a strict superset. See the EQUIVALENT FORMULATIONS section of
+  # src/objective2d.py:_combined_bands.
+  #
+  # NOTE: no even-z band structure exists yet anywhere in this repo -- `std1`
+  # (odd-z) is the only study ever solved, and tests/data/baseline_oddz_reference.csv
+  # is odd-z only. The reference design's complete gap is therefore UNKNOWN.
+  # The first end-to-end run must solve BOTH studies; nothing here should be
+  # read as a claim about what the complete gap is.
+  gap_mode: "complete"             # "complete" | "symmetry"
+
+  # Bands per z-parity family. Must be <= the studies' `neigs` in
+  # comsol/trusty_boomerang_script.m (currently 10) or the solve raises.
+  #
+  # Complete mode is truncation-sensitive in a way symmetry mode is not: the
+  # usable range ends at min_k c_N (see _combined_bands), which sits below the
+  # ceiling, and a band straddling the ceiling silently removes any gap whose
+  # upper edge was that band's bottom. 10 is probably adequate for an 8 GHz
+  # target -- on the odd-z baseline the 10th band bottoms near 30 GHz, well
+  # above the [4, 12] GHz scoring window -- but that is an argument from ONE
+  # parity. After the first two-parity solve, check `truncation_ceiling_hz` and
+  # `n_bands_usable` in the record (they are stored for exactly this); if the
+  # ceiling is within ~1.5x of the window's upper edge, raise this AND `neigs`
+  # in both study steps together. See docs/TODO.md for the cost.
   n_bands: 10
 
 optical:

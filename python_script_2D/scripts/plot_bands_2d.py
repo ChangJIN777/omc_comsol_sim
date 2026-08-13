@@ -30,7 +30,10 @@ differ, and each one would be wrong if carried over:
      are Gamma/M/K/Gamma at 0/1/2/3 with separators at the segment joins.
   2. There are TWO band families (z-even / z-odd about the slab midplane), not
      one. Both are drawn when present; either alone is fine.
-  3. Gap shading follows targets_2d.yaml's `gap_mode`. In "complete" mode the
+  3. Gap shading follows targets_2d.yaml's `gap_mode` (now "complete"), which
+     the plot config can override -- and configs/plot_bands_2d.yaml does, back
+     to "symmetry", because its default input is the odd-z-only baseline and
+     "complete" is undefined for a single family. In "complete" mode the
      truncation ceiling from objective2d._combined_bands is drawn as a
      horizontal line, because any apparent gap above it is an artifact of
      having solved a finite number of bands -- making that visible is the whole
@@ -56,7 +59,7 @@ import matplotlib.pyplot as plt                          # noqa: E402
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from bandgap import largest_gap, gap_near_frequency      # noqa: E402
-from objective2d import _combined_bands                  # noqa: E402
+from objective2d import _combined_bands, best_parity     # noqa: E402
 
 _HERE = os.path.dirname(__file__)
 _DEFAULT_CONFIG = os.path.join(_HERE, "..", "configs", "plot_bands_2d.yaml")
@@ -165,21 +168,18 @@ def select_gaps(families, f_target, rel_tol, gap_mode):
                     ceiling_hz=float(ceiling),
                     n_bands_usable=int(bands.shape[1]))
 
-    # symmetry mode: best single family near the target, and the family name.
-    scored, scored_p = None, None
-    for p, F in sorted(families.items()):
-        gp = gap_near_frequency(F, f_target, rel_tol=rel_tol)
-        if gp.found and (scored is None or gp.normalized_gap > scored.normalized_gap):
-            scored, scored_p = gp, p
-    best, best_p = None, None
-    for p, F in sorted(families.items()):
-        gp = largest_gap(F)
-        if gp.found and (best is None or gp.normalized_gap > best.normalized_gap):
-            best, best_p = gp, p
-    return dict(scored=scored,
-                scored_label=None if scored is None else f"{scored_p} symmetry gap",
-                best=best,
-                best_label=None if best is None else f"{best_p}, largest anywhere",
+    # Symmetry mode: best single family near the target, and the family name.
+    # objective2d.best_parity does the picking (including the evenz-wins-ties
+    # rule) so the legend here can never disagree with the `mech_parity` in a
+    # result record for the same data.
+    scored_p, scored = best_parity(
+        {p: gap_near_frequency(F, f_target, rel_tol=rel_tol)
+         for p, F in families.items()})
+    best_p, best = best_parity({p: largest_gap(F) for p, F in families.items()})
+    return dict(scored=scored if scored.found else None,
+                scored_label=None if not scored.found else f"{scored_p} symmetry gap",
+                best=best if best.found else None,
+                best_label=None if not best.found else f"{best_p}, largest anywhere",
                 ceiling_hz=None, n_bands_usable=None)
 
 
@@ -330,7 +330,7 @@ def main(argv=None):
         a=a,
         f_target_hz=f_target,
         rel_tol=float(cfg.get("rel_tol", 0.5)),
-        gap_mode=cfg.get("gap_mode", mech.get("gap_mode", "symmetry")),
+        gap_mode=cfg.get("gap_mode", mech.get("gap_mode", "complete")),
         title=cfg.get("title"),
         ylim_GHz=cfg.get("ylim_GHz"),
         dpi=int(cfg.get("dpi", 150)),
