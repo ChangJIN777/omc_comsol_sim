@@ -21,11 +21,18 @@
 % objective produces wherever no complete gap exists.
 %
 % DESIGN VARIABLES (all in integer nanometres - see note on caching below)
-%   a   lattice constant
-%   r   hole height  (unit cell height, along y)
-%   w   hole width   (unit cell width, along x)
-%   th  slab thickness
+%   a   lattice constant; side of the rhombic cell. Sets the cell footprint.
+%   r   hole ARM LENGTH, cell centre to arm tip. Not a cell dimension.
+%   w   hole ARM WIDTH - the narrowest etched feature. Not a cell dimension.
+%   th  full slab thickness in z
 % Fillet radii r1/r2 are held fixed, matching sweep_boomerang_code.m.
+%
+% The cell is the primitive rhombus of a hexagonal lattice (side a), and the
+% hole is a three-pointed star: three arms, each w wide and r long, radiating
+% from the cell centre at 120 deg spacing. See test_Boomerang.m for the full
+% geometry write-up. Beware that "unit cell width/height" comments elsewhere
+% in this directory mislabel w and r - they are hole dimensions, and `a` alone
+% sets the cell footprint.
 %
 % Variables are declared as integers in nm rather than continuous metres on
 % purpose. solveBands names its output files by rounding every dimension to
@@ -86,8 +93,9 @@ cfg.bounds.w  = [ 50  120];
 cfg.bounds.th = [275  350];
 
 % --- fixed geometry ------------------------------------------------------
-cfg.r1 = 10e-9;             % fillet radius, hole edges
-cfg.r2 = 10e-9;             % fillet radius, hole centre
+cfg.r1 = 10e-9;             % fillet radius at the INNER corners, where the
+                            % three arms meet near the cell centre
+cfg.r2 = 10e-9;             % fillet radius at the OUTER arm tips
 
 % --- solver fidelity (kept identical to sweep_boomerang_code.m) ----------
 cfg.kpts     = 9;           % k-points EXCLUDING gamma
@@ -273,12 +281,12 @@ P.xsect    = 'rect';
 P.beamMat  = 'diamond';
 P.celltype = 'boomerang';
 P.unitcell = 'hexagonal';
-P.a  = double(x.a)*nm;      % lattice constant
-P.w  = double(x.w)*nm;      % unit cell width (along x)
-P.r  = double(x.r)*nm;      % unit cell height (along y)
-P.th = double(x.th)*nm;     % slab thickness
-P.r1 = cfg.r1;              % fillet radius, hole edges
-P.r2 = cfg.r2;              % fillet radius, hole centre
+P.a  = double(x.a)*nm;      % lattice constant; side of the rhombic cell
+P.w  = double(x.w)*nm;      % hole arm width (narrowest etched feature)
+P.r  = double(x.r)*nm;      % hole arm length, cell centre to arm tip
+P.th = double(x.th)*nm;     % full slab thickness in z
+P.r1 = cfg.r1;              % fillet radius, inner corners (arms meet at centre)
+P.r2 = cfg.r2;              % fillet radius, outer arm tips
 P.nperiod    = 1;           % no. of periods to simulate for
 P.holeatedge = 0;           % 1/0 for hole at edge/center of unit cell
 
