@@ -1,11 +1,24 @@
 function ds = solveOpticalBands(P)
 
 %% make the file directory
-if ~strcmp(P.datLoc(end),'\')
-    datLoc = [P.datLoc,'\'];
-else
-    datLoc = P.datLoc;
+% Normalise the separators before testing or creating anything, then write the
+% result back into P so every downstream consumer sees the same path. The old
+% version tested strcmp(P.datLoc(end),'\') against a hard-coded backslash: a
+% datLoc ending in '/' failed that test, so a stray '\' was appended and the
+% directory that actually got created was not the one the figures were later
+% written into. That is the "Unable to create output file ... No such file or
+% directory" you get from the plotgeom block in runOpticalBand_*, which fires
+% before this function's own saveplots mkdir further down.
+%
+% Same normalise-and-create pattern runBands_2D already uses. On Windows filesep
+% is '\', so this is a no-op there and the behaviour is unchanged.
+if isfield(P,'datLoc') && ~isempty(P.datLoc)
+    P.datLoc = strrep(strrep(P.datLoc,'\',filesep),'/',filesep);
+    if ~strcmp(P.datLoc(end),filesep)
+        P.datLoc = [P.datLoc,filesep];
+    end
 end
+datLoc = P.datLoc;
 % create directory to save files
 if ~exist(datLoc,'dir')
     mkdir(datLoc)

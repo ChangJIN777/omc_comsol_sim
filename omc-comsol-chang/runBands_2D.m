@@ -99,6 +99,45 @@ else
 end 
 
 %% Set up the geometry
+% An air disk must never reach the mechanical model, so it is forced off here
+% regardless of what the caller asked for.
+%
+% Why this is a hard override rather than the caller's business: an air disk is
+% an optical construct - it supplies the surrounding medium a photonic mode
+% radiates into. This function solves Solid Mechanics, and it assigns both the
+% material (bMat.selection.set) and the physics (smech.selection.set) to
+% mbfem.b_domind = 1, a single hard-coded domain. A second domain introduced by
+% the air block therefore gets no material and no physics, and worse, it can
+% renumber the domains so that domain 1 is no longer the diamond - which would
+% not error, it would silently solve the wrong body. The extra boundaries it
+% brings can also change what the bndindex lookups in the geometry builders
+% return for the Floquet pairs and the z-symmetry plane.
+%
+% Placed before the dispatch rather than inside one branch so it covers every
+% celltype. Today only the boomerang branch reads the flag
+% (buildBoomerangUnitCell), but buildBoomerangUnitCellStrip_v2 and
+% buildBoomerangStrip_3D also honour it, so a future builder added here would
+% otherwise inherit the hazard silently.
+%
+% Note for the optical side: this override is local to the mechanical solver
+% and does not touch the caller's own P. runOpticalBand_1D/_2D/_3D are
+% unaffected, so an air disk requested for an optical study still gets built.
+if isfield(P,'add_airDisk') && P.add_airDisk
+    % Fires once per symmetry sector, so twice per design point. Suppress with
+    % warning('off','runBands_2D:airDiskDisabled') if you are deliberately
+    % sharing one P between an optical and a mechanical run.
+    warning('runBands_2D:airDiskDisabled', ...
+        ['P.add_airDisk was enabled but this is the mechanical solver - ' ...
+         'forcing it off for this geometry build. Solid Mechanics here is ' ...
+         'applied to domain 1 only, so an air domain would get no material ' ...
+         'and could renumber which domain is the solid. Use the optical ' ...
+         'path (runOpticalBand_*) if you want the air region.']);
+end
+% Unconditional, so "no air disk in a mechanical run" holds even for a builder
+% whose own default is on. ds.P returned at the end therefore describes the
+% geometry as actually built.
+P.add_airDisk = 0;
+
 if strcmp(P.celltype,'cross')
     [model,P] = buildCrossUnitCell(model,P);
 elseif strcmp(P.celltype,'boomerang')

@@ -21,6 +21,23 @@ meshSize = P.meshSize;
 holeatedge = P.holeatedge; % 1/0 if unit cell terminates in middle of hole/dielectric
 
 
+% create P.datLoc if it does not already exist -- normalise separators first.
+% The test scripts hardcode '\', which on macOS/Linux is an ordinary filename
+% character rather than a separator, so without this mkdir makes one oddly-named
+% folder instead of the intended tree. Mirrors what runBands_2D does. Needed
+% HERE, before the plotgeom block below, because that block is the first thing
+% in this function to write a file - the saveplots mkdir near the end is far too
+% late, and is only for the per-design subfolder.
+if isfield(P,'datLoc') && ~isempty(P.datLoc)
+    P.datLoc = strrep(strrep(P.datLoc,'\',filesep),'/',filesep);
+    if ~strcmp(P.datLoc(end),filesep)
+        P.datLoc = [P.datLoc,filesep];
+    end
+    if ~exist(P.datLoc,'dir')
+        mkdir(P.datLoc)
+    end
+end
+
 %% Define k-points for sweep over wavevectors (1D band structure)
 % adapted from phononic crystal model on COMSOL
 
@@ -86,7 +103,10 @@ end
 if P.plotgeom
     figure;
     mphgeom(model)
-    pathFig = [P.datLoc,'\',P.fileBase,'_geom'];
+    % P.datLoc already carries a trailing separator from the block at the top,
+    % so no separator is inserted here. The previous [P.datLoc,'\',...] both
+    % doubled it and hardcoded a backslash.
+    pathFig = [P.datLoc,P.fileBase,'_geom'];
     saveas(gcf,[pathFig,'.fig']);
     saveas(gcf,[pathFig,'.png']);
 end
