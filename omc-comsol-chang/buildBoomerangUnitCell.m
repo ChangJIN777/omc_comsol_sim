@@ -3,15 +3,31 @@ function [model,P] = buildBoomerangUnitCell(model,P)
 % buildBoomerangUnitCell.m
 %
 % Model exported on Jul 21 2024, 16:57 by COMSOL 6.1.0.357.
+%
+% Builds the boomerang unit cell: the primitive rhombus of a hexagonal lattice
+% (side a) with a three-pointed star hole - three arms, each w wide and r long,
+% radiating from the cell centre at 120 deg spacing.
+%
+% OPTIONAL AIR DISK
+%   P.add_airDisk     0/absent (default) = solid only, geometry unchanged.
+%                     1 = add an air region on top of the slab, as in
+%                     comsol_templates/BoomerangWithAirDisk.m.
+%   P.airDiskHeight   Total height of that air region in metres, measured from
+%                     the base of the remaining solid (z = 0 when P.mbevenz is
+%                     nonzero, otherwise z = -th/2). P.airDiskH is accepted as
+%                     an alias - see resolveAirDiskHeight below.
+%   Only read when P.add_airDisk is on. See the CAUTION at the air disk block:
+%   this file is on the mechanical path, and an air domain is an optical
+%   construct.
 
-%% read the input parameters 
-a = P.a;        % lattice constant 
-w = P.w;        % the width of the hole 
-th = P.th;        % the height of the hole
-r = P.r;        % the height of the hole 
-r1 = P.r1;      % the fillet radius of the edges of the hole 
-r2 = P.r2;      % the fillet radius of the center of the hole 
-abssym = abs(P.mbevenz);    % symmetry in the z direction 
+%% read the input parameters
+a = P.a;        % lattice constant; side of the rhombic cell
+w = P.w;        % hole arm width (the narrowest etched feature)
+th = P.th;      % full slab thickness in z
+r = P.r;        % hole arm length, cell centre to arm tip
+r1 = P.r1;      % fillet radius at the inner corners, where the arms meet
+r2 = P.r2;      % fillet radius at the outer arm tips
+abssym = abs(P.mbevenz);    % symmetry in the z direction
 
 %% Create component 
 ucellcomp = model.modelNode.create('comp1');
@@ -101,6 +117,73 @@ if abs(P.mbevenz)
     P.bndSel.Zsym = inds';
 
 end
+
+%% Air disk (optional, P.add_airDisk)
+% Adds an air region sitting on the slab, ported from
+% comsol_templates/BoomerangWithAirDisk.m. That template builds it as a second
+% work plane ('airDisk') carrying the SAME rhombic footprint as the slab base,
+% extruded upward, and deliberately does NOT compose it with the solid: the
+% default Form Union finalization partitions the overlap, so the etched tri-arm
+% hole and the space above the slab both become air while the diamond keeps its
+% own domain. Reusing the identical footprint also matters for the periodic BCs
+% - an air block of any other outline would not tile with the Floquet pairs.
+%
+% Absent or zero P.add_airDisk leaves the geometry byte-for-byte as before, so
+% every existing caller is unaffected.
+%
+% CAUTION, and please read before switching this on for a band-structure run.
+% The only live caller of this file is runBands_2D (the MECHANICAL path); the
+% optical boomerang runs go through buildBoomerangUnitCell_2D (2D and 3D) or
+% buildBoomerangUnitCellStrip_v2 (1D) instead. runBands_2D hard-codes
+% mbfem.b_domind = 1 and assigns both the material and the solid-mechanics
+% selection to that one domain, so a second domain introduced here gets no
+% material and no physics, and may renumber which domain is the diamond. The
+% added boundaries can also change what the bndindex lookups below return for
+% the Floquet and symmetry selections. An air disk is an optical construct; if
+% that is what you are after, buildBoomerangUnitCell_2D is probably the file you
+% want. It is implemented here because it was asked for, defaulted off so it
+% cannot surprise a mechanical study.
+if isfield(P,'add_airDisk') && P.add_airDisk
+    airDiskHeight = resolveAirDiskHeight(P);
+
+    % Base of the air region. The slab is extruded from -th/2 through +th/2,
+    % but the z-symmetry block above removes everything below z = 0 when
+    % P.mbevenz is nonzero - so the air has to start from whichever face is
+    % actually the bottom of the remaining solid, or it would begin inside it.
+    if abs(P.mbevenz)
+        zAirBase = 0;
+    else
+        zAirBase = -th/2;
+    end
+
+    % airDiskHeight is the TOTAL height of the air region measured from that
+    % base, matching the template's flat 5000[um] extrude from z = 0 - not the
+    % clearance above the top face. Warn rather than error if it fails to clear
+    % the solid: the geometry still builds, it just contains no air above the
+    % slab, which is a silent way to get meaningless optical results.
+    if zAirBase + airDiskHeight <= th/2
+        warning('buildBoomerangUnitCell:airDiskTooShort', ...
+            ['Air disk height %g nm measured from z = %g nm does not reach ' ...
+             'above the slab top at %g nm, so no air lies above the solid.'], ...
+            airDiskHeight*1e9, zAirBase*1e9, (th/2)*1e9);
+    end
+
+    airWP = ucellgeom.feature.create('airDiskWP', 'WorkPlane');
+    airWP.label('airDisk');
+    airWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', zAirBase);
+    airPlane = airWP.geom.feature.create('pol_air', 'Polygon');
+    airPlane.set('source', 'table');
+    airPlane.set('table', [0 0; a/2 (a/2)*sqrt(3); a*(3/2) (a/2)*sqrt(3); a 0; 0 0]);
+
+    airExt = ucellgeom.feature.create('airDiskExt', 'Extrude');
+    airExt.setIndex('distance', airDiskHeight, 0);
+    % Input selection set explicitly. The symmetry-block extrude above omits
+    % it and relies on the default, which silently picks up the wrong work
+    % plane once there is more than one candidate in the sequence.
+    airExt.selection('input').set({'airDiskWP'});
+    ucellgeom.runCurrent;
+end
+
 %% Making selections (manual)
 mphgeom(model);
 P.xEnd1 =  bndindex(ucellgeom, [0 0 0], [sqrt(3)*a/2 -a/2 0]);
@@ -115,6 +198,36 @@ P.zEnd = bndindex(ucellgeom, [0 0 0], [0 0 1]);
 disp(P) % debugging
 out = model;
 end
+
+function airDiskHeight = resolveAirDiskHeight(P)
+%RESOLVEAIRDISKHEIGHT Air disk height [m], from P.airDiskHeight or P.airDiskH.
+%
+% P.airDiskHeight is the documented name for this builder. P.airDiskH is
+% accepted as an alias because it is what the rest of this directory already
+% uses - buildHoleUnitCell.m, buildHoleStrip_3D.m and
+% buildBoomerangUnitCellStrip_v2.m all read P.airDiskH, and test_BoomerangStrip.m,
+% test_Hole_Strip.m, test_hole_unitCell.m, optimize_hole_unitCell.m and
+% boomerang_optimize_sweep_diamond.m all set it. Rejecting it would mean those
+% configs set an air disk height that this file silently ignored. When both are
+% present P.airDiskHeight wins, since it is the more specific request.
+
+if isfield(P,'airDiskHeight')
+    airDiskHeight = P.airDiskHeight;
+elseif isfield(P,'airDiskH')
+    airDiskHeight = P.airDiskH;
+else
+    error('buildBoomerangUnitCell:noAirDiskHeight', ...
+        ['P.add_airDisk is enabled but no height was given. Set ' ...
+         'P.airDiskHeight (or P.airDiskH) to the air region height in metres.']);
+end
+
+% Caught here rather than inside COMSOL, where a zero or negative extrude
+% distance surfaces as an opaque Java geometry error several calls deeper.
+validateattributes(airDiskHeight, {'numeric'}, ...
+    {'scalar','real','finite','positive'}, mfilename, 'air disk height');
+end
+
+% -------------------------------------------------------------------------
 
 function addFillet(P,ucellgeom,hole_pos,selection_width)
     w = P.w;
