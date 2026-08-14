@@ -108,8 +108,12 @@ if abs(P.mbevenz)
     % beam z-symmetry plane
     delta = 10e-9;
     ZsymSel = ucellgeom.create('ZsymSel', 'BoxSelection');
-    ZsymSel.set('xmin', -a/2-delta).set('xmax', a/2+delta);
-    ZsymSel.set('ymin', -a/2-delta).set('ymax', a/2+delta);
+    % Unbounded in x and y. The rhombic cell spans x in [0, 3a/2] and
+    % y in [0, a*sqrt(3)/2], so the previous +/-(a/2+delta) box sat mostly
+    % outside the cell and clipped the z = 0 face it is meant to select.
+    % Only the z extent has to be tight - that is what picks out the plane.
+    ZsymSel.set('xmin', '-inf').set('xmax', 'inf');
+    ZsymSel.set('ymin', '-inf').set('ymax', 'inf');
     ZsymSel.set('zmin', -delta).set('zmax', delta);
     ZsymSel.set('entitydim', 2).set('condition', 'allvertices'); % only want beam surface, exclude air holes
     ucellgeom.runCurrent;
@@ -184,6 +188,56 @@ if isfield(P,'add_airDisk') && P.add_airDisk
     ucellgeom.runCurrent;
 end
 
+%% Periodic-boundary selections (named)
+% Cumulative selections, so the Floquet BCs can be picked by name -
+% 'geom1_xboundaries_bnd' and 'geom1_yboundaries_bnd' - the way runBands.m
+% does it, instead of by the P.xEnd*/P.yEnd* indices below. Index lookups
+% renumber whenever a geometry feature is added; see the air disk CAUTION.
+%
+% This cell is the primitive rhombus of a hexagonal lattice, not a rectangle,
+% so the pair separated by a1 = (a,0) - the "x" pair - are the two 60 deg
+% SLANTED faces. A thin axis-aligned box cannot isolate a slanted face, so
+% each is caught by a box spanning its full x extent (left face x in
+% [0, a/2], right face x in [a, 3a/2]) with condition 'inside'. The a2 pair
+% (bottom y = 0, top y = a*sqrt(3)/2) is axis-aligned, so a thin y slab does.
+sel_delta = 10e-9;
+
+x_boundary_boxsel_l = ucellgeom.feature.create('x_boundary_boxsel_l', 'BoxSelection');
+x_boundary_boxsel_l.set('entitydim', 2);
+x_boundary_boxsel_l.set('xmin', -sel_delta).set('xmax', a/2+sel_delta);
+x_boundary_boxsel_l.set('inputent', 'all');
+x_boundary_boxsel_l.set('condition', 'inside');
+
+x_boundary_boxsel_r = ucellgeom.feature.create('x_boundary_boxsel_r', 'BoxSelection');
+x_boundary_boxsel_r.set('entitydim', 2);
+x_boundary_boxsel_r.set('xmin', a-sel_delta).set('xmax', 3*a/2+sel_delta);
+x_boundary_boxsel_r.set('inputent', 'all');
+x_boundary_boxsel_r.set('condition', 'inside');
+
+ucellgeom.selection.create('xboundaries','CumulativeSelection');
+ucellgeom.selection('xboundaries').label('Cumulative Selection x boundaries');
+x_boundary_boxsel_l.set('contributeto','xboundaries');
+x_boundary_boxsel_r.set('contributeto','xboundaries');
+
+y_boundary_boxsel_b = ucellgeom.feature.create('y_boundary_boxsel_b', 'BoxSelection');
+y_boundary_boxsel_b.set('entitydim', 2);
+y_boundary_boxsel_b.set('ymin', -sel_delta).set('ymax', sel_delta);
+y_boundary_boxsel_b.set('inputent', 'all');
+y_boundary_boxsel_b.set('condition', 'inside');
+
+y_boundary_boxsel_t = ucellgeom.feature.create('y_boundary_boxsel_t', 'BoxSelection');
+y_boundary_boxsel_t.set('entitydim', 2);
+y_boundary_boxsel_t.set('ymin', (a/2)*sqrt(3)-sel_delta).set('ymax', (a/2)*sqrt(3)+sel_delta);
+y_boundary_boxsel_t.set('inputent', 'all');
+y_boundary_boxsel_t.set('condition', 'inside');
+
+ucellgeom.selection.create('yboundaries','CumulativeSelection');
+ucellgeom.selection('yboundaries').label('Cumulative Selection y boundaries');
+y_boundary_boxsel_b.set('contributeto','yboundaries');
+y_boundary_boxsel_t.set('contributeto','yboundaries');
+
+ucellgeom.runAll;
+
 %% Making selections (manual)
 mphgeom(model);
 P.xEnd1 =  bndindex(ucellgeom, [0 0 0], [sqrt(3)*a/2 -a/2 0]);
@@ -193,6 +247,14 @@ P.yEnd1 =  bndindex(ucellgeom, [0 0 0], [0 1 0]);
 P.yEnd2 = bndindex(ucellgeom, [a (a/2)*sqrt(3) 0], [0 1 0]);
 % Note that this will return no indices if there is no boundary at z=0
 P.zEnd = bndindex(ucellgeom, [0 0 0], [0 0 1]);
+
+% Cross-check the named selections against the index lookups above. The x
+% boxes span half the cell each, so if a hole arm reaches into one of those
+% bands (large r/a) the 'inside' condition would swallow an interior face
+% too, and a Floquet condition would be applied to the wrong surface. Warn
+% rather than error - the geometry is still valid, the selection is not.
+checkNamedBndSel(model, ucellname, 'xboundaries', [P.xEnd1 P.xEnd2]);
+checkNamedBndSel(model, ucellname, 'yboundaries', [P.yEnd1 P.yEnd2]);
 % % debugging
 % mphplot(model);
 disp(P) % debugging
@@ -225,6 +287,48 @@ end
 % distance surfaces as an opaque Java geometry error several calls deeper.
 validateattributes(airDiskHeight, {'numeric'}, ...
     {'scalar','real','finite','positive'}, mfilename, 'air disk height');
+end
+
+% -------------------------------------------------------------------------
+
+function checkNamedBndSel(model, ucellname, selname, expected)
+%CHECKNAMEDBNDSEL Warn if a cumulative selection misses the expected faces.
+%
+% selname   geometry cumulative selection, e.g. 'xboundaries'
+% expected  boundary indices the bndindex lookups found for that pair
+%
+% Reading the resolved entities is wrapped in try/catch: the accessor differs
+% across COMSOL versions, and a check that cannot run must not take the
+% geometry build down with it.
+
+tag = [ucellname,'_',selname,'_bnd'];
+try
+    got = double(model.selection(tag).entities(2));
+catch
+    try
+        got = double(model.selection(tag).inputEntities());
+    catch err
+        warning('buildBoomerangUnitCell:selectionUnreadable', ...
+            ['Could not read selection %s (%s), so it was not verified ' ...
+             'against the bndindex lookup.'], tag, err.message);
+        return
+    end
+end
+
+got = sort(got(:))';
+expected = sort(double(expected(:)))';
+
+if isempty(got)
+    warning('buildBoomerangUnitCell:selectionEmpty', ...
+        ['%s resolved to no boundaries. The Floquet condition using it ' ...
+         'would be applied to nothing.'], tag);
+elseif ~isequal(got, expected)
+    warning('buildBoomerangUnitCell:selectionMismatch', ...
+        ['%s resolved to boundaries [%s] but bndindex gives [%s]. Check ' ...
+         'the geometry before trusting the periodic BCs - a hole arm may ' ...
+         'reach into the selection box.'], ...
+        tag, num2str(got), num2str(expected));
+end
 end
 
 % -------------------------------------------------------------------------
