@@ -3,6 +3,22 @@
 *.fig
 *.mat
 
+# Simulation output in TEXT form. The binary patterns above already cover .mat/
+# .png/.fig, which is precisely why only the .txt artifacts ever got committed -
+# and they got committed under backslash-mangled names like
+# ".\test\boomerang_bayesopt\...\DRYRUN_README.txt", produced when the old
+# hard-coded '.\test\...' paths ran on macOS. On Windows a backslash IS a path
+# separator, so git refuses to check such a name out at all: "error: invalid
+# path". Every pattern here starts with * so it matches the mangled
+# one-long-filename form as well as the proper nested one - * matches a
+# backslash, since on POSIX that is an ordinary filename character.
+*DRYRUN_README.txt
+*bayesopt_boomerang*_log.txt
+*optimization_*.txt
+
+# and the whole output tree, when the paths are built correctly
+omc-comsol-chang/test/
+
 # COMSOL working files
 *.mph.lock
 *.mph.recovery*
