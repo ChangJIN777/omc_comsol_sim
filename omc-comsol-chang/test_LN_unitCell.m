@@ -71,12 +71,12 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 %% Single solve
 if P.run_optical
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\LN_ribUnitCell_optical\',currentDate,'\'];
+    datLoc = [fullfile('.','test','LN_ribUnitCell_optical',currentDate),filesep];
     P.datLoc = datLoc;
     bds = solveOpticalBands(P);
 else
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\LN_ribUnitCell\',currentDate,'\'];
+    datLoc = [fullfile('.','test','LN_ribUnitCell',currentDate),filesep];
     P.datLoc = datLoc;
     bds = solveBands_noSym(P);
 end

@@ -77,6 +77,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 %% run the simulation
 % datLoc = '.\test\snowflake_optical\122124_optical\';
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\snowflake_strip\',currentDate,'\'];
+datLoc = [fullfile('.','test','snowflake_strip',currentDate),filesep];
 P.datLoc = datLoc;
 solveBands(P);

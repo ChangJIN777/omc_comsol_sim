@@ -71,7 +71,7 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 %% Create .txt file to assemble iteration result
 % txt file name
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\LN_holeUnitCell_optimize\',currentDate,'\'];
+datLoc = [fullfile('.','test','LN_holeUnitCell_optimize',currentDate),filesep];
 itrPath = [datLoc,...
         'optimization_SP_',currentDate,'.txt'];
 % create directory to save files
@@ -88,7 +88,7 @@ fclose(itr);
 P.run_optical = 1;
 P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 15;                           % no. of bands to solve for
-datLoc = ['.\test\LN_holeUnitCell_optical\',currentDate,'\'];
+datLoc = [fullfile('.','test','LN_holeUnitCell_optical',currentDate),filesep];
 P.datLoc = datLoc;
 bds_optical = solveOpticalBands(P);
 OpticalBands = bds_optical.opticalBand;
@@ -96,7 +96,7 @@ midGap_optical = OpticalBands.midGap(1);
 gapSize_optical = OpticalBands.gapSize(1);
 gapRat_optical = gapSize_optical./midGap_optical;
 % mechanical band sim 
-datLoc = ['.\test\LN_holeUnitCell\',currentDate,'\'];
+datLoc = [fullfile('.','test','LN_holeUnitCell',currentDate),filesep];
 P.datLoc = datLoc;
 P.run_optical=0;
 P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point

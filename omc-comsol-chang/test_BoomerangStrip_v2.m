@@ -78,6 +78,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 %% Single solve
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\boomerang_strip_v2\',currentDate,'\'];
+datLoc = [fullfile('.','test','boomerang_strip_v2',currentDate),filesep];
 P.datLoc = datLoc;
 bds = solveBands(P);

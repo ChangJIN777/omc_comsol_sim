@@ -90,7 +90,7 @@ function sweep_snowflake_holeSize(P,w,r)
     % mphlaunch(model);
     %% Single solve
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\snowflake_sweep\',currentDate,'\'];
+    datLoc = [fullfile('.','test','snowflake_sweep',currentDate),filesep];
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 
@@ -162,7 +162,7 @@ function sweep_snowflake_lattice(P,a)
     % mphlaunch(model);
     %% Single solve
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\snowflake_sweep\',currentDate,'\'];
+    datLoc = [fullfile('.','test','snowflake_sweep',currentDate),filesep];
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 

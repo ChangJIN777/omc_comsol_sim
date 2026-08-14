@@ -140,7 +140,7 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 %% Single solve
 
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\boomerang\',currentDate,'\'];
+datLoc = [fullfile('.','test','boomerang',currentDate),filesep];
 P.datLoc = datLoc;
 % %% solving mechanical modes
 % bds = solveBands(P);

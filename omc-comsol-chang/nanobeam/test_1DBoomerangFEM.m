@@ -144,7 +144,7 @@ P.max_dof = 5e9;                        % max # of degrees of freedom
 % single run
 % data location to save files in
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\',currentDate,'\'];
+datLoc = [fullfile('.','test',currentDate),filesep];
 P.datLoc = datLoc;[ds,model] = RunNanobeamFEM(P,datLoc);
 
 % %% test the model building function 

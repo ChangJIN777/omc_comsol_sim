@@ -523,7 +523,7 @@ if P.saveRawData
     model.result.export.create('tbl_exp', 'Table');
     model.result.export('tbl_exp').label('bandStruct');
     model.result.export('tbl_exp').set('table', 'tbl14');
-    model.result.export('tbl_exp').set('filename', '.\bandStruct_data\BandStruct.txt');
+    model.result.export('tbl_exp').set('filename', fullfile('.','bandStruct_data','BandStruct.txt'));
     model.result.export('tbl_exp').set('header', false);
     model.result.export('tbl_exp').set('notation', 'scientific');
     model.result.export('tbl_exp').run;

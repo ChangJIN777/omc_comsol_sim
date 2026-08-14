@@ -64,5 +64,5 @@ P.savebndplot = 1;          % 1 to save bandstructure plot
 P.savedat = 1;              % 1 to save data structure containing results
 
 %% Run
-datLoc = '.\test2DsqTets\';
+datLoc = [fullfile('.','test2DsqTets'),filesep];
 bds = solveBands2DSquareLattice(P,datLoc);

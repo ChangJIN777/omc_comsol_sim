@@ -8,7 +8,7 @@ t0 = 391e-9;       % the rib width
 %% Create .txt file to assemble iteration result
 % txt file name
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\LN_ribUnitCell_optimize\',currentDate,'\'];
+datLoc = [fullfile('.','test','LN_ribUnitCell_optimize',currentDate),filesep];
 itrPath = [datLoc,...
             'optimization_SP_trial2_',currentDate,'.txt'];
 % create directory to save files
@@ -118,7 +118,7 @@ function fitness = rib_optimize_v2(params)
     P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
     P.nbands = 15;                           % no. of bands to solve for
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\LN_ribUnitCell_optical_trial2\',currentDate,'\'];
+    datLoc = [fullfile('.','test','LN_ribUnitCell_optical_trial2',currentDate),filesep];
     P.datLoc = datLoc;
     bds_optical = solveOpticalBands(P);
     OpticalBands = bds_optical.opticalBand;
@@ -131,7 +131,7 @@ function fitness = rib_optimize_v2(params)
     end
     gapRat_optical = gapSize_optical./midGap_optical;
     % mechanical band sim 
-    datLoc = ['.\test\LN_ribUnitCell_trial2\',currentDate,'\'];
+    datLoc = [fullfile('.','test','LN_ribUnitCell_trial2',currentDate),filesep];
     P.datLoc = datLoc;
     P.run_optical=0;
     P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
@@ -152,7 +152,7 @@ function fitness = rib_optimize_v2(params)
     % calculate the fitness function
     fitness = calFitness(midGap_optical,gapRat_optical,gapRat_mechanical);
     % save the data file 
-    datLoc = ['.\test\LN_ribUnitCell_optimize\',currentDate,'\'];
+    datLoc = [fullfile('.','test','LN_ribUnitCell_optimize',currentDate),filesep];
     itrPath = [datLoc,...
                 'optimization_SP_trial2_',currentDate,'.txt'];
     itr = fopen(itrPath,'at+');
@@ -224,7 +224,7 @@ function fitness = rib_optimize(params)
     P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
     P.nbands = 15;                           % no. of bands to solve for
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\LN_ribUnitCell_optical_trial2\',currentDate,'\'];
+    datLoc = [fullfile('.','test','LN_ribUnitCell_optical_trial2',currentDate),filesep];
     P.datLoc = datLoc;
     bds_optical = solveOpticalBands(P);
     OpticalBands = bds_optical.opticalBand;
@@ -237,7 +237,7 @@ function fitness = rib_optimize(params)
     end
     gapRat_optical = gapSize_optical./midGap_optical;
     % mechanical band sim 
-    datLoc = ['.\test\LN_ribUnitCell_trial2\',currentDate,'\'];
+    datLoc = [fullfile('.','test','LN_ribUnitCell_trial2',currentDate),filesep];
     P.datLoc = datLoc;
     P.run_optical=0;
     P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
@@ -258,7 +258,7 @@ function fitness = rib_optimize(params)
     % calculate the fitness function
     fitness = calFitness(midGap_optical,gapRat_optical,gapRat_mechanical);
     % save the data file 
-    datLoc = ['.\test\LN_ribUnitCell_optimize\',currentDate,'\'];
+    datLoc = [fullfile('.','test','LN_ribUnitCell_optimize',currentDate),filesep];
     itrPath = [datLoc,...
                 'optimization_SP_trial2_',currentDate,'.txt'];
     itr = fopen(itrPath,'at+');
