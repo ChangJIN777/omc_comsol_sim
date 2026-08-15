@@ -164,32 +164,87 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
         OpticalBand = runOpticalBand_1D(P);
     end
     
+    % Decide the k-path shape ONCE, here, because both the light line and the
+    % plot branch further down depend on it and they must not disagree.
+    % bandStruct_2D is the flag the runners themselves use to decide whether
+    % ds.k_norm is the 0->3 circuit or is collapsed to kx_norm.
+    % runOpticalBand_1D collapses unconditionally and never reads it, hence the
+    % dimension test as well.
+    use2Dpath = ismember(P.bandStructureDim,[2 3]) && ...
+                isfield(P,'bandStruct_2D') && P.bandStruct_2D;
+
     % filter data below light line
     %
-    % The light line is set by the MAGNITUDE of the in-plane wavevector,
-    % |k| = hypot(kx,ky), not by kx alone. On the hexagonal Gamma-X-M-Gamma
-    % circuit that runOpticalBand_{2,3}D sweep, kx_norm is CONSTANT along X-M
-    % while ky_norm sweeps, so a kx-only light line goes flat over that whole
-    % leg while the true one keeps rising - every mode there was tested against
-    % a light line that was too low, and TE.F (which is what findGaps_optical
-    % scores) kept modes that are actually radiative. The plot branch below
-    % already draws three correct per-segment light lines; this is the filter
-    % catching up with it.
+    % The light line used for the FILTER is the same one the plot DRAWS, so that
+    % the modes feeding findGaps_optical are exactly the modes a reader sees
+    % below the blue curves. On the 2D circuit that means reproducing the three
+    % per-segment expressions from the plot branch below, evaluated at each
+    % k_norm rather than on a 100-point display grid:
     %
-    % The 1D path is unaffected: runOpticalBand_1D sets ky_norm = 0 throughout,
-    % so hypot reduces to the previous expression exactly.
-    c = 299792458;
-    knorm = hypot(OpticalBand.kx_norm, OpticalBand.ky_norm);
-    lightline = c*knorm/2/P.a; % factor of 2 such that knorm runs from 0 to 0.5 * (2*pi/a)
+    %   Gamma-X  (0<=q<1):  t = q/2,      f = t
+    %   X-M      (1<=q<2):  t = (q-1)/2,  f = sqrt(1/4 + (t/sqrt(3))^2)
+    %   M-Gamma  (2<=q<=3): t = (q-2)/2,  f = sqrt((1/2-t)^2 + (1/(2*sqrt(3))-t/sqrt(3))^2)
+    %
+    % all times c/a. The three agree at the joins (0.5 at X, 0.5774 at M, 0 at
+    % the closing Gamma), so the assembled curve is continuous.
+    %
+    % NOTE: this is NOT the same as c*hypot(kx_norm,ky_norm)/(2a), which is what
+    % this line computed before. The two agree on Gamma-X and at X, but diverge
+    % along X-M - at M they differ by 2/sqrt(3) = 1.1547. They encode different
+    % conventions for where the high-symmetry points sit, and only one can be
+    % right. Matching the drawn curve is what was asked for and makes the figure
+    % self-consistent; see the note reported alongside this change before
+    % trusting either as absolute physics.
+    % The formula itself lives in opticalLightLine so test_plotOpticalBands can
+    % reproduce this filter exactly against saved data, instead of keeping a
+    % second copy that quietly diverges.
+    lightline = opticalLightLine(OpticalBand,P);
     TE.F0 = OpticalBand.F;
     TEbelow = OpticalBand.F < lightline;    % check which bands are below lightline
     TE.F = OpticalBand.F.*TEbelow;        % filter out data below lightline
     TE.F(TE.F==0) = NaN;      % replace zeros with NaN so they don't get plotted
 
-    % find gaps 
+    % find gaps
     [OpticalBand.midGap,OpticalBand.gapSize] = findGaps_optical(TE);
-    % write to data structure 
+
+    % Discard gaps narrower than P.minOpticalGap (default 3 THz).
+    %
+    % findGaps_optical reports every gap it can resolve, including hairline ones
+    % that are indistinguishable from the k-point discretisation - with kpts = 9
+    % the circuit is sampled at 27 points, so a "gap" thinner than the local band
+    % curvature between adjacent samples is an artefact of the sampling, not a
+    % feature of the structure. Both fields are in Hz (the plot multiplies by
+    % 1e-12 to display), so the threshold is 3e12.
+    %
+    % Filtering here rather than inside findGaps_optical keeps that function
+    % general - it is shared with the mechanical pipeline, which has its own
+    % idea of what counts as a usable gap.
+    if isfield(P,'minOpticalGap') && ~isempty(P.minOpticalGap)
+        minOpticalGap = P.minOpticalGap;
+    else
+        minOpticalGap = 3e12;   % Hz
+    end
+    keepGap = OpticalBand.gapSize >= minOpticalGap;
+    nDropped = numel(keepGap) - nnz(keepGap);
+    if nDropped > 0
+        fprintf(['  %d optical gap(s) below the %.2f THz minimum discarded ' ...
+                 '(%d kept)\n'], nDropped, minOpticalGap*1e-12, nnz(keepGap));
+    end
+    OpticalBand.midGap  = OpticalBand.midGap(keepGap);
+    OpticalBand.gapSize = OpticalBand.gapSize(keepGap);
+    % write to data structure
     ds.opticalBand = OpticalBand;
+
+    % Persist the result, mirroring solveBands.m:249-251 on the mechanical side.
+    % Without this the cache test at the top of this block - which looks for
+    % exactly this file - could never hit, because nothing in the optical chain
+    % ever wrote one: an optical run left behind figures and a returned struct
+    % and nothing else, so every repeat run re-solved from scratch and no saved
+    % band data existed to re-analyse later.
+    if isfield(P,'savedat') && P.savedat
+        pathMat = [P.datLoc,fBase,'_bds.mat'];
+        save(pathMat,'ds');
+    end
 %% plot bandstructure
 if P.savebndplot
     % Which PLOT to draw is set by the shape of the k-path, not by the model
@@ -200,13 +255,11 @@ if P.savebndplot
     % so only the Gamma-X third was ever visible, under two tick labels taken
     % from a four-label list.
     %
-    % bandStruct_2D is the flag the runners themselves use to decide whether
-    % ds.k_norm is the 0->3 circuit or is collapsed to kx_norm, so keying off it
-    % keeps the plot in step with the data. runOpticalBand_1D collapses to 1D
-    % unconditionally and never reads the flag, hence the dimension test as well.
-    plot2Dpath = ismember(P.bandStructureDim,[2 3]) && ...
-                 isfield(P,'bandStruct_2D') && P.bandStruct_2D;
-    if plot2Dpath
+    % use2Dpath was decided up at the light-line filter and is reused verbatim
+    % here. Computing it once is deliberate: the filter and the plot must agree
+    % about the shape of the k-path, or the figure shows one light line while the
+    % gaps were scored against another.
+    if use2Dpath
         figure; hold on
         maxFreqs = [0 0 0 0];
 
