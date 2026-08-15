@@ -235,15 +235,40 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
     % write to data structure
     ds.opticalBand = OpticalBand;
 
-    % Persist the result, mirroring solveBands.m:249-251 on the mechanical side.
-    % Without this the cache test at the top of this block - which looks for
-    % exactly this file - could never hit, because nothing in the optical chain
-    % ever wrote one: an optical run left behind figures and a returned struct
-    % and nothing else, so every repeat run re-solved from scratch and no saved
-    % band data existed to re-analyse later.
-    if isfield(P,'savedat') && P.savedat
+    % Everything needed to re-derive the gaps WITHOUT re-solving travels with
+    % the result. solveBands gets this for free - its sub-structs come straight
+    % out of runBands and its gap criterion has no parameters - but the optical
+    % gaps are the product of a light line and a minimum-gap threshold, and a
+    % file that records the answer without recording the criterion cannot be
+    % compared against a later run scored under different rules.
+    ds.P             = P;              % geometry, k-path flags, backend choice
+    ds.lightline     = lightline;      % Hz at each k-point, as filtered AND drawn
+    ds.bandsBelow    = TE.F;           % NaN-masked matrix findGaps_optical scored
+    ds.minOpticalGap = minOpticalGap;  % Hz threshold applied to gapSize
+    ds.use2Dpath     = use2Dpath;      % which k-path shape the above assumed
+    ds.solveTimeMin  = toc(tStart)/60; % elapsed at save time, not at return
+
+    % Persist, mirroring solveBands.m:248-252 on the mechanical side. Without
+    % this the cache test at the top of this block - which looks for exactly
+    % this file - could never hit, because nothing in the optical chain ever
+    % wrote one: a run left behind figures and a returned struct and nothing
+    % else, so every repeat re-solved from scratch and no band data survived to
+    % be re-analysed later.
+    %
+    % Deliberately BEFORE the plotting block: plotting is the part most likely
+    % to throw (an unlisted celltype, a headless session, a full disk), and a
+    % crash there must not cost the hours of solve time that produced the data.
+    % isfield-guarded rather than solveBands' bare P.savedat so a config that
+    % predates the flag warns instead of erroring.
+    if ~isfield(P,'savedat')
+        warning('solveOpticalBands:noSavedat', ...
+            ['P.savedat is not set, so no _bds.mat will be written and this ' ...
+             'solve will have to be repeated to get the data back. Set ' ...
+             'P.savedat = 1 in the test script.']);
+    elseif P.savedat
         pathMat = [P.datLoc,fBase,'_bds.mat'];
         save(pathMat,'ds');
+        fprintf('  saved band data -> %s\n',pathMat);
     end
 %% plot bandstructure
 if P.savebndplot
@@ -492,7 +517,30 @@ end
     tEnd = toc(tStart);
     disp(['Simulation time = ',num2str(tEnd/60,'%.2f'),'mins'])
 else
-    disp('Data folder exists in working directory')
-    ds.OpticalBand = [];
- 
+    % Cache hit. Two things were wrong here and both mattered once the solve
+    % branch above started actually writing the file it tests for:
+    %
+    %   1. The field was spelled ds.OpticalBand - capital O - while the solve
+    %      branch returns ds.opticalBand. A caller testing
+    %      isfield(ds,'opticalBand') therefore got true on a fresh run and
+    %      false on a cached one, for the same design.
+    %   2. It returned empty rather than the data sitting in the file whose
+    %      existence is the entire reason this branch was taken. solveBands
+    %      does the same, but it had the excuse that nothing had been saved to
+    %      load; that is no longer true here.
+    pathMat = [datLoc,fBase,'_bds.mat'];
+    fprintf('Cached optical band data found, loading instead of re-solving:\n  %s\n', ...
+        pathMat);
+    loaded = load(pathMat,'ds');
+    if isfield(loaded,'ds') && isfield(loaded.ds,'opticalBand')
+        ds = loaded.ds;
+    else
+        % A file written before the wrapper existed, or by something else
+        % entirely. Report it rather than returning a struct that silently
+        % lacks the field every caller expects.
+        warning('solveOpticalBands:staleCache', ...
+            ['%s exists but carries no ds.opticalBand, so it cannot be ' ...
+             'reused. Delete it to force a fresh solve.'],pathMat);
+        ds.opticalBand = [];
+    end
 end
