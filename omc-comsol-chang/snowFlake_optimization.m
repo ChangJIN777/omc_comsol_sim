@@ -82,7 +82,7 @@ function [fullMidBand, fullGapSize] = run_snowFlake(P,a,w,r)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\snowflake\092024\';
+    datLoc = [fullfile('.','test','snowflake','092024'),filesep];
     P.datLoc = datLoc;
     bds = solveBands(P);
     
@@ -140,7 +140,7 @@ function [fullMidBand, fullGapSize] = run_snowFlake_fixed_a(P,w,r)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\snowflake\100424_sweep1\';
+    datLoc = [fullfile('.','test','snowflake','100424_sweep1'),filesep];
     P.datLoc = datLoc;
     bds = solveBands(P);
     

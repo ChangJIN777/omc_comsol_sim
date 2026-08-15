@@ -27,3 +27,12 @@ omc-comsol-chang/test/
 .DS_Store
 omc-comsol-chang/test/
 *bayesopt*log.txt
+
+# Backslash-named artifacts: any script that still pastes a Windows separator
+# into a path literal creates ONE file whose *name* contains backslashes when
+# run on macOS/Linux. Committing such a file makes the repo impossible to check
+# out on Windows ("error: invalid path"). This has regressed twice (1a4237f ->
+# 8b1e7d4), so ignore the shape itself rather than the specific filenames.
+*\\test\\*
+*\\testing\\*
+*\\optimize\\*

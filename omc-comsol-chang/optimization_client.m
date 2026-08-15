@@ -5,7 +5,7 @@
 % 2. We'll run it for kpts = 2
 
 
-addpath('.\optimize\snowFlake\073124\')
+addpath([fullfile('.','optimize','snowFlake','073124'),filesep])
 
 % a, w, r
 
@@ -29,7 +29,7 @@ P.th = 160e-9;
 P.r1 = 30e-9;
 P.r2 = 30e-9;
 target_freq = 13e9;
-P.datLoc = '.\optimize\snowFlake\073124\';
+P.datLoc = [fullfile('.','optimize','snowFlake','073124'),filesep];
 
 if min(vars.a-vars.hc,vars.wc) < 60
     disp('Fabrication intolerant');

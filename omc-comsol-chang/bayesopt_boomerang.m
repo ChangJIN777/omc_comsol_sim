@@ -239,12 +239,14 @@ cfg.numSeedPoints  = 8;     % random design points before the GP takes over
 % --- I/O ---------------------------------------------------------------
 % Paths are built with fullfile, never by pasting a separator in by hand, so the
 % same script produces a real nested directory on Windows, macOS and Linux
-% alike. The rest of this directory hard-codes '.\test\...' and that is why its
-% output is only correct on Windows: on macOS and Linux a backslash is an
-% ordinary filename character, not a separator, so those scripts create a single
-% file literally called "test\boomerang_sweep\08132026\..." instead of a folder
-% tree - a name Windows cannot even represent, so the artifacts stop being
-% portable in both directions. fullfile emits filesep for the host platform and
+% alike. This script was the first to do so; the rest of the repository used to
+% hard-code '.\test\...' and its output was therefore only correct on Windows:
+% on macOS and Linux a backslash is an ordinary filename character, not a
+% separator, so those scripts created a single file literally called
+% "test\boomerang_sweep\08132026\..." instead of a folder tree - a name Windows
+% cannot even represent, which is what broke `git pull` on the Windows machine.
+% Those call sites have since been converted to fullfile as well; keep it that
+% way. fullfile emits filesep for the host platform and
 % collapses duplicate separators, which is what makes the outputs readable
 % wherever they are opened.
 %

@@ -62,6 +62,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildRibUnitCell_LN(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\LN_holeUnitCell_optical\011425\';
+datLoc = [fullfile('.','test','LN_holeUnitCell_optical','011425'),filesep];
 P.datLoc = datLoc;
 bds = solveOpticalBands(P);

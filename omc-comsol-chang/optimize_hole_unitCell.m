@@ -38,7 +38,7 @@ OPT.noGapPenalty = 1e9;
 
 % --- root location for the per-evaluation output subfolders ---
 currentDate = datestr(now,'mmddyyyy');
-OPT.rootLoc = ['.\test\hole_DiamondMechanical\opt_',currentDate,'\'];
+OPT.rootLoc = [fullfile('.','test','hole_DiamondMechanical',['opt_',currentDate]),filesep];
 
 % --- fminsearch options (TolX dimensionless on r, TolFun in Hz) ---
 OPT.fminOpts = optimset('Display','iter','TolX',1e-3,'TolFun',1e6, ...

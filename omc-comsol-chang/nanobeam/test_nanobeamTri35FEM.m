@@ -131,5 +131,5 @@ P.max_dof = 5e6;                        % max # of degrees of freedom
 
 %% single run
 % data location to save files in
-datLoc = '.\test\070324\'; 
+datLoc = [fullfile('.','test','070324'),filesep]; 
 [ds,model] = RunNanobeamFEM(P,datLoc);

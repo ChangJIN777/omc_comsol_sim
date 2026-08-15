@@ -82,7 +82,7 @@ function [fullMidBand, fullGapSize] = run_Cross(P,a,w,h)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\cross\092624_sweep1\';
+    datLoc = [fullfile('.','test','cross','092624_sweep1'),filesep];
     P.datLoc = datLoc;
     bds = solveBands(P);
     

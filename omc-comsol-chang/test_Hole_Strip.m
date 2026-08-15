@@ -68,6 +68,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 
 %% run the simulation
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\hole_strip\',currentDate,'\'];
+datLoc = [fullfile('.','test','hole_strip',currentDate),filesep];
 P.datLoc = datLoc;
 solveOpticalBands(P);

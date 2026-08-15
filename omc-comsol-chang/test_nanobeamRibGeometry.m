@@ -62,7 +62,7 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildRibUnitCell(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\rib\071424\';
+datLoc = [fullfile('.','test','rib','071424'),filesep];
 P.datLoc = datLoc;
 bds = solveBands(P);
 

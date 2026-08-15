@@ -40,5 +40,5 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
 %% Single solve
-datLoc = '.\rectOMCfinal\test_062624';
+datLoc = fullfile('.','rectOMCfinal','test_062624');
 bds = solveBands(P,datLoc);

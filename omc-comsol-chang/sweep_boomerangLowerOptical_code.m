@@ -69,7 +69,7 @@ function sweep_boomerang_lower_optical(P,h,d)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang_lower\072824_optical_sweep\';
+    datLoc = [fullfile('.','test','boomerang_lower','072824_optical_sweep'),filesep];
     P.datLoc = datLoc;
     bds = solveOpticalBands(P);
 end 
