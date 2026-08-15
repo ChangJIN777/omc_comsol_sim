@@ -131,7 +131,9 @@ model.component('comp1').material('mat1').propertyGroup('def').set('relpermeabil
 model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'1e-12[S/m]' '0' '0' '0' '1e-12[S/m]' '0' '0' '0' '1e-12[S/m]'});
 model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.406' '0' '0' '0' '2.406' '0' '0' '0' '2.406'});
 model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
-model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', {'1e-12[S/m]' '0' '0' '0' '1e-12[S/m]' '0' '0' '0' '1e-12[S/m]'});
+% Air: zero conductivity, for the reason spelled out at the second (winning)
+% assignment to this same property below.
+model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', {'0' '0' '0' '0' '0' '0' '0' '0' '0'});
 model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
 
 if strcmp(P.beamMat,'diamond')
@@ -167,7 +169,13 @@ else
 end
 model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
 model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
-model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', {'1e-12[S/m]' '0' '0' '0' '1e-12[S/m]' '0' '0' '0' '1e-12[S/m]'});
+% Exactly zero, not a small regularizing value. mat2 is air, which carries the
+% Scattering condition (sctr1) below, and that condition's kinp contains
+% sigma/(epsr*iomega*eps0). At sigma = 0 COMSOL cancels the term symbolically,
+% so it cannot go singular however the eigensolver linearizes; at 1e-12 the
+% term survives and divides by zero whenever the linearization point is 0.
+% Belt and braces with eigref on the eigenvalue solver further down.
+model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', {'0' '0' '0' '0' '0' '0' '0' '0' '0'});
 
 %% setup the physics and the boundary conditions
 % Out-of-plane radiation is absorbed by a low-reflecting SCATTERING boundary on
@@ -236,7 +244,18 @@ solv_vars.label('Dependent Variables 1.1');
 solv_eigv.label('Eigenvalue Solver 1.1');
 
 solv_eigv.set('transform','eigenfrequency');
-solv_eigv.set('shift',num2str(freq));
+% Units are given explicitly because the solver node does NOT inherit the
+% study node's eigunit ('THz', set on std_eigv above): a bare num2str(freq)
+% is read as Hz here, i.e. 1e12 times too small.
+solv_eigv.set('shift', [num2str(freq),'[THz]']);
+% eigref is the eigenvalue LINEARIZATION point - the frequency at which
+% frequency-dependent quantities are evaluated - as distinct from shift, which
+% only says where to search. It defaults to 0, and at 0 the Scattering
+% condition's kinp (sctr1 below the physics section) evaluates
+% sigma/(epsr*iomega*eps0) and divides by zero before the first iteration.
+% The Sellmeier refractive index is frequency-dependent too and would likewise
+% be evaluated at DC, far outside the fit's range of validity.
+solv_eigv.set('eigref', [num2str(freq),'[THz]']);
 solv_eigv.feature('dDef').label('Direct 2');
 solv_eigv.feature('aDef').label('Advanced 1');
 solv_eigv.feature('aDef').set('complexfun', true);
