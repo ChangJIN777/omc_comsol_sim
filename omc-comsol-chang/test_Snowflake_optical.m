@@ -1,4 +1,4 @@
-clear all; clc; close all;
+soclear all; clc; close all;
 clear P;
 
 %% unit cell params 
