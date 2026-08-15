@@ -192,7 +192,21 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
     ds.opticalBand = OpticalBand;
 %% plot bandstructure
 if P.savebndplot
-    if P.bandStructureDim==2
+    % Which PLOT to draw is set by the shape of the k-path, not by the model
+    % dimension. Those are different questions and this used to conflate them:
+    % the condition was bandStructureDim==2, so a dim = 3 run - a 3D slab model
+    % sweeping the full hexagonal Gamma-X-M-Gamma circuit - fell into the 1D
+    % branch below. That branch fixes the axis at [0 1] while k_norm runs 0 to 3,
+    % so only the Gamma-X third was ever visible, under two tick labels taken
+    % from a four-label list.
+    %
+    % bandStruct_2D is the flag the runners themselves use to decide whether
+    % ds.k_norm is the 0->3 circuit or is collapsed to kx_norm, so keying off it
+    % keeps the plot in step with the data. runOpticalBand_1D collapses to 1D
+    % unconditionally and never reads the flag, hence the dimension test as well.
+    plot2Dpath = ismember(P.bandStructureDim,[2 3]) && ...
+                 isfield(P,'bandStruct_2D') && P.bandStruct_2D;
+    if plot2Dpath
         figure; hold on
         maxFreqs = [0 0 0 0];
 
@@ -225,7 +239,10 @@ if P.savebndplot
         amax = max([OpticalBand.F(:)])*1e-12;
         axis([0 3 0 amax]);
         %         axis tight
-        set(gca,'XTick',[0; 1]);
+        % One tick per high-symmetry point, matching the four XTickLabels below.
+        % This was [0; 1], so MATLAB consumed only the first two labels and the
+        % circuit was annotated as if it ran Gamma to X.
+        set(gca,'XTick',[0; 1; 2; 3]);
         %         set(gca,'XTickLabel',{'G','C'},'fontname','symbol','fontsize',16)
         set(gca,'XTickLabel',{'\Gamma','X','M','\Gamma'},'fontsize',12);
         
@@ -281,7 +298,16 @@ if P.savebndplot
                 'w_',num2str(P.w*1e9,'%.0f'),'nm_', ...
                 't_',num2str(P.t*1e9,'%.0f'),'nm_', ...
                 'th_',num2str(P.th*1e9,'%.0f'),'nm_', ...
-                'd_',num2str(P.d*180/pi,'%.0f'),'deg']}; 
+                'd_',num2str(P.d*180/pi,'%.0f'),'deg']};
+        else
+            % Fallback so an unlisted celltype cannot leave bandtitle undefined
+            % and take the title() call down with it. 'boomerang' reaches this
+            % branch now that dim = 3 plots the 2D circuit, and previously there
+            % was neither a case for it nor an else. Only a, r, w are named
+            % because they are the fields every celltype in this chain shares.
+            bandtitle = {[P.celltype,': a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
+                'r_',num2str(P.r*1e9,'%.0f'),'nm_',...
+                'w_',num2str(P.w*1e9,'%.0f'),'nm']};
         end
         title(bandtitle);
         box on
@@ -323,7 +349,11 @@ if P.savebndplot
         %         axis tight
         set(gca,'XTick',[0; 1]);
         %         set(gca,'XTickLabel',{'G','C'},'fontname','symbol','fontsize',16)
-        set(gca,'XTickLabel',{'\Gamma','X','M','\Gamma'},'fontsize',12)
+        % Two labels for two ticks. This branch draws a 1D path that ends at X,
+        % so the M and Gamma labels it used to carry were both surplus and
+        % misleading - MATLAB silently dropped them, labelling k = 1 as X, which
+        % happens to be right, but only by accident.
+        set(gca,'XTickLabel',{'\Gamma','X'},'fontsize',12)
         
         if strcmp(P.celltype,'2D_ribs')
             bandtitle = {['a = ',num2str(P.a*1e9,'%.0f'),'nm, ',...
