@@ -57,7 +57,12 @@ if strcmp(P.unitcell,'hexagonal')
         ds.kx_norm(ki+1,1) = (((sqrt(3)/2)*ki/kpts)*(ki<kpts)+...                  % Gamma-X
                             (sqrt(3)/2)*(ki>=kpts && ki<2*kpts)+...              % X-M
                             (sqrt(3)/2)*(3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
-        ds.ky_norm(ki+1,1) = ((-1/2)*(ki<kpts)+...                          % Gamma-X
+        % The Gamma-X term carries ki/kpts because COMSOL's ky above ramps as
+        % (pi/a)*k*(-1/2) along this leg. A bare -1/2 recorded ky_norm = -1/2 at
+        % the Gamma point, where the solve actually used ky = 0. Harmless while
+        % only kx_norm fed the light line in solveOpticalBands; wrong as soon as
+        % ky_norm does.
+        ds.ky_norm(ki+1,1) = ((-1/2)*(ki/kpts)*(ki<kpts)+...                % Gamma-X
                             ((ki-kpts)/kpts-1/2)*(ki>=kpts && ki<2*kpts)+... % X-M
                             (1/2)*(3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
     end
@@ -387,6 +392,12 @@ if P.bandStruct_2D
 else
     % for 1D band structures
     ds.kx_norm(end+1) = ds.kx_norm(1);
+    % ky_norm is wrapped too, so it stays the same length as kx_norm on BOTH
+    % branches. solveOpticalBands now builds the light line from
+    % hypot(kx_norm,ky_norm) and would otherwise fail here on a size mismatch -
+    % boomerang_optimize_sweep_diamond.m, rib_optimize_sweep.m and
+    % rib_optimize_sweep_diamond.m all reach this branch with bandStruct_2D = 0.
+    ds.ky_norm(end+1) = ds.ky_norm(1);
     ds.k_norm = ds.kx_norm;     
 end
 

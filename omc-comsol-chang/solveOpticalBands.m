@@ -164,9 +164,23 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
         OpticalBand = runOpticalBand_1D(P);
     end
     
-    % filter data below light line 
+    % filter data below light line
+    %
+    % The light line is set by the MAGNITUDE of the in-plane wavevector,
+    % |k| = hypot(kx,ky), not by kx alone. On the hexagonal Gamma-X-M-Gamma
+    % circuit that runOpticalBand_{2,3}D sweep, kx_norm is CONSTANT along X-M
+    % while ky_norm sweeps, so a kx-only light line goes flat over that whole
+    % leg while the true one keeps rising - every mode there was tested against
+    % a light line that was too low, and TE.F (which is what findGaps_optical
+    % scores) kept modes that are actually radiative. The plot branch below
+    % already draws three correct per-segment light lines; this is the filter
+    % catching up with it.
+    %
+    % The 1D path is unaffected: runOpticalBand_1D sets ky_norm = 0 throughout,
+    % so hypot reduces to the previous expression exactly.
     c = 299792458;
-    lightline = c*OpticalBand.kx_norm/2/P.a; % factor of 2 such that kx_norm runs from 0 to 0.5 * (2*pi/a)
+    knorm = hypot(OpticalBand.kx_norm, OpticalBand.ky_norm);
+    lightline = c*knorm/2/P.a; % factor of 2 such that knorm runs from 0 to 0.5 * (2*pi/a)
     TE.F0 = OpticalBand.F;
     TEbelow = OpticalBand.F < lightline;    % check which bands are below lightline
     TE.F = OpticalBand.F.*TEbelow;        % filter out data below lightline

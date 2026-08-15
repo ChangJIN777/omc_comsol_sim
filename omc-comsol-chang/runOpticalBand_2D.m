@@ -56,7 +56,10 @@ if strcmp(P.unitcell,'hexagonal')
         ds.kx_norm(ki+1,1) = (((sqrt(3)/2)*ki/kpts)*(ki<kpts)+...                  % Gamma-X
                             (sqrt(3)/2)*(ki>=kpts && ki<2*kpts)+...              % X-M
                             (sqrt(3)/2)*(3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
-        ds.ky_norm(ki+1,1) = ((-1/2)*(ki<kpts)+...                          % Gamma-X
+        % ki/kpts on the Gamma-X term - see the note on the same line in
+        % runOpticalBand_3D.m. COMSOL's ky ramps as (pi/a)*k*(-1/2) here, so a
+        % bare -1/2 mis-recorded the Gamma point as ky_norm = -1/2 instead of 0.
+        ds.ky_norm(ki+1,1) = ((-1/2)*(ki/kpts)*(ki<kpts)+...                % Gamma-X
                             ((ki-kpts)/kpts-1/2)*(ki>=kpts && ki<2*kpts)+... % X-M
                             (1/2)*(3*kpts-ki)/kpts*(ki>=2*kpts));            % M-Gamma
     end
@@ -305,6 +308,9 @@ if P.bandStruct_2D
 else
     % for 1D band structures
     ds.kx_norm(end+1) = ds.kx_norm(1);
+    % Wrapped alongside kx_norm so the two stay the same length on both
+    % branches - see the note on the matching line in runOpticalBand_3D.m.
+    ds.ky_norm(end+1) = ds.ky_norm(1);
     ds.k_norm = ds.kx_norm;     
 end
 

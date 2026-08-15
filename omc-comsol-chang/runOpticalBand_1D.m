@@ -510,6 +510,10 @@ end
 
 % ds.k_norm(end+1) = ds.k_norm(1);
 ds.kx_norm(end+1) = 1;
+% Kept the same length as kx_norm: solveOpticalBands builds the light line from
+% hypot(kx_norm,ky_norm). ky is identically zero on this 1D strip path, so the
+% light line is unchanged in value - this only keeps the arrays conformable.
+ds.ky_norm(end+1) = 0;
 ds.k_norm = ds.kx_norm;     % for 1D band structures
 
 %% saving the mph files for debugging purposes 

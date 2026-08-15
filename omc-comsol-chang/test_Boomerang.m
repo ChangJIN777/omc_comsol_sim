@@ -25,27 +25,36 @@ P.r2 = 10e-9;              % height (along x) of each leg in cross (for celltype
 % when P.mbevenz is nonzero, otherwise -th/2), not the clearance above the top
 % face. P.airDiskH is accepted as an alias.
 %
-% READ THIS BEFORE RELYING ON IT: with the run currently wired up at the bottom
-% of this script, setting this to 1 changes nothing. Two separate reasons:
+% WHERE THIS IS LIVE: on the optical path with bandStructureDim = 3.
+% runOpticalBand_3D:94 dispatches 'boomerang' to buildBoomerangUnitCell (NOT
+% buildBoomerangUnitCell_2D), and that builder implements the air disk at its
+% line 150. The low-reflecting Scattering condition is placed on the top face of
+% this region, so the height set here IS the clearance that governs how well
+% out-of-plane radiation is absorbed.
 %
-%   - The active path is solveOpticalBands with bandStructureDim = 3, which
-%     dispatches 'boomerang' to buildBoomerangUnitCell_2D. That builder does not
-%     read add_airDisk at all - only buildBoomerangUnitCell,
-%     buildBoomerangUnitCellStrip_v2 and buildBoomerangStrip_3D do. So the flag
-%     is silently ignored on the optical path.
-%   - The mechanical path (solveBands, commented out below) reaches
-%     buildBoomerangUnitCell, which DOES implement it - but runBands_2D:139
-%     force-disables it, deliberately, because Solid Mechanics there is applied
-%     to domain 1 only and an air domain would get no material and could
-%     renumber which domain is the diamond.
-%
-% So this is a declaration of intent that becomes live once the air-disk block
-% is ported into buildBoomerangUnitCell_2D (the builder the optical runs
-% actually use), which is where an air region belongs anyway.
+% It is inert on the other two paths:
+%   - bandStructureDim = 2 reaches runOpticalBand_2D, an in-plane cross-section
+%     with no thickness and no air region at all, so neither this nor P.th is
+%     read.
+%   - The mechanical path (solveBands, commented out below) also reaches
+%     buildBoomerangUnitCell, but runBands_2D:139 force-disables the air disk
+%     deliberately: Solid Mechanics there is applied to domain 1 only, and an
+%     air domain would get no material and could renumber which domain is the
+%     diamond.
 P.add_airDisk = 1;          % 1 = add the air region, 0 = solid only
-P.airDiskHeight = 4000e-9;  % total air region height in m, measured from the
-                            % base of the remaining solid (4 um ~ 2.7 free-space
-                            % wavelengths at the 200 THz target below)
+P.airDiskHeight = 1500e-9;  % total air region height in m, measured from the
+                            % base of the remaining solid. With mbevenz nonzero
+                            % the half-slab spans z = 0 to th/2 = 110 nm, so this
+                            % leaves 1390 nm of clearance above the slab - about
+                            % 4.5 evanescent decay lengths at the M point
+                            % (1/kappa = 310 nm at 1550 nm for a = 700 nm), which
+                            % is past the point where more air changes anything.
+                            % Was 4000 nm, i.e. 12.5 decay lengths - accurate but
+                            % paying for roughly twice the air elements needed.
+                            % Distance only kills EVANESCENT orders; propagating
+                            % diffraction orders hit the boundary at a fixed
+                            % angle set by the lattice, so if Q accuracy matters
+                            % the lever is a PML, not a taller air disk.
 
 P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
@@ -77,7 +86,7 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
                                         % from <100> inplane direction about <100> surface normal
 %% optical simulation parameters
 % Chain for celltype 'boomerang' with bandStructureDim = 3:
-%   solveOpticalBands -> runOpticalBand_3D -> buildBoomerangUnitCell_2D
+%   solveOpticalBands -> runOpticalBand_3D -> buildBoomerangUnitCell
 %                     -> findGaps_optical
 % Of everything that chain reads, P.optical_freq below is the only input the
 % blocks above do not already supply. The rest is shared with the mechanical
@@ -101,14 +110,11 @@ P.bandStructureDim = 3;
 % default frequency unit.
 P.optical_freq = 200;                   % target optical mid-gap frequency [THz]
 
-% KNOWN BLOCKER on the dim = 3 path selected above. runOpticalBand_3D reads
-% P.zEnd for its SymmetryPlane selection, but buildBoomerangUnitCell_2D - the
-% builder the 'boomerang' branch dispatches to - writes only xEnd1/xEnd2/yEnd1/
-% yEnd2 and never sets zEnd, so this dies with "Unrecognized field name 'zEnd'"
-% before it solves. The MECHANICAL builder buildBoomerangUnitCell does set it,
-% which is why the phononic run is unaffected. Fix either by having the 2D
-% builder record zEnd (a bndindex lookup at z = 0, as the mechanical one does)
-% or by guarding that SymmetryPlane on isfield(P,'zEnd').
+% NOT a blocker (this note used to claim otherwise). runOpticalBand_3D reads
+% P.zEnd for its SymmetryPlane selection, and the 'boomerang' branch dispatches
+% to buildBoomerangUnitCell - not buildBoomerangUnitCell_2D - which records
+% zEnd at its line 249 via a bndindex lookup at z = 0. buildBoomerangUnitCell_2D
+% would indeed be missing zEnd, but nothing routes to it from here.
 %
 % If you switch to dim = 2 instead: it gets through the solve but then errors in
 % the plot, because the 2D branch of solveOpticalBands builds its title from a
