@@ -36,3 +36,8 @@ omc-comsol-chang/test/
 *\\test\\*
 *\\testing\\*
 *\\optimize\\*
+
+# Claude Code worktrees are real git checkouts living inside the working tree.
+# Committed as gitlinks they are unfetchable (no .gitmodules, no URL) and show
+# as permanently modified as their HEADs move.
+.claude/worktrees/
