@@ -3,7 +3,7 @@ clear P;
 
 %% unit cell params 
 P.xsect = 'rect'; 
-P.beamMat = 'diamond';                  % beam material name
+P.beamMat = 'diamond_telecom';                  % beam material name
 P.celltype = 'boomerang';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
 P.a = 730e-9;              % lattice constant
