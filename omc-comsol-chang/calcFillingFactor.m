@@ -34,7 +34,13 @@ function out = calcFillingFactor(src)
 %   a, w, armLength  geometry echoed back                  [m]
 %   filletRadii      [r1 r2] as configured                 [m]
 %   filletsIncluded  false - see LIMITATION below
+%   cellPgon         polyshape of the rhombic cell, for plotting
+%   holePgon         polyshape of the hole clipped to the cell, for plotting
+%   centre           [x y] cell centroid, which is also the hole centre  [m]
 %   source           the file path, or '' when given a struct
+%
+% The polyshapes are returned so plotBoomerangCell can draw the geometry
+% without reconstructing it a second time - one definition, two consumers.
 %
 % GEOMETRY REPRODUCED (buildBoomerangUnitCell.m:45-64)
 %   cell   rhombus [0 0; a/2 a*sqrt(3)/2; 3a/2 a*sqrt(3)/2; a 0], side a,
@@ -155,6 +161,9 @@ out = struct( ...
     'armLength',      rArm, ...
     'filletRadii',    [rFil1 rFil2], ...
     'filletsIncluded',false, ...
+    'cellPgon',       cellPgon, ...
+    'holePgon',       holeInCell, ...
+    'centre',         centre, ...
     'source',         srcName);
 end
 
