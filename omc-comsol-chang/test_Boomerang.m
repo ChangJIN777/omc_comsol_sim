@@ -148,6 +148,50 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 currentDate = datestr(now,'mmddyyyy');
 datLoc = [fullfile('.','test','boomerang',currentDate),filesep];
 P.datLoc = datLoc;
+%% Filling-factor check - GATE, runs before any COMSOL work
+% Measures the in-plane air/dielectric area ratio from a, w and r by
+% reconstructing the same cross-section buildBoomerangUnitCell hands to COMSOL
+% (see calcFillingFactor.m), and refuses to start the solve if the geometry is
+% outside the acceptable window. The point is that a, w and r are set by hand
+% and a typo - a stray factor of ten on w, say - produces a cell that still
+% MESHES and still SOLVES, just not the structure that was intended. Finding
+% that out from the band diagram costs the whole run; finding it out here costs
+% a few milliseconds.
+%
+% The bounds below are a guardrail, not physics. They are wide enough to admit
+% any sensible photonic-crystal slab and narrow enough to catch a barely-etched
+% cell or one that is nearly all air. Widen or disable them freely - set
+% P.fillingFactorRange = [0 Inf] to accept anything.
+P.fillingFactorRange = [0.15 1.20];   % air/dielectric area ratio, dimensionless
+
+ff = calcFillingFactor(P);
+fprintf(['Filling factor check: r = %.4f (air/dielectric), %.1f%% air by area\n' ...
+         '  air %.0f nm^2 | dielectric %.0f nm^2 | cell %.0f nm^2\n'], ...
+    ff.fillingFactor,100*ff.airFraction, ...
+    ff.areaAir*1e18,ff.areaDielectric*1e18,ff.areaCell*1e18);
+
+if ff.armsOverhang
+    % Warning rather than error: a design deliberately tiling into its
+    % neighbours is unusual but not impossible, so this reports and continues.
+    warning('test_Boomerang:armsOverhang', ...
+        ['At least one hole arm reaches past the unit-cell boundary (unclipped ' ...
+         'hole %.0f nm^2 vs clipped %.0f nm^2). Under periodicity that arm ' ...
+         'merges with the neighbouring cell''s, so the tiled structure is not ' ...
+         'an isolated boomerang. Reduce r or a.'], ...
+        ff.areaAirUnclipped*1e18,ff.areaAir*1e18);
+end
+
+if ff.fillingFactor < P.fillingFactorRange(1) || ...
+   ff.fillingFactor > P.fillingFactorRange(2)
+    error('test_Boomerang:fillingFactorOutOfRange', ...
+        ['Filling factor %.4f is outside the accepted range [%.4f %.4f], so ' ...
+         'the solve was NOT started.\n' ...
+         'Geometry: a = %.0f nm, w = %.0f nm, r = %.0f nm.\n' ...
+         'Either the geometry is wrong, or widen P.fillingFactorRange above.'], ...
+        ff.fillingFactor,P.fillingFactorRange(1),P.fillingFactorRange(2), ...
+        P.a*1e9,P.w*1e9,P.r*1e9);
+end
+
 % %% solving mechanical modes
 % bds = solveBands(P);
 %% solving optical bands

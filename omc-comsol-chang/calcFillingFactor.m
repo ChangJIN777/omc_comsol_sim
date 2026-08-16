@@ -24,8 +24,13 @@ function out = calcFillingFactor(src)
 %   fillingFactor    area(air) / area(dielectric)          [dimensionless]
 %   airFraction      area(air) / area(cell)                [dimensionless]
 %   areaAir          air-hole area clipped to the cell     [m^2]
+%   areaAirUnclipped air-hole area before the clip         [m^2]
 %   areaDielectric   cell area minus the hole              [m^2]
 %   areaCell         rhombic unit-cell area, a^2*sqrt(3)/2 [m^2]
+%   armsOverhang     true when an arm reaches past the cell boundary. Under
+%                    periodicity that arm merges with the neighbouring cell's,
+%                    so the tiled structure is not the isolated boomerang the
+%                    parameters describe - worth catching before a long solve.
 %   a, w, armLength  geometry echoed back                  [m]
 %   filletRadii      [r1 r2] as configured                 [m]
 %   filletsIncluded  false - see LIMITATION below
@@ -118,9 +123,18 @@ end
 holeInCell = intersect(holePgon,cellPgon);
 
 % --- areas -------------------------------------------------------------------
-areaCell       = area(cellPgon);          % == a^2*sqrt(3)/2
-areaAir        = area(holeInCell);
-areaDielectric = areaCell - areaAir;
+areaCell         = area(cellPgon);        % == a^2*sqrt(3)/2
+areaAir          = area(holeInCell);
+areaAirUnclipped = area(holePgon);        % before the clip to the cell
+areaDielectric   = areaCell - areaAir;
+
+% If the clip removed anything, at least one arm reaches past the cell boundary.
+% That is not merely a bookkeeping detail: the cell is periodic, so an arm
+% crossing the edge merges with its neighbour's arm in the tiled structure, and
+% the thing being solved is no longer the isolated boomerang the parameters
+% describe. Tolerance is relative to the cell so float noise on the boolean
+% cannot trip it.
+armsOverhang = (areaAirUnclipped - areaAir) > 1e-9*areaCell;
 
 if areaDielectric <= 0
     error('calcFillingFactor:noDielectric', ...
@@ -132,8 +146,10 @@ out = struct( ...
     'fillingFactor',  areaAir/areaDielectric, ...
     'airFraction',    areaAir/areaCell, ...
     'areaAir',        areaAir, ...
+    'areaAirUnclipped',areaAirUnclipped, ...
     'areaDielectric', areaDielectric, ...
     'areaCell',       areaCell, ...
+    'armsOverhang',   armsOverhang, ...
     'a',              a, ...
     'w',              w, ...
     'armLength',      rArm, ...
