@@ -27,6 +27,9 @@ function results = test_plotOpticalBands(datLocs,varargin)
 %   'MinMidGap' Minimum gap CENTRE frequency, in Hz. Default 1e14 (100 THz),
 %              matching solveOpticalBands. Independent of MinGap - a region
 %              must satisfy both. Set 0 to disable.
+%   'LightLineTol' Relative margin below the light line a point must clear to
+%              count as guided. Default [] = use the value stored in the file,
+%              falling back to 1e-3. Set 0 for a bare strict inequality.
 %   'Pattern'  File pattern to match. Default '*_bds.mat'.
 %   'Plot'     true (default) to draw a figure per file, false for text only.
 %   'Verbose'  true (default) to print the per-file header and gap table.
@@ -49,8 +52,8 @@ function results = test_plotOpticalBands(datLocs,varargin)
 %   R = test_plotOpticalBands({'./test/boomerang','./test/boomerang_bayesopt'});
 %   [~,best] = max([R.gapRatio]);
 %
-% Requires only base MATLAB. Depends on opticalLightLine.m and
-% findGaps_belowLightLine.m from this directory.
+% Requires only base MATLAB. Depends on opticalLightLine.m,
+% maskBelowLightLine.m and findGaps_belowLightLine.m from this directory.
 
 %% ---------------------------------------------------------------- arguments
 if nargin < 1 || isempty(datLocs)
@@ -60,8 +63,8 @@ if ~iscell(datLocs)
     datLocs = {char(datLocs)};
 end
 
-opt = struct('MinGap',2e13,'MinMidGap',1e14,'Pattern','*_bds.mat', ...
-             'Plot',true,'Verbose',true);
+opt = struct('MinGap',2e13,'MinMidGap',1e14,'LightLineTol',[], ...
+             'Pattern','*_bds.mat','Plot',true,'Verbose',true);
 if mod(numel(varargin),2) ~= 0
     error('test_plotOpticalBands:badOptions', ...
         'Name-value options must come in pairs; got %d trailing argument(s).', ...
@@ -76,6 +79,11 @@ validateattributes(opt.MinGap,{'numeric'},{'scalar','nonnegative','finite'}, ...
     'test_plotOpticalBands','MinGap');
 validateattributes(opt.MinMidGap,{'numeric'},{'scalar','nonnegative','finite'}, ...
     'test_plotOpticalBands','MinMidGap');
+if ~isempty(opt.LightLineTol)   % [] means "inherit from the file"
+    validateattributes(opt.LightLineTol, ...
+        {'numeric'},{'scalar','nonnegative','finite','<',1}, ...
+        'test_plotOpticalBands','LightLineTol');
+end
 
 %% ------------------------------------------------------------ collect files
 files = {};
@@ -124,10 +132,18 @@ for ii = 1:numel(files)
     end
 
     % --- light line and below-light-line filter, identical to solveOpticalBands
+    % LightLineTol deactivates points sitting ON the line, not just above it.
+    % Prefer the value the file was scored with, so a re-analysis reproduces
+    % the original unless the caller overrides it.
     lightline = opticalLightLine(OB,P);
-    below     = OB.F < lightline;          % implicit expansion over bands
-    TE.F      = OB.F.*below;
-    TE.F(TE.F==0) = NaN;
+    if ~isempty(opt.LightLineTol)
+        tol = opt.LightLineTol;
+    elseif isfield(S,'ds') && isfield(S.ds,'lightLineTol')
+        tol = S.ds.lightLineTol;
+    else
+        tol = 1e-3;
+    end
+    [TE.F,below] = maskBelowLightLine(OB.F,lightline,tol);
 
     % findGaps_belowLightLine, matching solveOpticalBands. It reports frequency
     % regions containing no guided data point, which is a property of the SET of

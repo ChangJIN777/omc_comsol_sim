@@ -199,10 +199,23 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
     % reproduce this filter exactly against saved data, instead of keeping a
     % second copy that quietly diverges.
     lightline = opticalLightLine(OpticalBand,P);
+
+    % P.lightLineTol (default 1e-3) deactivates points sitting ON the light
+    % line, not merely above it: a point counts as guided only if it clears the
+    % line by that relative margin. A bare f < lightline excludes exact equality
+    % only, which two computed doubles never reach, so it left the marginally
+    % bound points in - and those are the ones whose classification flips with
+    % mesh refinement. Because findGaps_belowLightLine works on the SET of
+    % surviving frequencies, a single such point inside an otherwise-empty
+    % region destroys the gap it lands in. Set P.lightLineTol = 0 for the old
+    % strict-inequality behaviour.
+    if isfield(P,'lightLineTol') && ~isempty(P.lightLineTol)
+        lightLineTol = P.lightLineTol;
+    else
+        lightLineTol = 1e-3;
+    end
     TE.F0 = OpticalBand.F;
-    TEbelow = OpticalBand.F < lightline;    % check which bands are below lightline
-    TE.F = OpticalBand.F.*TEbelow;        % filter out data below lightline
-    TE.F(TE.F==0) = NaN;      % replace zeros with NaN so they don't get plotted
+    [TE.F,TEbelow] = maskBelowLightLine(OpticalBand.F,lightline,lightLineTol);
 
     % find gaps
     %
@@ -272,6 +285,7 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
     ds.bandsBelow    = TE.F;           % NaN-masked matrix findGaps_optical scored
     ds.minOpticalGap    = minOpticalGap;    % Hz minimum width applied
     ds.minOpticalMidGap = minOpticalMidGap; % Hz minimum centre applied
+    ds.lightLineTol     = lightLineTol;     % relative margin used on the mask
     ds.use2Dpath     = use2Dpath;      % which k-path shape the above assumed
     ds.solveTimeMin  = toc(tStart)/60; % elapsed at save time, not at return
 
