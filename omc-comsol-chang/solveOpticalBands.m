@@ -288,7 +288,16 @@ if P.savebndplot
         figure; hold on
         maxFreqs = [0 0 0 0];
 
-        p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'ko','linewidth',2,'DisplayName','sym','MarkerSize',5);
+        % 'ko:' rather than 'ko': dotted segments join consecutive k-points so
+        % each band reads as a continuous dispersion curve instead of a cloud of
+        % markers. F is [nk x nbands], so plot draws one line per COLUMN - i.e.
+        % one trace per band - which is what makes the connection meaningful.
+        % Dotted rather than solid keeps the sampling visible: the line is an
+        % aid to the eye between computed points, not interpolated data.
+        % LineWidth drops from 2 to 1 because it now sets the line as well as
+        % the marker edge, and 27 k-points x 10 bands at width 2 buries the
+        % light line and the gap shading underneath.
+        p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'ko:','linewidth',1,'DisplayName','sym','MarkerSize',5);
         % plot the light lines 
         lightx = linspace(0,0.5,100);
         lighty1 = lightx*(3e8)/(P.a*(1e12));
@@ -399,7 +408,16 @@ if P.savebndplot
         figure; hold on
         maxFreqs = [0 0 0 0];
 
-        p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'ko','linewidth',2,'DisplayName','sym','MarkerSize',5);
+        % 'ko:' rather than 'ko': dotted segments join consecutive k-points so
+        % each band reads as a continuous dispersion curve instead of a cloud of
+        % markers. F is [nk x nbands], so plot draws one line per COLUMN - i.e.
+        % one trace per band - which is what makes the connection meaningful.
+        % Dotted rather than solid keeps the sampling visible: the line is an
+        % aid to the eye between computed points, not interpolated data.
+        % LineWidth drops from 2 to 1 because it now sets the line as well as
+        % the marker edge, and 27 k-points x 10 bands at width 2 buries the
+        % light line and the gap shading underneath.
+        p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'ko:','linewidth',1,'DisplayName','sym','MarkerSize',5);
         
         % plot the light line 
         hold on;

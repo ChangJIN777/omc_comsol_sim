@@ -333,8 +333,13 @@ end
 kk = OB.k_norm(:);
 Fabove = OB.F; Fabove(below)  = NaN;
 Fbelow = OB.F; Fbelow(~below) = NaN;
-plot(kk,Fabove*1e-12,'o','Color',[0.72 0.72 0.72],'MarkerSize',4);
-plot(kk,Fbelow*1e-12,'ko','MarkerSize',5,'LineWidth',1.2);
+% Dotted segments join consecutive k-points, one trace per band (plot draws a
+% line per column of an [nk x nbands] matrix). Note the black set is drawn from
+% Fbelow, which is NaN wherever a mode sits above the light line - MATLAB breaks
+% a line at NaN, so the dotted trace is interrupted exactly over the radiative
+% stretches. That gap in the line is informative, not a rendering fault.
+plot(kk,Fabove*1e-12,'o:','Color',[0.72 0.72 0.72],'MarkerSize',4);
+plot(kk,Fbelow*1e-12,'ko:','MarkerSize',5,'LineWidth',1);
 
 % Light line on a dense grid, through the same function used for the filter.
 if use2Dpath
