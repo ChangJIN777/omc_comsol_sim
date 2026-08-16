@@ -205,33 +205,43 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
     TE.F(TE.F==0) = NaN;      % replace zeros with NaN so they don't get plotted
 
     % find gaps
-    [OpticalBand.midGap,OpticalBand.gapSize] = findGaps_optical(TE);
-
-    % Discard gaps narrower than P.minOpticalGap (default 3 THz).
     %
-    % findGaps_optical reports every gap it can resolve, including hairline ones
-    % that are indistinguishable from the k-point discretisation - with kpts = 9
-    % the circuit is sampled at 27 points, so a "gap" thinner than the local band
-    % curvature between adjacent samples is an artefact of the sampling, not a
-    % feature of the structure. Both fields are in Hz (the plot multiplies by
-    % 1e-12 to display), so the threshold is 3e12.
+    % findGaps_belowLightLine, NOT findGaps_optical. The question being asked
+    % here is "which frequency regions contain no guided data point", and that
+    % is a statement about the SET of surviving frequencies - it does not depend
+    % on which band a point was assigned to. That independence matters: the
+    % runners assign a point to a band purely by its position in COMSOL's
+    % eigenvalue list at that k-point, with no mode tracking and no sort, so
+    % column identity is not a safe thing to build on. findGaps_optical does
+    % build on it (it collapses each COLUMN to an interval). It is left
+    % untouched on disk but now has no callers anywhere - the mechanical
+    % pipeline uses findGaps, which is a different function.
     %
-    % Filtering here rather than inside findGaps_optical keeps that function
-    % general - it is shared with the mechanical pipeline, which has its own
-    % idea of what counts as a usable gap.
+    % P.minOpticalGap defaults to 10 THz. A gap is measured between sampled
+    % k-points only - with kpts = 9 the circuit has 27 samples - so a narrow gap
+    % may just be a band extremum falling between two samples. The threshold is
+    % applied inside the search rather than after it, so a region that fails is
+    % never constructed in the first place.
     if isfield(P,'minOpticalGap') && ~isempty(P.minOpticalGap)
         minOpticalGap = P.minOpticalGap;
     else
-        minOpticalGap = 3e12;   % Hz
+        minOpticalGap = 10e12;   % Hz
     end
-    keepGap = OpticalBand.gapSize >= minOpticalGap;
-    nDropped = numel(keepGap) - nnz(keepGap);
-    if nDropped > 0
-        fprintf(['  %d optical gap(s) below the %.2f THz minimum discarded ' ...
-                 '(%d kept)\n'], nDropped, minOpticalGap*1e-12, nnz(keepGap));
+
+    [OpticalBand.midGap,OpticalBand.gapSize,OpticalBand.gapEdges,maxRejected] = ...
+        findGaps_belowLightLine(TE.F,minOpticalGap);
+
+    if isempty(OpticalBand.gapSize)
+        if isempty(maxRejected)
+            fprintf('  no optical gap found below the light line\n');
+        else
+            fprintf(['  no optical gap >= %.2f THz; widest region found was ' ...
+                     '%.2f THz\n'],minOpticalGap*1e-12,maxRejected*1e-12);
+        end
+    else
+        fprintf('  %d optical gap(s) >= %.2f THz\n', ...
+            numel(OpticalBand.gapSize),minOpticalGap*1e-12);
     end
-    OpticalBand.midGap  = OpticalBand.midGap(keepGap);
-    OpticalBand.gapSize = OpticalBand.gapSize(keepGap);
     % write to data structure
     ds.opticalBand = OpticalBand;
 
@@ -288,16 +298,13 @@ if P.savebndplot
         figure; hold on
         maxFreqs = [0 0 0 0];
 
-        % 'ko:' rather than 'ko': dotted segments join consecutive k-points so
-        % each band reads as a continuous dispersion curve instead of a cloud of
-        % markers. F is [nk x nbands], so plot draws one line per COLUMN - i.e.
-        % one trace per band - which is what makes the connection meaningful.
-        % Dotted rather than solid keeps the sampling visible: the line is an
-        % aid to the eye between computed points, not interpolated data.
-        % LineWidth drops from 2 to 1 because it now sets the line as well as
-        % the marker edge, and 27 k-points x 10 bands at width 2 buries the
-        % light line and the gap shading underneath.
-        p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'ko:','linewidth',1,'DisplayName','sym','MarkerSize',5);
+        % Markers only, no connecting line. Connecting consecutive k-points
+        % would assert a band continuity the data does not carry: a point is
+        % assigned to a column by its position in COMSOL's eigenvalue list at
+        % that k-point, with no mode tracking, so a column is a frequency LEVEL
+        % rather than a single physical mode and the line would swap modes at
+        % every crossing.
+        p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'ko','linewidth',2,'DisplayName','sym','MarkerSize',5);
         % plot the light lines 
         lightx = linspace(0,0.5,100);
         lighty1 = lightx*(3e8)/(P.a*(1e12));
@@ -408,16 +415,13 @@ if P.savebndplot
         figure; hold on
         maxFreqs = [0 0 0 0];
 
-        % 'ko:' rather than 'ko': dotted segments join consecutive k-points so
-        % each band reads as a continuous dispersion curve instead of a cloud of
-        % markers. F is [nk x nbands], so plot draws one line per COLUMN - i.e.
-        % one trace per band - which is what makes the connection meaningful.
-        % Dotted rather than solid keeps the sampling visible: the line is an
-        % aid to the eye between computed points, not interpolated data.
-        % LineWidth drops from 2 to 1 because it now sets the line as well as
-        % the marker edge, and 27 k-points x 10 bands at width 2 buries the
-        % light line and the gap shading underneath.
-        p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'ko:','linewidth',1,'DisplayName','sym','MarkerSize',5);
+        % Markers only, no connecting line. Connecting consecutive k-points
+        % would assert a band continuity the data does not carry: a point is
+        % assigned to a column by its position in COMSOL's eigenvalue list at
+        % that k-point, with no mode tracking, so a column is a frequency LEVEL
+        % rather than a single physical mode and the line would swap modes at
+        % every crossing.
+        p1 = plot(OpticalBand.k_norm,OpticalBand.F*1e-12,'ko','linewidth',2,'DisplayName','sym','MarkerSize',5);
         
         % plot the light line 
         hold on;

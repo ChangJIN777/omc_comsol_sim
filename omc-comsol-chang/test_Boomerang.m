@@ -87,7 +87,7 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 %% optical simulation parameters
 % Chain for celltype 'boomerang' with bandStructureDim = 3:
 %   solveOpticalBands -> runOpticalBand_3D -> buildBoomerangUnitCell
-%                     -> findGaps_optical
+%                     -> findGaps_belowLightLine
 % Of everything that chain reads, P.optical_freq below is the only input the
 % blocks above do not already supply. The rest is shared with the mechanical
 % run: a, w, r, r1, r2 (geometry), th (3D path only), beamMat, kpts, nbands,

@@ -22,7 +22,7 @@ function results = test_plotOpticalBands(datLocs,varargin)
 %             test_Boomerang.m writes to: fullfile('.','test','boomerang').
 %
 % NAME-VALUE OPTIONS
-%   'MinGap'   Minimum gap to report, in Hz. Default 3e12 (3 THz), matching
+%   'MinGap'   Minimum gap to report, in Hz. Default 1e13 (10 THz), matching
 %              solveOpticalBands. Set 0 to see every gap found.
 %   'Pattern'  File pattern to match. Default '*_bds.mat'.
 %   'Plot'     true (default) to draw a figure per file, false for text only.
@@ -47,7 +47,7 @@ function results = test_plotOpticalBands(datLocs,varargin)
 %   [~,best] = max([R.gapRatio]);
 %
 % Requires only base MATLAB. Depends on opticalLightLine.m and
-% findGaps_optical.m from this directory.
+% findGaps_belowLightLine.m from this directory.
 
 %% ---------------------------------------------------------------- arguments
 if nargin < 1 || isempty(datLocs)
@@ -57,7 +57,7 @@ if ~iscell(datLocs)
     datLocs = {char(datLocs)};
 end
 
-opt = struct('MinGap',3e12,'Pattern','*_bds.mat','Plot',true,'Verbose',true);
+opt = struct('MinGap',1e13,'Pattern','*_bds.mat','Plot',true,'Verbose',true);
 if mod(numel(varargin),2) ~= 0
     error('test_plotOpticalBands:badOptions', ...
         'Name-value options must come in pairs; got %d trailing argument(s).', ...
@@ -123,14 +123,11 @@ for ii = 1:numel(files)
     TE.F      = OB.F.*below;
     TE.F(TE.F==0) = NaN;
 
-    [midGap,gapSize] = findGaps_optical(TE);
-    midGap  = midGap(:);
-    gapSize = gapSize(:);
-
-    keepGap = gapSize >= opt.MinGap;
-    nDropped = numel(keepGap) - nnz(keepGap);
-    midGap   = midGap(keepGap);
-    gapSize  = gapSize(keepGap);
+    % findGaps_belowLightLine, matching solveOpticalBands. It reports frequency
+    % regions containing no guided data point, which is a property of the SET of
+    % surviving frequencies and so is immune to how points were assigned to
+    % bands - the runners do that by eigenvalue index with no mode tracking.
+    [midGap,gapSize,~,maxRejected] = findGaps_belowLightLine(TE.F,opt.MinGap);
 
     % --- report
     keep = keep + 1;
@@ -151,7 +148,7 @@ for ii = 1:numel(files)
 
     if opt.Verbose
         printOneResult(thisName,thisDir,P,OB,below,midGap,gapSize, ...
-                       nDropped,opt.MinGap,results(keep).storedGapSize);
+                       maxRejected,opt.MinGap,results(keep).storedGapSize);
     end
 
     if opt.Plot
@@ -254,7 +251,7 @@ if ~isfield(P,'bandStruct_2D')
 end
 end
 
-function printOneResult(name,dirName,P,OB,below,midGap,gapSize,nDropped, ...
+function printOneResult(name,dirName,P,OB,below,midGap,gapSize,maxRejected, ...
                         minGap,storedGapSize)
 %PRINTONERESULT Terminal report for a single saved band structure.
 fprintf('%s\n',repmat('-',1,72));
@@ -278,14 +275,14 @@ fprintf('  below light   : %d of %d bands have any point below the light line\n'
 
 if isempty(gapSize)
     fprintf('  GAPS          : none >= %.2f THz',minGap*1e-12);
-    if nDropped > 0
-        fprintf(' (%d found but below the threshold)',nDropped);
+    if ~isempty(maxRejected)
+        fprintf(' (widest region found was %.2f THz)',maxRejected*1e-12);
     end
     fprintf('\n');
 else
     fprintf('  GAPS          : %d >= %.2f THz',numel(gapSize),minGap*1e-12);
-    if nDropped > 0
-        fprintf(' (%d more discarded below threshold)',nDropped);
+    if ~isempty(maxRejected)
+        fprintf(' (widest sub-threshold region %.2f THz)',maxRejected*1e-12);
     end
     fprintf('\n');
     fprintf('     %3s  %12s  %12s  %10s  %12s\n', ...
@@ -333,13 +330,11 @@ end
 kk = OB.k_norm(:);
 Fabove = OB.F; Fabove(below)  = NaN;
 Fbelow = OB.F; Fbelow(~below) = NaN;
-% Dotted segments join consecutive k-points, one trace per band (plot draws a
-% line per column of an [nk x nbands] matrix). Note the black set is drawn from
-% Fbelow, which is NaN wherever a mode sits above the light line - MATLAB breaks
-% a line at NaN, so the dotted trace is interrupted exactly over the radiative
-% stretches. That gap in the line is informative, not a rendering fault.
-plot(kk,Fabove*1e-12,'o:','Color',[0.72 0.72 0.72],'MarkerSize',4);
-plot(kk,Fbelow*1e-12,'ko:','MarkerSize',5,'LineWidth',1);
+% Markers only, no connecting line - see the note at the matching plot call in
+% solveOpticalBands: a column is a frequency level, not a tracked mode, so a
+% line between consecutive k-points would imply a continuity the data lacks.
+plot(kk,Fabove*1e-12,'o','Color',[0.72 0.72 0.72],'MarkerSize',4);
+plot(kk,Fbelow*1e-12,'ko','MarkerSize',5,'LineWidth',1.2);
 
 % Light line on a dense grid, through the same function used for the filter.
 if use2Dpath
