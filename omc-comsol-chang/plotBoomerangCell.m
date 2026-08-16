@@ -31,18 +31,18 @@ function [h,ff] = plotBoomerangCell(src,varargin)
 %
 %       test_Boomerang.m uses exactly that form for its pre-solve gate.
 %
-% WHERE THE HOLE SITS - the question this was written to answer:
-% buildBoomerangUnitCell.m:67 sets hole_pos = [a*(1/2+1/4), a*sqrt(3)/4], and
-% the cell polygon at line 48 has vertices (0,0), (a/2, a*sqrt(3)/2),
-% (3a/2, a*sqrt(3)/2), (a, 0). The centroid of those four vertices is
-% ((0+a/2+3a/2+a)/4, (0+a*sqrt(3)/2+a*sqrt(3)/2+0)/4) = (3a/4, a*sqrt(3)/4),
-% which is hole_pos exactly. The hole is CENTRED in the cell - not at a corner,
-% not offset. The plot marks both points on top of each other to make that
-% visible rather than merely asserted.
+% WHERE THE HOLE SITS
+% buildBoomerangUnitCell places it at f*(a1 + a2) with f = P.holeCentreFrac,
+% default 0.4 (resolveHoleCentreFrac). The cell polygon has vertices (0,0),
+% (a/2, a*sqrt(3)/2), (3a/2, a*sqrt(3)/2), (a, 0), whose centroid is
+% (3a/4, a*sqrt(3)/4) = 0.5*(a1 + a2). So the hole is NOT centred by default -
+% it sits lower-left along the cell diagonal, which buys a larger usable r
+% before the hole crosses the cell boundary. The plot draws both points so the
+% offset is visible rather than merely asserted.
 %
 % Note P.holeatedge ('1/0 for hole at edge/center of unit cell' in the test
-% scripts) is NOT read by buildBoomerangUnitCell - the hole is centred whatever
-% it is set to.
+% scripts) is NOT read by buildBoomerangUnitCell - P.holeCentreFrac is the
+% field that actually moves the hole.
 %
 % Requires polyshape (base MATLAB, R2017b+). No toolbox needed.
 %
@@ -112,19 +112,24 @@ h.cell = plot(ax,scalePgon(ff.cellPgon,nm), ...
     'LineWidth',1.2,'LineStyle','--','DisplayName','unit cell');
 
 % --- landmarks ---------------------------------------------------------------
-% Cell centroid and hole centre are the SAME point; drawn as two markers so a
-% future geometry change that separates them shows up immediately instead of
-% hiding behind a single dot.
-h.centre = plot(ax,c(1),c(2),'k+','MarkerSize',14,'LineWidth',1.5, ...
+% Hole centre and cell centroid are DISTINCT once holeCentreFrac ~= 0.5 (the
+% default is 0.4), so they are drawn at their own positions. At f = 0.5 they
+% coincide and the two markers stack, which is itself informative.
+cent = [a*(3/4), a*sqrt(3)/4]*nm;      % cell centroid
+h.centre = plot(ax,cent(1),cent(2),'k+','MarkerSize',14,'LineWidth',1.5, ...
     'DisplayName','cell centroid');
 plot(ax,c(1),c(2),'ko','MarkerSize',9,'LineWidth',1.2, ...
-    'DisplayName','hole centre (coincident)');
+    'DisplayName',sprintf('hole centre (f = %.2f)',ff.holeCentreFrac));
 
 theta = linspace(0,2*pi,361);
-inradius = a*sqrt(3)/4*nm;              % centre to nearest cell edge
-tipR     = hypot(ff.w/2,ff.armLength)*nm;   % centre to farthest arm corner
+% The inradius circle is a property of the CELL, so it is centred on the
+% centroid, not on the hole. With an offset hole it is no longer the hole's
+% clearance - that is ff.holeToCellMargin, measured from the actual boundary
+% and reported in the title.
+inradius = a*sqrt(3)/4*nm;
+tipR     = hypot(ff.w/2,ff.armLength)*nm;   % hole centre to farthest corner
 
-h.inradius = plot(ax,c(1)+inradius*cos(theta),c(2)+inradius*sin(theta), ...
+h.inradius = plot(ax,cent(1)+inradius*cos(theta),cent(2)+inradius*sin(theta), ...
     ':','Color',[0.2 0.5 0.2],'LineWidth',1.3, ...
     'DisplayName',sprintf('cell inradius %.0f nm',inradius));
 h.tipRadius = plot(ax,c(1)+tipR*cos(theta),c(2)+tipR*sin(theta), ...
@@ -139,13 +144,14 @@ xlabel(ax,'x (nm)','FontSize',12);
 ylabel(ax,'y (nm)','FontSize',12);
 legend(ax,'Location','eastoutside');
 
-margin = inradius - tipR;
+% Measured margin, valid for any hole position - inradius minus tipR would
+% only be right for a centred hole.
 title(ax,{ ...
-    sprintf('a = %.0f nm, w = %.0f nm, r = %.0f nm', ...
-        a*nm,ff.w*nm,ff.armLength*nm), ...
-    sprintf(['hole centre = cell centroid = (%.1f, %.1f) nm  |  ' ...
-             'fill %.4f  |  clearance %.1f nm'], ...
-        c(1),c(2),ff.fillingFactor,margin)}, ...
+    sprintf('a = %.0f nm, w = %.0f nm, r = %.0f nm  (f = %.2f)', ...
+        a*nm,ff.w*nm,ff.armLength*nm,ff.holeCentreFrac), ...
+    sprintf(['hole centre (%.1f, %.1f) nm  |  fill %.4f  |  ' ...
+             'hole-to-cell margin %.1f nm'], ...
+        c(1),c(2),ff.fillingFactor,ff.holeToCellMargin*nm)}, ...
     'FontSize',11);
 
 hold(ax,'off');

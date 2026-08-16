@@ -19,6 +19,19 @@ function [model,P] = buildBoomerangUnitCell(model,P)
 %   Only read when P.add_airDisk is on. See the CAUTION at the air disk block:
 %   this file is on the mechanical path, and an air domain is an optical
 %   construct.
+%
+% HOLE POSITION
+%   P.holeCentreFrac  Where the hole sits along the cell diagonal, as a fraction
+%                     f with centre = f*(a1 + a2). DEFAULT 0.4, not the
+%                     centroid's 0.5 - see resolveHoleCentreFrac.m for the
+%                     measurements behind that choice. Set 0.5 to restore the
+%                     original centred geometry exactly.
+%
+%                     This is a translation of the motif inside a periodic cell,
+%                     so the crystal it tiles into is unchanged and band results
+%                     are unaffected. What it buys is a larger r before the hole
+%                     crosses the cell boundary and the periodic-BC selections
+%                     below start misbehaving.
 
 %% read the input parameters
 a = P.a;        % lattice constant; side of the rhombic cell
@@ -46,25 +59,37 @@ ucellplane = ucellWP.geom.feature.create('pol1', 'Polygon');
 ucellplane.label('Base plane');
 ucellplane.set('source', 'table');
 ucellplane.set('table', [0 0; a/2 (a/2)*sqrt(3); a*(3/2) (a/2)*sqrt(3); a 0; 0 0]);
+% Hole centre, as a fraction along the cell diagonal - see resolveHoleCentreFrac
+% for why the default is 0.4 rather than the centroid's 0.5. The three arm
+% positions below are written as offsets FROM this point rather than as absolute
+% literals, so moving the hole moves the whole motif rigidly. At f = 0.5 every
+% expression here reduces to the literal it replaced: 0.5*[3a/2, a*sqrt(3)/2] is
+% [3a/4, a*sqrt(3)/4], which is what these lines used to hard-code.
+holeCentreFrac = resolveHoleCentreFrac(P);
+hole_pos = holeCentreFrac*[a*(3/2), a*sqrt(3)/2];
+
+% Arm centres sit r/2 from the hole centre at 90, 210 and 330 deg, so each arm
+% reaches r from the centre. The offsets are the polar form of what used to be
+% inlined: r/2*[cos, sin] of those three angles.
 rec_1 = ucellWP.geom.feature.create('r1', 'Rectangle');
-rec_1.set('pos', [a*(1/2+1/4) a*sqrt(3)/4+r/2]);
+rec_1.set('pos', [hole_pos(1)                 hole_pos(2)+r/2]);
 rec_1.set('base', 'center');
 rec_1.set('size', [w r]);
 rec_2 = ucellWP.geom.feature.create('r2', 'Rectangle');
-rec_2.set('pos', [a*(1/2+1/4)-sqrt(3)*r/4 a*sqrt(3)/4-r/4]);
+rec_2.set('pos', [hole_pos(1)-sqrt(3)*r/4     hole_pos(2)-r/4]);
 rec_2.set('base', 'center');
 rec_2.set('rot', 120);
 rec_2.set('size', [w r]);
 rec_3 = ucellWP.geom.feature.create('r3', 'Rectangle');
-rec_3.set('pos', [a*(1/2+1/4)+sqrt(3)*r/4 a*sqrt(3)/4-r/4]);
+rec_3.set('pos', [hole_pos(1)+sqrt(3)*r/4     hole_pos(2)-r/4]);
 rec_3.set('base', 'center');
 rec_3.set('rot', 240);
 rec_3.set('size', [w r]);
 composit_geom = ucellWP.geom.feature.create('co1', 'Compose');
 composit_geom.set('formula', 'pol1-r1-r2-r3');
 
-% add fillets 
-hole_pos = [a*(1/2+1/4) a*sqrt(3)/4];
+% add fillets - anchored on the same hole_pos, so the DiskSelections follow the
+% hole rather than staying at the cell centroid.
 selection_width = 50e-9;
 addFillet(P,ucellWP.geom,hole_pos,selection_width)
 % ucellWP.geom.create('fil1', 'Fillet');

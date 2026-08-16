@@ -35,6 +35,11 @@ function out = calcFillingFactor(src)
 %                    lattice is applied.                                 [m]
 %   minFeature       min of the two above - the number to compare against a
 %                    fabrication limit                                   [m]
+%   holeCentreFrac   the fraction actually used (see resolveHoleCentreFrac)
+%   holeToCellMargin closest approach of the hole boundary to the cell
+%                    boundary. Room left before the hole crosses and the
+%                    periodic-BC selections misbehave. NOT the cell inradius
+%                    once the hole is off-centre.                        [m]
 %
 %   CAVEAT on minSolidFeature: it measures the wall between DISTINCT holes. It
 %   does not see the wedge of solid between two arms of the SAME hole, which
@@ -51,7 +56,9 @@ function out = calcFillingFactor(src)
 %   filletsIncluded  false - see LIMITATION below
 %   cellPgon         polyshape of the rhombic cell, for plotting
 %   holePgon         polyshape of the hole clipped to the cell, for plotting
-%   centre           [x y] cell centroid, which is also the hole centre  [m]
+%   centre           [x y] HOLE centre. Equals the cell centroid only when
+%                    holeCentreFrac is 0.5; the default 0.4 sits lower-left
+%                    along the cell diagonal.                           [m]
 %   source           the file path, or '' when given a struct
 %
 % The polyshapes are returned so plotBoomerangCell can draw the geometry
@@ -60,9 +67,10 @@ function out = calcFillingFactor(src)
 % GEOMETRY REPRODUCED (buildBoomerangUnitCell.m:45-64)
 %   cell   rhombus [0 0; a/2 a*sqrt(3)/2; 3a/2 a*sqrt(3)/2; a 0], side a,
 %          area a^2*sqrt(3)/2, centred on (3a/4, a*sqrt(3)/4).
-%   hole   union of three w-by-r rectangles, each centred r/2 from the cell
-%          centre and rotated 0/120/240 deg about its own centre, so the arms
-%          point at 90/210/330 deg and each reaches r from the centre.
+%   hole   union of three w-by-r rectangles, each centred r/2 from the HOLE
+%          centre (resolveHoleCentreFrac, default 0.4 along the diagonal, not
+%          the centroid) and rotated 0/120/240 deg about its own centre, so
+%          the arms point at 90/210/330 deg and each reaches r from it.
 %   The builder's Compose formula is 'pol1-r1-r2-r3', i.e. the rectangles are
 %   subtracted from the cell, which clips any arm that overhangs the boundary.
 %   The intersect() here reproduces that clip, so an over-long arm is not
@@ -125,8 +133,12 @@ if isfield(P,'r2'), rFil2 = P.r2; else, rFil2 = NaN; end
 cellPgon = polyshape([0 a/2 a*(3/2) a], ...
                      [0 a*sqrt(3)/2 a*sqrt(3)/2 0]);
 
-centre = [a*(3/4), a*sqrt(3)/4];        % cell centre, = builder's hole_pos
-% Arm centres sit r/2 from the cell centre along 90/210/330 deg; the literals
+% Hole centre from the SAME resolver buildBoomerangUnitCell uses, so the gate
+% measures the cell COMSOL will build. Hard-coding the centroid here would make
+% this silently wrong the moment P.holeCentreFrac is set.
+holeCentreFrac = resolveHoleCentreFrac(P);
+centre = holeCentreFrac*[a*(3/2), a*sqrt(3)/2];
+% Arm centres sit r/2 from the HOLE centre along 90/210/330 deg; the offsets
 % below are the builder's, kept in its form rather than re-derived so the two
 % can be diffed by eye.
 armCentres = [ centre(1),                      centre(2) + rArm/2 ;
@@ -191,6 +203,20 @@ for k = 1:size(shifts,1)
     minSolidFeature = min(minSolidFeature, minPairDistance(hb,nb));
 end
 
+% Margin from the hole to the cell boundary - how much room is left before the
+% hole crosses and the periodic-BC selections start misbehaving. Once the hole
+% is off-centre this is NOT the cell inradius, so it has to be measured rather
+% than assumed. Exact for a parallelogram: express each boundary point in the
+% (a1,a2) basis, and the perpendicular distance to the nearest of the four edges
+% is min(s,1-s,t,1-t) times the edge spacing, which is a*sqrt(3)/2 for both
+% pairs. Negative would mean the hole already pokes out - armsOverhang above
+% catches that case; here it simply floors at zero.
+detA   = a1(1)*a2(2) - a1(2)*a2(1);
+sCoord = ( hb(:,1)*a2(2) - hb(:,2)*a2(1))/detA;
+tCoord = (-hb(:,1)*a1(2) + hb(:,2)*a1(1))/detA;
+holeToCellMargin = min(min([sCoord, 1-sCoord, tCoord, 1-tCoord],[],2)) ...
+                   * a*sqrt(3)/2;
+
 if areaDielectric <= 0
     error('calcFillingFactor:noDielectric', ...
         ['The hole fills the entire cell (air %.3g m^2 >= cell %.3g m^2), so ' ...
@@ -212,6 +238,8 @@ out = struct( ...
     'minAirFeature',  minAirFeature, ...
     'minSolidFeature',minSolidFeature, ...
     'minFeature',     min(minAirFeature,minSolidFeature), ...
+    'holeCentreFrac', holeCentreFrac, ...
+    'holeToCellMargin',holeToCellMargin, ...
     'filletsIncluded',false, ...
     'cellPgon',       cellPgon, ...
     'holePgon',       holeInCell, ...
