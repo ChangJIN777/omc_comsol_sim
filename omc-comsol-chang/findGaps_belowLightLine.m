@@ -1,4 +1,4 @@
-function [midGap,gapSize,gapEdges,maxRejected] = findGaps_belowLightLine(F,minGap)
+function [midGap,gapSize,gapEdges,maxRejected] = findGaps_belowLightLine(F,minGap,minMidGap)
 %FINDGAPS_BELOWLIGHTLINE Frequency regions containing no guided data point.
 %
 % Treats the band structure as an unordered CLOUD of frequencies and reports
@@ -31,8 +31,15 @@ function [midGap,gapSize,gapEdges,maxRejected] = findGaps_belowLightLine(F,minGa
 %            count as occupied - in this project, a mode above the light line,
 %            masked out by solveOpticalBands before the call. Inf and complex
 %            entries are treated the same way as NaN.
-%   minGap   Minimum width in Hz for a region to be reported. Optional,
+%   minGap   Minimum WIDTH in Hz for a region to be reported. Optional,
 %            default 0 (report every gap, however narrow).
+%   minMidGap Minimum CENTRE frequency in Hz for a region to be reported.
+%            Optional, default 0 (no lower bound on where the gap sits).
+%            Independent of minGap: a region must satisfy both. This exists
+%            because the void under the fundamental band, and any void among
+%            the sparse low-frequency guided points, are wide but sit far below
+%            the design target - width alone does not distinguish them from a
+%            usable gap.
 %
 % OUTPUTS
 %   midGap       [n x 1] centre frequency of each region, Hz.
@@ -40,9 +47,11 @@ function [midGap,gapSize,gapEdges,maxRejected] = findGaps_belowLightLine(F,minGa
 %   gapEdges     [n x 2] lower and upper edge of each region, Hz. The upper
 %                edge is the lowest guided point above the gap, the lower edge
 %                the highest guided point below it.
-%   maxRejected  Width of the widest region that failed minGap, Hz, or [] if
-%                none did. Reported so "no gaps" can be distinguished from
-%                "gaps, but all narrower than the threshold" without re-running.
+%   maxRejected  Width of the widest region that failed EITHER criterion, Hz,
+%                or [] if none did. Reported so "no gaps" can be distinguished
+%                from "gaps, but rejected" without re-running. Note a wide
+%                region can appear here having failed only on centre frequency,
+%                so read it against both thresholds rather than minGap alone.
 %
 % All outputs are column vectors sorted by ascending frequency, and are empty
 % (0x1, or 0x2 for gapEdges) when nothing qualifies.
@@ -66,13 +75,18 @@ function [midGap,gapSize,gapEdges,maxRejected] = findGaps_belowLightLine(F,minGa
 %   [midGap,gapSize] = findGaps_belowLightLine(Fmasked,10e12);
 %   fprintf('%.2f THz gap at %.2f THz\n',[gapSize gapMid].'*1e-12);
 
-narginchk(1,2);
+narginchk(1,3);
 if nargin < 2 || isempty(minGap)
     minGap = 0;
+end
+if nargin < 3 || isempty(minMidGap)
+    minMidGap = 0;
 end
 validateattributes(F,{'numeric'},{'2d'},mfilename,'F');
 validateattributes(minGap,{'numeric'},{'scalar','nonnegative','finite'}, ...
     mfilename,'minGap');
+validateattributes(minMidGap,{'numeric'},{'scalar','nonnegative','finite'}, ...
+    mfilename,'minMidGap');
 
 midGap      = zeros(0,1);
 gapSize     = zeros(0,1);
@@ -89,23 +103,25 @@ if numel(f) < 2
 end
 
 f = sort(f);
-d = diff(f);        % width of every interval between consecutive occupied freqs
+d = diff(f);                    % width of every interval between occupied freqs
+m = (f(1:end-1) + f(2:end))/2;  % centre of every interval
 
-qualifies = d >= minGap;
+% Both criteria applied together. Width alone would keep the wide sparse voids
+% at the bottom of the spectrum; centre alone would keep hairline gaps that
+% happen to sit near the target.
+qualifies = (d >= minGap) & (m >= minMidGap);
+
+rejected = d(~qualifies);
+if ~isempty(rejected)
+    maxRejected = max(rejected);
+end
+
 if ~any(qualifies)
-    if ~isempty(d)
-        maxRejected = max(d);
-    end
     return
 end
 
 idx      = find(qualifies);
 gapEdges = [f(idx), f(idx+1)];
 gapSize  = d(idx);
-midGap   = (f(idx) + f(idx+1))/2;
-
-rejected = d(~qualifies);
-if ~isempty(rejected)
-    maxRejected = max(rejected);
-end
+midGap   = m(idx);
 end

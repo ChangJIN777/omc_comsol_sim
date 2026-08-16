@@ -217,30 +217,46 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
     % untouched on disk but now has no callers anywhere - the mechanical
     % pipeline uses findGaps, which is a different function.
     %
-    % P.minOpticalGap defaults to 10 THz. A gap is measured between sampled
-    % k-points only - with kpts = 9 the circuit has 27 samples - so a narrow gap
-    % may just be a band extremum falling between two samples. The threshold is
-    % applied inside the search rather than after it, so a region that fails is
-    % never constructed in the first place.
+    % Two independent criteria, both applied inside the search so a region that
+    % fails is never constructed in the first place:
+    %
+    %   P.minOpticalGap    minimum WIDTH,  default 20 THz. A gap is measured
+    %                      between sampled k-points only - with kpts = 9 the
+    %                      circuit has 27 samples - so a narrow region may just
+    %                      be the spacing between two samples of one band rather
+    %                      than a real void in the spectrum.
+    %   P.minOpticalMidGap minimum CENTRE, default 100 THz. Width alone does not
+    %                      separate a usable gap from the wide, sparsely
+    %                      populated stretches low in the spectrum, where few
+    %                      modes survive the light-line mask and the voids
+    %                      between them are large but nowhere near the design
+    %                      target.
     if isfield(P,'minOpticalGap') && ~isempty(P.minOpticalGap)
         minOpticalGap = P.minOpticalGap;
     else
-        minOpticalGap = 10e12;   % Hz
+        minOpticalGap = 20e12;   % Hz
+    end
+    if isfield(P,'minOpticalMidGap') && ~isempty(P.minOpticalMidGap)
+        minOpticalMidGap = P.minOpticalMidGap;
+    else
+        minOpticalMidGap = 100e12;   % Hz
     end
 
     [OpticalBand.midGap,OpticalBand.gapSize,OpticalBand.gapEdges,maxRejected] = ...
-        findGaps_belowLightLine(TE.F,minOpticalGap);
+        findGaps_belowLightLine(TE.F,minOpticalGap,minOpticalMidGap);
 
     if isempty(OpticalBand.gapSize)
         if isempty(maxRejected)
             fprintf('  no optical gap found below the light line\n');
         else
-            fprintf(['  no optical gap >= %.2f THz; widest region found was ' ...
-                     '%.2f THz\n'],minOpticalGap*1e-12,maxRejected*1e-12);
+            fprintf(['  no optical gap meeting width >= %.2f THz AND centre ' ...
+                     '>= %.2f THz;\n  widest region found was %.2f THz ' ...
+                     '(it may have failed on centre, not width)\n'], ...
+                minOpticalGap*1e-12,minOpticalMidGap*1e-12,maxRejected*1e-12);
         end
     else
-        fprintf('  %d optical gap(s) >= %.2f THz\n', ...
-            numel(OpticalBand.gapSize),minOpticalGap*1e-12);
+        fprintf('  %d optical gap(s): width >= %.2f THz, centre >= %.2f THz\n', ...
+            numel(OpticalBand.gapSize),minOpticalGap*1e-12,minOpticalMidGap*1e-12);
     end
     % write to data structure
     ds.opticalBand = OpticalBand;
@@ -254,7 +270,8 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
     ds.P             = P;              % geometry, k-path flags, backend choice
     ds.lightline     = lightline;      % Hz at each k-point, as filtered AND drawn
     ds.bandsBelow    = TE.F;           % NaN-masked matrix findGaps_optical scored
-    ds.minOpticalGap = minOpticalGap;  % Hz threshold applied to gapSize
+    ds.minOpticalGap    = minOpticalGap;    % Hz minimum width applied
+    ds.minOpticalMidGap = minOpticalMidGap; % Hz minimum centre applied
     ds.use2Dpath     = use2Dpath;      % which k-path shape the above assumed
     ds.solveTimeMin  = toc(tStart)/60; % elapsed at save time, not at return
 

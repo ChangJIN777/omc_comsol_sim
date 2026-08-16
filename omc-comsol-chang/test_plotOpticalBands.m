@@ -22,8 +22,11 @@ function results = test_plotOpticalBands(datLocs,varargin)
 %             test_Boomerang.m writes to: fullfile('.','test','boomerang').
 %
 % NAME-VALUE OPTIONS
-%   'MinGap'   Minimum gap to report, in Hz. Default 1e13 (10 THz), matching
-%              solveOpticalBands. Set 0 to see every gap found.
+%   'MinGap'   Minimum gap WIDTH to report, in Hz. Default 2e13 (20 THz),
+%              matching solveOpticalBands. Set 0 to see every gap found.
+%   'MinMidGap' Minimum gap CENTRE frequency, in Hz. Default 1e14 (100 THz),
+%              matching solveOpticalBands. Independent of MinGap - a region
+%              must satisfy both. Set 0 to disable.
 %   'Pattern'  File pattern to match. Default '*_bds.mat'.
 %   'Plot'     true (default) to draw a figure per file, false for text only.
 %   'Verbose'  true (default) to print the per-file header and gap table.
@@ -40,7 +43,7 @@ function results = test_plotOpticalBands(datLocs,varargin)
 %
 %   % one dated run, no minimum, text only
 %   test_plotOpticalBands(fullfile('.','test','boomerang','08152026'), ...
-%                         'MinGap',0,'Plot',false);
+%                         'MinGap',0,'MinMidGap',0,'Plot',false);
 %
 %   % collect for further analysis
 %   R = test_plotOpticalBands({'./test/boomerang','./test/boomerang_bayesopt'});
@@ -57,7 +60,8 @@ if ~iscell(datLocs)
     datLocs = {char(datLocs)};
 end
 
-opt = struct('MinGap',1e13,'Pattern','*_bds.mat','Plot',true,'Verbose',true);
+opt = struct('MinGap',2e13,'MinMidGap',1e14,'Pattern','*_bds.mat', ...
+             'Plot',true,'Verbose',true);
 if mod(numel(varargin),2) ~= 0
     error('test_plotOpticalBands:badOptions', ...
         'Name-value options must come in pairs; got %d trailing argument(s).', ...
@@ -70,6 +74,8 @@ for ii = 1:2:numel(varargin)
 end
 validateattributes(opt.MinGap,{'numeric'},{'scalar','nonnegative','finite'}, ...
     'test_plotOpticalBands','MinGap');
+validateattributes(opt.MinMidGap,{'numeric'},{'scalar','nonnegative','finite'}, ...
+    'test_plotOpticalBands','MinMidGap');
 
 %% ------------------------------------------------------------ collect files
 files = {};
@@ -127,7 +133,8 @@ for ii = 1:numel(files)
     % regions containing no guided data point, which is a property of the SET of
     % surviving frequencies and so is immune to how points were assigned to
     % bands - the runners do that by eigenvalue index with no mode tracking.
-    [midGap,gapSize,~,maxRejected] = findGaps_belowLightLine(TE.F,opt.MinGap);
+    [midGap,gapSize,~,maxRejected] = ...
+        findGaps_belowLightLine(TE.F,opt.MinGap,opt.MinMidGap);
 
     % --- report
     keep = keep + 1;
@@ -148,7 +155,7 @@ for ii = 1:numel(files)
 
     if opt.Verbose
         printOneResult(thisName,thisDir,P,OB,below,midGap,gapSize, ...
-                       maxRejected,opt.MinGap,results(keep).storedGapSize);
+                       maxRejected,opt,results(keep).storedGapSize);
     end
 
     if opt.Plot
@@ -163,8 +170,9 @@ end
 
 %% --------------------------------------------------------------- summary
 fprintf('%s\n',repmat('=',1,72));
-fprintf('SUMMARY: %d file(s) with optical band data, MinGap = %.2f THz\n', ...
-    keep,opt.MinGap*1e-12);
+fprintf(['SUMMARY: %d file(s) with optical band data; criteria: width >= ' ...
+         '%.2f THz, centre >= %.2f THz\n'], ...
+    keep,opt.MinGap*1e-12,opt.MinMidGap*1e-12);
 fprintf('%-44s %8s %9s %8s\n','design','gaps','best THz','ratio');
 fprintf('%s\n',repmat('-',1,72));
 for ii = 1:numel(results)
@@ -252,7 +260,7 @@ end
 end
 
 function printOneResult(name,dirName,P,OB,below,midGap,gapSize,maxRejected, ...
-                        minGap,storedGapSize)
+                        opt,storedGapSize)
 %PRINTONERESULT Terminal report for a single saved band structure.
 fprintf('%s\n',repmat('-',1,72));
 fprintf('%s\n',name);
@@ -274,15 +282,21 @@ fprintf('  below light   : %d of %d bands have any point below the light line\n'
     nnz(any(below,1)),size(OB.F,2));
 
 if isempty(gapSize)
-    fprintf('  GAPS          : none >= %.2f THz',minGap*1e-12);
+    fprintf('  GAPS          : none with width >= %.2f THz and centre >= %.2f THz', ...
+        opt.MinGap*1e-12,opt.MinMidGap*1e-12);
     if ~isempty(maxRejected)
-        fprintf(' (widest region found was %.2f THz)',maxRejected*1e-12);
+        % Widest REJECTED region, which may have failed on centre rather than
+        % width - so it can legitimately exceed MinGap.
+        fprintf('\n                  (widest rejected region was %.2f THz)', ...
+            maxRejected*1e-12);
     end
     fprintf('\n');
 else
-    fprintf('  GAPS          : %d >= %.2f THz',numel(gapSize),minGap*1e-12);
+    fprintf('  GAPS          : %d with width >= %.2f THz and centre >= %.2f THz', ...
+        numel(gapSize),opt.MinGap*1e-12,opt.MinMidGap*1e-12);
     if ~isempty(maxRejected)
-        fprintf(' (widest sub-threshold region %.2f THz)',maxRejected*1e-12);
+        fprintf('\n                  (widest rejected region was %.2f THz)', ...
+            maxRejected*1e-12);
     end
     fprintf('\n');
     fprintf('     %3s  %12s  %12s  %10s  %12s\n', ...
