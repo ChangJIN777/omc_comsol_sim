@@ -2,9 +2,11 @@
 
 Bayesian optimization of the boomerang unit cell for a complete **mechanical** bandgap centred on a target frequency.
 
-Searches four geometry parameters — lattice constant `a`, hole arm length `r`, hole arm width `w`, and slab thickness `th` — using MATLAB's `bayesopt`, where each objective evaluation is a full COMSOL eigenfrequency band structure solve.
+Searches **three** geometry parameters — lattice constant `a`, hole arm length `r`, hole arm width `w` — using MATLAB's `bayesopt`, where each objective evaluation is a full COMSOL eigenfrequency band structure solve. Slab thickness `th` is **fixed** at `cfg.th`, and an optional **filling-factor constraint** restricts the search to designs whose air/dielectric area ratio sits in a band around `cfg.fillingFactor`.
 
-> **Status: verified except for the COMSOL solve.** `checkcode` passes with **no messages** (MATLAB R2026a). A full **dry run has been executed end-to-end** — real `bayesopt`, 12 evaluations, the surrogate backend — producing all four figures, the log, the checkpoint and the results `.mat` in a correctly-formed directory tree. Cache isolation is demonstrated, the provenance guard was tested by planting synthetic data at a real filename, and the real-run figures are **pixel-identical** to the version of the file before the dry-run mode was added. What has **not** run is a real study: COMSOL LiveLink was never driven, so `solveBandsViaComsol` is exercised only on its cache path. Do a dry run first, then treat the first real study as a shakedown of the solve alone.
+> **Status: NOT re-verified since the three-variable / filling-factor change.** The end-to-end dry run described below was executed against the *four-variable* version of this file. Fixing `th`, adding the filling-factor constraint, replacing the containment test and adding the feasibility scan all postdate it, and **none of that has been run** — not even `checkcode`. Treat the next dry run as the verification, not as a formality.
+>
+> *Previously verified, and still expected to hold where untouched:* `checkcode` passed with no messages (MATLAB R2026a); a full dry run ran end-to-end with the surrogate backend, producing all four figures, the log, the checkpoint and the results `.mat`; cache isolation was demonstrated and the provenance guard tested by planting synthetic data at a real filename. COMSOL LiveLink has never been driven from this script, so `solveBandsViaComsol` is exercised only on its cache path.
 
 ---
 
@@ -26,6 +28,7 @@ Searches four geometry parameters — lattice constant `a`, hole arm length `r`,
   - [Properties worth knowing](#properties-worth-knowing)
 - [Constraints](#constraints)
 - [Configuration reference](#configuration-reference)
+  - [Filling-factor constraint](#filling-factor-constraint)
 - [Outputs](#outputs)
 - [Cross-platform paths](#cross-platform-paths)
 - [Visualization](#visualization)
@@ -183,7 +186,7 @@ plus one scaling law — frequencies go as **1/a** — so the Gaussian target-fr
 
 Every optimum is placed so the peak lands at the **centre of the default bounds**: `a = 800`, `r = 200`, `w = 85`, `th ≈ 312` nm, fitness ≈ 0.24, mid-gap 13.0 GHz (= `cfg.targetFreq`, by construction). Centring matters — an optimum near a bound makes the best design *on* that bound almost as good as the peak, and the corresponding design slice then looks flat and reports `[at bound]`. Measured on a grid scan of the feasible box, the peak beats the best design available on each bound face by **2.5× (`a`), 1.9× (`r`), 2.4× (`w`), 1.5× (`th`)**, and about **64%** of the box has no complete gap at all — so the gapless branch of `gapFitness` gets exercised too.
 
-> If you change `cfg.bounds`, `cfg.targetFreq` or `cfg.sigma`, re-check that the surrogate optimum is still interior. It is tuned against the shipped values, and the absolute-thickness factor in particular does not follow `cfg.bounds.th`. A surrogate whose optimum has drifted onto a bound tests considerably less than it appears to.
+> If you change `cfg.bounds`, `cfg.targetFreq` or `cfg.sigma`, re-check that the surrogate optimum is still interior. It is tuned against the shipped values, and the absolute-thickness factor in particular does not follow `cfg.th`, which is now a single fixed value rather than a searched range — so if you move `cfg.th` away from ~312 nm the surrogate's thickness factor is simply off-peak everywhere, uniformly. A surrogate whose optimum has drifted onto a bound tests considerably less than it appears to.
 >
 > A measured example, since this is easy to hit in practice: retargeting to `cfg.targetFreq = 7e9`, `cfg.sigma = 3e9` with `cfg.nbands = 10` and `cfg.bounds.r = [100 250]` still leaves the surrogate working — 20 % of a 3969-design scan score nonzero, best fitness 0.0515 — but the optimum moves to `a = 1000`, `r = 250`, i.e. **pinned on both upper bounds**, versus an interior `a = 800, r = 200, w = 85, th = 312` at fitness 0.2427 under the shipped 13 GHz / 5 GHz. The cause is structural: surrogate frequencies scale as 1/a and the ladder is centred so that 13 GHz falls at a = 800, so a lower target can only be reached with a bigger cell and `a` runs to the ceiling. The loop is still fully exercised and the run is still valid as a *plumbing* test — but the `a` and `r` slices will look bound-limited, and that says nothing whatever about where the real COMSOL optimum lies.
 
@@ -195,10 +198,10 @@ Every optimum is placed so the peak lands at the **centre of the default bounds*
 
 | variable | `cfg.bounds` default | `test_Boomerang.m` | |
 |---|---|---|---|
-| `a` | 600 – 1000 nm | 480 | **below the range** |
-| `w` | 50 – 120 nm | 140 | **above the range** |
-| `th` | 275 – 350 nm | 220 | **below the range** |
-| `r` | 150 – 250 nm | 177 | inside ✓ |
+| `a` | 600 – 1000 nm | 730 | inside ✓ |
+| `w` | 50 – 120 nm | 125 | **above the range** |
+| `r` | 150 – 250 nm | 300 | **above the range** |
+| `th` | *fixed at `cfg.th` = 300 nm* | 220 | not searched |
 
 So as shipped, the optimizer cannot reach — or even model — the region you are presumably most interested in. Decide deliberately which design space you want searched. To centre it on the current geometry:
 
@@ -206,10 +209,10 @@ So as shipped, the optimizer cannot reach — or even model — the region you a
 cfg.bounds.a  = [400  600];
 cfg.bounds.r  = [140  210];
 cfg.bounds.w  = [100  180];
-cfg.bounds.th = [180  260];
+cfg.th        = 220e-9;      % fixed, not a range
 ```
 
-Whatever you choose, keep `r < sqrt(3)*a/4` reachable across the box or a large fraction of candidates will be pruned as infeasible (see [Constraints](#constraints)). That ceiling is 173 nm at `a`=400 nm and 260 nm at `a`=600 nm.
+Whatever you choose, check the containment ceiling stays reachable across the box or candidates get pruned (see [Constraints](#constraints)). With the default `holeCentreFrac` = 0.4 that ceiling is ~379 nm at `a` = 730 nm — looser than the old centred-hole `sqrt(3)*a/4` = 316 nm, so the containment test binds less than it used to. **The filling-factor band is now the constraint that prunes**, by a wide margin; size the bounds against [its feasibility table](#filling-factor-constraint), not against containment.
 
 ---
 
@@ -219,7 +222,9 @@ Built by `buildBoomerangUnitCell.m` — the builder `runBands_2D` dispatches for
 
 **The cell** is the primitive cell of a hexagonal (triangular) lattice: a rhombus of side `a` with a 60° interior angle, spanned by lattice vectors `a1 = (a, 0)` and `a2 = (a/2, a·√3/2)`. The cell centre sits at `(3a/4, a·√3/4)`. **`a` alone sets the cell footprint.**
 
-**The hole** is a three-pointed star: three rectangular arms, each `w` wide and `r` long, radiating from the cell centre at 120° spacing (θ = 90°, 210°, 330°). This tri-arm shape is what gives the cell its name.
+**The hole** is a three-pointed star: three rectangular arms, each `w` wide and `r` long, radiating from a common centre at 120° spacing (θ = 90°, 210°, 330°). This tri-arm shape is what gives the cell its name.
+
+⚠️ **The hole is no longer centred on the cell.** `resolveHoleCentreFrac.m` places it at `f·(a1 + a2)` with `f` = `P.holeCentreFrac`, **default 0.4** — the centroid is `f` = 0.5. Sliding down the diagonal trades clearance from the two down-pointing arms, which have room to spare, to the single up-pointing arm, which is what binds: max `r` before the hole crosses the cell boundary goes from **316 nm to ~379 nm** at `a` = 730 nm. This is a translation of the motif inside a periodic cell, so the crystal it tiles into — and therefore the band structure — is unchanged. Set `P.holeCentreFrac = 0.5` to restore the centred geometry.
 
 ```
               arm 1 (90 deg)
@@ -330,7 +335,17 @@ Both are deterministic and enforced through `XConstraintFcn`, so infeasible cand
 
 1. **Minimum feature size:** `w >= cfg.minFeatureNm` (default 50 nm). For the tri-arm hole the narrowest feature is simply the arm width, since that is an etched slit.
 
-2. **Arms stay inside the cell:** `r < sqrt(3)*a/4`. The cell centre sits `√3·a/4` from the nearest cell edge and an arm reaches `r`, so violating this punches the hole through the cell boundary and produces a shape the periodic BCs no longer describe. The default bounds clear this by only ~10 nm at `a`=600, `r`=250, so it matters as soon as ranges widen.
+2. **Arms stay inside the cell** — now **measured, not analytic.** This used to be `r < sqrt(3)*a/4`, which is the containment limit for a hole sitting on the cell *centroid*. That stopped being the geometry the builder produces when `resolveHoleCentreFrac.m` introduced a default **0.4** diagonal offset (the centroid is `0.5`), so the test is now `calcFillingFactor`'s `armsOverhang` flag — it compares hole area before and after the clip to the cell, which is exact for any hole position and stays correct if the offset is retuned.
+
+   The offset is not cosmetic: it raises the largest usable `r` from ~316 nm to ~379 nm at `a` = 730 nm, against a physical merge limit of ~400 nm. See [`resolveHoleCentreFrac.m`](resolveHoleCentreFrac.m).
+
+3. **Filling factor in a band:** `|ff - cfg.fillingFactor| <= cfg.fillingFactorTol`, where `ff = area(air) / area(dielectric)` from [`calcFillingFactor.m`](calcFillingFactor.m) — the same polygons `buildBoomerangUnitCell` hands COMSOL, so the constraint and the geometry cannot disagree. Set `cfg.fillingFactor = []` to disable.
+
+   **Why a band and not an equality.** `a`, `r`, `w` live on an integer-nm grid, so the set where the ratio hits a target *exactly* has measure zero — every candidate would be pruned. The tolerance turns the equality into a thin feasible shell: roughly two-dimensional inside a three-dimensional box, which is the point. Combined with fixed `th`, the optimizer searches ~2 free directions instead of 4.
+
+   **Why it is measured rather than computed from a formula.** The three arms overlap at the hole centre, so the naive `3*w*r` overstates the air area by about **6%** at the current geometry (99 000 vs 93 600 nm² at `w`=110, `r`=300 nm) — and the error varies nonlinearly with `w/r`, so it cannot be absorbed into a constant.
+
+   **Cost.** `calcFillingFactor` is called with `'FeatureSizes',false`, which skips its `minSolidFeature` measurement. That measurement is O(n²) over a few thousand densified boundary points × six neighbours — fine once per design, ruinous in a constraint function `bayesopt` evaluates on thousands of candidates per iteration. The areas, the filling factor and `armsOverhang` all survive the fast path. Rows already failing test (1) are skipped before any geometry work.
 
 `boomerangFabConstraint` is **vectorized over a multi-row table**, as `bayesopt` requires, and compares in integer nm so a design sitting exactly on a limit is not decided by floating-point round-off.
 
@@ -376,18 +391,49 @@ The first block in `cfg`, because it is the most consequential switch in the fil
 | field | default |
 |---|---|
 | `cfg.bounds.a` | `[600 1000]` |
-| `cfg.bounds.r` | `[150 250]` |
+| `cfg.bounds.r` | `[100 250]` |
 | `cfg.bounds.w` | `[50 120]` |
-| `cfg.bounds.th` | `[275 350]` |
 
-See [the caveat above](#read-this-before-your-first-real-run) — these do not contain the current design point.
+`cfg.bounds.th` is **gone** — `th` is no longer searched. See [the caveat above](#read-this-before-your-first-real-run) — these do not contain the current design point.
 
 ### Fixed geometry
 
 | field | default | meaning |
 |---|---|---|
+| `cfg.th` | `300e-9` | **Full slab thickness [m]. Fixed, not searched.** Set it to whatever thickness the process actually delivers — there is no value in optimizing a dimension you cannot choose |
 | `cfg.r1` | `10e-9` | Fillet radius, inner corners (arms meet at centre) |
 | `cfg.r2` | `10e-9` | Fillet radius, outer arm tips |
+
+### Filling-factor constraint
+
+| field | default | meaning |
+|---|---|---|
+| `cfg.fillingFactor` | `0.25` | Target `area(air)/area(dielectric)`. `[]` disables the constraint entirely |
+| `cfg.fillingFactorTol` | `0.01` | Accept `\|ff − target\| <= tol`. Too tight and everything is pruned; see the scan below |
+| `cfg.fillingFactorMinFeasible` | `0.02` | Feasible fraction below which the startup scan warns. Zero feasible is always an error |
+
+**A startup feasibility scan runs before any solve.** It scores a 12³ grid over the bounds through the *same* constraint function `bayesopt` will use, and reports what fraction survives. Zero → **error**, study not started. Below `cfg.fillingFactorMinFeasible` → **warning**.
+
+That check exists because the failure it catches is silent and expensive: `bayesopt` never reports "your constraint pruned everything" — it keeps drawing candidates, finds almost none admissible, and either stalls or spends the whole budget in a sliver of the box.
+
+**Choose the target with the bounds in mind.** Measured over the shipped bounds (`a`∈[600,1000], `r`∈[150,250], `w`∈[50,120] nm, `holeCentreFrac` = 0.4):
+
+| statistic | filling factor |
+|---|---|
+| range | 0.025 – 0.368 |
+| 10th / 25th percentile | 0.051 / 0.067 |
+| median | 0.092 |
+| 75th / 90th percentile | 0.128 / 0.174 |
+
+and the resulting feasible fractions:
+
+| target | ±0.005 | ±0.01 | ±0.02 |
+|---|---|---|---|
+| 0.15 | 3.3% | 6.6% | 13.4% |
+| 0.20 | 1.3% | 2.5% | 5.3% |
+| 0.25 | 0.5% | **0.9%** | 1.9% |
+
+⚠️ The shipped default of **0.25 ± 0.01 leaves under 1% of the box** — it matches the geometry in `test_Boomerang.m` (`a`=730, `w`=125, `r`=300 → ff = 0.254), but that design sits *outside* these bounds, and the box as shipped is mostly low-fill. Expect the tight-feasibility warning. Either move `cfg.bounds` toward the shell you care about, widen `cfg.fillingFactorTol`, or drop the target toward the box median.
 
 ### Solver fidelity
 
@@ -458,7 +504,8 @@ In a dry run `<fileBase>` additionally gains a `DRYRUN_` prefix and the whole fo
 
 | column | notes |
 |---|---|
-| `a_nm`, `r_nm`, `w_nm`, `th_nm` | Design point |
+| `a_nm`, `r_nm`, `w_nm` | Design point |
+| `th_nm` | **Constant** — `cfg.th`, no longer searched. The column is kept so the 14-column format and any existing `readtable` call still work |
 | `midGap_GHz`, `gapSize_GHz` | Winning gap |
 | `gapRatio` | `gapSize/midGap` |
 | `penalty` | Gaussian frequency penalty, 0–1 |
@@ -509,7 +556,7 @@ The composite layout:
 |---|---|
 | 1 | Best-cell **geometry** (2 tiles, tiled over `cfg.figNPeriods` periods) \| **band structure** of the best design (2 tiles, complete gaps shaded) |
 | 2 | **Convergence** trace (2 tiles) \| **summary** text panel (2 tiles, monospace) |
-| 3 | **Design slices** — fitness vs `a`, `r`, `w`, `th`, one tile each, with the search bounds drawn |
+| 3 | **Design slices** — fitness vs `a`, `r`, `w`, one tile each, with the search bounds drawn. The fourth tile is now **empty**: `drawDesignSpaceRow` reads variable names off `XTrace` rather than hard-coding them, so dropping `th` needs no change there, but the layout still reserves four tiles |
 
 Notes on reading these:
 
@@ -642,11 +689,13 @@ Visualization (all best-effort, none on the optimization path):
 
 **`cfg.sigma`** controls how hard the frequency target is enforced. Too small and almost every design scores ~0, leaving the GP nothing to learn from; too large and the optimizer happily returns a wide gap at the wrong frequency. If early evaluations come back with `penalty` near zero across the board, widen it.
 
-**`cfg.numSeedPoints`** should stay a reasonable fraction of `cfg.maxEvaluations` — with 4 variables, 8 seeds out of 40 is a sensible split. Too few and the GP extrapolates from almost nothing; too many and you spend the budget on random search.
+**`cfg.numSeedPoints`** should stay a reasonable fraction of `cfg.maxEvaluations` — with 3 variables, 8 seeds out of 40 is a sensible split, and one variable fewer than before means the same budget goes further. Raise it if the filling-factor scan warns that the feasible shell is thin, since seeds are drawn from the whole box and most will be rejected. Too few and the GP extrapolates from almost nothing; too many and you spend the budget on random search.
 
 **`cfg.nbands`** must be large enough to bracket the gap of interest. If gaps go missing at higher frequency, raise it — but note that COMSOL solve cost grows with band count.
 
 **`cfg.maxEvaluations`** is a hard stop, not a convergence criterion. Prefer a modest first run followed by `resume`, since that lets you inspect the log before committing more solve time.
+
+**`cfg.fillingFactorTol`** is the knob that decides whether there is anything to search. Start from the [feasibility table](#filling-factor-constraint), and let the startup scan tell you rather than guessing — it is cheap and it runs before any solve. If the scan warns, raising `cfg.numSeedPoints` helps: seeds are drawn from the whole box, so a thin shell means most are rejected and the GP starts with very little.
 
 **Do a dry run first.** `cfg.solverBackend = 'surrogate'` walks the whole loop in seconds, so every mistake that is not about physics — a bad bound, a constraint that prunes everything, a `datLoc` that cannot be written, a budget split that spends everything on seed points — surfaces before you spend a solve on it. Then `'stub'` for the failure paths, then `'comsol'`.
 
@@ -664,5 +713,8 @@ Visualization (all best-effort, none on the optimization path):
 | `runBands_2D.m` | 2D band structure solve; builds the COMSOL model |
 | `buildBoomerangUnitCell.m` | The geometry builder actually used for `celltype = 'boomerang'` |
 | `findGaps.m` | Locates complete gaps in an assembled band matrix — used by the surrogate too, so the synthetic gaps are found the same way the real ones are |
+| `calcFillingFactor.m` | Measures air/dielectric area from the reconstructed polygons; supplies both the filling-factor constraint and the `armsOverhang` containment test. Called with `'FeatureSizes',false` on the constraint path |
+| `resolveHoleCentreFrac.m` | Single source for the hole's position in the cell (`f` = 0.4 by default). Shared with `buildBoomerangUnitCell` so the constraint measures the cell COMSOL builds |
+| `plotBoomerangCell.m` | Draws cell + hole + landmarks from the same `calcFillingFactor` result; useful for eyeballing a candidate before committing solve time |
 | `python-scripts/src/objective.py` | Source of the string-valued backend selection, the fail-loud-on-unknown-backend rule, and the backend-in-the-cache-key idea |
 | `python-scripts/src/optical_surrogate.py` | Source of the "analytic surrogate, loop debugging only" pattern the surrogate backend follows |

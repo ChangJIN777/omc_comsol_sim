@@ -1,4 +1,4 @@
-function out = calcFillingFactor(src)
+function out = calcFillingFactor(src,varargin)
 %CALCFILLINGFACTOR Air/dielectric area ratio of a boomerang unit cell.
 %
 % Computes the in-plane filling factor from a saved *_bds.mat (or from a loaded
@@ -36,7 +36,8 @@ function out = calcFillingFactor(src)
 %   minFeature       min of the two above - the number to compare against a
 %                    fabrication limit                                   [m]
 %   holeCentreFrac   the fraction actually used (see resolveHoleCentreFrac)
-%   holeToCellMargin closest approach of the hole boundary to the cell
+%   holeToCellMargin closest approach of the hole boundary to the cell (NaN
+%                    when called with 'FeatureSizes',false)
 %                    boundary. Room left before the hole crosses and the
 %                    periodic-BC selections misbehave. NOT the cell inradius
 %                    once the hole is off-centre.                        [m]
@@ -97,11 +98,29 @@ function out = calcFillingFactor(src)
 %   R = calcFillingFactor(fullfile({f.folder},{f.name}));
 %   scatter([R.fillingFactor],[R.airFraction]);
 
-narginchk(1,1);
+narginchk(1,inf);
+
+% FeatureSizes = false skips minSolidFeature and holeToCellMargin, which are
+% the only expensive part of this function: the wall measurement is O(n^2) over
+% a densified boundary of a few thousand points, times six neighbours. That is
+% fine once per design but ruinous inside bayesopt's XConstraintFcn, which is
+% called on thousands of candidate rows per iteration. The areas, the filling
+% factor and armsOverhang all survive - they come from the polyshape booleans,
+% which are cheap - so a constraint can still test containment and fill.
+opt = struct('FeatureSizes',true);
+if mod(numel(varargin),2) ~= 0
+    error('calcFillingFactor:badOptions', ...
+        'Name-value options must come in pairs; got %d trailing argument(s).', ...
+        numel(varargin));
+end
+for ii = 1:2:numel(varargin)
+    name = validatestring(varargin{ii},fieldnames(opt),mfilename,'option name');
+    opt.(name) = varargin{ii+1};
+end
 
 % Cell array -> recurse, so a whole sweep can be measured in one call.
 if iscell(src)
-    out = arrayfun(@(k) calcFillingFactor(src{k}),(1:numel(src)).');
+    out = arrayfun(@(k) calcFillingFactor(src{k},varargin{:}),(1:numel(src)).');
     return
 end
 
@@ -191,6 +210,14 @@ a1 = [a 0];                       % primitive vectors of the hexagonal lattice
 a2 = [a/2 a*sqrt(3)/2];
 shifts = [1 0; -1 0; 0 1; 0 -1; 1 -1; -1 1];   % the six nearest neighbours
 
+if ~opt.FeatureSizes
+    % Fast path - see the note at the top. NaN rather than 0 so a caller that
+    % uses these without asking for them gets an obviously-missing value
+    % rather than a plausible wrong one.
+    minSolidFeature  = NaN;
+    holeToCellMargin = NaN;
+else
+
 % Sample spacing fine enough that the discretisation error is well under a
 % nanometre at these dimensions - the wall being measured is tens of nm.
 ds = min([w rArm])/200;
@@ -216,6 +243,7 @@ sCoord = ( hb(:,1)*a2(2) - hb(:,2)*a2(1))/detA;
 tCoord = (-hb(:,1)*a1(2) + hb(:,2)*a1(1))/detA;
 holeToCellMargin = min(min([sCoord, 1-sCoord, tCoord, 1-tCoord],[],2)) ...
                    * a*sqrt(3)/2;
+end
 
 if areaDielectric <= 0
     error('calcFillingFactor:noDielectric', ...

@@ -219,9 +219,34 @@ cfg.minFeatureNm = 50;      % [nm]
 cfg.bounds.a  = [600 1000];
 cfg.bounds.r  = [100  250];   % sweep used r in [0.6*250, 250] nm
 cfg.bounds.w  = [ 50  120];
-cfg.bounds.th = [275  350];
 
 % --- fixed geometry ------------------------------------------------------
+% th is FIXED, not searched. It used to be a fourth optimizable variable over
+% cfg.bounds.th = [275 350]; holding it constant drops the search to three
+% dimensions, which combined with the filling-factor constraint below leaves
+% effectively two free directions - a much easier surface for a GP to learn on
+% the evaluation budget available. Fix it at whatever thickness the process
+% actually delivers; there is no point optimizing a dimension you cannot set.
+cfg.th = 300e-9;            % full slab thickness in z [m]
+
+% --- filling-factor constraint -------------------------------------------
+% Restrict the search to designs whose in-plane air/dielectric area ratio sits
+% in a band around cfg.fillingFactor. Measured by calcFillingFactor from the
+% same polygons buildBoomerangUnitCell hands COMSOL, so the constraint and the
+% geometry cannot disagree.
+%
+% An exact equality is unusable: (a,r,w) live on an integer-nm grid, so the
+% set where the ratio hits a value exactly has measure zero and every candidate
+% would be pruned. The tolerance turns the equality into a thin feasible shell,
+% two-dimensional in a three-dimensional box.
+%
+% Set cfg.fillingFactor = [] to disable and recover the previous behaviour.
+% Choose the target WITH the bounds in mind - the startup feasibility scan
+% below reports what fraction of the box survives, and refuses to start a study
+% that has almost nothing left to search.
+cfg.fillingFactor    = 0.25;   % target area(air)/area(dielectric), or []
+cfg.fillingFactorTol = 0.01;   % accept |ff - target| <= this
+cfg.fillingFactorMinFeasible = 0.02;   % refuse to start below this fraction
 cfg.r1 = 10e-9;             % fillet radius at the INNER corners, where the
                             % three arms meet near the cell centre
 cfg.r2 = 10e-9;             % fillet radius at the OUTER arm tips
@@ -322,13 +347,66 @@ end
 initIterationLog(cfg.logPath);
 
 %% ------------------------------------------------------------------------
+%  Filling-factor feasibility scan
+%  ------------------------------------------------------------------------
+% A coarse grid over the bounds, scored through the SAME constraint function
+% bayesopt will use, to answer one question before any solve time is spent: is
+% there anything left to search?
+%
+% This exists because the failure mode it catches is silent and expensive.
+% bayesopt does not report "your constraint pruned everything" - it keeps
+% drawing candidates, finds almost none admissible, and either stalls or spends
+% the whole budget in a sliver of the box. The filling-factor band makes that
+% easy to hit by accident: the ratio spans roughly 0.03 to 0.37 over the shipped
+% bounds with a median near 0.09, so a target of 0.25 leaves under 1% of the box
+% at +/- 0.01 while a target of 0.15 leaves about 7%.
+%
+% Coarse on purpose. This is a go/no-go check, not a survey - a fine grid would
+% cost more than it tells you, since each point runs the polygon reconstruction.
+if ~isempty(cfg.fillingFactor)
+    nScan = 12;                       % 12^3 = 1728 candidates, seconds
+    [aG,rG,wG] = ndgrid( ...
+        round(linspace(cfg.bounds.a(1), cfg.bounds.a(2), nScan)), ...
+        round(linspace(cfg.bounds.r(1), cfg.bounds.r(2), nScan)), ...
+        round(linspace(cfg.bounds.w(1), cfg.bounds.w(2), nScan)));
+    scanTbl  = table(aG(:),rG(:),wG(:),'VariableNames',{'a','r','w'});
+    scanOK   = boomerangFabConstraint(scanTbl,cfg);
+    fracOK   = nnz(scanOK)/numel(scanOK);
+
+    fprintf(['Filling-factor constraint: target %.4f +/- %.4f\n' ...
+             '  feasible fraction of the search box: %.2f%% (%d of %d scanned)\n'], ...
+        cfg.fillingFactor,cfg.fillingFactorTol,100*fracOK,nnz(scanOK),numel(scanOK));
+
+    if fracOK == 0
+        error('bayesopt_boomerang:fillingFactorInfeasible', ...
+            ['No point on a %d^3 scan of the bounds satisfies the filling-' ...
+             'factor band %.4f +/- %.4f, so bayesopt would have nothing to ' ...
+             'search and the study was NOT started.\nEither widen ' ...
+             'cfg.fillingFactorTol, move cfg.fillingFactor toward what the ' ...
+             'bounds can actually produce, or widen cfg.bounds.'], ...
+            nScan,cfg.fillingFactor,cfg.fillingFactorTol);
+    elseif fracOK < cfg.fillingFactorMinFeasible
+        % Warn rather than error: a thin shell is workable if it is where the
+        % design has to live, it just needs more seed points to find.
+        warning('bayesopt_boomerang:fillingFactorTight', ...
+            ['Only %.2f%% of the search box satisfies the filling-factor ' ...
+             'band, below the %.2f%% comfort threshold. bayesopt can work ' ...
+             'here but its seed points are drawn from the box, so most will ' ...
+             'be rejected and the GP may start with very little. Consider ' ...
+             'raising cfg.numSeedPoints, widening cfg.fillingFactorTol, or ' ...
+             'tightening cfg.bounds around the feasible shell.'], ...
+            100*fracOK,100*cfg.fillingFactorMinFeasible);
+    end
+end
+
+%% ------------------------------------------------------------------------
 %  Optimization variables
 %  ------------------------------------------------------------------------
 optVars = [ ...
     optimizableVariable('a', cfg.bounds.a, 'Type','integer'), ...
     optimizableVariable('r', cfg.bounds.r, 'Type','integer'), ...
-    optimizableVariable('w', cfg.bounds.w, 'Type','integer'), ...
-    optimizableVariable('th',cfg.bounds.th,'Type','integer')];
+    optimizableVariable('w', cfg.bounds.w, 'Type','integer')];
+% th is deliberately absent - see cfg.th above.
 
 objFcn   = @(x) boomerangObjective(x,cfg);
 xConFcn  = @(x) boomerangFabConstraint(x,cfg);
@@ -359,7 +437,7 @@ fprintf('\n===== Best boomerang unit cell =====\n');
 fprintf('  a  = %d nm\n', xBest.a);
 fprintf('  r  = %d nm\n', xBest.r);
 fprintf('  w  = %d nm\n', xBest.w);
-fprintf('  th = %d nm\n', xBest.th);
+fprintf('  th = %d nm  (FIXED, not optimized)\n', round(cfg.th*1e9));
 fprintf('  objective = %.6f  (fitness = %.6f)\n', ...
     results.MinObjective, -results.MinObjective);
 fprintf('  iteration log: %s\n', cfg.logPath);
@@ -411,7 +489,7 @@ function tf = boomerangFabConstraint(x,cfg)
 % in, so a design exactly on the fabrication limit is not decided by
 % floating-point round-off.
 %
-% Two separate tests:
+% Three tests:
 %
 % (1) Minimum feature. For the tri-arm hole the narrowest feature is simply
 %     the arm width w, since that is an etched slit. Note that the `a - r`
@@ -422,18 +500,66 @@ function tf = boomerangFabConstraint(x,cfg)
 %     while `a - r` reports 350 nm and up - so that term would neither bind
 %     nor measure anything real.
 %
-% (2) Arms must stay inside the cell. The cell centre sits sqrt(3)*a/4 from
-%     the nearest cell edge, and an arm reaches r from the centre, so r must
-%     stay below that or the hole punches through the boundary and the
-%     geometry build produces a shape the periodic BCs no longer describe.
-%     The current bounds satisfy this with only ~10 nm to spare at
-%     a = 600 nm, r = 250 nm, so the guard matters as soon as the ranges
-%     widen.
+% (2) Arms must stay inside the cell, or the hole punches through the
+%     boundary and the geometry build produces a shape the periodic BCs no
+%     longer describe. This USED to be the analytic test r < sqrt(3)*a/4,
+%     which is the containment limit for a hole sitting on the cell
+%     CENTROID. That stopped being the geometry the builder produces when
+%     resolveHoleCentreFrac introduced the default 0.4 diagonal offset, so
+%     the test is now the measured calcFillingFactor armsOverhang flag -
+%     exact for any hole position, and automatically correct if the offset
+%     is retuned again.
+%
+% (3) Filling factor within cfg.fillingFactorTol of cfg.fillingFactor, when
+%     that target is set. This is what turns a three-variable box into a
+%     roughly two-dimensional shell, and it is measured from the same
+%     polygons COMSOL will be handed rather than from a closed form - the
+%     naive 3*w*r overstates the hole area by ~6% because the three arms
+%     overlap at the centre.
 holeWidthNm = x.w;                      % narrowest etched feature
-armReachNm  = x.r;                      % centre to arm tip
-cellEdgeNm  = sqrt(3)*double(x.a)/4;    % centre to nearest cell edge
+tf = holeWidthNm(:) >= cfg.minFeatureNm;
 
-tf = (holeWidthNm >= cfg.minFeatureNm) & (armReachNm < cellEdgeNm);
+% (2) and (3) both need the reconstructed geometry, so they share one call per
+%     row. 'FeatureSizes',false skips calcFillingFactor's O(n^2) wall
+%     measurement, which is far too slow here - bayesopt evaluates this on
+%     thousands of candidate rows per iteration. The areas, the filling factor
+%     and armsOverhang all survive the fast path.
+%
+%     Rows already failing (1) are skipped: the geometry work is the expensive
+%     part and their verdict cannot change.
+useFill = ~isempty(cfg.fillingFactor);
+for ii = 1:height(x)
+    if ~tf(ii), continue, end
+
+    Pi = struct('a',double(x.a(ii))*1e-9, ...
+                'w',double(x.w(ii))*1e-9, ...
+                'r',double(x.r(ii))*1e-9);
+    if isfield(cfg,'holeCentreFrac'), Pi.holeCentreFrac = cfg.holeCentreFrac; end
+
+    try
+        ffi = calcFillingFactor(Pi,'FeatureSizes',false);
+    catch
+        % A degenerate candidate (hole swallowing the cell) throws rather than
+        % returning a ratio. That is infeasible, not a crash of the study.
+        tf(ii) = false;
+        continue
+    end
+
+    % (2) Arms must stay inside the cell. MEASURED, not the old analytic
+    %     r < sqrt(3)*a/4 test - that assumed the hole sits on the cell
+    %     centroid, which stopped being true when resolveHoleCentreFrac
+    %     introduced the default 0.4 offset. armsOverhang compares the hole
+    %     area before and after the clip, so it is exact for any hole position.
+    if ffi.armsOverhang
+        tf(ii) = false;
+        continue
+    end
+
+    % (3) Filling factor inside the requested band.
+    if useFill && abs(ffi.fillingFactor - cfg.fillingFactor) > cfg.fillingFactorTol
+        tf(ii) = false;
+    end
+end
 tf = tf(:);
 end
 
@@ -456,8 +582,8 @@ userData.backend = cfg.solverBackend;
 
 P = boomerangParams(x,cfg);
 
-fprintf('\n----- evaluating a=%dnm r=%dnm w=%dnm th=%dnm -----\n', ...
-    x.a, x.r, x.w, x.th);
+fprintf('\n----- evaluating a=%dnm r=%dnm w=%dnm (th=%dnm fixed) -----\n', ...
+    x.a, x.r, x.w, round(cfg.th*1e9));
 if cfg.isDryRun
     fprintf('  [DRY RUN] backend = %s : SYNTHETIC result, not physics\n', ...
         cfg.solverBackend);
@@ -502,8 +628,8 @@ function P = boomerangParams(x,cfg)
 %BOOMERANGPARAMS Build the P struct for one design point.
 %
 % Ported from sweep_boomerang_code.m/sweep_boomerang_thickness so the physics
-% settings are identical to the existing sweeps; only a/r/w/th now come from
-% the optimizer instead of being hard-coded.
+% settings are identical to the existing sweeps; a/r/w now come from the
+% optimizer instead of being hard-coded, while th is fixed at cfg.th.
 
 nm = 1e-9;
 
@@ -517,7 +643,7 @@ P.unitcell = 'hexagonal';
 P.a  = double(x.a)*nm;      % lattice constant; side of the rhombic cell
 P.w  = double(x.w)*nm;      % hole arm width (narrowest etched feature)
 P.r  = double(x.r)*nm;      % hole arm length, cell centre to arm tip
-P.th = double(x.th)*nm;     % full slab thickness in z
+P.th = cfg.th;              % full slab thickness in z - FIXED, see cfg.th
 P.r1 = cfg.r1;              % fillet radius, inner corners (arms meet at centre)
 P.r2 = cfg.r2;              % fillet radius, outer arm tips
 P.nperiod    = 1;           % no. of periods to simulate for
@@ -967,7 +1093,7 @@ f1   = cEff/(2*aNm*1e-9);                % [Hz] first-rung frequency scale, ~1/a
 % the th bound face was 1.05x, i.e. the th slice was very nearly featureless. One
 % absolute length scale breaks that degeneracy and takes the margin to ~2.6x.
 % Note the consequence: unlike the four ratios, this factor does not follow
-% cfg.bounds.th, so moving those bounds far from ~320 nm will push the optimum
+% cfg.th, so moving that fixed thickness far from ~320 nm will push the optimum
 % onto a bound. Re-run a grid scan if you move them.
 gapStrength = exp(-((fill       - 0.0823)/0.065)^2) ...
             * exp(-((slabAspect - 0.390 )/0.110)^2) ...
@@ -1443,7 +1569,7 @@ end
 % than inserted so an existing log from before this column existed still lines up
 % for its first 13 fields.
 fprintf(fid,'%d\t%d\t%d\t%d\t%.6g\t%.6g\t%.6g\t%.6g\t%.6g\t%.6g\t%d\t%.3f\t%s\t%s\r\n', ...
-    x.a, x.r, x.w, x.th, ...
+    x.a, x.r, x.w, round(cfg.th*1e9), ...
     detail.midGap/1e9, detail.gapSize/1e9, detail.gapRatio, ...
     detail.penalty, detail.fitness, objective, wasCached, evalTime/60, status, ...
     logBackendLabel(cfg));
@@ -1849,7 +1975,7 @@ drawDesignSpaceRow(tl,results,cfg);
         -results.MinObjective,results.MinObjective), ...
     sprintf(['a=%d  r=%d  w=%d  th=%d nm   |   mid-gap = %.3f GHz   ' ...
              'gap ratio = %.2f%%   target = %.2f GHz   |   %d evaluations   |   %s'], ...
-        xBest.a,xBest.r,xBest.w,xBest.th, ...
+        xBest.a,xBest.r,xBest.w,round(cfg.th*1e9), ...
         detail.midGap/1e9,detail.gapRatio*100,cfg.targetFreq/1e9, ...
         numel(results.ObjectiveTrace),detail.status)},0.075,cfg);
 addFigureHeadline(figH,tl,headC,fracC,dryRunHeadlineColor(cfg));
@@ -2314,7 +2440,8 @@ lines = { ...
     sprintf('  a       = %6d nm   cell side / lattice constant',xBest.a), ...
     sprintf('  r       = %6d nm   arm length, centre to tip',xBest.r), ...
     sprintf('  w       = %6d nm   arm width (narrowest feature)',xBest.w), ...
-    sprintf('  th      = %6d nm   full slab thickness in z',xBest.th), ...
+    sprintf('  th      = %6d nm   slab thickness (FIXED, not searched)', ...
+        round(cfg.th*1e9)), ...
     sprintf('  r1 / r2 = %3.0f / %.0f nm   fillets (held fixed)', ...
         cfg.r1*1e9,cfg.r2*1e9), ...
     '', ...
