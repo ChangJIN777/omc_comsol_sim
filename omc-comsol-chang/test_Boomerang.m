@@ -6,10 +6,10 @@ P.xsect = 'rect';
 P.beamMat = 'diamond_telecom';                  % beam material name
 P.celltype = 'boomerang';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 730e-9;              % lattice constant
-P.w = 125e-9;              % unit cell width (along x)
-P.r = 300e-9;              % unit cell height (along y)
-P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.a = 1.2*480e-9;              % lattice constant
+P.w = 1.2*140e-9;              % unit cell width (along x)
+P.r = 1.2*177e-9;              % unit cell height (along y)
+P.th = 300e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')                   
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -75,6 +75,7 @@ P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
 P.TwoSymPlanes = 0;             % if we are solving for band structures with two symmetry planes
+P.zSymCondition = 1;            % if we are adding z symmetry contion 
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
@@ -235,7 +236,7 @@ if ff.fillingFactor < P.fillingFactorRange(1) || ...
         P.a*1e9,P.w*1e9,P.r*1e9);
 end
 
-% %% solving mechanical modes
-% bds = solveBands(P);
+%% solving mechanical modes
+bds = solveBands(P);
 %% solving optical bands
-bds = solveOpticalBands(P);
+% bds = solveOpticalBands(P);

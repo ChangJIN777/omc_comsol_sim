@@ -4,7 +4,7 @@
 
 function P = LoadMaterialParams(P)
 
-if strcmp(P.beamMat,'diamond') || strcmp(P.beamMat,'dia')
+if strcmp(P.beamMat,'diamond') || strcmp(P.beamMat,'dia') || strcmp(P.beamMat,'diamond_telecom')
     P.beamMat = 'diamond';
     
     % if statements below for backcompatibility
