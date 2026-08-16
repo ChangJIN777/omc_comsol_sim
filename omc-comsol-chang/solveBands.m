@@ -270,32 +270,42 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
 
         if P.bandStruct_2D
 
-            % plot symmetric bandgaps
-            for k = 1:length(symy_symz.gapSize)
-                bgp = patch([0 3 3 0],1e-9.*(symy_symz.midGap(k) + 0.5*[symy_symz.gapSize(k) ...
-                    symy_symz.gapSize(k) -symy_symz.gapSize(k) -symy_symz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
-                alpha(bgp,0.5);
+            % Gap shading, one pass per symmetry sector.
+            %
+            % This block used to name symy_symz / symy_asymz / asymy_symz /
+            % asymy_asymz unconditionally, but those are created ONLY on the
+            % P.TwoSymPlanes = 1 path above; the single-symmetry-plane path
+            % creates sym, plus asym when P.solveasym. So a run with
+            % TwoSymPlanes = 0 and bandStruct_2D = 1 died with
+            %     Unrecognized function or variable 'symy_symz'
+            % before drawing anything. The 1D branch further down already
+            % branched on TwoSymPlanes; this one never did.
+            %
+            % Collecting the sectors into a cell array first also removes two
+            % copy-paste faults that were in the four unrolled loops: the third
+            % iterated over asymy_symz.gapSize while drawing asymy_asymz's gaps,
+            % and the fourth was an exact duplicate of it, so asymy_asymz was
+            % shaded twice and asymy_symz never.
+            if P.TwoSymPlanes
+                sectors = {symy_symz, symy_asymz, asymy_symz, asymy_asymz};
+                shades  = [0.5 0.2 0.2 0.2];
+            else
+                sectors = {sym};
+                shades  = 0.5;
+                if P.solveasym
+                    sectors{end+1} = asym;
+                    shades(end+1)  = 0.2;
+                end
             end
 
-            % plot asymmetric bandgaps
-            for k = 1:length(symy_asymz.gapSize)
-                bgp = patch([0 3 3 0],1e-9.*(symy_asymz.midGap(k) + 0.5*[symy_asymz.gapSize(k) ...
-                    symy_asymz.gapSize(k) -symy_asymz.gapSize(k) -symy_asymz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
-                alpha(bgp,0.2);
-            end
-
-            % plot asymmetric bandgaps
-            for k = 1:length(asymy_symz.gapSize)
-                bgp = patch([0 3 3 0],1e-9.*(asymy_asymz.midGap(k) + 0.5*[asymy_asymz.gapSize(k) ...
-                    asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
-                alpha(bgp,0.2);
-            end
-
-            % plot asymmetric bandgaps
-            for k = 1:length(asymy_asymz.gapSize)
-                bgp = patch([0 3 3 0],1e-9.*(asymy_asymz.midGap(k) + 0.5*[asymy_asymz.gapSize(k) ...
-                    asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k) -asymy_asymz.gapSize(k)]),180/255*[1 1 1],'EdgeColor','none');
-                alpha(bgp,0.2);
+            for s = 1:numel(sectors)
+                sec = sectors{s};
+                for k = 1:length(sec.gapSize)
+                    bgp = patch([0 3 3 0],1e-9.*(sec.midGap(k) + 0.5*[sec.gapSize(k) ...
+                        sec.gapSize(k) -sec.gapSize(k) -sec.gapSize(k)]), ...
+                        180/255*[1 1 1],'EdgeColor','none');
+                    alpha(bgp,shades(s));
+                end
             end
 
             % plot full bandgaps
@@ -307,21 +317,34 @@ if isempty(dir([datLoc,fBase,'_bds.mat']))
                 end
             end
 
-            % plot symmetric midgap frequencies
-            for k = 1:length(sym.midGap)
-                midfreqs = sym.midGap(k)*ones(length(sym.k_norm),1);
-                plot(sym.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+            % The k axis is the same for every sector, so the first one stands in
+            % as the reference. Naming sym directly here was the mirror image of
+            % the bug above: it works only when TwoSymPlanes = 0, where sym is
+            % what exists.
+            refSec = sectors{1};
+
+            % plot first-sector midgap frequencies
+            for k = 1:length(refSec.midGap)
+                midfreqs = refSec.midGap(k)*ones(length(refSec.k_norm),1);
+                plot(refSec.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
             end
 
             % plot complete midgap frequencies
             for k = 1:length(full.midGap)
-                midfreqs = full.midGap(k)*ones(length(sym.k_norm),1);
-                plot(sym.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
+                midfreqs = full.midGap(k)*ones(length(refSec.k_norm),1);
+                plot(refSec.k_norm,midfreqs*1e-9,'.--r','linewidth',0.5);
             end
 
             xlabel('k','FontSize',12);
             ylabel('Frequency (GHz)','FontSize',12);
-            amax = max([sym.F(:);asym.F(:)])*1e-9;
+            % Over every sector actually solved. The old form was
+            % max([sym.F(:);asym.F(:)]), which additionally assumed
+            % P.solveasym = 1 - with it off, asym is undefined too.
+            allF = [];
+            for s = 1:numel(sectors)
+                allF = [allF; sectors{s}.F(:)];                      %#ok<AGROW>
+            end
+            amax = max(allF)*1e-9;
             axis([0 3 0 amax]);
             %         axis tight
             set(gca,'XTick',[0; 1; 2; 3]);
