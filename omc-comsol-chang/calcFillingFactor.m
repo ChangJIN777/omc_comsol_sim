@@ -27,6 +27,21 @@ function out = calcFillingFactor(src)
 %   areaAirUnclipped air-hole area before the clip         [m^2]
 %   areaDielectric   cell area minus the hole              [m^2]
 %   areaCell         rhombic unit-cell area, a^2*sqrt(3)/2 [m^2]
+%   minAirFeature    narrowest etched linewidth = w                      [m]
+%   minSolidFeature  narrowest remaining dielectric: the closest approach
+%                    between this cell's hole and its six nearest translates,
+%                    i.e. the thinnest wall in the TILED structure. Not
+%                    derivable from a, w, r alone - it only exists once the
+%                    lattice is applied.                                 [m]
+%   minFeature       min of the two above - the number to compare against a
+%                    fabrication limit                                   [m]
+%
+%   CAVEAT on minSolidFeature: it measures the wall between DISTINCT holes. It
+%   does not see the wedge of solid between two arms of the SAME hole, which
+%   tapers to a point at the inner junction where the arms meet. That apex is a
+%   corner rather than a linewidth - its process limit is the fillet radius r1,
+%   quoted separately in filletRadii - so folding it in would report a
+%   misleadingly tiny "minimum feature" for every design.
 %   armsOverhang     true when an arm reaches past the cell boundary. Under
 %                    periodicity that arm merges with the neighbouring cell's,
 %                    so the tiled structure is not the isolated boomerang the
@@ -142,6 +157,40 @@ areaDielectric   = areaCell - areaAir;
 % cannot trip it.
 armsOverhang = (areaAirUnclipped - areaAir) > 1e-9*areaCell;
 
+% --- minimum feature sizes ---------------------------------------------------
+% Two different quantities, both of which a fab process cares about:
+%
+%   minAirFeature   narrowest etched linewidth. For this geometry it is w by
+%                   construction - the hole is a union of w-wide rectangles, so
+%                   no part of the air is narrower than an arm, and the centre
+%                   where they overlap is wider. Reported rather than computed
+%                   because a numerical width estimate could only be less exact
+%                   than the exact answer.
+%
+%   minSolidFeature narrowest remaining dielectric. This is NOT a parameter and
+%                   cannot be read off a, w and r: the thinnest wall in the
+%                   tiled structure runs between THIS cell's hole and a
+%                   NEIGHBOURING cell's, so it only exists once the lattice is
+%                   applied. Measured as the closest approach between the hole
+%                   boundary and its six nearest translates.
+minAirFeature = w;
+
+a1 = [a 0];                       % primitive vectors of the hexagonal lattice
+a2 = [a/2 a*sqrt(3)/2];
+shifts = [1 0; -1 0; 0 1; 0 -1; 1 -1; -1 1];   % the six nearest neighbours
+
+% Sample spacing fine enough that the discretisation error is well under a
+% nanometre at these dimensions - the wall being measured is tens of nm.
+ds = min([w rArm])/200;
+hb = densifyBoundary(holeInCell,ds);
+
+minSolidFeature = Inf;
+for k = 1:size(shifts,1)
+    d = shifts(k,1)*a1 + shifts(k,2)*a2;
+    nb = [hb(:,1)+d(1), hb(:,2)+d(2)];
+    minSolidFeature = min(minSolidFeature, minPairDistance(hb,nb));
+end
+
 if areaDielectric <= 0
     error('calcFillingFactor:noDielectric', ...
         ['The hole fills the entire cell (air %.3g m^2 >= cell %.3g m^2), so ' ...
@@ -160,6 +209,9 @@ out = struct( ...
     'w',              w, ...
     'armLength',      rArm, ...
     'filletRadii',    [rFil1 rFil2], ...
+    'minAirFeature',  minAirFeature, ...
+    'minSolidFeature',minSolidFeature, ...
+    'minFeature',     min(minAirFeature,minSolidFeature), ...
     'filletsIncluded',false, ...
     'cellPgon',       cellPgon, ...
     'holePgon',       holeInCell, ...
@@ -168,6 +220,54 @@ out = struct( ...
 end
 
 %% ======================================================== local functions
+
+function pts = densifyBoundary(pg,ds)
+%DENSIFYBOUNDARY Polygon boundary resampled to at most ds between points.
+%
+% polyshape vertices sit only at corners, so a raw vertex list would miss the
+% closest approach whenever it falls partway along an edge - which for two
+% parallel arm flanks is exactly where it falls. Interpolating along each edge
+% removes that blind spot.
+%
+% Multiple regions are handled: polyshape separates them with NaN rows, and
+% regions() splits them cleanly.
+rg = regions(pg);
+pts = zeros(0,2);
+for k = 1:numel(rg)
+    v = rg(k).Vertices;
+    v = v(all(isfinite(v),2),:);          % drop any NaN separators
+    if size(v,1) < 2, continue, end
+    v(end+1,:) = v(1,:);                                             %#ok<AGROW>
+    for e = 1:size(v,1)-1
+        p0 = v(e,:);
+        p1 = v(e+1,:);
+        L  = hypot(p1(1)-p0(1),p1(2)-p0(2));
+        n  = max(1,ceil(L/ds));
+        t  = (0:n-1).'/n;                 % exclude the endpoint; next edge has it
+        pts = [pts; p0 + t.*(p1-p0)];                                %#ok<AGROW>
+    end
+end
+end
+
+% -------------------------------------------------------------------------
+
+function d = minPairDistance(A,B)
+%MINPAIRDISTANCE Smallest Euclidean distance between two point sets.
+%
+% Written with implicit expansion rather than pdist2 so no Statistics Toolbox is
+% needed. Chunked over A so the intermediate never exceeds a few MB even when
+% both sets run to thousands of points.
+d = Inf;
+chunk = 512;
+for i0 = 1:chunk:size(A,1)
+    i1 = min(i0+chunk-1,size(A,1));
+    dx = A(i0:i1,1) - B(:,1).';
+    dy = A(i0:i1,2) - B(:,2).';
+    d  = min(d,sqrt(min(min(dx.^2 + dy.^2))));
+end
+end
+
+% -------------------------------------------------------------------------
 
 function pg = rectanglePgon(centreXY,width,height,rotDeg)
 %RECTANGLEPGON COMSOL Rectangle with base='center' and rot, as a polyshape.

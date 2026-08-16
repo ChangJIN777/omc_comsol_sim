@@ -164,11 +164,54 @@ P.datLoc = datLoc;
 % P.fillingFactorRange = [0 Inf] to accept anything.
 P.fillingFactorRange = [0.15 1.20];   % air/dielectric area ratio, dimensionless
 
-ff = calcFillingFactor(P);
+% Draw the cell BEFORE the checks below, deliberately. If the geometry is wrong
+% the range check aborts the script, and the figure is the fastest way to see
+% WHY it is wrong - a picture of overlapping arms or a hole swallowing the cell
+% beats reading three numbers off the console. drawnow forces it onto the screen
+% even if the error fires immediately afterwards.
+%
+% plotBoomerangCell RETURNS the measurement it drew from, so the geometry is
+% reconstructed once rather than twice - the plot and the numbers below are
+% guaranteed to describe the same cell, not merely two cells built from the same
+% P. The bare calcFillingFactor call is kept only for the plotgeom = 0 path,
+% where nothing is drawn and the gate still needs its numbers.
+%
+% P.plotgeom is the flag that already means "show me the geometry". It also
+% makes runOpticalBand_3D call mphgeom later, so with it on you get both: this
+% polygon reconstruction now, and COMSOL's own rendering of the built 3D model
+% once the solve starts. Seeing them agree is a free cross-check that
+% calcFillingFactor reconstructs the same cell COMSOL is meshing.
+if P.plotgeom
+    [~,ff] = plotBoomerangCell(P,'Tile',true);
+    drawnow;
+else
+    ff = calcFillingFactor(P);
+end
+
 fprintf(['Filling factor check: r = %.4f (air/dielectric), %.1f%% air by area\n' ...
          '  air %.0f nm^2 | dielectric %.0f nm^2 | cell %.0f nm^2\n'], ...
     ff.fillingFactor,100*ff.airFraction, ...
     ff.areaAir*1e18,ff.areaDielectric*1e18,ff.areaCell*1e18);
+
+% Smallest feature, the fabrication-limited quantity. The air side is just w -
+% the hole is a union of w-wide arms, so nothing etched is narrower. The solid
+% side is the one worth printing: it is the thinnest dielectric wall in the
+% TILED structure, running between this cell's hole and a neighbouring cell's,
+% so it cannot be read off a, w and r and shrinks fast as r approaches the cell
+% inradius. The fillet radii are quoted alongside because they set the smallest
+% radius of CURVATURE, a separate process limit from linewidth.
+if ff.minAirFeature <= ff.minSolidFeature
+    limitedBy = 'air-limited';
+else
+    limitedBy = 'solid-limited';
+end
+fprintf(['Minimum feature size: %.1f nm (%s)\n' ...
+         '  narrowest etched line   %.1f nm (= w)\n' ...
+         '  narrowest solid wall    %.1f nm (between neighbouring holes)\n' ...
+         '  fillet radii            %.1f / %.1f nm (min radius of curvature)\n'], ...
+    ff.minFeature*1e9,limitedBy, ...
+    ff.minAirFeature*1e9,ff.minSolidFeature*1e9, ...
+    ff.filletRadii(1)*1e9,ff.filletRadii(2)*1e9);
 
 if ff.armsOverhang
     % Warning rather than error: a design deliberately tiling into its

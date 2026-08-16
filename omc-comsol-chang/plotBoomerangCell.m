@@ -1,4 +1,4 @@
-function h = plotBoomerangCell(src,varargin)
+function [h,ff] = plotBoomerangCell(src,varargin)
 %PLOTBOOMERANGCELL Outline the dielectric and the air hole of a boomerang cell.
 %
 % Draws the in-plane cross-section buildBoomerangUnitCell.m builds: the rhombic
@@ -20,8 +20,16 @@ function h = plotBoomerangCell(src,varargin)
 %            each other across the cell boundary.
 %   'Axes'   Target axes handle. Default [] = new figure.
 %
-% OUTPUT
+% OUTPUTS
 %   h   struct of graphics handles: cell, hole, centre, inradius, tipRadius.
+%   ff  the calcFillingFactor result this plot was drawn from - areas, ratios,
+%       armsOverhang, the polyshapes. Returned so a caller that needs both the
+%       picture and the numbers pays for the geometry reconstruction ONCE:
+%
+%           [~,ff] = plotBoomerangCell(P,'Tile',true);
+%           if ff.fillingFactor > 1.2, error('too much air'); end
+%
+%       test_Boomerang.m uses exactly that form for its pre-solve gate.
 %
 % WHERE THE HOLE SITS - the question this was written to answer:
 % buildBoomerangUnitCell.m:67 sets hole_pos = [a*(1/2+1/4), a*sqrt(3)/4], and
