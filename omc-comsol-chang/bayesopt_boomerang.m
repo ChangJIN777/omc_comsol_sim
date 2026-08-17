@@ -156,8 +156,8 @@ cfg = struct();
 % backend. Short version: dry-run output lives in its own folder, under its own
 % filename prefix, carrying an in-file provenance marker, so no real run can
 % ever load it.
-cfg.solverBackend = 'comsol';
-% cfg.solverBackend = 'surrogate';
+% cfg.solverBackend = 'comsol';
+cfg.solverBackend = 'surrogate';
 
 % Fail loud on an unknown backend BEFORE anything is derived from the name -
 % the same intent as `raise ValueError(f"unknown mech_backend {mech_backend}")`
@@ -269,8 +269,8 @@ cfg.th = 300e-9;            % full slab thickness in z [m]
 % Choose the target WITH the bounds in mind - the startup feasibility scan
 % below reports what fraction of the box survives, and refuses to start a study
 % that has almost nothing left to search.
-cfg.fillingFactor    = 0.25;   % target area(air)/area(dielectric), or []
-cfg.fillingFactorTol = 0.01;   % accept |ff - target| <= this
+cfg.fillingFactor    = 0.49;   % target area(air)/area(dielectric), or []
+cfg.fillingFactorTol = 0.1;   % accept |ff - target| <= this
 cfg.fillingFactorMinFeasible = 0.02;   % refuse to start below this fraction
 cfg.r1 = 10e-9;             % fillet radius at the INNER corners, where the
                             % three arms meet near the cell centre
