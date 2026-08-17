@@ -205,6 +205,29 @@ cfg.targetFreq = 7e9;      % target mechanical mid-gap frequency [Hz]
 cfg.sigma      = 3e9;       % width of the Gaussian frequency penalty [Hz]
 
 % --- fabrication tolerance ------------------------------------------------
+% MASTER SWITCH for every geometric feasibility test below. 0 (the default)
+% means bayesopt runs with NO XConstraintFcn at all: the study explores the
+% raw cfg.bounds box and any design in it is allowed to reach the solver.
+%
+% Default off deliberately. The constraints prune hard - the filling-factor
+% band in particular can admit under 1% of the box - and a pruned-to-nothing
+% search is a confusing way to start. Get an unconstrained study running and
+% look at where the good designs actually live, THEN switch the constraints on
+% to keep the optimizer inside the process window.
+%
+% Turning this on activates all five tests in boomerangFabConstraint, each of
+% which can still be disabled individually by zeroing (or emptying) its own
+% threshold: cfg.minFeatureNm, cfg.minSolidFeatureNm, cfg.holeEdgeMarginNm,
+% cfg.fillingFactor. The in-cell armsOverhang test (2) has no threshold and is
+% always active whenever this master switch is on.
+%
+% NOTE the cost side of "off": nothing then stops bayesopt handing the solver a
+% geometry whose arms cross the cell boundary. That is not a crash - the build
+% succeeds and the periodic BCs no longer describe the shape - so an
+% unconstrained study can spend real COMSOL time on designs that are physically
+% meaningless. Watch for it in the results rather than assuming it cannot happen.
+cfg.useFabConstraints = 0;  % 0 = unconstrained search (default), 1 = enforce
+
 % Minimum feature size, applied to the hole arm width w - the narrowest
 % etched feature in the tri-arm geometry. See boomerangFabConstraint for why
 % the `a - r` term from boomerang_optimize_sweep_diamond.m is deliberately not
@@ -269,8 +292,22 @@ cfg.th = 300e-9;            % full slab thickness in z [m]
 % Choose the target WITH the bounds in mind - the startup feasibility scan
 % below reports what fraction of the box survives, and refuses to start a study
 % that has almost nothing left to search.
-cfg.fillingFactor    = 0.49;   % target area(air)/area(dielectric), or []
-cfg.fillingFactorTol = 0.1;   % accept |ff - target| <= this
+% CURRENTLY DISABLED ([]), independently of cfg.useFabConstraints. Setting a
+% target again is the only thing needed to bring the band back.
+%
+% What the bounds can actually produce, measured over a 25^3 grid with the
+% default holeCentreFrac = 0.4 (the hole stays inside the cell everywhere in
+% the box, so containment is not what limits the range):
+%
+%     min 0.016    median 0.077    max 0.367  (at a = 600, r = 250, w = 120)
+%
+% The ratio is scale-invariant - it depends only on r/a and w/a - so widening
+% cfg.bounds.a alone cannot move that ceiling; only a larger r/a or w/a can.
+% A target of 0.49 was tried and is unreachable: it needs r/a ~ 0.50 (r = 302 nm
+% at a = 600, w = 120), against the r <= 250 bound. No tolerance widens far
+% enough to reach it, which is what the startup scan below reported.
+cfg.fillingFactor    = [];     % target area(air)/area(dielectric), or []
+cfg.fillingFactorTol = 0.01;   % accept |ff - target| <= this
 cfg.fillingFactorMinFeasible = 0.02;   % refuse to start below this fraction
 cfg.r1 = 10e-9;             % fillet radius at the INNER corners, where the
                             % three arms meet near the cell centre
@@ -388,7 +425,10 @@ initIterationLog(cfg.logPath);
 %
 % Coarse on purpose. This is a go/no-go check, not a survey - a fine grid would
 % cost more than it tells you, since each point runs the polygon reconstruction.
-if ~isempty(cfg.fillingFactor)
+% Gated on the master switch as well as the target: with constraints off there
+% is nothing to be infeasible against, and scanning would only produce a
+% reassuring "100% feasible" line that means nothing.
+if cfg.useFabConstraints && ~isempty(cfg.fillingFactor)
     nScan = 12;                       % 12^3 = 1728 candidates, seconds
     [aG,rG,wG] = ndgrid( ...
         round(linspace(cfg.bounds.a(1), cfg.bounds.a(2), nScan)), ...
@@ -434,8 +474,16 @@ optVars = [ ...
 % th is deliberately absent - see cfg.th above.
 
 objFcn   = @(x) boomerangObjective(x,cfg);
-xConFcn  = @(x) boomerangFabConstraint(x,cfg);
 outFcn   = @(res,state) checkpointState(res,state,cfg.statePath);
+
+% [] is bayesopt's own default for XConstraintFcn, so passing it is exactly
+% equivalent to omitting the option - no wrapper that always returns true, and
+% therefore no per-candidate call cost on the unconstrained path.
+if cfg.useFabConstraints
+    xConFcn = @(x) boomerangFabConstraint(x,cfg);
+else
+    xConFcn = [];
+end
 
 %% ------------------------------------------------------------------------
 %  Run the optimization
@@ -443,6 +491,18 @@ outFcn   = @(res,state) checkpointState(res,state,cfg.statePath);
 fprintf('Starting Bayesian optimization: %d evaluations, target %.2f GHz\n', ...
     cfg.maxEvaluations, cfg.targetFreq/1e9);
 fprintf('Results -> %s\n',cfg.datLoc);
+
+% Say which regime this study is in. "Off" is the default and is easy to forget
+% about weeks later when the results are being read, so it is stated at the top
+% of every run rather than left to be inferred from the absence of pruning.
+if cfg.useFabConstraints
+    fprintf('Fabrication constraints: ON (min feature %g nm, min solid %g nm)\n', ...
+        cfg.minFeatureNm, cfg.minSolidFeatureNm);
+else
+    fprintf(['Fabrication constraints: OFF (cfg.useFabConstraints = 0) - the ' ...
+             'full bounds box\n  is searched and unfabricable designs are ' ...
+             'NOT rejected before solving.\n']);
+end
 
 results = bayesopt(objFcn, optVars, ...
     'MaxObjectiveEvaluations',  cfg.maxEvaluations, ...
@@ -510,6 +570,10 @@ function tf = boomerangFabConstraint(x,cfg)
 % point: an infeasible geometry costs zero COMSOL time instead of a wasted
 % solve plus a penalty value that distorts the surrogate.
 
+% Returns all-true immediately when cfg.useFabConstraints is 0, which is the
+% default - see that field for why the unconstrained search is the starting
+% point. Everything below describes the behaviour when it is switched on.
+%
 % Compared in integer nm, the same units the design variables are declared
 % in, so a design exactly on the fabrication limit is not decided by
 % floating-point round-off.
@@ -525,9 +589,10 @@ function tf = boomerangFabConstraint(x,cfg)
 %     term used as a fab proxy in boomerang_optimize_sweep_diamond.m is not
 %     applied here: it has no geometric meaning for this shape. The diamond
 %     ligament between neighbouring holes is set by the lattice and the arm
-%     geometry together, and over these bounds it never drops below ~210 nm,
-%     while `a - r` reports 350 nm and up - so that term would neither bind
-%     nor measure anything real.
+%     geometry together: at the tightest corner of the bounds (a = 600,
+%     r = 250, w = 120 nm) it measures 107 nm, while `a - r` reports 350 nm
+%     there - so that term would neither bind nor measure anything real. It
+%     also ignores w entirely, which is half of what sets the wall.
 %
 % (2) Arms must stay inside the cell, or the hole punches through the
 %     boundary and the geometry build produces a shape the periodic BCs no
@@ -565,6 +630,20 @@ function tf = boomerangFabConstraint(x,cfg)
 %     sits at hypot(w/2, r) from the hole centre, so fattening an arm spends
 %     edge clearance exactly as lengthening one does, and neither variable
 %     alone expresses the limit.
+% Master switch, honoured here as well as at the wiring site. The wiring site
+% passes [] when constraints are off, so bayesopt never reaches this function -
+% but the startup scan and any future caller invoke it directly, and a feasibility
+% test that quietly ignored its own off switch would be a trap.
+%
+% A cfg predating this field is treated as ON: that was the only behaviour such a
+% cfg ever had, and a resumed study re-resolves its handles against the CURRENT
+% file, so an absent field must not silently drop the constraints from a study
+% that was set up with them.
+if isfield(cfg,'useFabConstraints') && ~cfg.useFabConstraints
+    tf = true(height(x),1);
+    return
+end
+
 holeWidthNm = x.w;                      % narrowest etched feature
 tf = holeWidthNm(:) >= cfg.minFeatureNm;
 
