@@ -4,7 +4,7 @@ Bayesian optimization of the boomerang unit cell for a complete **mechanical** b
 
 Searches **three** geometry parameters — lattice constant `a`, hole arm length `r`, hole arm width `w` — using MATLAB's `bayesopt`, where each objective evaluation is a full COMSOL eigenfrequency band structure solve. Slab thickness `th` is **fixed** at `cfg.th`, and an optional **filling-factor constraint** restricts the search to designs whose air/dielectric area ratio sits in a band around `cfg.fillingFactor`.
 
-> **Status: NOT re-verified since the three-variable / filling-factor change.** The end-to-end dry run described below was executed against the *four-variable* version of this file. Fixing `th`, adding the filling-factor constraint, replacing the containment test and adding the feasibility scan all postdate it, and **none of that has been run** — not even `checkcode`. Treat the next dry run as the verification, not as a formality.
+> **Status: NOT re-verified since the three-variable / constraint changes.** The end-to-end dry run described below was executed against the *four-variable, two-constraint* version of this file. Fixing `th`, adding the filling-factor band, replacing the containment test with a measured one, adding the minimum-solid-feature and hole-edge-clearance tests, and adding the feasibility scan all postdate it, and **none of that has been run** — not even `checkcode`. Treat the next dry run as the verification, not as a formality.
 >
 > *Previously verified, and still expected to hold where untouched:* `checkcode` passed with no messages (MATLAB R2026a); a full dry run ran end-to-end with the surrogate backend, producing all four figures, the log, the checkpoint and the results `.mat`; cache isolation was demonstrated and the provenance guard tested by planting synthetic data at a real filename. COMSOL LiveLink has never been driven from this script, so `solveBandsViaComsol` is exercised only on its cache path.
 
@@ -256,7 +256,7 @@ On `th` and symmetry: because `P.mbevenz` is nonzero, the builder subtracts the 
 
 ### The fitness function
 
-For a design $\mathbf{x} = (a,\, r,\, w,\, t_h)$, `solveBands` returns a set of complete mechanical bandgaps. Index them by $k$, and let gap $k$ have lower and upper edges $f_k^-$ and $f_k^+$. `findGaps` reports each gap as a mid-gap frequency and a width:
+For a design $\mathbf{x} = (a,\, r,\, w)$ at the fixed thickness `cfg.th`, `solveBands` returns a set of complete mechanical bandgaps. Index them by $k$, and let gap $k$ have lower and upper edges $f_k^-$ and $f_k^+$. `findGaps` reports each gap as a mid-gap frequency and a width:
 
 $$\Omega_k \;=\; \frac{f_k^+ + f_k^-}{2}, \qquad \Delta_k \;=\; f_k^+ - f_k^-$$
 
@@ -285,14 +285,15 @@ objective = -F                                                      % bayesopt m
 
 | symbol | code | meaning |
 |---|---|---|
-| $a,\ r,\ w,\ t_h$ | `x.a`, `x.r`, `x.w`, `x.th` | Design variables [integer nm] |
+| $a,\ r,\ w$ | `x.a`, `x.r`, `x.w` | Design variables [integer nm] |
+| $t_h$ | `cfg.th` | Slab thickness — **fixed, not a design variable** |
 | $f_k^\pm$ | — | Lower / upper edge of gap $k$ [Hz] |
 | $\Omega_k$ | `gapData.midGap(k)` | Mid-gap frequency of gap $k$ [Hz] |
 | $\Delta_k$ | `gapData.gapSize(k)` | Width of gap $k$ [Hz] |
 | $\eta_k$ | `gapRatios(k)` | Fractional gap width, dimensionless |
 | $p_k$ | `penalties(k)` | Gaussian frequency penalty, $p_k \in (0,\,1]$ |
-| $f_\mathrm{target}$ | `cfg.targetFreq` | Target mid-gap frequency [Hz], default 13 GHz |
-| $\sigma$ | `cfg.sigma` | Penalty width [Hz], default 5 GHz |
+| $f_\mathrm{target}$ | `cfg.targetFreq` | Target mid-gap frequency [Hz], **currently 7 GHz** |
+| $\sigma$ | `cfg.sigma` | Penalty width [Hz], **currently 3 GHz** |
 | $F$ | `fitness` | Fitness, maximised |
 | $-F$ | `objective` | What `bayesopt` minimizes |
 
@@ -331,7 +332,7 @@ The `status` field distinguishes `target-in-gap` (the target frequency falls ins
 
 ## Constraints
 
-Both are deterministic and enforced through `XConstraintFcn`, so infeasible candidates are pruned **before** any COMSOL time is spent — as opposed to being evaluated and then penalised, which also distorts the surrogate.
+All five are deterministic and enforced through `XConstraintFcn`, so infeasible candidates are pruned **before** any COMSOL time is spent — as opposed to being evaluated and then penalised, which also distorts the surrogate.
 
 1. **Minimum feature size:** `w >= cfg.minFeatureNm` (default 50 nm). For the tri-arm hole the narrowest feature is simply the arm width, since that is an etched slit.
 
@@ -345,13 +346,36 @@ Both are deterministic and enforced through `XConstraintFcn`, so infeasible cand
 
    **Why it is measured rather than computed from a formula.** The three arms overlap at the hole centre, so the naive `3*w*r` overstates the air area by about **6%** at the current geometry (99 000 vs 93 600 nm² at `w`=110, `r`=300 nm) — and the error varies nonlinearly with `w/r`, so it cannot be absorbed into a constant.
 
-   **Cost.** `calcFillingFactor` is called with `'FeatureSizes',false`, which skips its `minSolidFeature` measurement. That measurement is O(n²) over a few thousand densified boundary points × six neighbours — fine once per design, ruinous in a constraint function `bayesopt` evaluates on thousands of candidates per iteration. The areas, the filling factor and `armsOverhang` all survive the fast path. Rows already failing test (1) are skipped before any geometry work.
+   **Cost.** This test calls `calcFillingFactor` with `'FeatureSizes',false`, skipping the O(n²) wall measurement. The areas, the filling factor and `armsOverhang` all survive the fast path.
 
-`boomerangFabConstraint` is **vectorized over a multi-row table**, as `bayesopt` requires, and compares in integer nm so a design sitting exactly on a limit is not decided by floating-point round-off.
+4. **Minimum solid feature:** `minSolidFeature >= cfg.minSolidFeatureNm` (default 50 nm). Test 1 covers the *etched* side — the narrowest slit, which is just `w`. This is the *dielectric* side: the thinnest wall left standing, running between this cell's hole and a **neighbouring cell's**. It cannot be read off `a`, `r`, `w` — the wall does not exist until the lattice is applied — so it is measured as the closest approach between the hole boundary and its six nearest translates.
+
+   ⚠️ **Over the shipped bounds this never binds.** Measured worst corner:
+
+   | `a` | `r` | `w` | wall | vs 50 nm |
+   |---|---|---|---|---|
+   | 600 | 250 | 120 | 107.0 nm | pass |
+   | 600 | 250 | 50 | 142.0 nm | pass |
+   | 1000 | 250 | 120 | 507.0 nm | pass |
+   | *730* | *300* | *125* (current design) | *147.9 nm* | *pass* |
+
+   So today it is a safety net, not a constraint shaping the search — it becomes live if the bounds widen or `r` is pushed toward the containment limit. Set `cfg.minSolidFeatureNm = 0` to skip it **and its cost**.
+
+5. **Hole-to-cell clearance:** `holeToCellMargin >= cfg.holeEdgeMarginNm` (default **0**, i.e. a no-op). Test 2 is already an exact non-intersection test, so this only adds a *margin*. It is the constraint that ties `r` and `w` **together**: the farthest point of the hole sits at `hypot(w/2, r)` from the hole centre, so fattening an arm spends edge clearance exactly as lengthening one does, and neither variable alone expresses the limit.
+
+**Ordering is load-bearing.** Tests run cheapest and most-selective first, and 4–5 — the only ones needing the expensive measurement — run *last*, on rows that already passed the filling-factor band. Since that band admits a few percent of the box, the O(n²) work runs on a few percent of candidates instead of all of them. Without that ordering the constraint would be unusable inside a function `bayesopt` calls on thousands of rows per iteration.
+
+`boomerangFabConstraint` is **vectorized over a multi-row table**, as `bayesopt` requires.
+
+On exactness: test 1 compares in **integer nm**, so a design sitting exactly on the arm-width limit is not decided by round-off. Tests 4 and 5 cannot — they compare a *measured* length in metres against an nm threshold, so a design sitting exactly on those limits is decided by floating-point. That is acceptable because those limits are process guidance rather than hard cliffs, but do not read `minSolidFeature = 50.0` as reliably feasible.
 
 ### On `a - r`
 
-The `min(a - r, ...)` fabrication proxy used in `boomerang_optimize_sweep_diamond.m` is **deliberately not reproduced here** — it has no geometric meaning for this shape. Sampling the tri-arm outline against its periodic images gives a true inter-hole diamond ligament of ~161 nm for the current design, where `a - r` reports 303 nm; it overstates by roughly 2×. (`√3a/4 - r` ≈ 31 nm is the other tempting expression, but that is only the gap to the cell *boundary* — material continues past it into the neighbouring cell, so it is not a feature either.) Over the default bounds the true ligament never drops below ~210 nm, so an `a - r` term would neither bind nor measure anything real.
+The `min(a - r, ...)` fabrication proxy used in `boomerang_optimize_sweep_diamond.m` is **deliberately not reproduced here** — it has no geometric meaning for this shape. The real quantity is the wall between neighbouring holes, which is now measured directly as constraint 4's `minSolidFeature`; `a - r` is not a lower bound on it, not proportional to it, and not even monotone in the same direction as `w` changes, since it ignores `w` entirely.
+
+`√3a/4 - r` is the other tempting expression, but that is only the gap to the cell *boundary* — material continues past it into the neighbouring cell, so it is not a feature either. It is also no longer the containment limit, since the hole is not centred; see constraint 2.
+
+> **Superseded numbers.** An earlier version of this section quoted a ~161 nm ligament for the then-current design and claimed the ligament never drops below ~210 nm over the bounds. Re-measured with `minSolidFeature` over the present bounds, the tightest corner (`a`=600, `r`=250, `w`=120) gives **107 nm** — so the ~210 nm floor was too optimistic. I could not reproduce how the original figures were obtained; treat the constraint-4 table as authoritative and these as withdrawn.
 
 ---
 
@@ -377,14 +401,16 @@ The first block in `cfg`, because it is the most consequential switch in the fil
 
 | field | default | meaning |
 |---|---|---|
-| `cfg.targetFreq` | `13e9` | Target mechanical mid-gap frequency [Hz] |
-| `cfg.sigma` | `5e9` | Width of the Gaussian frequency penalty [Hz] |
+| `cfg.targetFreq` | `7e9` | Target mechanical mid-gap frequency [Hz]. Was 13e9; the surrogate is still tuned for 13 GHz, so see the retargeting note under [what the surrogate computes](#what-the-surrogate-actually-computes) |
+| `cfg.sigma` | `3e9` | Width of the Gaussian frequency penalty [Hz] |
 
 ### Fabrication
 
 | field | default | meaning |
 |---|---|---|
-| `cfg.minFeatureNm` | `50` | Minimum arm width [nm]. Integer nm so the comparison is exact |
+| `cfg.minFeatureNm` | `50` | Minimum **etched** linewidth = arm width `w` [nm]. Integer nm so the comparison is exact |
+| `cfg.minSolidFeatureNm` | `50` | Minimum **solid** feature [nm] — thinnest dielectric wall between neighbouring holes. `0` skips the check and the expensive measurement it needs. Does not bind over the shipped bounds; see [Constraints](#constraints) |
+| `cfg.holeEdgeMarginNm` | `0` | Extra clearance demanded between hole and cell edge [nm], on top of the exact non-intersection test. `0` = no-op. Ties `r` and `w` together |
 
 ### Search space (integer nm)
 
@@ -416,24 +442,27 @@ The first block in `cfg`, because it is the most consequential switch in the fil
 
 That check exists because the failure it catches is silent and expensive: `bayesopt` never reports "your constraint pruned everything" — it keeps drawing candidates, finds almost none admissible, and either stalls or spends the whole budget in a sliver of the box.
 
-**Choose the target with the bounds in mind.** Measured over the shipped bounds (`a`∈[600,1000], `r`∈[150,250], `w`∈[50,120] nm, `holeCentreFrac` = 0.4):
+**Choose the target with the bounds in mind.** Measured over the shipped bounds (`a`∈[600,1000], `r`∈[100,250], `w`∈[50,120] nm, `holeCentreFrac` = 0.4; 19 065 grid points, all of which pass containment):
 
 | statistic | filling factor |
 |---|---|
-| range | 0.025 – 0.368 |
-| 10th / 25th percentile | 0.051 / 0.067 |
-| median | 0.092 |
-| 75th / 90th percentile | 0.128 / 0.174 |
+| range | 0.016 – 0.368 |
+| 10th / 25th percentile | 0.039 / 0.053 |
+| median | **0.077** |
+| 75th / 90th percentile | 0.111 / 0.156 |
 
 and the resulting feasible fractions:
 
 | target | ±0.005 | ±0.01 | ±0.02 |
 |---|---|---|---|
-| 0.15 | 3.3% | 6.6% | 13.4% |
-| 0.20 | 1.3% | 2.5% | 5.3% |
-| 0.25 | 0.5% | **0.9%** | 1.9% |
+| 0.10 | 6.6% | 13.3% | 26.4% |
+| 0.15 | 2.3% | 4.7% | 9.5% |
+| 0.20 | 0.9% | 1.7% | 3.6% |
+| 0.25 | 0.3% | **0.6%** | 1.3% |
 
-⚠️ The shipped default of **0.25 ± 0.01 leaves under 1% of the box** — it matches the geometry in `test_Boomerang.m` (`a`=730, `w`=125, `r`=300 → ff = 0.254), but that design sits *outside* these bounds, and the box as shipped is mostly low-fill. Expect the tight-feasibility warning. Either move `cfg.bounds` toward the shell you care about, widen `cfg.fillingFactorTol`, or drop the target toward the box median.
+⚠️ The shipped default of **0.25 ± 0.01 leaves 0.6% of the box** — below `cfg.fillingFactorMinFeasible`, so **expect the tight-feasibility warning on first run.** The box is mostly low-fill: its median is 0.077, a factor of three under the target. The current `test_Boomerang.m` geometry (`a`=576, `w`=168, `r`=195 nm) sits at ff = **0.427**, higher still — and outside the bounds on both `a` and `w`, so the optimizer cannot reach it at all.
+
+Either move `cfg.bounds` toward the shell you care about, widen `cfg.fillingFactorTol`, or drop the target toward the box median. A target of 0.10 ± 0.01 leaves 13% feasible and needs no other change.
 
 ### Solver fidelity
 
@@ -442,7 +471,7 @@ Kept identical to `sweep_boomerang_code.m` so results are comparable with the ex
 | field | default | meaning |
 |---|---|---|
 | `cfg.kpts` | `9` | k-points **excluding** Γ. The solve covers `3*kpts` points on the Γ–M–K–Γ circuit |
-| `cfg.nbands` | `15` | Bands per k-point. Must be high enough to bracket the gap you care about |
+| `cfg.nbands` | `10` | Bands per k-point. Must be high enough to bracket the gap you care about |
 | `cfg.meshSize` | `4` | COMSOL `autoMeshSize` level — **higher means coarser.** `test_Boomerang.m` uses 3, which is *finer*, so frequencies are not directly comparable between the two |
 | `cfg.maxDof` | `3e6` | DOF cap. `runBands_2D` coarsens the mesh in a loop until the estimate falls below this, so it bounds solve time rather than erroring |
 
@@ -623,7 +652,9 @@ Recorded here because they are easy to trip over again.
 
 3. **`P.savedat` must stay `1`.** It is what writes the `.mat`, and therefore what makes caching work at all.
 
-4. **`TwoSymPlanes` is set to `0`, deliberately.** On the 2D path `runBands_2D` applies a Floquet periodic BC in y and reads `P.mbeveny` without ever using it, so only `mbevenz` changes the problem posed. With `TwoSymPlanes = 1`, `solveBands` runs four sectors that collapse to two distinct solves run twice each — double the cost, and `full.F` then holds every band twice, making `findGaps` report every complete gap twice over. Two sectors (even/odd about z) is already the complete set. Note `test_Boomerang.m` currently sets `1`.
+4. **`TwoSymPlanes` is set to `0`, deliberately.** On the 2D path `runBands_2D` applies a Floquet periodic BC in y and reads `P.mbeveny` without ever using it, so only `mbevenz` changes the problem posed. With `TwoSymPlanes = 1`, `solveBands` runs four sectors that collapse to two distinct solves run twice each — double the cost, and `full.F` then holds every band twice, making `findGaps` report every complete gap twice over. Two sectors (even/odd about z) is already the complete set. `test_Boomerang.m` now also sets `0`.
+
+   ⚠️ That combination exposed a **bug in `solveBands.m`**: its `bandStruct_2D` plotting branch referenced `symy_symz` and friends unconditionally, but those exist only on the `TwoSymPlanes = 1` path, so a `TwoSymPlanes = 0` run died with `Unrecognized function or variable 'symy_symz'` before drawing anything. Fixed — the branch now collects whichever sectors were actually solved. This script sets `savebndplot = 1`, so it would have hit the same wall.
 
 5. **`P.bandStruct_2D` must stay `1`.** `runBands` (the `0` path) has no `'boomerang'` branch in its celltype dispatch — it handles only `boomerang_strip_v2` and `boomerang_lower`.
 

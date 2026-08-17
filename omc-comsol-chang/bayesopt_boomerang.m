@@ -208,12 +208,37 @@ cfg.sigma      = 3e9;       % width of the Gaussian frequency penalty [Hz]
 % Minimum feature size, applied to the hole arm width w - the narrowest
 % etched feature in the tri-arm geometry. See boomerangFabConstraint for why
 % the `a - r` term from boomerang_optimize_sweep_diamond.m is deliberately not
-% reproduced, and for the separate r < sqrt(3)*a/4 in-cell guard.
+% reproduced. The in-cell guard is no longer the analytic r < sqrt(3)*a/4 -
+% that assumed a centred hole; it is now the measured armsOverhang test.
 % Held in integer nm so the comparison is exact. Storing it in metres and
 % comparing w*1e-9 >= 50e-9 would be a round-off coin flip on designs sitting
 % exactly on the limit, e.g. w = 50 nm, because the computed product and the
 % parsed literal need not agree to the last bit.
-cfg.minFeatureNm = 50;      % [nm]
+cfg.minFeatureNm = 50;      % [nm]  minimum ETCHED linewidth (arm width w)
+
+% The other half of the process window: the minimum SOLID feature, i.e. the
+% thinnest dielectric wall left standing. That wall runs between this cell's
+% hole and a neighbouring cell's, so it exists only once the lattice is applied
+% and cannot be read off a, r and w - calcFillingFactor measures it as the
+% closest approach between the hole boundary and its six nearest translates.
+%
+% It matters because it is NOT redundant with minFeatureNm. At the current
+% test_Boomerang geometry the wall is 148 nm against w = 125 nm, so w binds -
+% but the wall shrinks fast as r grows toward the containment limit and can
+% drop below w well before an arm actually crosses the cell edge.
+%
+% Set 0 to skip the check, which also skips the expensive measurement.
+cfg.minSolidFeatureNm = 50;    % [nm]
+
+% Extra clearance demanded between the hole and the cell boundary, on top of
+% the exact non-intersection test in boomerangFabConstraint. 0 means "must not
+% cross", which the armsOverhang test already guarantees; a positive value
+% demands the hole stay that far clear. This is the constraint that ties r and
+% w together - the farthest point of the hole is at hypot(w/2, r) from the hole
+% centre, so a wider arm costs edge clearance exactly as a longer one does.
+% Set 0 to skip; combined with cfg.minSolidFeatureNm = 0 that skips the
+% expensive geometry pass entirely.
+cfg.holeEdgeMarginNm = 0;      % [nm]
 
 % --- search space, in integer nm (ranges from sweep_boomerang_code.m) -----
 cfg.bounds.a  = [600 1000];
@@ -489,7 +514,11 @@ function tf = boomerangFabConstraint(x,cfg)
 % in, so a design exactly on the fabrication limit is not decided by
 % floating-point round-off.
 %
-% Three tests:
+% Five tests, ordered cheapest and most-selective first. That ordering is
+% load-bearing, not tidiness: tests (4) and (5) need calcFillingFactor's O(n^2)
+% wall measurement, and running it only on rows that already passed the
+% filling-factor band - a few percent of the box - is what makes it affordable
+% inside a function bayesopt calls on thousands of candidates per iteration.
 %
 % (1) Minimum feature. For the tri-arm hole the narrowest feature is simply
 %     the arm width w, since that is an etched slit. Note that the `a - r`
@@ -516,6 +545,26 @@ function tf = boomerangFabConstraint(x,cfg)
 %     polygons COMSOL will be handed rather than from a closed form - the
 %     naive 3*w*r overstates the hole area by ~6% because the three arms
 %     overlap at the centre.
+%
+% (4) Minimum SOLID feature >= cfg.minSolidFeatureNm. The etched side is
+%     covered by (1); this is the dielectric side - the thinnest wall left
+%     standing, between this cell's hole and a neighbouring cell's. Measured
+%     over the six nearest lattice translates, since the wall does not exist
+%     until the lattice is applied.
+%
+%     Worth knowing: over the SHIPPED bounds this never binds. The tightest
+%     corner (a = 600, r = 250, w = 120 nm) leaves a 107 nm wall against the
+%     50 nm limit, and the current test_Boomerang geometry leaves 148 nm. It
+%     is a safety net that becomes live if the bounds widen or r is pushed
+%     toward the containment limit - not a constraint shaping today's search.
+%     Set cfg.minSolidFeatureNm = 0 to skip it and its cost.
+%
+% (5) Hole-to-cell clearance >= cfg.holeEdgeMarginNm. Test (2) is already an
+%     exact non-intersection test, so this only adds a margin; 0 makes it a
+%     no-op. It constrains r and w JOINTLY - the farthest point of the hole
+%     sits at hypot(w/2, r) from the hole centre, so fattening an arm spends
+%     edge clearance exactly as lengthening one does, and neither variable
+%     alone expresses the limit.
 holeWidthNm = x.w;                      % narrowest etched feature
 tf = holeWidthNm(:) >= cfg.minFeatureNm;
 
@@ -527,7 +576,10 @@ tf = holeWidthNm(:) >= cfg.minFeatureNm;
 %
 %     Rows already failing (1) are skipped: the geometry work is the expensive
 %     part and their verdict cannot change.
-useFill = ~isempty(cfg.fillingFactor);
+useFill  = ~isempty(cfg.fillingFactor);
+% Whether the expensive metrics are needed at all. Both thresholds default to
+% something meaningful, but a caller can zero them out and skip the cost.
+needSlow = (cfg.minSolidFeatureNm > 0) || (cfg.holeEdgeMarginNm > 0);
 for ii = 1:height(x)
     if ~tf(ii), continue, end
 
@@ -557,6 +609,46 @@ for ii = 1:height(x)
 
     % (3) Filling factor inside the requested band.
     if useFill && abs(ffi.fillingFactor - cfg.fillingFactor) > cfg.fillingFactorTol
+        tf(ii) = false;
+        continue
+    end
+
+    % (4) and (5) need calcFillingFactor's EXPENSIVE metrics, so they run last
+    %     and only on rows that survived everything above. That ordering is the
+    %     whole reason this is affordable: the filling-factor band admits only a
+    %     few percent of the box, so the O(n^2) wall measurement runs on a few
+    %     percent of the candidates rather than all of them. Cheapest and most
+    %     selective first.
+    if ~needSlow, continue, end
+
+    try
+        ffs = calcFillingFactor(Pi,'FeatureSizes',true);
+    catch
+        tf(ii) = false;
+        continue
+    end
+
+    % (4) Minimum SOLID feature: the thinnest dielectric wall in the tiled
+    %     structure, running between this cell's hole and a neighbouring
+    %     cell's. Test (1) covers the etched side - the narrowest slit, = w -
+    %     but a process has two limits and this is the other one. It is not
+    %     derivable from a, r, w: the wall only exists once the lattice is
+    %     applied, and it collapses as r grows toward the containment limit,
+    %     well before armsOverhang trips. Nothing checked it until now.
+    if ffs.minSolidFeature*1e9 < cfg.minSolidFeatureNm
+        tf(ii) = false;
+        continue
+    end
+
+    % (5) Clearance between the hole and the cell edge. armsOverhang in (2) is
+    %     already an exact "does not intersect" test, so this only adds a
+    %     MARGIN: with cfg.holeEdgeMarginNm = 0 it is a no-op and (2) alone
+    %     decides. The margin binds r and w together rather than either alone,
+    %     because the farthest point of the hole sits at hypot(w/2, r) from the
+    %     hole centre - widening the arms eats edge clearance exactly as
+    %     lengthening them does. Measured from the boundary, so it stays correct
+    %     for any holeCentreFrac.
+    if ffs.holeToCellMargin*1e9 < cfg.holeEdgeMarginNm
         tf(ii) = false;
     end
 end
