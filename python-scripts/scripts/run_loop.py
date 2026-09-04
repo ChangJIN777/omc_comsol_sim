@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from objective import evaluate_candidate          # noqa: E402
 from database import save_result, load_completed_results, best_result  # noqa: E402
 from optimizer import initialize_optimizer, ask, tell  # noqa: E402
+from cli_progress import make_stderr_reporter      # noqa: E402
 
 
 def main():
@@ -28,6 +29,8 @@ def main():
                     choices=["comsol", "surrogate_stub"])
     ap.add_argument("--backend", default="auto",
                     choices=["auto", "random", "optuna", "botorch"])
+    ap.add_argument("--quiet", action="store_true",
+                    help="suppress per-stage progress on stderr")
     args = ap.parse_args()
 
     data = load_completed_results()
@@ -37,8 +40,10 @@ def main():
     total = args.n_init + args.n_iter
     for it in range(total):
         u = ask(opt)
+        on_stage = None if args.quiet else make_stderr_reporter(
+            prefix=f"iter {it+1}/{total} ")
         rec = evaluate_candidate(u, optical_backend=args.optical,
-                                 mech_backend=args.mech)
+                                 mech_backend=args.mech, on_stage=on_stage)
         save_result(rec)
         tell(opt, u, rec["score"],
              constraints={"optical_gap": rec.get("optical_gap"),

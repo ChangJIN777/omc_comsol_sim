@@ -1,0 +1,31 @@
+Best result: G_o=22.6%  G_m=13.2%  score=+0.3262
+Starting COMSOL... loading C:\Users\alber\Documents\Github\omc_comsol_sim\python-scripts\scripts\..\comsol/omc_unitcell_iso.mph
+
+============================================================
+CHARACTERIZING BEST GEOMETRY (full 4-study sweep + mode profiles)
+  a=783  w=755  hx=337  hy=263  t=251 nm
+  G_o=22.6%  G_m=13.2%  score=+0.3262
+============================================================
+  [cache] geometry changed — running fresh COMSOL sweeps.
+  [1/4] opt TE  (full BZ, visualization)...
+  [2/4] opt TM  (full BZ, visualization)...
+  [3/4] mech sym  (full BZ)...
+  [4/4] mech antisym  (full BZ)...
+  [gap] zone-edge sweep for gap detection (matching optimization)...
+  [mode] optical TE profile at zone edge...
+    [modes] dumped 12 modes -> C:\Users\alber\Documents\Github\omc_comsol_sim\python-scripts\scripts\..\scripts\..\results\mode_exports\opt_TE_Solution_1_all_modes_manifest.txt
+  [mode] mechanical breathing mode profile at the gap's own k-point...
+    [mech arrows] uy_c: OK phi=-180.0° valid=662/1350 max=6.120e-13
+    [mech arrows] uy_arr=max=6.120e-13  uz_arr=max=3.338e-13
+  [cache] saved → C:\Users\alber\Documents\Github\omc_comsol_sim\python-scripts\scripts\..\results/figures\best_char_data.npz
+Traceback (most recent call last):
+  File "C:\Users\alber\Documents\Github\omc_comsol_sim\python-scripts\scripts\characterize_best.py", line 77, in <module>
+    main()
+  File "C:\Users\alber\Documents\Github\omc_comsol_sim\python-scripts\scripts\characterize_best.py", line 69, in main
+    out_path = _run_characterization(model, best, args, out_dir=out_dir,
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\alber\Documents\Github\omc_comsol_sim\python-scripts\scripts\..\scripts\run_opt_comsol.py", line 2144, in _run_characterization
+    _plot_mode_profile(ax_omode, y_omode, z_omode, normE,
+  File "C:\Users\alber\Documents\Github\omc_comsol_sim\python-scripts\scripts\..\scripts\run_opt_comsol.py", line 1522, in _plot_mode_profile
+    from scipy.interpolate import griddata
+ModuleNotFoundError: No module named 'scipy'

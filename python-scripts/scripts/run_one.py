@@ -24,43 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from objective import evaluate_candidate          # noqa: E402
 from database import save_result                  # noqa: E402
-
-_STAGES = ["feasibility", "optical", "mechanical", "score"]
-
-
-def _fmt_time(seconds):
-    seconds = int(seconds)
-    h, m, s = seconds // 3600, (seconds % 3600) // 60, seconds % 60
-    if h > 0:
-        return f"{h}h{m:02d}m"
-    if m > 0:
-        return f"{m}m{s:02d}s"
-    return f"{s}s"
-
-
-def make_stderr_reporter():
-    """Build an on_stage(name, event, info) callback that prints
-    "[i/n] stage ... running/done/skipped (elapsed)" lines to stderr."""
-    t_start = {}
-
-    def report(name, event, info=None):
-        idx = _STAGES.index(name) + 1
-        n = len(_STAGES)
-        label = name if info in (None, "start", "done") else f"{name} ({info})"
-        if event == "start":
-            t_start[name] = time.time()
-            print(f"[{idx}/{n}] {label} ... running", file=sys.stderr)
-        elif event == "skip":
-            print(f"[{idx}/{n}] {label} ... skipped", file=sys.stderr)
-        elif event == "done":
-            dt = time.time() - t_start.get(name, time.time())
-            print(f"[{idx}/{n}] {name} ... done ({_fmt_time(dt)})", file=sys.stderr)
-        elif event == "fail":
-            dt = time.time() - t_start.get(name, time.time())
-            print(f"[{idx}/{n}] {name} ... FAILED ({_fmt_time(dt)}): {info}",
-                  file=sys.stderr)
-
-    return report
+from cli_progress import make_stderr_reporter, _fmt_time  # noqa: E402
 
 
 def main():

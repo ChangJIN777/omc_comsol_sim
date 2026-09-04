@@ -11,7 +11,7 @@ This script:
 Run ONCE after changing t_max in bounds.yaml, before the next optimization.
 
 Usage:
-    python scripts/migrate_t_bounds.py --t-max-old 450 --in results/opt_results_t5d.json
+    python scripts/migrate_t_bounds.py --t-max-old 450 --in results/opt_results_t5d_iso.json
 """
 import argparse
 import hashlib
@@ -54,7 +54,7 @@ def main():
                     help="t_min in nm (unchanged)")
     ap.add_argument("--t-max-new", type=float, default=500.0,
                     help="New t_max in nm (after the bounds change)")
-    ap.add_argument("--in",  dest="infile",  default="results/opt_results_t5d.json")
+    ap.add_argument("--in",  dest="infile",  default="results/opt_results_t5d_iso.json")
     ap.add_argument("--out", dest="outfile", default=None,
                     help="Output file (default: overwrite --in)")
     args = ap.parse_args()

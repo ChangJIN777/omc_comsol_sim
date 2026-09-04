@@ -9,7 +9,7 @@ from typing import Dict, List
 
 _DB = os.environ.get(
     "OMC_DB_PATH",
-    os.path.join(os.path.dirname(__file__), "..", "results", "runs.sqlite"))
+    os.path.join(os.path.dirname(__file__), "..", "results", "runs.sqlite3"))
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS candidates (

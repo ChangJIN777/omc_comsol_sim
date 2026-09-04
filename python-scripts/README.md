@@ -54,10 +54,65 @@ Mechanical + fabrication-aware optical -- COMSOL 6.2:
 ```
 configs/   bounds.yaml  targets.yaml  materials.yaml
 src/       geometry  bandgap  optical_{surrogate,mpb,comsol}  acoustic_comsol
-           objective  optimizer  database
-scripts/   run_one.py  run_loop.py
+           objective  optimizer  database  cli_progress  comsol_client
+scripts/   see "Scripts reference" below
 comsol/    template recipe + MATLAB LiveLink driver
 tests/     test_pipeline.py  (numpy-only)
-results/   runs.sqlite (+ .jsonl fallback)
-docs/      strategy.md
+results/   runs.sqlite3 (+ .jsonl fallback)
+docs/      strategy.md  comsol_setup.md  run_opt_comsol.md
 ```
+
+## Scripts reference
+
+Every script in `scripts/`. **Mac/COMSOL** = requires COMSOL + MPh (runs only on
+the Mac with LiveLink). **anywhere** = pure numpy/stdlib, runs on any machine.
+Scripts that overwrite result files in place are flagged ⚠.
+
+### Optimization drivers
+| Script | Purpose | Runs |
+|---|---|---|
+| `run_one.py` | Evaluate ONE candidate `--u` and save the record; per-stage progress to stderr, pure JSON to stdout. Flags: `--u`, `--optical {surrogate,mpb,comsol}`, `--mech {comsol,surrogate_stub}`, `--quiet`. | anywhere (surrogate); Mac/COMSOL if `--optical mpb`/`--mech comsol` |
+| `run_loop.py` | Closed ask→evaluate→save→tell loop via `src/`. Flags: `--n-init`, `--n-iter`, `--optical`, `--mech`, `--backend {auto,random,optuna,botorch}`, `--quiet`. | anywhere (surrogate); Mac/COMSOL with `--mech comsol` |
+| `run_opt_comsol.py` | Production COMSOL co-optimization driver (optical TE gap near 1550 nm + breathing mechanical gap 5–10 GHz); Optuna TPE or Halton fallback; spawns `characterize_best.py` at the end. See `docs/run_opt_comsol.md`. | Mac/COMSOL |
+
+### Monitoring
+| Script | Purpose | Runs |
+|---|---|---|
+| `watch_progress.py` | Live polling dashboard (progress bar, rate/ETA, best-so-far, top-5) over a results JSON. Flags: `--file`, `--n-iter`, `--interval`, `--once`. | anywhere (read-only) |
+| `replot.py` | Regenerate the progress figure from the saved JSON without re-running COMSOL. Flags: `--json`, `--fig`. | anywhere (read-only) |
+
+### COMSOL setup / diagnostics
+| Script | Purpose | Runs |
+|---|---|---|
+| `check_comsol.py` | Step-by-step COMSOL↔Python(MPh) connectivity diagnostic (arch, imports, `mph.start()` + license, trivial eval, optional template load). | Mac/COMSOL |
+| `inspect_comsol.py` | Physical sanity check: Γ→X sweep + zone-edge mode shapes rendered as a 4-panel figure (optical bands+mode, mech bands colored by fy + breathing mode). Flags: `--u`, `--n-k`, `--study-*`, `--out`. | Mac/COMSOL |
+
+### Evaluation / parameter sweeps
+All COMSOL-driven, reuse `evaluate()` from `run_opt_comsol.py`.
+| Script | Purpose | Runs |
+|---|---|---|
+| `eval_points.py` | Evaluate a hardcoded list of physics-seeded (large-hx / 1550 nm-tuned) u-vectors; appends to `results/opt_results.json`. | Mac/COMSOL |
+| `eval_t_sweep.py` | Sweep beam thickness t (220→420 nm) at fixed a/w/hx/hy to map G_o vs t; caches done points → `results/t_sweep.json`. | Mac/COMSOL |
+| `eval_zone_edge.py` | Evaluate a grid around the 1550 nm zone-edge sweet spot; dedups, appends to `results/opt_results.json`. | Mac/COMSOL |
+| `eval_large_hx.py` | Evaluate large-hx geometries at a≈840–900 nm (strong optical modulation); dedups, appends to `results/opt_results.json`. | Mac/COMSOL |
+
+### Plotting / visualization
+| Script | Purpose | Runs |
+|---|---|---|
+| `plot_geometry.py` | Draw the unit cell: top view + y–x cross-section. Flags: `--u` (4 values), `--periods`, `--out`. | anywhere |
+| `plot_bands.py` | Γ→X band diagram + gap shading; from a saved `.npz` (`--kind {optical,mechanical}`) or the numpy surrogate (`--u --kind optical-surrogate`). | anywhere |
+| `plot_mode.py` | Render a solved mode on a 2D cut plane from a grid `.npz`; `--demo` synthesizes a breathing mode with no COMSOL. | anywhere |
+| `plot_gap_vs_tw.py` | Scatter G_o and G_m vs (t, w) from existing records (marks fy-verified and ≥target points). Flags: `--files`. | anywhere (read-only) |
+| `plot_tpe_landscape.py` | Corner plot of the TPE "good region" 5-D KDE density + mode-finding of density islands; writes a figure and a new `_islands.json`. Flags: `FILE...`, `--good-frac`, `--n-starts`. | anywhere |
+
+### Reprocessing / maintenance
+| Script | Purpose | Runs |
+|---|---|---|
+| `reanalyze_opt_gap.py` | Re-run optical-gap detection (zone-edge + light-line filter) on stored `_freqs_o`, recompute score, print diagnostics. Read-only — emits `<name>_reanalyzed.json`. Flag: `--json`. | anywhere |
+| `rescore_results.py` ⚠ | Re-score existing records with the current `score_result()` (optional require/g-min overrides); stashes original as `score_prev`. **Mutates `FILE...` in place.** | anywhere |
+| `migrate_t_bounds.py` ⚠ | One-time re-map of stored `u[4]` + rescore after changing `t_max` in bounds.yaml. **Mutates `--in` in place by default.** Flags: `--t-max-old`, `--t-max-new`, `--in`, `--out`. | anywhere |
+
+### Characterization
+| Script | Purpose | Runs |
+|---|---|---|
+| `characterize_best.py` | End-of-run characterization of the best stored result (band sweeps, mode fields, figures); launched as a subprocess by `run_opt_comsol.py`, also usable standalone. Flags: `--mph`, `--json`, `--out-dir`, `--no-cache`. | Mac/COMSOL |

@@ -10,7 +10,7 @@ Polls the results JSON every --interval seconds and prints a compact dashboard:
 Usage:
     python scripts/watch_progress.py                        # defaults
     python scripts/watch_progress.py --n-iter 40           # tell it the total
-    python scripts/watch_progress.py --file results/opt_results_t5d.json --n-iter 40
+    python scripts/watch_progress.py --file results/opt_results_t5d_iso.json --n-iter 40
     python scripts/watch_progress.py --once                 # print once and exit
 """
 import argparse
@@ -138,7 +138,7 @@ def _mtime_str(path):
 # ── main ──────────────────────────────────────────────────────────────────────
 
 ap = argparse.ArgumentParser(description="Monitor optimization progress.")
-ap.add_argument("--file",     default="results/opt_results_t5d.json",
+ap.add_argument("--file",     default="results/opt_results_t5d_iso.json",
                 help="Path to the results JSON being written by the optimizer")
 ap.add_argument("--n-iter",   type=int, default=None,
                 help="Total iterations expected (for progress bar and ETA)")

@@ -6,7 +6,7 @@ the plot function — just run this in a separate terminal to get the new plot.
 
 Usage:
     python scripts/replot.py
-    python scripts/replot.py --json results/opt_results_t5d.json --fig results/figures/opt_progress.png
+    python scripts/replot.py --json results/opt_results_t5d_iso.json --fig results/figures/opt_progress_iso.png
 """
 import argparse, json, os, sys, time
 import numpy as np
@@ -14,8 +14,8 @@ import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--json", default="results/opt_results_t5d.json")
-ap.add_argument("--fig",  default="results/figures/opt_progress.png")
+ap.add_argument("--json", default="results/opt_results_t5d_iso.json")
+ap.add_argument("--fig",  default="results/figures/opt_progress_iso.png")
 args = ap.parse_args()
 
 with open(args.json) as f:
