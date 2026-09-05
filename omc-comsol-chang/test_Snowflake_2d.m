@@ -65,6 +65,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 
 % buildBoomerangUnitCell_2D(model,P);
-datLoc = '.\test\snowflake\100224_optical\';
+datLoc = [fullfile('.','test','snowflake','100224_optical'),filesep];
 P.datLoc = datLoc;
 solveOpticalBands(P);

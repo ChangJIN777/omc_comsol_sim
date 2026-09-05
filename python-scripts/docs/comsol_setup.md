@@ -77,11 +77,11 @@ Eigenfrequency study "Study 1"; optional optical study "Study 2"). Re-run
 
 ### Step 6 — run it
 ```bash
-# mechanical only, single cell:
-python scripts/run_one.py --u 0.5 0.6 0.5 0.6 --optical surrogate --mech comsol
+# mechanical only, single cell (set optical: surrogate, mech: comsol in the config):
+python scripts/run_one.py --config configs/run_one.yaml
 
-# full loop (MPB optical pre-screen + COMSOL mechanical):
-python scripts/run_loop.py --n-init 40 --n-iter 120 --optical mpb --mech comsol
+# full loop (set n_init/n_iter + optical: mpb, mech: comsol in the config):
+python scripts/run_loop.py --config configs/run_loop.yaml
 ```
 
 ---

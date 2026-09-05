@@ -30,7 +30,7 @@ params = fminsearch(func,params0);
 function minFitness = runSnowflakeFEM(params)    
     %% optimization file name 
     currentDate = datestr(now,'mmddyyyy');
-    optFilename = ['.\testing\optimizeData_',currentDate,'.csv'];
+    optFilename = fullfile('.','testing',['optimizeData_',currentDate,'.csv']);
     %% geometry parameters
     % unit cell params
     P.xsect = 'rect';                        % beam cross sectional shape - 'tri' or 'rect'
@@ -186,7 +186,7 @@ function minFitness = runSnowflakeFEM(params)
     
     % single run
     % data location to save files in
-    datLoc = '.\testing'; 
+    datLoc = fullfile('.','testing'); 
     [ds,model] = RunNanobeamFEM(P,datLoc);
     
     % extract the Q of the optical mode and gOM 
@@ -211,7 +211,7 @@ end
 function minFitness = runSnowflakeFEM_v2(params)    
     %% optimization file name 
     currentDate = datestr(now,'mmddyyyy');
-    optFilename = ['.\testing\optimizeData_',currentDate,'.csv'];
+    optFilename = fullfile('.','testing',['optimizeData_',currentDate,'.csv']);
     %% impose lower and upper bounds 
     lowerbounds = [300e-9,225e-9,400e-9,225e-9,];
     upperbounds = [600e-9,265e-9,600e-9,265e-9];
@@ -362,7 +362,7 @@ function minFitness = runSnowflakeFEM_v2(params)
     
     % single run
     % data location to save files in
-    datLoc = '.\testing'; 
+    datLoc = fullfile('.','testing'); 
     [ds,model] = RunNanobeamFEM(P,datLoc);
     
     % extract the Q of the optical mode and gOM 
@@ -391,7 +391,7 @@ end
 function minFitness = runSnowflakeFEM_optOnly(params)    
     %% optimization file name 
     currentDate = datestr(now,'mmddyyyy');
-    optFilename = ['.\testing\optimizeData_',currentDate,'.csv'];
+    optFilename = fullfile('.','testing',['optimizeData_',currentDate,'.csv']);
     %% impose lower and upper bounds 
     lowerbounds = [300e-9,225e-9,400e-9,225e-9,];
     upperbounds = [600e-9,265e-9,600e-9,265e-9];
@@ -542,7 +542,7 @@ function minFitness = runSnowflakeFEM_optOnly(params)
     
     % single run
     % data location to save files in
-    datLoc = '.\testing'; 
+    datLoc = fullfile('.','testing'); 
     [ds,model] = RunNanobeamFEM(P,datLoc);
     
     % extract the Q of the optical mode and gOM 

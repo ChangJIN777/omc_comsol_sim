@@ -12,7 +12,7 @@ wi_list = linspace(wi_min,wi_max,5);
 hi_list = linspace(hi_min,hi_max,5);
 
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\snowflake_strip_sweep\',currentDate,'\'];
+datLoc = [fullfile('.','test','snowflake_strip_sweep',currentDate),filesep];
 P.datLoc = datLoc;
 
 %% sweeping b

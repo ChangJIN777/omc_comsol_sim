@@ -2,3 +2,42 @@
 *.png
 *.fig
 *.mat
+
+# Simulation output in TEXT form. The binary patterns above already cover .mat/
+# .png/.fig, which is precisely why only the .txt artifacts ever got committed -
+# and they got committed under backslash-mangled names like
+# ".\test\boomerang_bayesopt\...\DRYRUN_README.txt", produced when the old
+# hard-coded '.\test\...' paths ran on macOS. On Windows a backslash IS a path
+# separator, so git refuses to check such a name out at all: "error: invalid
+# path". Every pattern here starts with * so it matches the mangled
+# one-long-filename form as well as the proper nested one - * matches a
+# backslash, since on POSIX that is an ordinary filename character.
+*DRYRUN_README.txt
+*bayesopt_boomerang*_log.txt
+*optimization_*.txt
+
+# and the whole output tree, when the paths are built correctly
+omc-comsol-chang/test/
+
+# COMSOL working files
+*.mph.lock
+*.mph.recovery*
+
+# macOS
+.DS_Store
+omc-comsol-chang/test/
+*bayesopt*log.txt
+
+# Backslash-named artifacts: any script that still pastes a Windows separator
+# into a path literal creates ONE file whose *name* contains backslashes when
+# run on macOS/Linux. Committing such a file makes the repo impossible to check
+# out on Windows ("error: invalid path"). This has regressed twice (1a4237f ->
+# 8b1e7d4), so ignore the shape itself rather than the specific filenames.
+*\\test\\*
+*\\testing\\*
+*\\optimize\\*
+
+# Claude Code worktrees are real git checkouts living inside the working tree.
+# Committed as gitlinks they are unfetchable (no .gitmodules, no URL) and show
+# as permanently modified as their HEADs move.
+.claude/worktrees/

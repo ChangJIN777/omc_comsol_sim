@@ -6,22 +6,22 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang_strip';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 400e-9;              % lattice constant 
-P.w = 86e-9;              % unit cell width (along x)
-P.r = 160e-9;              % unit cell height (along y)
-P.th = 160e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.a = 480e-9;              % lattice constant 
+P.w = 140e-9;              % unit cell width (along x)
+P.r = 177e-9;              % unit cell height (along y)
+P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 % for the center unit cells v2 
-P.wo = 320e-9;
-P.wi = 144e-9;
-P.ho = 170e-9;
-P.hi = 100e-9;
+P.wo = 372e-9;
+P.wi = 91e-9;
+P.ho = 210.7e-9;
+P.hi = 196e-9;
 P.d = sqrt(3)*P.a/2;
 % center unit cell parameters
 
 % for the center unit cells v1 
-P.h = 250e-9;
-P.d1 = 120e-9;
+P.h = 210.7e-9;
+P.d1 = 140.7e-9;
 
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -31,7 +31,7 @@ P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
 
-P.kpts = 15;                             % no. of k-points, EXCLUDING gamma point
+P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 20;                           % no. of bands to solve for
 
 P.solveasym = 1;                        % 1 to solve for antisymmetric bands
@@ -44,14 +44,14 @@ P.saveMPH = 0;
 P.bandStruct_2D = 0;                 % 1 to simulate 2D band structures
 % the symmetry condition parameters 
 P.TwoSymPlanes = 1; % if we are solving for band structures with two symmetry planes
-P.zSymCondition = 0;
+P.zSymCondition = 1;
 % for optical simulation
 P.bandStructureDim=1;           % specify the dimension of the band structure 
 P.optical_freq = 100;       % specify the target frequency (THz)
 
 % for the optical bandgap 
 P.add_airDisk = 1;
-P.airDiskH = 4000e-9;
+P.airDiskH = 5000e-9;
 P.mbevenz = 0;
 
 %% mechanical simulation parameters 
@@ -86,10 +86,11 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 %% Single solve
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\boomerang_strip\',currentDate,'\'];
+datLoc = [fullfile('.','test','boomerang_strip',currentDate),filesep];
 P.datLoc = datLoc;
 % optical band
-% bds = solveOpticalBands(P);
-% mechanical band 
-P.add_airDisk = 0;
-bds = solveBands(P);
+
+bds = solveOpticalBands(P);
+% % mechanical band 
+% P.add_airDisk = 0;
+% bds = solveBands(P);

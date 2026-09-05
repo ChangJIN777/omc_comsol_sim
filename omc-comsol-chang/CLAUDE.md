@@ -67,7 +67,9 @@ Symmetry is controlled by:
 
 ### Output File Naming
 
-`CreateFileBase(P)` (called automatically if `P.fileBase` is unset) builds a filename string encoding all key geometry parameters, e.g. `boomerang_a_400nm_r_160nm_w_86nm_th_180nm_...`. Results are saved as `[datLoc, P.fileBase, '_mech.mat']` etc. All output goes under `datLoc`, which test scripts set to `'.\test\<geometry>\<date>\'`.
+`CreateFileBase(P)` (called automatically if `P.fileBase` is unset) builds a filename string encoding all key geometry parameters, e.g. `boomerang_a_400nm_r_160nm_w_86nm_th_180nm_...`. Results are saved as `[datLoc, P.fileBase, '_mech.mat']` etc. All output goes under `datLoc`, which test scripts build as `[fullfile('.','test','<geometry>',currentDate),filesep]`.
+
+**Never paste a path separator in by hand.** A literal `'.\test\...'` is only a path on Windows; on macOS and Linux the backslash is an ordinary filename character, so the script creates one file whose *name* contains backslashes rather than a directory tree. Git will happily track such a file, and it then makes the repository impossible to check out on Windows (`error: invalid path`). Always use `fullfile(...)` plus a trailing `filesep` where a trailing separator is needed.
 
 ### COMSOL Model Object
 

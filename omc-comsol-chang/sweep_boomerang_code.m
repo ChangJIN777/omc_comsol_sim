@@ -84,7 +84,7 @@ function sweep_boomerang_lattice(P,a)
     
     %% run the simluation and save the data
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\boomerang_sweep\',currentDate,'\'];
+    datLoc = [fullfile('.','test','boomerang_sweep',currentDate),filesep];
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 
@@ -139,7 +139,7 @@ function sweep_boomerang_thickness(P,th)
     
     %% run the simluation and save the data
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\boomerang_sweep\',currentDate,'\'];
+    datLoc = [fullfile('.','test','boomerang_sweep',currentDate),filesep];
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 
@@ -196,7 +196,7 @@ function sweep_boomerang_holeSize(P,w,r)
     
     %% run the simluation and save the data
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\boomerang_sweep\',currentDate,'\'];
+    datLoc = [fullfile('.','test','boomerang_sweep',currentDate),filesep];
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 

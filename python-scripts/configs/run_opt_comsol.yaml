@@ -1,0 +1,76 @@
+# Configuration for scripts/run_opt_comsol.py — co-optimize the optical + mechanical
+# bandgaps of the 1D diamond OMC unit cell using COMSOL.
+#
+# Loaded with yaml.safe_load; the script takes a single CLI flag,
+#   --config PATH   (defaults to this file: configs/run_opt_comsol.yaml)
+# Every key below was formerly a command-line flag with the same name/semantics.
+#
+# Optical target : TE bandgap >= 20%, center near 1550 nm
+# Mechanical target: breathing (fy > 0.5) gap >= 20%, center in 5-10 GHz
+
+# ── Iteration budget ──────────────────────────────────────────────────────────
+n_init: 6                # space-filling / Halton trials before TPE kicks in
+n_iter: 14               # total iterations (including n_init)
+
+# ── Band-structure sweep resolution ───────────────────────────────────────────
+# k-points for the optical zone-edge sweep (k in [0.5,1.0]*pi/a) and the full
+# mechanical sweep; 7 is a good default.
+n_k: 7
+n_bands_mech: 8
+# Optical bands kept per k-point during the OPTIMIZATION loop (_opt_sweep; neigs
+# floor is also 6 there). Only the fundamental TE gap is scored, plus margin for
+# the 1-3 near-zero scattering-boundary pseudo-modes that get filtered out — 6 is
+# enough; 10 was excessive. The end-of-run/standalone characterization sweep
+# (_full_opt_sweep) keeps its own wider neigs floor of 10 for accurate plotting,
+# independent of this value.
+n_bands_opt: 6
+
+# ── COMSOL studies (must exist in the .mph template) ──────────────────────────
+study_mech: "mech sym"
+study_opt: "opt TE"
+
+# Compute per-mode fy field in the mechanical sweep. Set false to SKIP it — use
+# when mech sym BCs already select breathing modes, which saves ~30-50% of total
+# COMSOL time per evaluation. (Was the --no-fy flag; inverted to a positive name.)
+compute_fy: true
+
+# ── Output paths ──────────────────────────────────────────────────────────────
+out_fig: "results/figures/opt_progress_iso.png"
+out_json: "results/opt_results_t5d_iso.json"
+# Human-readable status file updated after each iteration.
+# Monitor live with:  tail -f results/progress_iso.txt
+progress_file: "results/progress_iso.txt"
+
+# ── Exploration / resume behavior ─────────────────────────────────────────────
+# Force a random exploration sample every N iterations (0 = off). Prevents TPE
+# from getting stuck in a local optimum. Example: explore_every: 8 gives ~12%
+# random samples in a 60-iteration run.
+explore_every: 0
+
+# resume is a legacy no-op: prior results are always loaded automatically if
+# out_json exists. Kept as a key for backward-compat clarity only.
+resume: false
+
+# Discard all prior results and start from scratch. The existing out_json is
+# backed up to <file>.bak first. Without this, prior results are always loaded.
+fresh_start: false
+
+# Skip the end-of-run full characterization sweep (opt TE+TM, mech sym+antisym
+# over the full BZ). Use for quick test runs where you don't need the figure.
+skip_characterization: false
+
+# ── Scoring toggles ───────────────────────────────────────────────────────────
+# require_mech: include the mechanical gap in the score. Set false to EXCLUDE it
+# entirely — no +G_m reward, no gap-size penalty, no frequency penalty. The
+# mechanical sweep still runs and G_m/f_m are still recorded (so you can inspect
+# 'free' mechanical gaps later); this only changes what's optimized for.
+# (Was the --no-require-mech flag; inverted to a positive name.)
+require_mech: true
+# require_opt: symmetric to require_mech, for the optical gap. Rarely toggled but
+# supported for consistency. (Was the --no-require-opt flag.)
+require_opt: true
+
+# Minimum acceptable optical gap for scoring. Ignored if require_opt is false.
+g_min_opt: 0.15
+# Minimum acceptable mechanical gap for scoring. Ignored if require_mech is false.
+g_min_mech: 0.20

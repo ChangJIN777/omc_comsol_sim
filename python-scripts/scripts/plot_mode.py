@@ -1,24 +1,33 @@
 #!/usr/bin/env python3
 """Visualize a solved mode on a 2D cut plane (mechanical displacement or optical field).
 
+Usage:
+    python scripts/plot_mode.py                              # uses configs/plot_mode.yaml
+    python scripts/plot_mode.py --config path/to/plot_mode.yaml
+
+All settings live in the YAML config (default: configs/plot_mode.yaml).
 Consumes a generic grid export (.npz) with:
     Y, Z      : 2D meshgrids of in-plane coords [m]   (top cut, x=0 plane)
     UX,UY,UZ  : 2D field components on that grid       (displacement or E)
     freq      : scalar mode frequency [Hz]
     kind      : 'mechanical' | 'optical' (optional, for labels)
 
-The COMSOL driver writes this via acoustic_comsol.export_mode_grid(...).
-For a quick look at the rendering without COMSOL:
-    python scripts/plot_mode.py --demo --out results/figures/mode_demo.png
+The COMSOL driver writes this via acoustic_comsol.export_mode_grid(...); point
+the `npz` key at that file. For a quick look at the rendering without COMSOL,
+set `demo: true` (a synthetic breathing mode is generated and `npz` is ignored).
 """
 import argparse
 import os
 import sys
 
 import numpy as np
+import yaml
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+_DEFAULT_CONFIG = os.path.join(os.path.dirname(__file__), "..", "configs",
+                               "plot_mode.yaml")
 
 
 def _demo_field(n=120, a=500e-9, w=700e-9):
@@ -33,16 +42,22 @@ def _demo_field(n=120, a=500e-9, w=700e-9):
 
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--npz")
-    ap.add_argument("--demo", action="store_true")
-    ap.add_argument("--out", default="results/figures/mode.png")
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--config", default=_DEFAULT_CONFIG,
+                    help="Path to the YAML config (default: configs/plot_mode.yaml)")
     args = ap.parse_args()
 
-    if args.demo:
+    with open(args.config) as fh:
+        cfg = yaml.safe_load(fh)
+
+    npz = cfg.get("npz")
+    demo = cfg["demo"]
+    out = cfg["out"]
+
+    if demo:
         Y, Z, UX, UY, UZ, freq, kind = _demo_field()
     else:
-        d = np.load(args.npz)
+        d = np.load(npz)
         Y, Z = d["Y"], d["Z"]
         UX, UY, UZ = d["UX"], d["UY"], d["UZ"]
         freq = float(d["freq"]) if "freq" in d else 0.0
@@ -64,9 +79,9 @@ def main():
     ax.set_ylabel("y [nm] (width)")
     ax.set_aspect("equal")
     fig.tight_layout()
-    os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    fig.savefig(args.out, dpi=150)
-    print(f"saved -> {args.out}")
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    fig.savefig(out, dpi=150)
+    print(f"saved -> {out}")
 
 
 if __name__ == "__main__":

@@ -147,7 +147,7 @@ function minFitness = runNanobeamFEM(params)
     %% single run
     % data location to save files in
     currentDate = datestr(now,'mmddyyyy');
-    datLoc = ['.\test\1D_OMC_hole\',currentDate,'\'];
+    datLoc = [fullfile('.','test','1D_OMC_hole',currentDate),filesep];
     [ds,model] = RunNanobeamFEM(P,datLoc);
 
     % extract the Q of the optical mode and gOM 

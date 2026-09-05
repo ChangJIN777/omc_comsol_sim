@@ -61,7 +61,7 @@ OPT.lambdaTol    = 100;     % nm  — Gaussian decay scale for wavelength mismat
 
 % --- root folder for per-evaluation subfolders ---
 currentDate = datestr(now, 'mmddyyyy');
-OPT.rootLoc = ['.\test\1D_OMC_hole\sweep_oblongMaxdef_trial3_', currentDate, '\'];
+OPT.rootLoc = [fullfile('.','test','1D_OMC_hole',['sweep_oblongMaxdef_trial3_',currentDate]),filesep];
 
 % --- FITNESS FUNCTION (user-configurable) ---------------------------------
 % fitness = Q_opt * Q_mech * exp(-|lambda_opt - targetLambda| / lambdaTol)

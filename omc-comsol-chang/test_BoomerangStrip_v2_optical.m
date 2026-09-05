@@ -6,17 +6,17 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'boomerang_strip_v2';                   % specify the cell type
 P.unitcell = 'strip';                  % specify the shape of the unit cell
-P.a = 448e-9;              % lattice constant 
-P.w = 93e-9;              % unit cell width (along x)
-P.r = 172e-9;              % unit cell height (along y)
+P.a = 480e-9;              % lattice constant 
+P.w = 138e-9;              % unit cell width (along x)
+P.r = 150e-9;              % unit cell height (along y)
 P.th = 220e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
-P.wo = 320e-9;           % the height of the hole in the lower portion
-P.wi = 85e-9;           % the width of the hole in the lower portion                            
-P.ho = 195e-9;
-P.hi = 110e-9;
+P.wo = 337e-9;           % the height of the hole in the lower portion
+P.wi = 94e-9;           % the width of the hole in the lower portion                            
+P.ho = 210e-9;
+P.hi = 196e-9;
 P.b = sqrt(3)*P.a/2;        
-P.d = 200e-9;
+P.d = 138e-9;
 
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
@@ -63,23 +63,23 @@ P.saveRawData = 0;
 %% define the maximum number of degree of freedom to limit the simulation time
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
-% %% debugging the unit cells 
-% % import COMSOL class
-% import com.comsol.model.*
-% import com.comsol.model.util.*
-% 
-% ModelUtil.showProgress(true);
-% ModelUtil.clear();
-% clear model
-% 
-% % create COMSOL model named 'model' from which COMSOL methods can be called, 
-% % e.g. model.save
-% model = ModelUtil.create('model');
-% buildBoomerangUnitCellStrip_v2(model,P);
-% mphlaunch(model);
+%% debugging the unit cells 
+% import COMSOL class
+import com.comsol.model.*
+import com.comsol.model.util.*
 
-% Single solve
-currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\optical_boomerang_strip_v2\',currentDate,'\'];
-P.datLoc = datLoc;
-bds = solveOpticalBands(P);
+ModelUtil.showProgress(true);
+ModelUtil.clear();
+clear model
+
+% create COMSOL model named 'model' from which COMSOL methods can be called, 
+% e.g. model.save
+model = ModelUtil.create('model');
+buildBoomerangUnitCellStrip_v2(model,P);
+mphlaunch(model);
+
+% % Single solve
+% currentDate = datestr(now,'mmddyyyy');
+% datLoc = ['.\test\optical_boomerang_strip_v2\',currentDate,'\'];
+% P.datLoc = datLoc;
+% bds = solveOpticalBands(P);

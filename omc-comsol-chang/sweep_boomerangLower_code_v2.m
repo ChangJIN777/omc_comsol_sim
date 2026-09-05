@@ -70,7 +70,7 @@ function sweep_boomerang_lower(P,w_ratio,h_ratio)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang_strip_v2\082124_sweep2\';
+    datLoc = [fullfile('.','test','boomerang_strip_v2','082124_sweep2'),filesep];
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 
@@ -120,7 +120,7 @@ function sweep_boomerang_lower_v2(P,a)
     P.max_dof = 3e6;                        % max # of degrees of freedom
     
     %% run the simluation and save the data
-    datLoc = '.\test\boomerang_lower\082024_sweep1\';
+    datLoc = [fullfile('.','test','boomerang_lower','082024_sweep1'),filesep];
     P.datLoc = datLoc;
     bds = solveBands(P);
 end 

@@ -1,0 +1,19 @@
+# Configuration for scripts/plot_mode.py — visualize a solved mode on a 2D cut
+# plane (mechanical displacement or optical field).
+#
+# Loaded with yaml.safe_load; the script takes a single CLI flag,
+#   --config PATH   (defaults to this file: configs/plot_mode.yaml)
+# Every key below was formerly a command-line flag with the same name/semantics.
+#
+# Consumes a generic grid export (.npz) written by the COMSOL driver via
+# acoustic_comsol.export_mode_grid(...), containing Y, Z, UX, UY, UZ, freq, kind.
+
+# When demo is true, a synthetic even-even "breathing" mode is generated and
+# `npz` is ignored — a quick way to check the rendering without COMSOL.
+demo: true
+
+# Path to the mode grid export (.npz). Only used when demo is false; leave null
+# for the demo mode.
+npz: null
+
+out: results/figures/mode.png    # output figure path

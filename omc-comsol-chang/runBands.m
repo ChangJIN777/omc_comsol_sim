@@ -119,6 +119,8 @@ elseif strcmp(P.celltype,'rib')
     [model,P] = buildRibUnitCell_LN(model,P);
 elseif strcmp(P.celltype,'Snowflake_strip')
     [model,P] = buildSnowflakeStrip_3D(model,P);
+elseif strcmp(P.celltype,'boomerang_lower')
+    [model,P] = buildLowerBoomerangUnitCell(model,P);
 else
     [model,P] = buildBoomerangStrip_3D(model,P);
 end
@@ -355,7 +357,7 @@ while (~mesh_ok) && (mesh_quality < 10)
 end
 % mphsave('test_geom')
 % debugging 
-% mphlaunch(model);
+mphlaunch(model);
 %% Solve for bands
 solv.runAll;
 pbatch.run;

@@ -64,6 +64,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 
 % buildBoomerangUnitCell_2D(model,P);
-datLoc = '.\test\boomerang\072924_optical\';
+datLoc = [fullfile('.','test','boomerang','072924_optical'),filesep];
 P.datLoc = datLoc;
 solveOpticalBands(P);

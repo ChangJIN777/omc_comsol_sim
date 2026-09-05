@@ -21,6 +21,23 @@ meshSize = P.meshSize;
 holeatedge = P.holeatedge; % 1/0 if unit cell terminates in middle of hole/dielectric
 
 
+% create P.datLoc if it does not already exist -- normalise separators first.
+% The test scripts hardcode '\', which on macOS/Linux is an ordinary filename
+% character rather than a separator, so without this mkdir makes one oddly-named
+% folder instead of the intended tree. Mirrors what runBands_2D does. Needed
+% HERE, before the plotgeom block below, because that block is the first thing
+% in this function to write a file - the saveplots mkdir near the end is far too
+% late, and is only for the per-design subfolder.
+if isfield(P,'datLoc') && ~isempty(P.datLoc)
+    P.datLoc = strrep(strrep(P.datLoc,'\',filesep),'/',filesep);
+    if ~strcmp(P.datLoc(end),filesep)
+        P.datLoc = [P.datLoc,filesep];
+    end
+    if ~exist(P.datLoc,'dir')
+        mkdir(P.datLoc)
+    end
+end
+
 %% Define k-points for sweep over wavevectors (1D band structure)
 % adapted from phononic crystal model on COMSOL
 
@@ -69,6 +86,8 @@ elseif strcmp(P.celltype,'boomerang')
     [model,P] = buildBoomerangUnitCellStrip_v2(model,P);
 elseif strcmp(P.celltype,'boomerang_strip_v2')
     [model,P] = buildBoomerangUnitCellStrip_v2(model,P);
+elseif strcmp(P.celltype,'boomerang_strip')
+    [model,P] = buildBoomerangUnitCellStrip(model,P);
 elseif strcmp(P.celltype,'hole_strip')
     [model,P] = buildHoleStrip_3D(model,P);
 elseif strcmp(P.celltype,'hole_strip_wvg')
@@ -84,7 +103,10 @@ end
 if P.plotgeom
     figure;
     mphgeom(model)
-    pathFig = [P.datLoc,'\',P.fileBase,'_geom'];
+    % P.datLoc already carries a trailing separator from the block at the top,
+    % so no separator is inserted here. The previous [P.datLoc,'\',...] both
+    % doubled it and hardcoded a backslash.
+    pathFig = [P.datLoc,P.fileBase,'_geom'];
     saveas(gcf,[pathFig,'.fig']);
     saveas(gcf,[pathFig,'.png']);
 end
@@ -488,6 +510,10 @@ end
 
 % ds.k_norm(end+1) = ds.k_norm(1);
 ds.kx_norm(end+1) = 1;
+% Kept the same length as kx_norm: solveOpticalBands builds the light line from
+% hypot(kx_norm,ky_norm). ky is identically zero on this 1D strip path, so the
+% light line is unchanged in value - this only keeps the arrays conformable.
+ds.ky_norm(end+1) = 0;
 ds.k_norm = ds.kx_norm;     % for 1D band structures
 
 %% saving the mph files for debugging purposes 
@@ -501,7 +527,7 @@ if P.saveRawData
     model.result.export.create('tbl_exp', 'Table');
     model.result.export('tbl_exp').label('bandStruct');
     model.result.export('tbl_exp').set('table', 'tbl14');
-    model.result.export('tbl_exp').set('filename', '.\bandStruct_data\BandStruct.txt');
+    model.result.export('tbl_exp').set('filename', fullfile('.','bandStruct_data','BandStruct.txt'));
     model.result.export('tbl_exp').set('header', false);
     model.result.export('tbl_exp').set('notation', 'scientific');
     model.result.export('tbl_exp').run;

@@ -46,7 +46,7 @@ OPT.noGapPenalty = 1e9;
 
 % --- root location for the per-evaluation output subfolders ---
 currentDate = datestr(now,'mmddyyyy');
-OPT.rootLoc = ['.\test\hole_DiamondMechanical\sweep2_',currentDate,'\'];
+OPT.rootLoc = [fullfile('.','test','hole_DiamondMechanical',['sweep2_',currentDate]),filesep];
 
 % --- FITNESS FUNCTION (user-configurable) ---------------------------------
 % Maps the solveBands output struct ds -> scalar score (HIGHER is better).

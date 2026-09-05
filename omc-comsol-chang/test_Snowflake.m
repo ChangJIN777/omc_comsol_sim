@@ -65,6 +65,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 %% Single solve
 currentDate = datestr(now,'mmddyyyy');
-datLoc = ['.\test\snowflake\',currentDate,'\'];
+datLoc = [fullfile('.','test','snowflake',currentDate),filesep];
 P.datLoc = datLoc;
 bds = solveBands(P);

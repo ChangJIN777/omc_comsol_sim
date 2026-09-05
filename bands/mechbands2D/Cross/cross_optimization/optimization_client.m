@@ -5,7 +5,7 @@
 % 2. We'll run it for kpts = 2
 
 
-addpath('.\test\')
+addpath([fullfile('.','test'),filesep])
 
 % a, wc, hc
 
@@ -29,7 +29,7 @@ P.th = 160e-9;
 P.r1 = 30e-9;
 P.r2 = 30e-9;
 target_freq = 13e9;
-P.datLoc = '.\test\';
+P.datLoc = [fullfile('.','test'),filesep];
 
 if min(vars.a-vars.hc,vars.wc) < 60
     disp('Fabrication intolerant');

@@ -95,5 +95,5 @@ P.max_dof = 5e6;                        % max # of degrees of freedom
 
 %% single run
 % data location to save files in
-datLoc = '.\BlkTetFlexXMode\'; 
+datLoc = [fullfile('.','BlkTetFlexXMode'),filesep]; 
 [ds,model] = RunNanobeamFEM(P,datLoc);

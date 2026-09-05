@@ -1,0 +1,18 @@
+# Configuration for scripts/run_one.py — evaluate ONE candidate and save it.
+#
+# Loaded with yaml.safe_load; the script takes a single CLI flag,
+#   --config PATH   (defaults to this file: configs/run_one.yaml)
+# Every key below was formerly a command-line flag with the same name/semantics.
+
+# 5 normalized values (ua, uw, uhx, uhy, ut), each in [0,1], mapping to
+# (a, w, hx, hy, t) via src/geometry.py:u_to_geometry -- see configs/bounds.yaml
+# for the physical ranges. A legacy 4-value form (ua uw uhx uhy) is also accepted
+# and pins thickness t to its minimum (t = t_min).
+u: [0.5, 0.6, 0.5, 0.6, 0.5]
+
+optical: surrogate       # optical backend: surrogate | mpb | comsol
+mech: surrogate_stub     # mechanical backend: comsol | surrogate_stub
+
+# Suppress per-stage progress printed to stderr (feasibility/optical/mechanical/
+# score). stdout stays pure JSON regardless.
+quiet: false

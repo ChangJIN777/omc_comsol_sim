@@ -39,7 +39,7 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
 %% Single solve
-datLoc = '.\test\Holely\070424\';
+datLoc = [fullfile('.','test','Holely','070424'),filesep];
 bds = solveBands(P,datLoc);
 
 % %% change thickness

@@ -13,7 +13,7 @@ b = 0;
 b_min = 10e-9; 
 b_max = 20e-9; 
 b_list = linspace(b_min,b_max,5);
-datLoc = '.\test\hole\073124_optical_sweep_2\';
+datLoc = [fullfile('.','test','hole','073124_optical_sweep_2'),filesep];
 P.datLoc = datLoc;
 
 %% sweeping a 

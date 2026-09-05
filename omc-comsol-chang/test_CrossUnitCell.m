@@ -62,6 +62,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % buildCrossUnitCell(model,P);
 % mphlaunch(model);
 %% Single solve
-datLoc = '.\test\cross\092524\';
+datLoc = [fullfile('.','test','cross','092524'),filesep];
 P.datLoc = datLoc;
 bds = solveBands(P);

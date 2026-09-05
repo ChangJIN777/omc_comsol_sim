@@ -66,6 +66,6 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 % mphlaunch(model);
 
 %% run the simulation
-datLoc = '.\test\holeStrip\110524_optical\';
+datLoc = [fullfile('.','test','holeStrip','110524_optical'),filesep];
 P.datLoc = datLoc;
 solveOpticalBands(P);

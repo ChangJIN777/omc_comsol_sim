@@ -1,0 +1,17 @@
+# Configuration for scripts/plot_geometry.py — visualize the simulated unit cell
+# (top view along the periodic z-axis + rectangular cross-section).
+#
+# Loaded with yaml.safe_load; the script takes a single CLI flag,
+#   --config PATH   (defaults to this file: configs/plot_geometry.yaml)
+# Every key below was formerly a command-line flag with the same name/semantics.
+#
+# Pure matplotlib; runs anywhere (no external solver). Reports whether the cell
+# is feasible (bridge / sidewall margins) in the figure title and on stdout.
+
+# 4 normalized values (ua, uw, uhx, uhy), each in [0,1], mapped to physical
+# geometry (a, w, hx, hy) via src/geometry.py:u_to_geometry.
+u: [0.5, 0.6, 0.5, 0.6]
+
+periods: 3               # number of unit-cell periods drawn in the top view
+
+out: results/figures/geometry.png   # output figure path

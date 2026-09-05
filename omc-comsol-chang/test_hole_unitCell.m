@@ -83,11 +83,11 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 %% Single solve
 currentDate = datestr(now,'mmddyyyy');
 if P.run_optical
-    datLoc = ['.\test\hole_DiamondOptical\',currentDate,'\'];
+    datLoc = [fullfile('.','test','hole_DiamondOptical',currentDate),filesep];
     P.datLoc = datLoc;
     solveOpticalBands(P);
 else
-    datLoc = ['.\test\hole_DiamondMechanical\',currentDate,'\'];
+    datLoc = [fullfile('.','test','hole_DiamondMechanical',currentDate),filesep];
     P.datLoc = datLoc;
     solveBands(P);
 end 
