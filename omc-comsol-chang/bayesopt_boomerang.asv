@@ -156,7 +156,7 @@ cfg = struct();
 % backend. Short version: dry-run output lives in its own folder, under its own
 % filename prefix, carrying an in-file provenance marker, so no real run can
 % ever load it.
-cfg.solverBackend = 'comsol';
+% cfg.solverBackend = 'comsol';
 % cfg.solverBackend = 'surrogate';
 
 % Fail loud on an unknown backend BEFORE anything is derived from the name -
@@ -264,9 +264,9 @@ cfg.minSolidFeatureNm = 50;    % [nm]
 cfg.holeEdgeMarginNm = 0;      % [nm]
 
 % --- search space, in integer nm (ranges from sweep_boomerang_code.m) -----
-cfg.bounds.a  = [500 1000];
+cfg.bounds.a  = [600 1000];
 cfg.bounds.r  = [100  250];   % sweep used r in [0.6*250, 250] nm
-cfg.bounds.w  = [ 50  170];
+cfg.bounds.w  = [ 50  120];
 
 % --- fixed geometry ------------------------------------------------------
 % th is FIXED, not searched. It used to be a fourth optimizable variable over
