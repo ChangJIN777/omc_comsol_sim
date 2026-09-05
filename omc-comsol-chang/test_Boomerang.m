@@ -6,9 +6,9 @@ P.xsect = 'rect';
 P.beamMat = 'diamond_telecom';                  % beam material name
 P.celltype = 'boomerang';                   % specify the cell type
 P.unitcell = 'hexagonal';                  % specify the shape of the unit cell
-P.a = 1.2*480e-9;              % lattice constant
-P.w = 1.2*140e-9;              % unit cell width (along x)
-P.r = 1.1*177e-9;              % unit cell height (along y)
+P.a = 684e-9;              % lattice constant
+P.w = 163e-9;              % unit cell width (along x)
+P.r = 250e-9;              % unit cell height (along y)
 P.th = 300e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')                   
 P.r1 = 10e-9;             % width (along y) of cross (for celltype = 'hollow')
@@ -237,6 +237,6 @@ if ff.fillingFactor < P.fillingFactorRange(1) || ...
 end
 
 %% solving mechanical modes
-bds = solveBands(P);
+% bds = solveBands(P);
 %% solving optical bands
-% bds = solveOpticalBands(P);
+bds = solveOpticalBands(P);
