@@ -23,7 +23,13 @@ one can be resumed or seeded with the other.
   - [The penalty ladder](#the-penalty-ladder)
   - [Alternative fitness functions](#alternative-fitness-functions)
 - [Optimizers](#optimizers)
+  - [Why Bayesian by default](#why-bayesian-by-default)
+  - [The gate becomes a constraint, not a penalty](#the-gate-becomes-a-constraint-not-a-penalty)
+  - [Budget semantics](#budget-semantics--read-this-before-resuming)
+  - [Resume, and cross-optimizer seeding](#resume-and-cross-optimizer-seeding)
 - [Fabrication pre-filter](#fabrication-pre-filter)
+  - [How each optimizer uses it](#how-each-optimizer-uses-it)
+  - [Startup scan](#startup-scan)
 - [Stop and resume](#stop-and-resume)
   - [How it works](#how-it-works)
   - [SQLite backends](#sqlite-backends)
@@ -32,6 +38,9 @@ one can be resumed or seeded with the other.
 - [Outputs](#outputs)
 - [Coupling breakdown](#coupling-breakdown)
 - [Configuration reference](#configuration-reference)
+  - [Search and objective](#search-and-objective)
+  - [Optimizer and persistence](#optimizer-and-persistence)
+  - [Physics (the expensive settings)](#physics-the-expensive-settings)
 - [Known gotchas](#known-gotchas)
 - [Testing](#testing)
 - [Related files](#related-files)
@@ -42,7 +51,7 @@ one can be resumed or seeded with the other.
 
 | File | Role |
 |---|---|
-| `optimize_oblong_maxdef.m` | The optimizer. Nelder–Mead today, `bayesopt` reserved. |
+| `optimize_oblong_maxdef.m` | The optimizer. Bayesian by default, Nelder–Mead switchable. |
 | `OptimStore.m` | SQLite persistence + stop/resume. Reusable, not specific to this script. |
 | `isFabricable.m` | Lithography feasibility of a design, without any solve. |
 | `seedBayesFromStore.m` | Turns stored evaluations into `bayesopt` seed data. |
@@ -58,22 +67,26 @@ one can be resumed or seeded with the other.
 
 ```matlab
 % 1. Start COMSOL with LiveLink for MATLAB.
-% 2. Sanity-check without running anything:
+% 2. Sanity-check without running anything (none of these need COMSOL):
 checkcode('optimize_oblong_maxdef.m')
-OptimStore.selfTest          % verifies the SQLite backend end-to-end
-test_OptimStore_resume       % verifies stop/resume, no COMSOL needed
+OptimStore.selfTest          % SQLite backend, end to end
+test_OptimStore_resume       % stop/resume
+test_isFabricable            % pre-filter vs. the real geometry builder
+test_bayesopt_wiring         % Bayesian plumbing (needs Statistics Toolbox)
 
 % 3. Edit the TUNABLE KNOBS block — at minimum OPT.runId, the bounds,
-%    OPT.QmechMin, and MaxFunEvals in the optimset call.
+%    OPT.QmechMin, and the evaluation budget:
+%      bayesopt    -> OPT.bo.maxEvals   (default 60)
+%      neldermead  -> MaxFunEvals in the optimset call (default 200)
 
 % 4. Run:
 [best_oblong, best_maxdef, fitnessBest, dsBest] = optimize_oblong_maxdef();
 ```
 
-**Time a single evaluation before committing to a study.** `MaxFunEvals` defaults to
-200; at even 10 minutes per solve that is well over a day. Run
-`test_nanobeamRectFEM_withPML.m` once at the same `P.mMesh` / `P.oMesh` to get the
-per-evaluation cost, and multiply.
+**Time a single evaluation before committing to a study.** The default budget is 60
+COMSOL solves under `bayesopt`, 200 under Nelder–Mead; at even 10 minutes each that is
+half a day to well over a day. Run `test_nanobeamRectFEM_withPML.m` once at the same
+`P.mMesh` / `P.oMesh` to get the per-evaluation cost, and multiply.
 
 To stop a run, Ctrl-C is safe — the run is marked `interrupted` and every completed
 evaluation is already in the database. To continue, re-run with the same `OPT.runId`.
@@ -162,19 +175,114 @@ gradient.
 
 ### Why the objective is `-log10(fitness)`
 
-`optimset`'s `TolFun` is an **absolute** tolerance on the spread of objective values
-across the simplex. Raw fitness here runs to ~10¹⁶–10¹⁸ (`g_OM²·Q_opt`), so minimizing
-`-fitness` makes any sane `TolFun` unreachable and the run always burns through
-`MaxFunEvals` regardless of convergence.
+Both optimizers minimize `-log10(fitness)` rather than `-fitness`. The transform is
+**monotonic**, so it cannot change which design wins — `argmax f = argmax log f`. What it
+changes is how well each optimizer's machinery works on the way there, and it helps the
+two for partly different reasons.
 
-Minimizing `-log10(fitness)` puts the objective on an O(10) scale, which turns `TolFun`
-into an effectively *relative* test on the fitness. `TolFun = 1e-3` is about a 0.23 %
-change. Tightening it much further is pointless: adaptive meshing (`P.mAdjMesh`,
-`P.oAdjMesh`) makes the objective slightly discontinuous as the geometry changes, so the
-numerical noise floor sits above a 1e-6 tolerance.
+#### The shared reason: a product spanning many decades
 
-> **Nelder–Mead has no noise model.** If a run converges onto a point whose fitness does
-> not reproduce when re-run, that is a mesh artifact, not an optimum.
+```
+fitness = g_OM² · Q_opt · L(λ)      →      log f = 2·log g_OM + log Q_opt + log L
+```
+
+Every factor is a gain or a ratio, so the physics combines **multiplicatively**. Across a
+representative box the fitness spans about **4.6 decades** (2×10¹³ → 7×10¹⁷). In linear
+space that landscape is one enormous spike on a floor that is numerically flat: a mediocre
+design at 2×10¹³ and a bad one at 2×10¹¹ differ by 0.004 % of the peak. Log compresses the
+same landscape to a range of 4.6, where every region has structure an optimizer can act
+on — and makes progress additive, so `-16.65` can be read off as "2 from `g_OM²`, 5.7 from
+`Q_opt`, −0.05 from detuning" to see which factor is limiting.
+
+It also fixes *what counts as progress*. Doubling `g_OM` is the same engineering
+achievement whether `Q_opt` is 10⁵ or 10⁶, but in linear space those two cases differ by a
+factor of 10 in objective change, so the optimizer weights them completely differently.
+
+#### For Nelder–Mead: it makes `TolFun` reachable, and scale-free
+
+`fminsearch` terminates only when **both** conditions hold:
+
+```
+max |f(vertex) − f(best)| ≤ TolFun     AND     simplex size ≤ TolX
+```
+
+`TolFun` is an **absolute** tolerance on the spread of function values. Converging on a
+peak of 4.5×10¹⁶:
+
+| simplex within | spread with `J = -fitness` | spread with `J = -log10(f)` |
+|---|---|---|
+| 50 % of the optimum | 2.3e16 | 0.176 |
+| 10 % | 4.5e15 | 0.041 |
+| 1 % | 4.5e14 | 0.0043 |
+| 0.2 % | 9.0e13 | 0.00087 |
+
+A simplex clustered within **0.2 %** of the optimum — converged by any reasonable standard
+— still has an absolute spread of 9×10¹³. For `TolFun` to fire you would need it around
+1e13, and that value is only correct for *this* fitness magnitude: switch to
+`fitness_maxGOM` (which returns ~10⁵ instead of ~10¹⁶) and it is wrong by eleven orders of
+magnitude. Without the transform the run simply never satisfies `TolFun` and always burns
+through `MaxFunEvals` regardless of convergence.
+
+In log space `TolFun` becomes a *relative* test, because `Δlog₁₀f = Δf / (f·ln10)`:
+
+| `TolFun` | change in fitness |
+|---|---|
+| 1e-2 | 2.33 % |
+| 1e-3 | 0.23 % |
+| 1e-4 | 0.023 % |
+
+The same number now means the same thing whichever fitness function is plugged in.
+Tightening much past `1e-3` is pointless anyway: adaptive meshing (`P.mAdjMesh`,
+`P.oAdjMesh`) puts the numerical noise floor above a `1e-6` tolerance.
+
+There is a second, subtler benefit. Nelder–Mead's reflect / expand / contract decisions are
+pure **comparisons** between vertex values, so the flat-floor problem above hits it
+directly: in the low-fitness region every vertex looks identically worthless and the
+simplex has nothing to descend.
+
+#### For bayesopt: it makes the GP's assumptions approximately true
+
+A GP with a stationary kernel assumes the function varies on comparable scales everywhere,
+and `IsObjectiveDeterministic = false` fits a **single** noise variance for the whole
+domain. A 4.6-decade objective violates the first assumption; relative mesh noise violates
+the second. One transform fixes both.
+
+Mesh-adaptation noise is **relative** — a geometry re-solves to within a few percent, not
+to within a few Hz. With 3 % mesh noise, here is what each optimizer actually sees:
+
+| fitness | σ with `-fitness` | σ with `-log10(f)` |
+|---|---|---|
+| 1e11 | 3.0e9 | **0.0130** |
+| 1e14 | 3.0e12 | **0.0128** |
+| 1e17 | 3.0e15 | **0.0125** |
+
+In linear space the noise is **heteroscedastic**, tracking the value across six orders of
+magnitude — something a single fitted σ cannot represent. The GP would badly overestimate
+uncertainty near the peak and underestimate it in the tails, and expected-improvement would
+chase noise. In log space the noise is **constant**, which is exactly the homoscedastic
+model the GP assumes. `OPT.bo.deterministic = false` and this transform are really one
+decision seen from two ends.
+
+The same argument applies to the kernel: a stationary kernel is a poor fit to a function
+varying over 4.6 decades, and a good one for a function varying over 4.6 units.
+
+#### One wrinkle the transform forces
+
+`log(0)` is undefined, so a gated design (`fitness = 0`) cannot be expressed in the
+transformed objective at all. That is the transform *exposing* something true rather than
+creating a problem: "rejected" was never a fitness value, it is a feasibility statement.
+Hence the separate handling — a penalty tier under Nelder–Mead
+([the penalty ladder](#the-penalty-ladder)) and a coupled constraint under `bayesopt`
+([the gate becomes a constraint](#the-gate-becomes-a-constraint-not-a-penalty)).
+
+**Why base 10 rather than `ln`?** Legibility only — `-16.65` reads directly as
+"fitness ≈ 10^16.65". Any base is equivalent up to a constant factor that just rescales
+`TolFun`.
+
+> **Nelder–Mead still has no noise model.** The transform makes the noise *uniform across
+> the domain*; only `bayesopt` actually models it. If a Nelder–Mead run converges onto a
+> point whose fitness does not reproduce when re-run, that is a mesh artifact, not an
+> optimum.
 
 ### The penalty ladder
 
@@ -186,13 +294,16 @@ solvable territory rather than through the dead zone:
 | feasible | `-log10(fitness)` ≈ −10 … −18 | usable design |
 | gated | `OPT.Jpenalty` = 1000 | solved cleanly, but `Q_mech` below threshold |
 | unusable | `2 · OPT.Jpenalty` = 2000 | no localized mode, or the solve failed |
-| out of bounds | `OPT.Jpenalty · (2 + d)` | never solved; `d` = normalized distance outside the box |
+| unfabricable | `OPT.Jpenalty · (2 + v)` | rejected by the pre-filter; `v = -margin/50 nm`, capped at 10 |
+| out of bounds | `OPT.Jpenalty · (2 + d)` | `d` = normalized distance outside the box |
 
-The out-of-bounds penalty is a **sloped barrier**, not a flat plateau: a constant
-penalty gives the simplex no direction to move once a vertex leaves the box, so it can
-collapse against a bound and report false convergence. Scaling by distance — normalized
-per parameter so the two axes are comparable — restores a downhill direction back into
-the feasible set. No FEM call is made for an out-of-bounds point.
+The last two are **sloped barriers**, not flat plateaus: a constant penalty gives the
+simplex no direction to move once a vertex leaves the feasible region, so it can collapse
+against a bound and report false convergence. Scaling by distance — normalized so the two
+axes are comparable — restores a downhill direction back in. Neither costs a FEM call.
+
+This ladder is **Nelder–Mead only**. Under `bayesopt` the same outcomes become coupled
+constraints and an `XConstraintFcn` instead — see [Optimizers](#optimizers).
 
 ### Alternative fitness functions
 
@@ -355,9 +466,16 @@ box and most would be rejected.
 
 ### How it works
 
-`fminsearch` is **deterministic** given `x0` and `options`. A resumed session therefore
-retraces its earlier path exactly before extending it — so the objective checks the
-database before spending a solve:
+Both optimizers resume from the same table, by different routes:
+
+| Optimizer | Resume mechanism |
+|---|---|
+| `neldermead` | memoized objective — the deterministic path is replayed from the store for free |
+| `bayesopt` | `seedBayesFromStore` → `InitialX` / `InitialObjective` / `InitialConstraintViolations` |
+
+**Nelder–Mead.** `fminsearch` is **deterministic** given `x0` and `options`. A resumed
+session therefore retraces its earlier path exactly before extending it — so the objective
+checks the database before spending a solve:
 
 ```matlab
 hit = store.lookup(OPT.runId, [defectAspectRatio_i, maxdef_i]);
@@ -385,9 +503,13 @@ Resuming     : best stored fitness 9.9756e+15 at eval 11 (dAR=1.1804, maxdef=0.2
   eval 14: oblong=1.8873  maxdef=0.2093  ->  .\test\...\eval_0014_ob1.8873_md0.2093\
 ```
 
-The incumbent is seeded from the store *before* the search starts, so a resumed run can
-never report a worse design than one already paid for — even if every evaluation in the
-new session fails.
+**bayesopt.** A GP has no path to retrace, so the stored evaluations are handed to it as
+seed data instead — see [Resume, and cross-optimizer seeding](#resume-and-cross-optimizer-seeding).
+Note the budget caveat in the same section: seeded points count against `OPT.bo.maxEvals`.
+
+Either way the incumbent is seeded from the store *before* the search starts, so a resumed
+run can never report a worse design than one already paid for — even if every evaluation
+in the new session fails.
 
 A run is marked `interrupted` automatically by an `onCleanup` guard if the function exits
 without reaching the end (an error, or Ctrl-C), and `complete` on the happy path.
@@ -489,6 +611,15 @@ Read it back with `readtable(logFile, 'CommentStyle', '#')`, which skips the sea
 and returns the evaluations as one table. The CSV duplicates the database and is kept
 for quick eyeballing; `store.loadEvals` is the better programmatic route.
 
+Unfabricable candidates are **not** logged — they are not evaluations. They are counted
+and reported at the end of the run:
+
+```
+Total evaluations      = 47
+Rejected unfabricable  = 0 (no solve attempted)
+Served from store      = 13 (COMSOL solves skipped)
+```
+
 The convergence figure has two panels:
 
 1. **Fitness vs. evaluation** — every evaluated point, a running-best trace, and
@@ -589,7 +720,7 @@ add — see `README_calcGOM.md` §6.4 for the physics.
 | `OPT.bo.maxEvals` | `60` | **total** study size; seeded points count against it |
 | `OPT.bo.numSeedPoints` | `8` | random seed points, reduced by what the store supplies |
 | `OPT.bo.acquisition` | `'expected-improvement-plus'` | acquisition function |
-| `OPT.bo.deterministic` | `false` | `false` fits a noise term — correct with adaptive meshing |
+| `OPT.bo.deterministic` | `false` | fits a noise term — correct with adaptive meshing; see [why the objective is `-log10(fitness)`](#why-the-objective-is--log10fitness) |
 | `OPT.bo.plotFcn` | `{@plotMinObjective, @plotObjectiveModel}` | live `bayesopt` plots |
 | `P.minSidewallGap` | 148 nm | lithography: beam edge to hole edge |
 | `P.minHoleGap` | 50 nm | lithography: gap between adjacent holes |
@@ -599,7 +730,7 @@ add — see `README_calcGOM.md` §6.4 for the physics.
 | `OPT.dbPath` | `./test/1D_OMC_hole/optim_runs.sqlite3` | shared database across studies |
 | `OPT.rootLoc` | `./test/1D_OMC_hole/optimize_<runId>/` | output folder, derived from `OPT.runId` |
 | `OPT.resume` | `1` | 0 re-solves everything (database still written) |
-| `optimset(...)` | `TolX 1e-4`, `TolFun 1e-3`, `MaxIter 100`, `MaxFunEvals 200` | simplex stopping rules |
+| `optimset(...)` | `TolX 1e-4`, `TolFun 1e-3`, `MaxIter 100`, `MaxFunEvals 200` | **Nelder–Mead only** — simplex stopping rules |
 
 `OPT.runId` is deliberately **not** date-stamped: a date-stamped id would silently start
 a new study tomorrow instead of continuing today's.
@@ -627,8 +758,9 @@ That is the intended way to start over — just be aware the old run is still in
 database under its old id, not deleted.
 
 **Deleting `<rootLoc>` but keeping the database leaves dangling `ev_loc` pointers.**
-Replayed points still resolve their `J` correctly (that comes from the database), but
-the folder their mode profiles were written to is gone.
+A cache hit does not re-solve, so it does not re-create its output folder. Replayed
+points still resolve correctly (that comes from the database), but the folder their mode
+profiles were written to is gone.
 
 **This script and `sweep_oblong_maxdef.m` use different device geometry** — `w = 750 nm`,
 `hy = 578 nm` here versus `w = 800 nm`, `hy = 651 nm` in the sweep. Their results are
@@ -639,15 +771,13 @@ without re-solving.
 the same scale as the full expression. With `P.solveOpt = 1` this should never trigger,
 but a run that mixes the two branches cannot be ranked meaningfully.
 
-**A cache hit does not re-solve, so it does not re-create its output folder.** If you
-delete `<rootLoc>` but keep the database, replayed points will have `ev_loc` pointing at
-folders that no longer exist.
 
 ---
 
 ## Testing
 
-Neither test needs COMSOL.
+None of these need COMSOL. `test_bayesopt_wiring` needs the Statistics and Machine
+Learning Toolbox; the rest run on base MATLAB.
 
 ```matlab
 OptimStore.selfTest
@@ -707,12 +837,15 @@ The identical-path assertion is the important one: if the replay diverged, the
 fast-forward would be serving stored answers for a trajectory the optimizer is no longer
 on.
 
-Static analysis:
+Static analysis — `checkcode` on every file in this directory:
 
-- `checkcode('OptimStore.m')` — clean.
-- `checkcode('optimize_oblong_maxdef.m')` — clean apart from three "function might be
-  unused" warnings for the intentionally-kept alternative fitness functions, and one
-  "value might be unused" for a defensive `status_i` initialization.
+| File | Result |
+|---|---|
+| `isFabricable.m` | clean |
+| `seedBayesFromStore.m` | clean |
+| `test_isFabricable.m`, `test_bayesopt_wiring.m`, `test_OptimStore_resume.m` | clean |
+| `OptimStore.m` | one "value might be unused" — a defensive init in `selfTest` |
+| `optimize_oblong_maxdef.m` | three "function might be unused" for the intentionally-kept alternative fitness functions, one defensive `status_i` init |
 
 ---
 
