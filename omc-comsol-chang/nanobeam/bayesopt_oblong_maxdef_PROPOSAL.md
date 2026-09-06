@@ -4,7 +4,7 @@ Port the Bayesian-optimization pattern already used elsewhere in this repo onto 
 nanobeam cavity taper search, **keeping Nelder–Mead selectable** so the two can be
 compared on the same objective, the same store, and the same fitness function.
 
-> **Status: phases 0 and 3 are implemented.** The Statistics and Machine Learning Toolbox
+> **Status: phases 0, 1 and 3 are implemented.** The Statistics and Machine Learning Toolbox
 > was installed on 2026-09-06, and `OPT.optimizer = 'bayesopt'` is now the default. This
 > document is kept as the design rationale; `optimization_README.md` is the user guide.
 
@@ -13,7 +13,7 @@ compared on the same objective, the same store, and the same fitness function.
 | SQLite stop/resume infrastructure | **Built and tested** (`OptimStore.m`, `test_OptimStore_resume.m`) |
 | `OPT.optimizer` switch | **Live both ways**; `'bayesopt'` is the default |
 | Bayesian backend | **Built and tested** (`test_bayesopt_wiring.m`) — coupled constraints, store seeding |
-| Feasibility pre-filter | **Still proposed** (phase 1) — not written |
+| Feasibility pre-filter | **Built and tested** (`isFabricable.m`, `test_isFabricable.m`) — `XConstraintFcn` for BO, graded penalty for NM |
 
 ---
 
@@ -294,15 +294,15 @@ COMSOL is the wrong order of operations.
 | Phase | Work | Cost | Depends on |
 |---|---|---|---|
 | **0 — done** | `OptimStore`, resume, `OPT.optimizer` switch | — | — |
-| **1** | `isFabricable` pre-filter, shared by both optimizers | small | — |
+| ~~**1**~~ | ~~`isFabricable` pre-filter~~ — **done**: `XConstraintFcn` for `bayesopt`, graded penalty for Nelder–Mead, cross-validated against `CreateNanobeamGeom` | — | — |
 | **2** | Surrogate dry-run backend | small | — |
 | ~~**3**~~ | ~~`bayesopt` branch~~ — **done**: `optimizableVariable` pair, coupled constraints, `seedBayesFromStore` | — | — |
 | **4** | Head-to-head on equal budget, seeded from the same store | 1 study | 1–2 |
 
-Phases 1 and 2 pay off on both optimizer paths and need no toolbox, so they remain
-worth doing. Phase 1 is now the cheapest remaining win: lifting the lithography check
-into `isFabricable` lets it become `bayesopt`'s `XConstraintFcn`, which prunes
-unfabricable candidates *before* any COMSOL solve rather than paying for a failed one.
+Phase 2 (the surrogate dry-run backend) is the only cheap one left. Note that phase 1,
+now built, prunes **nothing at the current bounds** — the whole box is fabricable with
+2.2 nm to spare. It is insurance against widened bounds, plus a startup scan that reports
+the reachable fraction before a study begins.
 
 ---
 

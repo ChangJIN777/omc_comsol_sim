@@ -343,6 +343,9 @@ history.J       = [];
 % Number of evaluations served from the database instead of from COMSOL.
 nCacheHits = 0;
 
+% Number of candidates rejected by the lithography pre-filter (no solve).
+nInfeasible = 0;
+
 %% ===================== RUN STORE (SQLite stop / resume) ==================
 store = [];
 if OPT.useStore
@@ -417,6 +420,33 @@ fprintf('maxdef bounds            = [%.6f, %.6f]\n', ...
 fprintf('Q_mech acceptance gate   = %.3g  (fitness = 0 below this)\n', OPT.QmechMin);
 fprintf('Log written -> %s\n\n', logFile);
 
+%% ===================== FABRICATION FEASIBILITY SCAN ==================
+% isFabricable reproduces CreateNanobeamGeom's lithography guards as pure
+% arithmetic, so an unfabricable candidate costs microseconds instead of a
+% multi-minute solve that throws.  Scanning the box up front says how much
+% of the search space is actually reachable -- a mostly-infeasible box is
+% worth knowing about BEFORE spending a day of COMSOL on it.
+nScan = 41;
+[scanDAR, scanMD] = meshgrid( ...
+    linspace(OPT.defectAspectRatio_min, OPT.defectAspectRatio_max, nScan), ...
+    linspace(OPT.maxdef_min, OPT.maxdef_max, nScan));
+[scanOK, scanMargin] = isFabricable(scanDAR, scanMD, P);
+fracFab = mean(scanOK(:));
+fprintf('Fabricable   : %.1f%% of the search box (tightest margin %.1f nm)\n', ...
+    100*fracFab, min(scanMargin(:))*1e9);
+if fracFab == 0
+    error('optimize_oblong_maxdef:boxInfeasible', ...
+        ['No point on a %dx%d scan of the bounds is fabricable, so the ' ...
+         'study was NOT started. Widen the bounds, or relax ' ...
+         'P.minHoleGap / P.minSidewallGap / P.minFeature.'], nScan, nScan);
+elseif fracFab < 0.25
+    warning('optimize_oblong_maxdef:boxMostlyInfeasible', ...
+        ['Only %.1f%% of the search box is fabricable. The optimizer can ' ...
+         'work here, but seed points are drawn from the whole box, so ' ...
+         'most will be rejected. Consider tightening the bounds around ' ...
+         'the feasible region.'], 100*fracFab);
+end
+
 % Wrap the objective in a try/catch so the optimizer never crashes.
 objFcn = @(x) safeObjective(x);
 
@@ -472,7 +502,16 @@ switch lower(OPT.optimizer)
                 nSeeded, OPT.runId, OPT.bo.maxEvals);
         end
 
+        % XConstraintFcn is evaluated on CANDIDATES, before the objective is
+        % called at all, so an unfabricable design is never proposed and
+        % never costs a solve.  This is the cheapest possible rejection --
+        % strictly better than the coupled constraints, which require an
+        % evaluation to learn from.  isFabricable is vectorized because
+        % bayesopt passes a table of many candidate rows at once.
+        xConFcn = @(t) isFabricable(t.dAR, t.maxdef, P);
+
         boArgs = {'MaxObjectiveEvaluations',  OPT.bo.maxEvals, ...
+                  'XConstraintFcn',           xConFcn, ...
                   'NumSeedPoints',            max(1, seedLeft), ...
                   'AcquisitionFunctionName',  OPT.bo.acquisition, ...
                   'IsObjectiveDeterministic', OPT.bo.deterministic, ...
@@ -557,6 +596,7 @@ fprintf('Best oblong            = %.4f\n', best_oblong);
 fprintf('Best maxdef            = %.4f\n', best_maxdef);
 fprintf('Best fitness           = %.4g\n', fitnessBest);
 fprintf('Total evaluations      = %d\n', evalCount);
+fprintf('Rejected unfabricable  = %d (no solve attempted)\n', nInfeasible);
 if OPT.useStore
     fprintf('Served from store      = %d (COMSOL solves skipped)\n', ...
         nCacheHits);
@@ -775,7 +815,30 @@ end
         defectAspectRatio_i = x(1);
         maxdef_i            = x(2);
         R = struct('fit', NaN, 'fitRaw', NaN, 'Qmech', NaN, ...
-                   'J', 2*OPT.Jpenalty, 'cached', false);
+                   'J', 2*OPT.Jpenalty, 'cached', false, ...
+                   'fabricable', true);
+
+        % --- lithography pre-filter: cheapest rejection there is ---------
+        % Same guards CreateNanobeamGeom throws on, but as arithmetic.
+        % Without this the FEM pipeline starts building geometry and only
+        % then errors, so an unfabricable candidate costs a real fraction of
+        % a solve.  bayesopt also has this as its XConstraintFcn, so under
+        % 'bayesopt' this branch is a backstop rather than the main line.
+        [fabOK, fabMargin, fabWhy] = isFabricable( ...
+            defectAspectRatio_i, maxdef_i, P);
+        if ~fabOK
+            nInfeasible = nInfeasible + 1;
+            % Graded like the out-of-bounds barrier, and on the same tier:
+            % both are points that are never solved at all.  Normalizing by
+            % the minimum hole gap keeps the violation O(1).
+            viol   = min(10, -fabMargin / 50e-9);
+            R.J    = OPT.Jpenalty * (2 + viol);
+            R.fabricable = false;
+            fprintf(['  eval  --: dAR=%.4f  maxdef=%.4f  ' ...
+                     '[UNFABRICABLE: %s, %.1f nm short]\n'], ...
+                defectAspectRatio_i, maxdef_i, fabWhy{1}, -fabMargin*1e9);
+            return;
+        end
 
         % --- resume fast-forward: was this exact point already solved? ---
         % fminsearch is deterministic, so a resumed run retraces its earlier

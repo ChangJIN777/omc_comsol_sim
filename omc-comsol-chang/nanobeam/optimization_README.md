@@ -23,6 +23,7 @@ one can be resumed or seeded with the other.
   - [The penalty ladder](#the-penalty-ladder)
   - [Alternative fitness functions](#alternative-fitness-functions)
 - [Optimizers](#optimizers)
+- [Fabrication pre-filter](#fabrication-pre-filter)
 - [Stop and resume](#stop-and-resume)
   - [How it works](#how-it-works)
   - [SQLite backends](#sqlite-backends)
@@ -43,9 +44,11 @@ one can be resumed or seeded with the other.
 |---|---|
 | `optimize_oblong_maxdef.m` | The optimizer. Nelder–Mead today, `bayesopt` reserved. |
 | `OptimStore.m` | SQLite persistence + stop/resume. Reusable, not specific to this script. |
+| `isFabricable.m` | Lithography feasibility of a design, without any solve. |
 | `seedBayesFromStore.m` | Turns stored evaluations into `bayesopt` seed data. |
 | `test_OptimStore_resume.m` | COMSOL-free proof that resume works. Runs in ~1 s. |
 | `test_bayesopt_wiring.m` | COMSOL-free proof of the Bayesian plumbing. |
+| `test_isFabricable.m` | Cross-validates the pre-filter against `CreateNanobeamGeom`. |
 | `bayesopt_oblong_maxdef_PROPOSAL.md` | The design this backend was built from. |
 | `sweep_oblong_maxdef.m` | Grid-sweep sibling over the same two parameters. |
 
@@ -281,6 +284,70 @@ plain SQL, and **a Nelder–Mead run can seed a Bayesian run** — the compariso
 Rows written before `fitness_raw` existed cannot seed the GP (their ungated score is
 unknown, and inventing one would poison the surrogate). They stay in the database and
 still serve the Nelder–Mead cache.
+
+---
+
+## Fabrication pre-filter
+
+`CreateNanobeamGeom` throws on three lithography guards (`CreateNanobeamGeom.m:72-84`).
+Reaching that throw means the FEM pipeline has already started building geometry, so an
+unfabricable candidate costs a real fraction of a solve. `isFabricable` reproduces those
+guards as pure arithmetic — microseconds instead of minutes:
+
+```matlab
+[ok, margin, why] = isFabricable(defectAspectRatio, maxdef, P);
+```
+
+`margin` is the tightest rule's slack **in metres** (negative = violated, and by how
+much), which is what lets the Nelder–Mead path build a *graded* penalty rather than a
+flat one. `why` names the binding rule.
+
+Checked at both the nominal mirror cell and the cavity centre, where the taper is most
+extreme:
+
+| Rule | Default | Override |
+|---|---|---|
+| beam edge to hole edge | 148 nm | `P.minSidewallGap` |
+| gap between adjacent holes | 50 nm | `P.minHoleGap` |
+| smallest hole dimension | 50 nm | `P.minFeature` |
+
+Defaults match `CreateNanobeamGeom`'s hard-coded values exactly, so the filter can never
+disagree with the code that actually throws.
+
+The binding rule is normally `a_def - hx_def`: into the taper the lattice contracts
+(`a_def = a(1-maxdef)`) while the hole *widens* (`hx_def = hx(1-maxdef)^(1-oblong)` grows
+for `oblong > 1`), so the solid bridge between holes is what runs out first.
+
+### How each optimizer uses it
+
+| Optimizer | Mechanism | Cost of an unfabricable candidate |
+|---|---|---|
+| `bayesopt` | `XConstraintFcn` | never proposed — rejected before the objective is called |
+| `neldermead` | graded penalty in `evalPoint` | one arithmetic evaluation |
+
+`XConstraintFcn` is the better of the two: it prunes *candidates*, so an unfabricable
+design never becomes an evaluation at all. This is distinct from the coupled constraints
+of the `Q_mech` gate, which need an evaluation before the GP can learn from them.
+`isFabricable` is vectorized because `bayesopt` passes a table of many candidate rows.
+
+### Startup scan
+
+Every run scans a 41×41 grid of the box before starting and reports what fraction is
+reachable:
+
+```
+Fabricable   : 100.0% of the search box (tightest margin 2.2 nm)
+```
+
+A fully infeasible box is an **error** — the study is not started, rather than burning a
+day discovering it. Below 25 % is a warning, because seed points are drawn from the whole
+box and most would be rejected.
+
+> **At the current bounds this filter prunes nothing** — the whole box is fabricable, with
+> 2.2 nm to spare at the tightest corner. It is insurance rather than a saving today: it
+> becomes load-bearing the moment the bounds are widened, and the startup line tells you
+> immediately if they were widened too far. The 2.2 nm margin is also worth knowing on its
+> own — the box is closer to the lithography limit than it looks.
 
 ---
 
@@ -524,6 +591,9 @@ add — see `README_calcGOM.md` §6.4 for the physics.
 | `OPT.bo.acquisition` | `'expected-improvement-plus'` | acquisition function |
 | `OPT.bo.deterministic` | `false` | `false` fits a noise term — correct with adaptive meshing |
 | `OPT.bo.plotFcn` | `{@plotMinObjective, @plotObjectiveModel}` | live `bayesopt` plots |
+| `P.minSidewallGap` | 148 nm | lithography: beam edge to hole edge |
+| `P.minHoleGap` | 50 nm | lithography: gap between adjacent holes |
+| `P.minFeature` | 50 nm | lithography: smallest hole dimension |
 | `OPT.useStore` | `1` | 0 disables SQLite persistence entirely |
 | `OPT.runId` | `'oblongMaxdef_trial1'` | names the study — **keep it to resume, change it to start fresh** |
 | `OPT.dbPath` | `./test/1D_OMC_hole/optim_runs.sqlite3` | shared database across studies |
@@ -589,6 +659,12 @@ test_OptimStore_resume
 % session 2 replays session 1's path *identically* (to 1e-12) from the database
 % before extending it, and that a fresh runId shares nothing.
 
+test_isFabricable
+% Cross-validates the pre-filter against CreateNanobeamGeom over two grids,
+% asserting ZERO false positives (accepting a design the builder rejects,
+% which would buy a failed solve) and zero false negatives. The wide-region
+% scan is asserted to reject something, so the comparison cannot go vacuous.
+
 test_bayesopt_wiring    % needs the Statistics and ML Toolbox
 % Drives bayesopt against an analytic fitness and a synthetic Q_mech field,
 % asserting: both fitness flavours persist; gated rows keep a finite ungated
@@ -605,6 +681,15 @@ session 2 : 18 solved, 13 cached, best fitness 9.99996e+15
             replayed 13 point(s) identically, then extended
 session 3 :  8 solved,  0 cached (fresh runId)
 ALL RESUME ASSERTIONS PASSED
+```
+
+of the pre-filter test:
+
+```
+nominal design: ok=1, margin=24.0 nm
+search box   21x21 : filter 100.0% ok, builder 100.0% ok, agreement 100.0%
+wide region  25x25 : filter  86.9% ok, builder  86.9% ok, agreement 100.0%
+ALL ISFABRICABLE ASSERTIONS PASSED
 ```
 
 and of the bayesopt wiring test:
@@ -637,7 +722,7 @@ Static analysis:
 |---|---|
 | `sweep_oblong_maxdef.m` | grid sweep over the same two parameters (different geometry) |
 | `RunNanobeamFEM.m` | the per-evaluation pipeline: geometry → mesh → solve → post-process |
-| `CreateNanobeamGeom.m` | builds the hole arrays; line 77 is the lithography-gap check |
+| `CreateNanobeamGeom.m` | builds the hole arrays; lines 72-84 are the lithography guards `isFabricable` mirrors |
 | `SolveNanobeamFEM.m` | source of `ds.mfem.QAll`, `ds.ofem.Q` |
 | `CalcGOM.m` | computes `ds.cpl` — `gMax`, `gMBmax`, `gPEmax`, `breakdown` |
 | `README_calcGOM.md` | **the reference for the coupling physics** — equations, signs, limitations |
