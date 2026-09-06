@@ -544,6 +544,25 @@ OptimStore.availableBackends()   % e.g. {'python','cli','jsonl'}
 OptimStore.selfTestAll()         % exercises every one of them
 ```
 
+**Choosing one explicitly.** `OPT.storeBackend` pins the storage layer; `''` (the default)
+auto-detects:
+
+```matlab
+OPT.storeBackend = '';        % auto — best available (recommended)
+OPT.storeBackend = 'jsonl';   % force the dependency-free store
+OPT.storeBackend = 'python';  % insist on SQLite via py.sqlite3
+OPT.useStore     = 0;         % no persistence at all — no resume, no store
+```
+
+An unrecognised name is an **error**, never a silent fall-through to auto-detection: a typo
+would otherwise quietly write to a different store than the one you asked for, and the
+mistake would surface much later as "my resume found nothing".
+
+Forcing `'jsonl'` is the right call in two cases: a machine with no SQLite at all, and one
+writing to a network share where SQLite's locking is unreliable. Note the store is chosen
+per run — if you switch backends mid-study, a SQLite study and a JSONL study of the same
+`OPT.runId` are two separate histories, and resume will only see the one you point at.
+
 An append-only `<db>.jsonl` mirror is written **before** each SQLite insert, so a failed
 database write can never discard a solve you have already paid hours for.
 
@@ -745,7 +764,8 @@ add — see `README_calcGOM.md` §6.4 for the physics.
 | `P.minSidewallGap` | 148 nm | lithography: beam edge to hole edge |
 | `P.minHoleGap` | 50 nm | lithography: gap between adjacent holes |
 | `P.minFeature` | 50 nm | lithography: smallest hole dimension |
-| `OPT.useStore` | `1` | 0 disables SQLite persistence entirely |
+| `OPT.useStore` | `1` | 0 disables persistence entirely |
+| `OPT.storeBackend` | `''` | `''` auto-detects; force `'dbtoolbox'`/`'python'`/`'cli'`/`'jsonl'` |
 | `OPT.runId` | `'oblongMaxdef_trial1'` | names the study — **keep it to resume, change it to start fresh** |
 | `OPT.dbPath` | `./test/1D_OMC_hole/optim_runs.sqlite3` | shared database across studies |
 | `OPT.rootLoc` | `./test/1D_OMC_hole/optimize_<runId>/` | output folder, derived from `OPT.runId` |

@@ -154,7 +154,16 @@ OPT.optimizer = 'bayesopt';
 %                date-stamped id would silently start a new study tomorrow.
 %   OPT.resume : 1 = serve already-evaluated points from the database,
 %                0 = re-solve everything (the database is still written).
-OPT.useStore = 1;
+%   OPT.storeBackend : '' = auto-detect (recommended).  Force one of
+%                'dbtoolbox' | 'python' | 'cli' | 'jsonl' to pin the storage
+%                layer -- useful on a workstation where auto-detection picks
+%                something you do not want.  'jsonl' needs nothing but a
+%                writable directory and is the right choice on a machine with
+%                no SQLite, or one writing to a network share where SQLite
+%                locking is unreliable.  An unknown name is an error.
+%                OptimStore.availableBackends() lists what this machine has.
+OPT.useStore     = 1;
+OPT.storeBackend = 'jsonl';
 OPT.runId    = 'oblongMaxdef_trial1';
 OPT.dbPath   = fullfile('.', 'test', '1D_OMC_hole', 'optim_runs.sqlite3');
 OPT.resume   = 1;
@@ -349,7 +358,7 @@ nInfeasible = 0;
 %% ===================== RUN STORE (SQLite stop / resume) ==================
 store = [];
 if OPT.useStore
-    store = OptimStore(OPT.dbPath);
+    store = OptimStore(OPT.dbPath, OPT.storeBackend);
     store.startRun(OPT.runId, 'optimize_oblong_maxdef', OPT.optimizer, OPT);
 
     nPrior = store.evalCount(OPT.runId);

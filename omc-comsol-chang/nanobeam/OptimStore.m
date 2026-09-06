@@ -63,7 +63,20 @@ classdef OptimStore < handle
             if nargin < 2 || isempty(backend)
                 obj.backend = OptimStore.detectBackend();
             else
-                obj.backend = char(backend);
+                % An unrecognised name is an ERROR, never a silent fall-through
+                % to auto-detection: a typo would otherwise quietly write to a
+                % different store than the one asked for, and the mistake would
+                % only surface as "my resume found nothing".
+                backend = char(backend);
+                known = {'dbtoolbox', 'python', 'cli', 'jsonl'};
+                if ~any(strcmp(backend, known))
+                    error('OptimStore:unknownBackend', ...
+                        ['Unknown backend "%s". Valid values are: %s.\n', ...
+                         'Available on this machine: %s.'], ...
+                        backend, strjoin(known, ', '), ...
+                        strjoin(OptimStore.availableBackends(), ', '));
+                end
+                obj.backend = backend;
             end
             if strcmp(obj.backend, 'cli')
                 obj.cliExe = OptimStore.findSqliteExe();
