@@ -1,4 +1,20 @@
-function test_OptimStore_resume()
+function test_OptimStore_resume(backend)
+%   With no argument this runs the whole suite against EVERY backend the
+%   machine supports, because resume is the load-bearing feature and a
+%   workstation without SQLite will be relying on the JSONL fallback.
+if nargin < 1
+    backends = OptimStore.availableBackends();
+    fprintf('Backends available here: %s\n', strjoin(backends, ', '));
+    for b = 1:numel(backends)
+        fprintf('\n########## backend: %s ##########\n', backends{b});
+        test_OptimStore_resume(backends{b});
+    end
+    return;
+end
+runSuite(backend);
+end
+
+function runSuite(backend)
 %TEST_OPTIMSTORE_RESUME  Verify stop/resume works, with no COMSOL needed.
 %
 %   Exercises exactly the plumbing that optimize_oblong_maxdef.m uses for
@@ -19,7 +35,7 @@ function test_OptimStore_resume()
 
 close all;
 
-dbPath = fullfile(tempdir, ['optimstore_resume_', ...
+dbPath = fullfile(tempdir, ['optimstore_resume_', backend, '_', ...
     char(datetime('now','Format','yyyyMMddHHmmssSSS')), '.sqlite3']);
 fprintf('=== OptimStore resume test ===\ndb: %s\n\n', dbPath);
 
@@ -33,14 +49,14 @@ runA  = 'resume_test_A';
 runB  = 'resume_test_B';
 
 %% ---------- session 1: a short run that we then "interrupt" ----------
-[nSolve1, nCache1, path1, best1] = runSession(dbPath, runA, x0, fitnessFcn, 12);
+[nSolve1, nCache1, path1, best1] = runSession(dbPath, runA, x0, fitnessFcn, 12, backend);
 fprintf('session 1 : %d solved, %d cached, best fitness %.6g\n', ...
     nSolve1, nCache1, best1);
 assert(nSolve1 > 0, 'session 1 solved nothing');
 assert(nCache1 == 0, 'session 1 should have had an empty database');
 
 %% ---------- session 2: same runId, resume, extend the budget ----------
-[nSolve2, nCache2, path2, best2] = runSession(dbPath, runA, x0, fitnessFcn, 30);
+[nSolve2, nCache2, path2, best2] = runSession(dbPath, runA, x0, fitnessFcn, 30, backend);
 fprintf('session 2 : %d solved, %d cached, best fitness %.6g\n', ...
     nSolve2, nCache2, best2);
 
@@ -63,12 +79,12 @@ assert(best2 >= best1 - 1e-6*abs(best1), ...
 fprintf('           replayed %d point(s) identically, then extended\n', nCache2);
 
 %% ---------- session 3: a different runId shares nothing ----------
-[nSolve3, nCache3] = runSession(dbPath, runB, x0, fitnessFcn, 8);
+[nSolve3, nCache3] = runSession(dbPath, runB, x0, fitnessFcn, 8, backend);
 fprintf('session 3 : %d solved, %d cached (fresh runId)\n', nSolve3, nCache3);
 assert(nCache3 == 0, 'a fresh runId reused another run''s evaluations');
 
 %% ---------- the database agrees with what the sessions reported ----------
-store = OptimStore(dbPath);
+store = OptimStore(dbPath, backend);
 R = store.listRuns();
 fprintf('\nruns in database:\n');
 disp(R(:, {'run_id','optimizer','status','nEvals'}));
@@ -88,14 +104,14 @@ end
 
 % =========================================================================
 function [nSolve, nCache, pathXY, bestFit] = runSession(dbPath, runId, x0, ...
-    fitnessFcn, maxFunEvals)
+    fitnessFcn, maxFunEvals, backend)
 %RUNSESSION  One optimizer session against the store, mirroring the real script.
 
 Jpenalty = 1e3;
 bounds   = struct('dARmin', 0.5567, 'dARmax', 1.6703, ...
                   'mdMin',  0.11,   'mdMax',  0.33);
 
-store  = OptimStore(dbPath);
+store  = OptimStore(dbPath, backend);
 store.startRun(runId, 'test_OptimStore_resume', 'neldermead', ...
     struct('maxFunEvals', maxFunEvals));
 

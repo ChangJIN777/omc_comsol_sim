@@ -52,7 +52,7 @@ one can be resumed or seeded with the other.
 | File | Role |
 |---|---|
 | `optimize_oblong_maxdef.m` | The optimizer. Bayesian by default, Nelder–Mead switchable. |
-| `OptimStore.m` | SQLite persistence + stop/resume. Reusable, not specific to this script. |
+| `OptimStore.m` | Persistence + stop/resume: SQLite where available, JSONL everywhere else. |
 | `isFabricable.m` | Lithography feasibility of a design, without any solve. |
 | `seedBayesFromStore.m` | Turns stored evaluations into `bayesopt` seed data. |
 | `test_OptimStore_resume.m` | COMSOL-free proof that resume works. Runs in ~1 s. |
@@ -69,7 +69,7 @@ one can be resumed or seeded with the other.
 % 1. Start COMSOL with LiveLink for MATLAB.
 % 2. Sanity-check without running anything (none of these need COMSOL):
 checkcode('optimize_oblong_maxdef.m')
-OptimStore.selfTest          % SQLite backend, end to end
+OptimStore.selfTestAll       % every storage backend this machine has
 test_OptimStore_resume       % stop/resume
 test_isFabricable            % pre-filter vs. the real geometry builder
 test_bayesopt_wiring         % Bayesian plumbing (needs Statistics Toolbox)
@@ -99,9 +99,10 @@ evaluation is already in the database. To continue, re-run with the same `OPT.ru
   COMSOL Java API directly.
 - **Base MATLAB only** for the Nelder–Mead path — `fminsearch` and `optimset` are not
   toolbox functions.
-- **A SQLite backend** for persistence. One of Database Toolbox, MATLAB's Python
-  interface, or a `sqlite3` executable — see [SQLite backends](#sqlite-backends). Set
-  `OPT.useStore = 0` to run without persistence.
+- **Nothing extra for persistence.** SQLite is used when available (Database Toolbox,
+  MATLAB's Python interface, or a `sqlite3` executable); otherwise the store falls back to
+  a dependency-free JSONL file — see [SQLite backends](#sqlite-backends). Set
+  `OPT.useStore = 0` to disable persistence entirely.
 - Must be run from `nanobeam/` so `RunNanobeamFEM`, `CreateNanobeamGeom`,
   `LoadMaterialParams` and `CreateFileBase` are on the path.
 - **Statistics and Machine Learning Toolbox** for `OPT.optimizer = 'bayesopt'` (the
@@ -518,11 +519,30 @@ without reaching the end (an error, or Ctrl-C), and `complete` on the happy path
 
 Auto-detected in this order. Database Toolbox is **not** required.
 
-| Backend | Requires | On this machine |
+| Backend | Requires | Notes |
 |---|---|---|
-| `dbtoolbox` | Database Toolbox `sqlite()` | licensed, not installed |
-| `python` | MATLAB Python interface (`pyenv`) | **active** — Python 3.13, SQLite 3.45.3 |
-| `cli` | `sqlite3` on PATH (Anaconda ships one) | available, tested |
+| `dbtoolbox` | Database Toolbox `sqlite()` | fastest when present |
+| `python` | MATLAB Python interface (`pyenv`) | uses the stdlib `sqlite3` module |
+| `cli` | a `sqlite3` executable | PATH first, then the usual per-platform install locations |
+| `jsonl` | **nothing** — base MATLAB and a writable directory | the always-available fallback |
+
+**Detection never fails.** If no SQLite path exists, the store falls back to `jsonl` with a
+warning naming what it looked for. A store that refused to open would abandon a study that
+may already be COMSOL-hours deep — the exact outcome this class exists to prevent. The same
+fallback catches a *networked* filesystem: if SQLite cannot take its locks, `initSchema`
+fails at open time and the constructor degrades to `jsonl` rather than throwing.
+
+The `jsonl` backend reads back the append-only mirror that is written on every evaluation
+anyway, and filters in memory. Runs, resume, `best`, `listRuns` and GP seeding all behave
+identically — `test_OptimStore_resume` asserts this by running the whole suite against every
+backend and getting the same numbers. What you lose is ad-hoc SQL querying of the results.
+
+Check what a given machine supports:
+
+```matlab
+OptimStore.availableBackends()   % e.g. {'python','cli','jsonl'}
+OptimStore.selfTestAll()         % exercises every one of them
+```
 
 An append-only `<db>.jsonl` mirror is written **before** each SQLite insert, so a failed
 database write can never discard a solve you have already paid hours for.
@@ -780,14 +800,17 @@ None of these need COMSOL. `test_bayesopt_wiring` needs the Statistics and Machi
 Learning Toolbox; the rest run on base MATLAB.
 
 ```matlab
-OptimStore.selfTest
-% Exercises the active backend: schema, insert, lookup, best, NULL round-trip,
-% reopen, JSONL mirror.
+OptimStore.selfTestAll
+% Exercises EVERY backend available here (SQLite variants plus the JSONL
+% fallback): schema, insert, lookup, best, NULL round-trip, reopen, mirror.
+% OptimStore.selfTest([], 'jsonl') forces a single backend.
 
 test_OptimStore_resume
 % Runs three optimizer sessions against an analytic fitness and asserts that
 % session 2 replays session 1's path *identically* (to 1e-12) from the database
-% before extending it, and that a fresh runId shares nothing.
+% before extending it, and that a fresh runId shares nothing. Repeats the whole
+% suite for EVERY backend, which is what proves the JSONL fallback is
+% behaviourally equivalent -- all backends must produce the same numbers.
 
 test_isFabricable
 % Cross-validates the pre-filter against CreateNanobeamGeom over two grids,
