@@ -5,6 +5,10 @@ two parameters, where every objective evaluation is a full COMSOL mechanical + o
 PML solve. Because a single evaluation costs minutes, the run is **persisted to SQLite as
 it goes** and can be stopped and resumed without losing a solve.
 
+Two optimizers are selectable — **Bayesian** (`bayesopt`, the default) and **Nelder–Mead**
+(`fminsearch`). Both write the same physics to the same database, so a study started with
+one can be resumed or seeded with the other.
+
 ---
 
 ## Contents
@@ -25,6 +29,7 @@ it goes** and can be stopped and resumed without losing a solve.
   - [Inspecting a run](#inspecting-a-run)
   - [Schema](#schema)
 - [Outputs](#outputs)
+- [Coupling breakdown](#coupling-breakdown)
 - [Configuration reference](#configuration-reference)
 - [Known gotchas](#known-gotchas)
 - [Testing](#testing)
@@ -38,8 +43,10 @@ it goes** and can be stopped and resumed without losing a solve.
 |---|---|
 | `optimize_oblong_maxdef.m` | The optimizer. Nelder–Mead today, `bayesopt` reserved. |
 | `OptimStore.m` | SQLite persistence + stop/resume. Reusable, not specific to this script. |
+| `seedBayesFromStore.m` | Turns stored evaluations into `bayesopt` seed data. |
 | `test_OptimStore_resume.m` | COMSOL-free proof that resume works. Runs in ~1 s. |
-| `bayesopt_oblong_maxdef_PROPOSAL.md` | Design for the Bayesian backend; decisions still open. |
+| `test_bayesopt_wiring.m` | COMSOL-free proof of the Bayesian plumbing. |
+| `bayesopt_oblong_maxdef_PROPOSAL.md` | The design this backend was built from. |
 | `sweep_oblong_maxdef.m` | Grid-sweep sibling over the same two parameters. |
 
 ---
@@ -81,8 +88,9 @@ evaluation is already in the database. To continue, re-run with the same `OPT.ru
   `OPT.useStore = 0` to run without persistence.
 - Must be run from `nanobeam/` so `RunNanobeamFEM`, `CreateNanobeamGeom`,
   `LoadMaterialParams` and `CreateFileBase` are on the path.
-- `OPT.optimizer = 'bayesopt'` additionally needs the **Statistics and Machine Learning
-  Toolbox**, which is *licensed but not installed* on this machine. See the proposal.
+- **Statistics and Machine Learning Toolbox** for `OPT.optimizer = 'bayesopt'` (the
+  default). Verify with `exist('bayesopt')` — 2 or 5 means available, 0 means not. Set
+  `OPT.optimizer = 'neldermead'` to run with base MATLAB only.
 
 ---
 
@@ -202,27 +210,77 @@ rejected-but-evaluated design.
 
 ## Optimizers
 
-Selected by `OPT.optimizer`:
+Selected by `OPT.optimizer`. Both are live:
 
-| Value | Status | Needs |
+| Value | Method | Needs |
 |---|---|---|
-| `'neldermead'` | **live** — `fminsearch` simplex | base MATLAB |
-| `'bayesopt'` | **reserved** — raises a specific error | Statistics and ML Toolbox |
+| `'bayesopt'` **(default)** | GP surrogate + expected-improvement-plus | Statistics and ML Toolbox |
+| `'neldermead'` | `fminsearch` simplex | base MATLAB |
 
-The `'bayesopt'` branch deliberately reports *why* it cannot run:
+### Why Bayesian by default
+
+The binding constraint is the **evaluation budget**, not the convergence rate — each
+evaluation is a multi-minute COMSOL solve. Two properties of this objective also defeat a
+simplex, and a GP handles both:
+
+1. **The `Q_mech` gate makes the landscape piecewise-flat.** Every design below
+   `OPT.QmechMin` scores exactly 0, so a simplex inside that region has no direction to
+   move. A GP models the plateau *and its boundary*, and proposes points at the edge.
+2. **The objective is mildly noisy** (adaptive meshing). Nelder–Mead has no noise model
+   and will contract onto a mesh artifact; `IsObjectiveDeterministic = false` fits a
+   noise term instead.
+
+Against that: the search is only 2-D, where BO's advantage is smallest. The case rests on
+the budget and the plateau, not on dimensionality — which is why the switch exists rather
+than a replacement.
+
+### The gate becomes a constraint, not a penalty
+
+This is the one part that is **not** a mechanical port of the Nelder–Mead path.
+
+Feeding the penalty ladder (1000, 2000) to a GP that also sees feasible values around −16
+wrecks the kernel's length scale: the surrogate spends its capacity modelling the penalty
+cliff instead of the physics. Under `bayesopt` the infeasible cases become **coupled
+constraints** (`≤ 0` means satisfied):
+
+| | Nelder–Mead | bayesopt |
+|---|---|---|
+| feasible | `-log10(fitness)` | `-log10(fitnessRaw)`, both constraints `< 0` |
+| `Q_mech` gated | `J = 1000` | real objective + `con(1) = 1 - Qmech/QmechMin > 0` |
+| solve failed | `J = 2000` | `objective = NaN`, `con(2) = +1` |
+| out of bounds | sloped barrier | never proposed — the box *is* the variable range |
+
+So the GP learns **where the gate boundary is**, which is the actual design question,
+rather than learning that a wall exists.
+
+That requires the **ungated** fitness, which is why `OPT.fitnessFcnRaw` exists (the same
+`fitness_coopProduct` with `QmechMin = -Inf`) and why the store keeps both `fitness` and
+`fitness_raw`. A gated `0` is the same number everywhere below the threshold and tells a
+surrogate nothing.
+
+### Budget semantics — read this before resuming
+
+`OPT.bo.maxEvals` is the **total** study size, and points seeded from the store **count
+against it** — `bayesopt`'s `MaxObjectiveEvaluations` includes `InitialX`. Resuming a
+study that already holds `maxEvals` points therefore does *nothing*. Raise `maxEvals` to
+extend it, exactly as `resume()` would. The script warns rather than silently no-op'ing:
 
 ```
-bayesopt is not available in this MATLAB install.
-  licence permits it (1=yes) : 1
-  installed on disk (1=yes)  : 0
-Licence 1 with install 0 means: install the Statistics and Machine Learning
-Toolbox from the Add-On Explorer. No re-licensing is needed.
+Warning: The store already holds 60 point(s) for run "oblongMaxdef_trial1", which
+meets or exceeds OPT.bo.maxEvals = 60. bayesopt counts seeded points against its
+budget, so NO new evaluations will be made. Raise OPT.bo.maxEvals to extend the study.
 ```
 
-A bare `Unrecognized function 'bayesopt'` reads like a licence problem and sends you
-debugging the wrong thing. See `bayesopt_oblong_maxdef_PROPOSAL.md` for the design and
-the open decisions — notably that the penalty ladder above should **not** carry over to
-a GP surrogate.
+### Resume, and cross-optimizer seeding
+
+`seedBayesFromStore` reads the run's stored evaluations and returns `InitialX` /
+`InitialObjective` / `InitialConstraintViolations`. This is better than a `.mat`
+checkpoint of the study object: it survives a MATLAB version change, it is queryable with
+plain SQL, and **a Nelder–Mead run can seed a Bayesian run** — the comparison worth doing.
+
+Rows written before `fitness_raw` existed cannot seed the GP (their ungated score is
+unknown, and inventing one would poison the surrogate). They stay in the database and
+still serve the Nelder–Mead cache.
 
 ---
 
@@ -291,8 +349,8 @@ T = store.loadEvals('oblongMaxdef_trial1');   % table, one row per evaluation
 n = store.evalCount('oblongMaxdef_trial1');
 ```
 
-`T` carries `eval, ts, dAR, maxdef, oblong, wM, gOM, LSiV, Qmech, Qopt, lambdaNm,
-fitness, J, status`, so the whole search history is available for plotting or filtering
+`T` carries `eval, ts, dAR, maxdef, oblong, wM, gOM, gMB, gPE, LSiV, Qmech, Qopt,
+lambdaNm, fitness, fitnessRaw, J, status`, so the whole search history is available for plotting or filtering
 without re-parsing the CSV.
 
 Because it is plain SQLite, `sqlite3` on the command line and any SQL client work too.
@@ -302,11 +360,17 @@ Because it is plain SQLite, `sqlite3` on the command line and any SQL client wor
 ```sql
 runs  (run_id PK, created_ts, updated_ts, script, optimizer, status, config_json)
 evals (run_id, eval_idx, ts, param_key, dar, maxdef, oblong,
-       wm_hz, gom_hz, lsiv_hz, q_mech, q_opt, lambda_nm,
-       fitness, objective_j, status, ev_loc,
+       wm_hz, gom_hz, gmb_hz, gpe_hz, lsiv_hz, q_mech, q_opt,
+       lambda_nm, fitness, fitness_raw, objective_j, status, ev_loc,
        PRIMARY KEY (run_id, eval_idx))
 INDEX idx_evals_lookup ON evals(run_id, param_key)
 ```
+
+A database created before `gmb_hz` / `gpe_hz` / `fitness_raw` existed is migrated in place
+on open —
+`OptimStore.migrateSchema` attempts the `ALTER TABLE ADD COLUMN` and treats a
+duplicate-column error as success. No rows are rewritten; historical evaluations keep
+their data and read back `NaN` for the new columns.
 
 `config_json` snapshots the whole `OPT` struct (function handles stringified) so a run's
 settings can be recovered months later. `ev_loc` points at the per-evaluation output
@@ -330,15 +394,18 @@ Everything lands under `OPT.rootLoc`, except the database, which lives at `OPT.d
 | `<rootLoc>/eval_NNNN_obX_mdY/` | per-evaluation FEM output — `.mat`, mode-profile `.png`/`.fig` |
 | `<rootLoc>/BEST/` | final re-run of the best design, with geometry and mode plots on |
 | `<rootLoc>/optimize_log.csv` | one row per evaluation, appended immediately; survives resume |
-| `<rootLoc>/optimize_convergence.png` / `.fig` | fitness trace + simplex trajectory |
+| `<rootLoc>/optimize_convergence.png` / `.fig` | fitness trace + sampled designs |
+| `<rootLoc>/bayesopt_results.mat` | the `BayesianOptimization` object (`bayesopt` only) |
 | `<dbPath>` | SQLite run database (shared across studies) |
 | `<dbPath minus extension>.jsonl` | append-only mirror of every evaluation |
 
 `<rootLoc>` is `./test/1D_OMC_hole/optimize_<OPT.runId>/` — keyed on the run id, **not**
 date-stamped, so a study resumed weeks later keeps all of its output in one place.
 
-CSV columns: `eval, oblong, maxdef, wM_GHz, gOM_kHz, LSiV_MHz, Q_mech, Q_opt,
-lambda_opt_nm, fitness, status`. The file is reopened and appended per evaluation so it
+CSV columns: `eval, oblong, maxdef, wM_GHz, gOM_kHz, gMB_kHz, gPE_kHz, LSiV_MHz,
+Q_mech, Q_opt, lambda_opt_nm, fitness, status`. `gMB_kHz` and `gPE_kHz` are the
+moving-boundary and photoelastic parts of the coupling — see
+[Coupling breakdown](#coupling-breakdown). The file is reopened and appended per evaluation so it
 survives a mid-run crash. It is opened `'a'`, never `'w'`: because `<rootLoc>` is stable
 across sessions, truncating would erase every earlier session's history. The header is
 written only when the file is created, and each resumed session inserts a seam marker:
@@ -360,8 +427,72 @@ The convergence figure has two panels:
 1. **Fitness vs. evaluation** — every evaluated point, a running-best trace, and
    gated/failed points marked along the bottom (they cannot go on a log axis, and
    hiding them would make a mostly-rejected run look like gaps).
-2. **Simplex trajectory** — the path through the `(defectAspectRatio, maxdef)` box,
-   coloured by evaluation order, with the start point, the best point, and the bounds.
+2. **Where the search went** — the `(defectAspectRatio, maxdef)` box, coloured by
+   evaluation order, with the start point, the best point, and the bounds. Under
+   Nelder–Mead the points are joined into the simplex path; under `bayesopt` they are
+   not, because a GP jumps wherever the acquisition function points and a connecting
+   line would imply a trajectory that does not exist.
+
+---
+
+## Coupling breakdown
+
+`CalcGOM` splits the optomechanical coupling into two physical mechanisms, and both are
+carried through to the CSV and the database alongside the net. **`README_calcGOM.md` is the
+reference for the physics** — every equation, its COMSOL expression, and the sign
+conventions; what follows is only what the optimizer does with the results.
+
+| Quantity | Source | Meaning |
+|---|---|---|
+| `gMB` | `cpl.gMBmax` | **moving boundary** — the dielectric interface shifting |
+| `gPE` | `cpl.gPEmax` | **photoelastic** — strain changing the refractive index |
+| `gOM` | `cpl.gMax` | net, `= gMB + gPE` |
+
+`gMB` and `gPE` are stored **signed**; `gOM` is a magnitude. The two mechanisms carry
+opposite signs (`CalcGOM.m:220` and `:278`) and routinely partially cancel, so the net
+alone hides something important: a design can have a small `gOM` while both mechanisms
+are individually large. Such a design sits in a **cancellation notch** and is fragile —
+a small fabrication error moves it a long way. Taking `abs()` of each part would erase
+exactly that signal, which is why `local_getGOM` returns them signed.
+
+Upstream, `CalcGOM` also builds `ds.cpl.breakdown` — a table with one row per evaluated
+(optical, mechanical) mode pair, sorted by `|gOM|`:
+
+```matlab
+>> ds.cpl.breakdown(1:3, {'oSol','mSol','wM_Hz','gMB_Hz','gPE_Hz','gOM_Hz','cancelRatio'})
+```
+
+| Column | Meaning |
+|---|---|
+| `oSol`, `mSol` | absolute COMSOL solution numbers for the pair |
+| `wM_Hz`, `lambda_nm` | mechanical frequency, optical wavelength |
+| `gMB_Hz`, `gPE_Hz`, `gOM_Hz` | the three contributions, signed |
+| `fracMB`, `fracPE` | each part as a fraction of the net; they sum to 1 |
+| `cancelRatio` | `(\|gMB\|+\|gPE\|)/\|gOM\|` — 1 = reinforcing, >1 = opposing |
+| `gPE_p11_Hz`, `gPE_p12_Hz`, `gPE_p44_Hz` | photoelastic part split by tensor component |
+
+The table exists because `cpl.gMB`/`gPE`/`gOM` are indexed by *absolute* solution number
+and are therefore mostly zeros — reading `cpl.gOM(3,7)` cannot distinguish "no coupling"
+from "never evaluated". `cpl.breakdown` lists only the pairs actually computed. Full
+column reference: `README_calcGOM.md` §6.5.
+
+A `cancelRatio` above 1.5 is also called out on the console during the run.
+
+**Why this matters for the optimizer.** The active fitness is `g_OM² · Q_opt · L(λ)`, so
+nothing in the objective penalizes a cancellation notch: the search will happily settle in
+one if the optics improve enough to compensate. The stored `gMB_kHz` / `gPE_kHz` columns
+are how you detect that after a run —
+
+```matlab
+T = store.loadEvals('oblongMaxdef_trial1');
+R = (abs(T.gMB) + abs(T.gPE)) ./ abs(T.gOM);   % cancellation ratio per evaluation
+[~, k] = max(T.fitness);
+fprintf('best design sits at cancelRatio = %.1f\n', R(k));
+```
+
+A large `R` at the optimum means the design is fragile to fabrication error even though
+its nominal `g_OM` looks fine. If that turns out to matter, `R` is a natural constraint to
+add — see `README_calcGOM.md` §6.4 for the physics.
 
 ---
 
@@ -380,13 +511,19 @@ The convergence figure has two panels:
 | `OPT.QmechMin` | 1e7 | binary gate; fitness = 0 below this |
 | `OPT.targetFreq` | 7 GHz | mechanical solver target (`P.freq`) |
 | `OPT.Jpenalty` | 1e3 | penalty scale (see the ladder above) |
-| `OPT.fitnessFcn` | `fitness_coopProduct` | swap for an alternative |
+| `OPT.fitnessFcn` | `fitness_coopProduct` | gated score — Nelder–Mead |
+| `OPT.fitnessFcnRaw` | same, `QmechMin = -Inf` | ungated score — the GP objective |
 
 ### Optimizer and persistence
 
 | Knob | Default | Meaning |
 |---|---|---|
-| `OPT.optimizer` | `'neldermead'` | `'neldermead'` or `'bayesopt'` (reserved) |
+| `OPT.optimizer` | `'bayesopt'` | `'bayesopt'` or `'neldermead'` |
+| `OPT.bo.maxEvals` | `60` | **total** study size; seeded points count against it |
+| `OPT.bo.numSeedPoints` | `8` | random seed points, reduced by what the store supplies |
+| `OPT.bo.acquisition` | `'expected-improvement-plus'` | acquisition function |
+| `OPT.bo.deterministic` | `false` | `false` fits a noise term — correct with adaptive meshing |
+| `OPT.bo.plotFcn` | `{@plotMinObjective, @plotObjectiveModel}` | live `bayesopt` plots |
 | `OPT.useStore` | `1` | 0 disables SQLite persistence entirely |
 | `OPT.runId` | `'oblongMaxdef_trial1'` | names the study — **keep it to resume, change it to start fresh** |
 | `OPT.dbPath` | `./test/1D_OMC_hole/optim_runs.sqlite3` | shared database across studies |
@@ -451,6 +588,13 @@ test_OptimStore_resume
 % Runs three optimizer sessions against an analytic fitness and asserts that
 % session 2 replays session 1's path *identically* (to 1e-12) from the database
 % before extending it, and that a fresh runId shares nothing.
+
+test_bayesopt_wiring    % needs the Statistics and ML Toolbox
+% Drives bayesopt against an analytic fitness and a synthetic Q_mech field,
+% asserting: both fitness flavours persist; gated rows keep a finite ungated
+% fitness; the Q_mech constraint is positive exactly on the gated designs;
+% seedBayesFromStore returns data bayesopt accepts; and a Nelder-Mead cache
+% read can re-derive its own J from rows a Bayesian run wrote.
 ```
 
 Expected output of the resume test:
@@ -461,6 +605,17 @@ session 2 : 18 solved, 13 cached, best fitness 9.99996e+15
             replayed 13 point(s) identically, then extended
 session 3 :  8 solved,  0 cached (fresh runId)
 ALL RESUME ASSERTIONS PASSED
+```
+
+and of the bayesopt wiring test:
+
+```
+session 1 : 14 evaluation(s), 14 objective row(s) in the study
+           2 of 14 design(s) gated by Q_mech
+           seed: 14 point(s), 14 objective(s), 14x2 constraint(s)
+session 2 : 6 new evaluation(s), study holds 20 point(s)
+           NM re-derives J = -13.4 from a BO-written row
+ALL BAYESOPT WIRING ASSERTIONS PASSED
 ```
 
 The identical-path assertion is the important one: if the replay diverged, the
@@ -483,7 +638,9 @@ Static analysis:
 | `sweep_oblong_maxdef.m` | grid sweep over the same two parameters (different geometry) |
 | `RunNanobeamFEM.m` | the per-evaluation pipeline: geometry → mesh → solve → post-process |
 | `CreateNanobeamGeom.m` | builds the hole arrays; line 77 is the lithography-gap check |
-| `SolveNanobeamFEM.m` | source of `ds.mfem.QAll`, `ds.ofem.Q`, `ds.cpl.gMax` |
+| `SolveNanobeamFEM.m` | source of `ds.mfem.QAll`, `ds.ofem.Q` |
+| `CalcGOM.m` | computes `ds.cpl` — `gMax`, `gMBmax`, `gPEmax`, `breakdown` |
+| `README_calcGOM.md` | **the reference for the coupling physics** — equations, signs, limitations |
 | `../bayesopt_boomerang.m`, `../bayesopt_README.md` | MATLAB `bayesopt` reference implementation |
 | `../optimize_hole_unitCell.m` | Nelder–Mead optimizer for hole *unit cells* |
 | `../../python-scripts/src/database.py` | the SQLite pattern `OptimStore` follows |

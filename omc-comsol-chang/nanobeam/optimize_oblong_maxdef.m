@@ -133,12 +133,17 @@ OPT.QmechMin = 1e7;
 OPT.Jpenalty = 1e3;
 
 % --- optimizer selection ---
-% 'neldermead' : fminsearch simplex (base MATLAB, works today).
-% 'bayesopt'   : Gaussian-process Bayesian optimization -- reserved; see
-%                bayesopt_oblong_maxdef_PROPOSAL.md.  Needs the Statistics
-%                and Machine Learning Toolbox, which is licensed but NOT
-%                installed on this machine.
-OPT.optimizer = 'neldermead';
+% 'bayesopt'   : Gaussian-process Bayesian optimization.  Spends the
+%                evaluation budget where the surrogate says it is most
+%                informative, models the Q_mech gate as a constraint rather
+%                than a penalty, and handles the flat gated region that
+%                stalls a simplex.  Needs the Statistics and Machine
+%                Learning Toolbox.  Settings under OPT.bo below.
+% 'neldermead' : fminsearch simplex (base MATLAB, no toolbox).  Kept as a
+%                switchable alternative -- both write the same physics to
+%                the same run database, so a study started with one can be
+%                resumed or seeded with the other.
+OPT.optimizer = 'bayesopt';
 
 % --- run persistence / stop-and-resume (see OptimStore.m) -----------------
 % Every evaluation is written to SQLite as it completes, so an interrupted
@@ -173,6 +178,31 @@ OPT.rootLoc = [fullfile('.','test','1D_OMC_hole',['optimize_',OPT.runId]),filese
 % Alternative objectives (fitness_QxQxLambda, fitness_maxGOM,
 % fitness_maxLSiV) are defined at the bottom of this file -- swap one in here.
 OPT.fitnessFcn = @(ds) fitness_coopProduct(ds, OPT.targetLambda, OPT.lambdaTol, OPT.QmechMin);
+
+% The SAME figure of merit with the Q_mech gate disabled.  Nelder-Mead uses
+% the gated score (a rejected design is simply worthless to it), but a GP
+% surrogate needs the ungated value: a gated 0 is the same number everywhere
+% below the threshold and tells the model nothing about WHERE the boundary
+% is.  Under 'bayesopt' the gate becomes a coupled constraint instead, and
+% this is the objective.  Both are stored, so the two optimizers can share a
+% run database and resume from each other.
+OPT.fitnessFcnRaw = @(ds) fitness_coopProduct(ds, OPT.targetLambda, OPT.lambdaTol, -Inf);
+
+% --- bayesopt settings (used only when OPT.optimizer = 'bayesopt') --------
+% maxEvals is the TOTAL size of the study, and points seeded from the store
+% COUNT AGAINST IT -- bayesopt's MaxObjectiveEvaluations includes InitialX.
+% So resuming a study that already holds maxEvals points does nothing: to
+% extend it, raise maxEvals, exactly as resume() would.  Every point not
+% served from the store is a full COMSOL solve, so time one first.
+OPT.bo.maxEvals       = 60;
+OPT.bo.numSeedPoints  = 8;
+OPT.bo.acquisition    = 'expected-improvement-plus';
+% FALSE on purpose: adaptive meshing (P.mAdjMesh / P.oAdjMesh) makes a
+% repeated evaluation of the same geometry differ slightly.  Declaring the
+% objective deterministic would force the GP to interpolate that jitter
+% exactly and produce a badly conditioned surrogate.
+OPT.bo.deterministic  = false;
+OPT.bo.plotFcn        = {@plotMinObjective, @plotObjectiveModel};
 
 %% ===================== P STRUCT DEFAULTS =====================
 % Geometry matches test_nanobeamRectFEM_withPML.m (fabricated OMC device).
@@ -283,8 +313,8 @@ logFile = [OPT.rootLoc, 'optimize_log.csv'];
 newLog  = (exist(logFile, 'file') ~= 2);
 fid = fopen(logFile, 'a');
 if newLog
-    fprintf(fid, ['eval,oblong,maxdef,wM_GHz,gOM_kHz,LSiV_MHz,' ...
-                  'Q_mech,Q_opt,lambda_opt_nm,fitness,status\n']);
+    fprintf(fid, ['eval,oblong,maxdef,wM_GHz,gOM_kHz,gMB_kHz,gPE_kHz,' ...
+                  'LSiV_MHz,Q_mech,Q_opt,lambda_opt_nm,fitness,status\n']);
 else
     % Mark the seam so a multi-session log can be read back unambiguously.
     fprintf(fid, '# resumed %s\n', ...
@@ -395,14 +425,10 @@ switch lower(OPT.optimizer)
         [xBest, JBest] = fminsearch(objFcn, x0, options);
 
     case 'bayesopt'
-        % Gaussian-process Bayesian optimization. NOT WIRED UP YET -- the
-        % design is in bayesopt_oblong_maxdef_PROPOSAL.md, and
-        % ../bayesopt_boomerang.m is the working reference implementation.
-        % The check below is deliberately specific: on this machine the
-        % Statistics and Machine Learning Toolbox is LICENSED but NOT
-        % INSTALLED, which otherwise surfaces as a bare 'Unrecognized
-        % function' that reads like a licence problem instead of an
-        % install one, and sends you debugging the wrong thing.
+        % Gaussian-process Bayesian optimization.  The check below is
+        % deliberately specific: a bare 'Unrecognized function ''bayesopt'''
+        % reads like a licence problem when it is usually a missing install,
+        % and sends you debugging the wrong thing.
         if exist('bayesopt', 'file') == 0 && exist('bayesopt', 'builtin') == 0
             error('optimize_oblong_maxdef:noBayesopt', ...
                 ['bayesopt is not available in this MATLAB install.\n' ...
@@ -414,10 +440,78 @@ switch lower(OPT.optimizer)
                 license('test','Statistics_Toolbox'), ...
                 isfolder(fullfile(matlabroot,'toolbox','stats')));
         end
-        error('optimize_oblong_maxdef:bayesoptNotWired', ...
-            ['OPT.optimizer = ''bayesopt'' is reserved but not implemented ' ...
-             'yet.\nSee bayesopt_oblong_maxdef_PROPOSAL.md for the design; ' ...
-             'set OPT.optimizer = ''neldermead'' to run today.']);
+
+        % The box is the variable range, so bayesopt never proposes an
+        % out-of-bounds point and the sloped barrier is simply unused here.
+        optVars = [ ...
+            optimizableVariable('dAR', ...
+                [OPT.defectAspectRatio_min, OPT.defectAspectRatio_max], ...
+                'Type','real'), ...
+            optimizableVariable('maxdef', ...
+                [OPT.maxdef_min, OPT.maxdef_max], 'Type','real')];
+
+        % Seed the GP with whatever the store already holds for this run, so
+        % resuming a Bayesian study -- or picking one up from a Nelder-Mead
+        % study that used the same runId -- costs no COMSOL time.
+        [initX, initObj, initCon] = seedBayesFromStore(store, OPT);
+        nSeeded  = height(initX);
+        seedLeft = max(0, OPT.bo.numSeedPoints - nSeeded);
+        if nSeeded > 0
+            fprintf(['Seeding GP with %d stored point(s); %d fresh seed ' ...
+                     'point(s) to go.\n'], nSeeded, seedLeft);
+        end
+        if nSeeded >= OPT.bo.maxEvals
+            % Silently doing nothing is the worst outcome here: it looks
+            % like a finished study that simply made no progress.
+            warning('optimize_oblong_maxdef:budgetExhausted', ...
+                ['The store already holds %d point(s) for run "%s", ' ...
+                 'which meets or exceeds OPT.bo.maxEvals = %d. bayesopt ' ...
+                 'counts seeded points against its budget, so NO new ' ...
+                 'evaluations will be made. Raise OPT.bo.maxEvals to ' ...
+                 'extend the study.'], ...
+                nSeeded, OPT.runId, OPT.bo.maxEvals);
+        end
+
+        boArgs = {'MaxObjectiveEvaluations',  OPT.bo.maxEvals, ...
+                  'NumSeedPoints',            max(1, seedLeft), ...
+                  'AcquisitionFunctionName',  OPT.bo.acquisition, ...
+                  'IsObjectiveDeterministic', OPT.bo.deterministic, ...
+                  'NumCoupledConstraints',    2, ...
+                  'AreCoupledConstraintsDeterministic', [false false], ...
+                  'PlotFcn',                  OPT.bo.plotFcn, ...
+                  'Verbose',                  1};
+        if nSeeded > 0
+            boArgs = [boArgs, {'InitialX', initX, ...
+                               'InitialObjective', initObj, ...
+                               'InitialConstraintViolations', initCon}];
+        end
+
+        boResults = bayesopt(@bayesObjective, optVars, boArgs{:});
+
+        % bayesopt has several notions of "best" (observed vs. estimated,
+        % feasible vs. not).  Rather than pick one, take its feasible best as
+        % the reported point and let the shared resolve-best block below
+        % reconcile it against bestSoFar, which both optimizers maintain
+        % identically from the GATED fitness.  JBest = NaN routes it there.
+        try
+            tBest = bestPoint(boResults);
+            xBest = [tBest.dAR, tBest.maxdef];
+        catch
+            % No feasible point found: every design was gated or failed.
+            warning('optimize_oblong_maxdef:noFeasibleBO', ...
+                ['bayesopt found no point satisfying the constraints. ' ...
+                 'Falling back to the best evaluated point.']);
+            xBest = [defectAspectRatio_0, maxdef_0];
+        end
+        JBest = NaN;
+
+        % Keep the study object with the run's other artifacts.
+        try
+            save([OPT.rootLoc, 'bayesopt_results.mat'], 'boResults');
+        catch ME
+            warning('optimize_oblong_maxdef:boSaveFailed', ...
+                'Could not save the bayesopt results object: %s', ME.message);
+        end
 
     otherwise
         error('optimize_oblong_maxdef:unknownOptimizer', ...
@@ -437,7 +531,10 @@ best_oblong       = log(r_best) / (2*log(1 - best_maxdef));
 % Undo the log scaling to report the maximized fitness on its natural scale.
 % A J at or above the penalty floor means fminsearch finished on an
 % out-of-bounds, gated, or failed vertex, which carries no fitness at all.
-if JBest >= OPT.Jpenalty
+% The bayesopt branch sets JBest = NaN deliberately, which lands in the same
+% place: the incumbent is then resolved from bestSoFar below, so both
+% optimizers report the best point by exactly the same rule.
+if isnan(JBest) || JBest >= OPT.Jpenalty
     fitnessBest = NaN;
 else
     fitnessBest = 10^(-JBest);
@@ -490,7 +587,7 @@ else
         if isfinite(bestYet); runningBest(k) = bestYet; end
     end
 
-    figConv = figure('Name', 'fminsearch convergence', 'Color', 'w', ...
+    figConv = figure('Name', [OPT.optimizer, ' convergence'], 'Color', 'w', ...
                      'Position', [100, 100, 1000, 420]);
     tiledlayout(figConv, 1, 2, 'Padding', 'compact', 'TileSpacing', 'compact');
 
@@ -517,11 +614,18 @@ else
     ylabel('fitness');
     title('Fitness vs. evaluation');
 
-    % --- panel 2: simplex trajectory inside the parameter box ---
+    % --- panel 2: where the search went, inside the parameter box ---
+    % Nelder-Mead walks a connected path, so joining the points is
+    % meaningful.  bayesopt jumps wherever the acquisition function points,
+    % so a connecting line would imply a trajectory that does not exist.
+    isSimplex = strcmpi(OPT.optimizer, 'neldermead');
     nexttile;
-    plot(history.dAR, history.maxdef, '-', 'Color', [0.7 0.7 0.7]);
-    hold on;
+    if isSimplex
+        plot(history.dAR, history.maxdef, '-', 'Color', [0.7 0.7 0.7]);
+        hold on;
+    end
     scatter(history.dAR, history.maxdef, 34, history.eval, 'filled');
+    hold on;
     cb = colorbar;
     cb.Label.String = 'evaluation number';
     plot(defectAspectRatio_0, maxdef_0, 'ks', 'MarkerSize', 11, 'LineWidth', 1.4);
@@ -534,8 +638,13 @@ else
     grid on;
     xlabel('defectAspectRatio');
     ylabel('maxdef');
-    title('Simplex trajectory');
-    legend({'path', 'evals', 'start', 'best', 'bounds'}, 'Location', 'best');
+    if isSimplex
+        title('Simplex trajectory');
+        legend({'path', 'evals', 'start', 'best', 'bounds'}, 'Location', 'best');
+    else
+        title('Sampled designs');
+        legend({'evals', 'start', 'best', 'bounds'}, 'Location', 'best');
+    end
 
     saveas(figConv,  [OPT.rootLoc, 'optimize_convergence.png']);
     savefig(figConv, [OPT.rootLoc, 'optimize_convergence.fig']);
@@ -584,10 +693,45 @@ end
         end
     end
 
+    function [obj, con] = bayesObjective(t)
+    % bayesopt adapter.  bayesopt passes a one-row TABLE, and wants the
+    % objective plus a vector of coupled-constraint values (<= 0 means
+    % satisfied).
+    %
+    % The Q_mech gate is expressed as a CONSTRAINT here rather than folded
+    % into the objective.  Feeding the Nelder-Mead penalty ladder (1000,
+    % 2000) to a GP that also sees feasible values around -16 would wreck the
+    % kernel's length scale: the surrogate would spend its capacity modelling
+    % the penalty cliff instead of the physics.  With a constraint, the GP
+    % instead learns WHERE the gate boundary is, which is the actual design
+    % question.
+    %   con(1) : Q_mech gate,  1 - Qmech/QmechMin  (<= 0 when Qmech is high enough)
+    %   con(2) : usable solve, -1 on success, +1 when there is no usable mode
+    % A NaN objective marks an evaluation bayesopt could not use; it models
+    % those with a separate error classifier rather than treating NaN as a
+    % value.
+        R = evalPoint([t.dAR, t.maxdef]);
+
+        if isfinite(R.fitRaw) && R.fitRaw > 0
+            obj = -log10(R.fitRaw);
+        else
+            obj = NaN;
+        end
+
+        if isfinite(R.Qmech)
+            con1 = 1 - R.Qmech/OPT.QmechMin;
+        else
+            con1 = 1;   % no Q_mech at all counts as violating the gate
+        end
+        con2 = -1;
+        if ~(isfinite(R.fitRaw) && R.fitRaw > 0)
+            con2 = 1;
+        end
+        con = [con1, con2];
+    end
+
     function J = objective(x)
-    % Core objective: maps x -> (oblong, maxdef), runs RunNanobeamFEM in a
-    % unique folder, evaluates the fitness, logs to CSV, and returns the
-    % negated log10 fitness (see the objective-forming block at the bottom).
+    % Nelder-Mead adapter: sloped box barrier, then the penalty ladder.
         defectAspectRatio_i = x(1);
         maxdef_i            = x(2);
 
@@ -613,6 +757,26 @@ end
             return;
         end
 
+        R = evalPoint(x);
+        J = R.J;
+    end
+
+    function R = evalPoint(x)
+    % Shared evaluation core for BOTH optimizers: maps x -> (oblong, maxdef),
+    % serves the point from the store if it was already solved, otherwise
+    % runs RunNanobeamFEM, then logs to the CSV, the store and the plotting
+    % history.  Returns every score the callers might want:
+    %   R.fit    - GATED fitness (0 below OPT.QmechMin) -- Nelder-Mead
+    %   R.fitRaw - UNGATED fitness                      -- bayesopt
+    %   R.Qmech  - mechanical radiative Q               -- the BO constraint
+    %   R.J      - Nelder-Mead penalty-ladder objective
+    % Keeping the expensive part in one place is what lets the two optimizers
+    % share a run database and resume from each other's evaluations.
+        defectAspectRatio_i = x(1);
+        maxdef_i            = x(2);
+        R = struct('fit', NaN, 'fitRaw', NaN, 'Qmech', NaN, ...
+                   'J', 2*OPT.Jpenalty, 'cached', false);
+
         % --- resume fast-forward: was this exact point already solved? ---
         % fminsearch is deterministic, so a resumed run retraces its earlier
         % path exactly before extending it.  Serving those repeats from the
@@ -623,7 +787,22 @@ end
         if OPT.useStore && OPT.resume
             hit = store.lookup(OPT.runId, [defectAspectRatio_i, maxdef_i]);
             if ~isempty(hit)
-                J = hit.J;
+                % Re-derive rather than trusting the stored objective_j: the
+                % row may have been written by the OTHER optimizer, whose
+                % scoring rule differs.  The physics (fitness, fitnessRaw,
+                % Qmech) is what is actually shared.
+                R.fit    = hit.fitness;
+                R.fitRaw = hit.fitnessRaw;
+                R.Qmech  = hit.Qmech;
+                R.cached = true;
+                if isfinite(R.fit) && R.fit > 0
+                    R.J = -log10(R.fit);
+                elseif isfinite(R.fit)
+                    R.J = OPT.Jpenalty;
+                else
+                    R.J = 2*OPT.Jpenalty;
+                end
+                J = R.J;
                 nCacheHits = nCacheHits + 1;
                 fprintf(['  eval %3d: oblong=%.4f  maxdef=%.4f  ' ...
                          '[CACHED  fitness=%.4g  %s]\n'], ...
@@ -678,11 +857,14 @@ end
 
         wM_i     = NaN;
         gOM_i    = NaN;
+        gMB_i    = NaN;
+        gPE_i    = NaN;
         LSiV_i   = NaN;
         Qmech_i  = NaN;
         Qopt_i   = NaN;
         lambda_i = NaN;
         fit      = NaN;
+        fitRaw   = NaN;
         status_i = 'failed';
 
         try
@@ -733,11 +915,13 @@ end
                 end
             end
 
-            % --- extract gOM ---
-            if isfield(ds, 'cpl') && isfield(ds.cpl, 'gMax') && ...
-                    ~isempty(ds.cpl.gMax)
-                gOM_i = max(abs(ds.cpl.gMax));
-            end
+            % --- extract gOM and its mechanism breakdown ---
+            % gMB (moving boundary) and gPE (photoelastic) are recorded by
+            % CalcGOM at the SAME mode pair as the reported maximum, so the
+            % three numbers always correspond to one another.  They carry
+            % opposite signs and routinely partially cancel, which is why
+            % the net alone does not tell you whether a design is robust.
+            [gOM_i, gMB_i, gPE_i] = local_getGOM(ds);
 
             % --- extract LSiV ---
             if isfield(ds, 'cpl') && isfield(ds.cpl, 'SiV') && ...
@@ -752,11 +936,17 @@ end
             % --- extract optical Q and wavelength (requires solveOpt) ---
             [Qopt_i, lambda_i] = local_getQopt(ds, OPT.targetLambda);
 
-            % Fitness is NaN when modes are absent.
+            % Fitness is NaN when modes are absent.  Both the gated and the
+            % ungated score are computed: Nelder-Mead uses the first, the GP
+            % surrogate the second (see OPT.fitnessFcnRaw).
             if hasMech
                 fit = OPT.fitnessFcn(ds);
                 if isempty(fit) || ~isfinite(fit)
                     fit = NaN;
+                end
+                fitRaw = OPT.fitnessFcnRaw(ds);
+                if isempty(fitRaw) || ~isfinite(fitRaw)
+                    fitRaw = NaN;
                 end
             end
 
@@ -775,15 +965,19 @@ end
             status_i = 'Qmech_gated';
         end
 
-        fprintf(['         wM=%.3f GHz   gOM=%.2f kHz   LSiV=%.4f MHz   ' ...
-                 'Qm=%.3g   Qo=%.3g   lam=%.1f nm   fitness=%.4g   [%s]\n'], ...
-            wM_i*1e-9, gOM_i*1e-3, LSiV_i*1e-6, Qmech_i, Qopt_i, lambda_i, fit, status_i);
+        fprintf(['         wM=%.3f GHz   gOM=%.2f kHz (MB %.2f + PE %.2f)   ' ...
+                 'LSiV=%.4f MHz\n         Qm=%.3g   Qo=%.3g   lam=%.1f nm   ' ...
+                 'fitness=%.4g   [%s]\n'], ...
+            wM_i*1e-9, gOM_i*1e-3, gMB_i*1e-3, gPE_i*1e-3, LSiV_i*1e-6, ...
+            Qmech_i, Qopt_i, lambda_i, fit, status_i);
 
         % Append to CSV immediately so the log survives a mid-run crash.
         fidLog = fopen(logFile, 'a');
-        fprintf(fidLog, '%d,%.6f,%.6f,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,%s\n', ...
+        fprintf(fidLog, ['%d,%.6f,%.6f,%.6g,%.6g,%.6g,%.6g,%.6g,%.6g,', ...
+                         '%.6g,%.6g,%.6g,%s\n'], ...
             evalCount, Pe.oblong, maxdef_i, ...
-            wM_i*1e-9, gOM_i*1e-3, LSiV_i*1e-6, Qmech_i, Qopt_i, lambda_i, fit, status_i);
+            wM_i*1e-9, gOM_i*1e-3, gMB_i*1e-3, gPE_i*1e-3, LSiV_i*1e-6, ...
+            Qmech_i, Qopt_i, lambda_i, fit, status_i);
         fclose(fidLog);
 
         % --- record the search trajectory for the convergence plots ---
@@ -831,10 +1025,12 @@ end
                     'x',        [defectAspectRatio_i, maxdef_i], ...
                     'oblong',   Pe.oblong, ...
                     'wM',       wM_i,     'gOM',      gOM_i, ...
+                    'gMB',      gMB_i,    'gPE',      gPE_i, ...
                     'LSiV',     LSiV_i,   'Qmech',    Qmech_i, ...
                     'Qopt',     Qopt_i,   'lambdaNm', lambda_i, ...
-                    'fitness',  fit,      'J',        J, ...
-                    'status',   status_i, 'evLoc',    evLoc));
+                    'fitness',  fit,      'fitnessRaw', fitRaw, ...
+                    'J',        J,        'status',     status_i, ...
+                    'evLoc',    evLoc));
             catch ME
                 % Persistence must never kill a study that is already
                 % several COMSOL-hours deep.
@@ -844,6 +1040,11 @@ end
         end
 
         history.J(end+1, 1) = J;
+
+        R.fit    = fit;
+        R.fitRaw = fitRaw;
+        R.Qmech  = Qmech_i;
+        R.J      = J;
     end
 
 end  % function optimize_oblong_maxdef
@@ -964,11 +1165,31 @@ Qopt     = Q(k);
 lambdaNm = lam(k);
 end
 
-function gOM = local_getGOM(ds)
-% Max |g_OM| in Hz of the cavity mode, or NaN if not computed (P.calcG = 0).
-gOM = NaN;
-if isfield(ds, 'cpl') && isfield(ds.cpl, 'gMax') && ~isempty(ds.cpl.gMax)
-    gOM = max(abs(ds.cpl.gMax));
+function [gOM, gMB, gPE] = local_getGOM(ds)
+%LOCAL_GETGOM  Net optomechanical coupling and its mechanism breakdown.
+%
+%   gOM - max |g_OM| in Hz.  NaN if not computed (P.calcG = 0).
+%   gMB - moving-boundary part, Hz, SIGNED.
+%   gPE - photoelastic part, Hz, SIGNED.
+%
+%   gMB and gPE come from cpl.gMBmax / cpl.gPEmax, which CalcGOM records at
+%   the same (oSol, mSol) pair as the reported maximum, so gMB + gPE is the
+%   signed net whose magnitude is gOM.  They are returned SIGNED on purpose:
+%   the two mechanisms carry opposite signs and routinely partially cancel,
+%   and taking abs() of each would hide exactly that.  A design sitting in a
+%   cancellation notch has a small gOM despite large individual parts, and
+%   is fragile to fabrication error -- see cpl.breakdown for the full table.
+gOM = NaN;  gMB = NaN;  gPE = NaN;
+if ~isfield(ds, 'cpl'); return; end
+c = ds.cpl;
+if isfield(c, 'gMax') && ~isempty(c.gMax)
+    gOM = max(abs(c.gMax));
+end
+if isfield(c, 'gMBmax') && ~isempty(c.gMBmax)
+    gMB = c.gMBmax(1);
+end
+if isfield(c, 'gPEmax') && ~isempty(c.gPEmax)
+    gPE = c.gPEmax(1);
 end
 end
 

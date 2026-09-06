@@ -283,11 +283,38 @@ for oi = oModes
         cpl.gPE(oi,mi) = sum(cpl.gPEc(oi,mi,1:3));
         cpl.gOM(oi,mi) = cpl.gMB(oi,mi) + cpl.gPE(oi,mi);
         
+        %% mechanism breakdown
+        % gMB and gPE carry opposite explicit signs (see the -sgnCpl above
+        % on gMB and the +sgnCpl on gPEc), so the two mechanisms routinely
+        % partially cancel. Recording the fractions makes it visible at a
+        % glance whether a design is MB-dominated, PE-dominated, or sitting
+        % in a cancellation notch where |gOM| is small even though both
+        % mechanisms are individually large -- which is a fragile place for
+        % a design to sit, because small geometry errors move it a lot.
+        gMBr = real(cpl.gMB(oi,mi));
+        gPEr = real(cpl.gPE(oi,mi));
+        gTot = real(cpl.gOM(oi,mi));
+        if gTot ~= 0
+            cpl.gMBfrac(oi,mi) = gMBr/gTot;
+            cpl.gPEfrac(oi,mi) = gPEr/gTot;
+        else
+            % Exact cancellation: the fractions are undefined, not zero.
+            cpl.gMBfrac(oi,mi) = NaN;
+            cpl.gPEfrac(oi,mi) = NaN;
+        end
+        % 1 means the mechanisms reinforce; >1 means they oppose, and the
+        % value is how much cancellation is happening.
+        cpl.gCancel(oi,mi) = (abs(gMBr) + abs(gPEr))/max(abs(gTot),eps);
+        
         % display results
         disp(['  wM = ',num2str(wM*1e-9,'%.2f'),' GHz, g0 = ',...
                  num2str(real(cpl.gMB(oi,mi))*1e-3),' + ',...
                  num2str(real(cpl.gPE(oi,mi))*1e-3),' = ',...
                  num2str(real(cpl.gOM(oi,mi))*1e-3),' kHz']);
+        if cpl.gCancel(oi,mi) > 1.5
+            disp(['       (MB/PE oppose: |MB|+|PE| is ',...
+                  num2str(cpl.gCancel(oi,mi),'%.1f'),'x the net)']);
+        end
         
         %% save params at max OM coupling     
         if (sgnCpl~=0 && abs(real(cpl.gOM(oi,mi))) > cpl.gMax)
@@ -320,6 +347,57 @@ for oi = oModes
     end
     
     oIdx = oIdx + 1;
+end
+
+%% Tidy breakdown table
+% cpl.gMB / gPE / gOM are indexed by ABSOLUTE COMSOL solution number, so
+% they are mostly zeros: a consumer reading cpl.gOM(3,7) cannot tell
+% "this pair has no coupling" from "this pair was never evaluated".
+% cpl.breakdown lists ONLY the pairs actually computed, one row each,
+% sorted by |gOM| so the dominant pair is row 1.
+if ~isempty(oModes) && ~isempty(mModes)
+    [oGrid,mGrid] = meshgrid(oModes,mModes);
+    oCol = oGrid(:);
+    mCol = mGrid(:);
+    nPairs = numel(oCol);
+
+    wMcol   = zeros(nPairs,1);  lamCol  = zeros(nPairs,1);
+    gMBcol  = zeros(nPairs,1);  gPEcol  = zeros(nPairs,1);
+    gOMcol  = zeros(nPairs,1);  fracMB  = zeros(nPairs,1);
+    fracPE  = zeros(nPairs,1);  cancels = zeros(nPairs,1);
+    gP11    = zeros(nPairs,1);  gP12    = zeros(nPairs,1);
+    gP44    = zeros(nPairs,1);
+
+    % Indexed pair by pair rather than with sub2ind, so this stays correct
+    % even if the breakdown arrays ended up sized differently from gOM.
+    for k = 1:nPairs
+        ok = oCol(k);  mk = mCol(k);
+        wMcol(k)  = mfem.freqs(mk);
+        lamCol(k) = lambdaAll(ok)*1e9;      % nm
+        gMBcol(k) = real(cpl.gMB(ok,mk));
+        gPEcol(k) = real(cpl.gPE(ok,mk));
+        gOMcol(k) = real(cpl.gOM(ok,mk));
+        fracMB(k) = real(cpl.gMBfrac(ok,mk));
+        fracPE(k) = real(cpl.gPEfrac(ok,mk));
+        cancels(k)= real(cpl.gCancel(ok,mk));
+        % Photoelastic contribution split by tensor component: the pci loop
+        % switches on one of p11/p12/p44 at a time (see pcompts above).
+        gP11(k)   = real(cpl.gPEc(ok,mk,1));
+        gP12(k)   = real(cpl.gPEc(ok,mk,2));
+        gP44(k)   = real(cpl.gPEc(ok,mk,3));
+    end
+
+    cpl.breakdown = table(oCol,mCol,wMcol,lamCol, ...
+        gMBcol,gPEcol,gOMcol,fracMB,fracPE,cancels,gP11,gP12,gP44, ...
+        'VariableNames',{'oSol','mSol','wM_Hz','lambda_nm', ...
+                         'gMB_Hz','gPE_Hz','gOM_Hz', ...
+                         'fracMB','fracPE','cancelRatio', ...
+                         'gPE_p11_Hz','gPE_p12_Hz','gPE_p44_Hz'});
+
+    % Sort on a precomputed magnitude rather than sortrows'
+    % ComparisonMethod, which is not available for tables in every release.
+    [~,ord] = sort(abs(gOMcol),'descend');
+    cpl.breakdown = cpl.breakdown(ord,:);
 end
 
 ds.cpl = cpl;

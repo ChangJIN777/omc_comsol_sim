@@ -4,14 +4,16 @@ Port the Bayesian-optimization pattern already used elsewhere in this repo onto 
 nanobeam cavity taper search, **keeping Nelder–Mead selectable** so the two can be
 compared on the same objective, the same store, and the same fitness function.
 
-Status of each piece:
+> **Status: phases 0 and 3 are implemented.** The Statistics and Machine Learning Toolbox
+> was installed on 2026-09-06, and `OPT.optimizer = 'bayesopt'` is now the default. This
+> document is kept as the design rationale; `optimization_README.md` is the user guide.
 
 | Piece | State |
 |---|---|
 | SQLite stop/resume infrastructure | **Built and tested** (`OptimStore.m`, `test_OptimStore_resume.m`) |
-| `OPT.optimizer` switch | **Wired**, `'neldermead'` live, `'bayesopt'` reserved with a specific error |
-| Bayesian backend | **Proposed below** — not written |
-| Feasibility pre-filter | **Proposed below** — not written |
+| `OPT.optimizer` switch | **Live both ways**; `'bayesopt'` is the default |
+| Bayesian backend | **Built and tested** (`test_bayesopt_wiring.m`) — coupled constraints, store seeding |
+| Feasibility pre-filter | **Still proposed** (phase 1) — not written |
 
 ---
 
@@ -86,23 +88,22 @@ which is exactly why the switch should exist rather than a wholesale replacement
 
 ## 3. Toolbox reality on this machine (checked, not assumed)
 
+**Resolved.** As of 2026-09-06 the Statistics and Machine Learning Toolbox is installed
+and `bayesopt` is callable:
+
 ```
-exist('bayesopt')                                = 0     % not callable
-license('test','Statistics_Toolbox')             = 1     % licence permits it
-isfolder(fullfile(matlabroot,'toolbox','stats')) = 0     % NOT installed
+exist('bayesopt')                                = 2     % callable
+license('test','Statistics_Toolbox')             = 1     % licensed
+isfolder(fullfile(matlabroot,'toolbox','stats')) = 1     % installed
 ```
 
-MATLAB here is **R2025b**; the boomerang README was verified against R2026a, so that
-work was presumably done on a different machine.
+It had previously been *licensed but not installed*, which surfaces as a bare
+`Unrecognized function 'bayesopt'` and reads like a licence problem. The dispatch still
+distinguishes the two cases explicitly, so the same confusion cannot recur on another
+machine. MATLAB here is **R2025b**.
 
-**The Statistics and Machine Learning Toolbox is licensed but not installed.** That
-is an Add-On Explorer install, not a licensing request. Until it is installed, the
-`'bayesopt'` branch cannot run — and the error it raises now says exactly this,
-because the bare `Unrecognized function 'bayesopt'` reads like a licence problem and
-sends you debugging the wrong thing.
-
-The same is true of **Database Toolbox** (licensed, not installed), which is why
-`OptimStore` does not depend on it — see below.
+**Database Toolbox remains licensed but not installed**, which is why `OptimStore` does
+not depend on it — see below.
 
 ---
 
@@ -115,8 +116,8 @@ One row per evaluation, written the moment it completes.
 ```
 runs   (run_id PK, created_ts, updated_ts, script, optimizer, status, config_json)
 evals  (run_id, eval_idx, ts, param_key, dar, maxdef, oblong,
-        wm_hz, gom_hz, lsiv_hz, q_mech, q_opt, lambda_nm,
-        fitness, objective_j, status, ev_loc,
+        wm_hz, gom_hz, gmb_hz, gpe_hz, lsiv_hz, q_mech, q_opt,
+        lambda_nm, fitness, fitness_raw, objective_j, status, ev_loc,
         PRIMARY KEY (run_id, eval_idx))
 INDEX  idx_evals_lookup ON evals(run_id, param_key)
 ```
@@ -295,23 +296,24 @@ COMSOL is the wrong order of operations.
 | **0 — done** | `OptimStore`, resume, `OPT.optimizer` switch | — | — |
 | **1** | `isFabricable` pre-filter, shared by both optimizers | small | — |
 | **2** | Surrogate dry-run backend | small | — |
-| **3** | `bayesopt` branch: vars, coupled constraints, store seeding | medium | Statistics Toolbox install |
-| **4** | Head-to-head on equal budget, seeded from the same store | 1 study | 1–3 |
+| ~~**3**~~ | ~~`bayesopt` branch~~ — **done**: `optimizableVariable` pair, coupled constraints, `seedBayesFromStore` | — | — |
+| **4** | Head-to-head on equal budget, seeded from the same store | 1 study | 1–2 |
 
-Phases 1 and 2 pay off immediately on the Nelder–Mead path and need no toolbox
-install, so they are worth doing regardless of the decision on phase 3.
+Phases 1 and 2 pay off on both optimizer paths and need no toolbox, so they remain
+worth doing. Phase 1 is now the cheapest remaining win: lifting the lithography check
+into `isFabricable` lets it become `bayesopt`'s `XConstraintFcn`, which prunes
+unfabricable candidates *before* any COMSOL solve rather than paying for a failed one.
 
 ---
 
 ## 7. Decisions needed
 
-1. **Install the Statistics and Machine Learning Toolbox?** Licensed already; without
-   it phase 3 cannot proceed on this machine.
-2. **Coupled constraints, or keep the penalty ladder?** Recommendation is constraints
-   for BO — the ladder actively degrades a GP. This does mean the two optimizers score
-   infeasible points differently, so the *feasible* comparison stays apples-to-apples
+1. ~~**Install the Statistics and Machine Learning Toolbox?**~~ **Done** (2026-09-06).
+2. ~~**Coupled constraints, or keep the penalty ladder?**~~ **Resolved: constraints.**
+   The ladder actively degrades a GP. Note the consequence — the two optimizers score
+   infeasible points differently, so a feasible-point comparison stays apples-to-apples
    but "how many evaluations were wasted" does not.
-3. **Is `Q_mech ≥ 1e7` a hard requirement or a preference?** If it is really a
+3. *Still open.* **Is `Q_mech ≥ 1e7` a hard requirement or a preference?** If it is really a
    preference, a smooth `Q_mech` factor (`fitness_QxQxLambda`, already in the file)
    suits both optimizers better than the binary gate.
 4. **Seed from `sweep_oblong_maxdef`?** A 5×5 grid is 25 evaluations of coverage that

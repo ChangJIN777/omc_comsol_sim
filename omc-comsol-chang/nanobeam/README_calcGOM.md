@@ -25,6 +25,10 @@ $$
 | $g_{\mathrm{MB}}$ | Moving boundary (a.k.a. `MB`, `Bnd`) | Mechanical motion displaces the dielectric interface | **Surface** integral over beam boundaries |
 | $g_{\mathrm{PE}}$ | Photoelastic (a.k.a. `PE`, `Str`) | Strain modifies the refractive index in the bulk | **Volume** integral over the beam |
 
+Both contributions are reported **separately and signed**, alongside the net, together with
+the fractional decomposition and a cancellation diagnostic (§6.4) and a tidy per-mode-pair
+table `ds.cpl.breakdown` (§6.5).
+
 ### Inputs
 
 | Argument | Description |
@@ -122,7 +126,7 @@ Resulting values:
 `symFac` plays for the (quadratic-in-field) denominators.
 
 When `sgnCpl == 0` the loop still records the localized-mode entry so the sweep drivers
-have a well-defined `cpl.gMax` (`CalcGOM.m:310-320`).
+have a well-defined `cpl.gMax` (`CalcGOM.m:337-347`).
 
 ---
 
@@ -435,11 +439,80 @@ g_{\mathrm{OM}}(o,m) \;=\; g_{\mathrm{MB}}(o,m) \;+\; g_{\mathrm{PE}}(o,m)
 \;}
 $$
 
-Printed per mode pair as (`CalcGOM.m:287-290`):
+Printed per mode pair as (`CalcGOM.m:310-313`):
 
 ```
 wM = 5.83 GHz, g0 = -12.4 + 31.7 = 19.3 kHz
 ```
+
+### 6.4 Mechanism breakdown bookkeeping (`CalcGOM.m:286-307`)
+
+Because $g_{\mathrm{MB}}$ and $g_{\mathrm{PE}}$ carry opposite signs (§6.2 step 6), the net
+is a **difference** of two comparable numbers. A small $|g_{\mathrm{OM}}|$ can therefore mean
+either "both mechanisms are weak" or "both are strong and nearly cancel" — physically very
+different situations that the net alone cannot distinguish. The code records the split:
+
+$$
+f_{\mathrm{MB}} = \frac{\mathrm{Re}\,g_{\mathrm{MB}}}{\mathrm{Re}\,g_{\mathrm{OM}}},
+\qquad
+f_{\mathrm{PE}} = \frac{\mathrm{Re}\,g_{\mathrm{PE}}}{\mathrm{Re}\,g_{\mathrm{OM}}},
+\qquad
+f_{\mathrm{MB}} + f_{\mathrm{PE}} = 1
+$$
+
+$$
+\boxed{\;
+R_{\mathrm{cancel}} \;=\;
+\frac{\bigl|\mathrm{Re}\,g_{\mathrm{MB}}\bigr| + \bigl|\mathrm{Re}\,g_{\mathrm{PE}}\bigr|}
+     {\bigl|\mathrm{Re}\,g_{\mathrm{OM}}\bigr|}
+\;}
+$$
+
+| $R_{\mathrm{cancel}}$ | Meaning |
+|---|---|
+| $=1$ | the two mechanisms **reinforce** (same sign) |
+| $>1$ | they **oppose**; the value is how much cancellation is happening |
+| $\gg 1$ | a **cancellation notch** — $g_{\mathrm{OM}}$ is a small residue of two large terms |
+
+Since diamond generically gives opposing terms, $R_{\mathrm{cancel}} > 1$ is the normal case;
+it is the *magnitude* that matters. $R_{\mathrm{cancel}} = 10$ means the net is a 10 % residue,
+so a few-percent shift in either mechanism moves $g_{\mathrm{OM}}$ by tens of percent. Such a
+design is fragile to fabrication error even though its nominal $g_0$ may look fine.
+
+Values above 1.5 are called out on the console (`CalcGOM.m:314-317`):
+
+```
+wM = 7.20 GHz, g0 = 185 + -166.5 = 18.5 kHz
+     (MB/PE oppose: |MB|+|PE| is 19.0x the net)
+```
+
+Exact cancellation ($\mathrm{Re}\,g_{\mathrm{OM}} = 0$) stores `NaN` for the fractions — they
+are undefined there, not zero.
+
+### 6.5 The `cpl.breakdown` table (`CalcGOM.m:352-401`)
+
+`cpl.gMB` / `gPE` / `gOM` are indexed by **absolute** solution number (§9.6), so they are
+mostly zeros and a reader cannot tell "this pair has no coupling" from "this pair was never
+evaluated". `cpl.breakdown` is a MATLAB `table` with exactly one row per evaluated
+(optical, mechanical) pair, sorted by $|g_{\mathrm{OM}}|$ descending:
+
+| Column | Meaning |
+|---|---|
+| `oSol`, `mSol` | absolute solution numbers of the pair |
+| `wM_Hz`, `lambda_nm` | mechanical frequency [Hz], optical wavelength [nm] |
+| `gMB_Hz`, `gPE_Hz`, `gOM_Hz` | the three contributions, **signed**, real part [Hz] |
+| `fracMB`, `fracPE` | $f_{\mathrm{MB}}$, $f_{\mathrm{PE}}$ — sum to 1 |
+| `cancelRatio` | $R_{\mathrm{cancel}}$ |
+| `gPE_p11_Hz`, `gPE_p12_Hz`, `gPE_p44_Hz` | `gPEc` unpacked — the §6.2 step 7 decomposition |
+
+```matlab
+>> ds.cpl.breakdown(1:3, {'oSol','mSol','wM_Hz','gMB_Hz','gPE_Hz','gOM_Hz','cancelRatio'})
+```
+
+Row 1 is always the dominant pair, so `breakdown(1,:)` is the tidy equivalent of the
+`gMax` / `gOMmax` / `oSol` / `mSol` scalars. Sorting uses a precomputed magnitude rather
+than `sortrows(...,'ComparisonMethod','abs')`, which is not available for tables in every
+MATLAB release.
 
 ---
 
@@ -478,6 +551,9 @@ wM = 5.83 GHz, g0 = -12.4 + 31.7 = 19.3 kHz
 | `gPEc` | `(oi,mi,3)` | Photoelastic coupling split by $p_{11}$ / $p_{12}$ / $p_{44}$ [Hz] |
 | `gPE` | `(oi,mi)` | Total photoelastic coupling [Hz] |
 | `gOM` | `(oi,mi)` | $g_{\mathrm{MB}} + g_{\mathrm{PE}}$ [Hz] |
+| `gMBfrac`, `gPEfrac` | `(oi,mi)` | $f_{\mathrm{MB}}$, $f_{\mathrm{PE}}$ (§6.4); `NaN` where $g_{\mathrm{OM}} = 0$ |
+| `gCancel` | `(oi,mi)` | $R_{\mathrm{cancel}}$ (§6.4) — 1 reinforcing, >1 opposing |
+| `breakdown` | `table`, `nPairs×13` | One row per evaluated pair, sorted by $\|g_{\mathrm{OM}}\|$ (§6.5) |
 | `Veff` | `1×numel(oModes)` | Optical mode volume in units of $(\lambda/2n)^3$ |
 | `xzpf` | `1×nMech` | Copy of `mfem.xzpf` [m] |
 | `gMax` | scalar | $\max \bigl|\mathrm{Re}\,g_{\mathrm{OM}}\bigr|$ over all evaluated pairs |
@@ -532,7 +608,8 @@ search from scratch while other `cpl` fields are preserved.
 6. **`cpl` arrays are indexed by absolute solution number** (`oi`, `mi`) while `LV` and
    `maxDisp` are indexed by position within `oModes` / `mModes` (`oIdx`, `mIdx`). Sparse
    `mModes` therefore produces `gOM` arrays with zero-filled gaps — expected, but don't
-   `sum`/`mean` over them blindly.
+   `sum`/`mean` over them blindly. **Use `cpl.breakdown` (§6.5) instead**, which contains
+   only the pairs actually evaluated and is safe to aggregate over.
 
 ---
 
@@ -552,3 +629,8 @@ search from scratch while other `cpl` fields are preserved.
 $x_{\mathrm{zpf}}$), `RotateXtalTensor.m` (tensor rotation), `LoadMaterialParams.m`
 (Pockels coefficients), `CalcStrCplSiV.m` (the analogous strain–SiV coupling calculation),
 `RunNanobeamFEM.m` (caller).
+
+**Downstream consumers:** `optimize_oblong_maxdef.m` reads `cpl.gMax`, `cpl.gMBmax` and
+`cpl.gPEmax` through its `local_getGOM` helper and records all three in its CSV log and
+SQLite run database (columns `gom_hz`, `gmb_hz`, `gpe_hz`) — see `optimization_README.md`.
+`sweep_oblong_maxdef.m` still reads only `cpl.gMax`.
