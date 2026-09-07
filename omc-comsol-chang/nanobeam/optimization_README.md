@@ -544,6 +544,34 @@ OptimStore.availableBackends()   % e.g. {'python','cli','jsonl'}
 OptimStore.selfTestAll()         % exercises every one of them
 ```
 
+### When Python cannot be launched at all
+
+If MATLAB cannot even start the configured interpreter, disable the probe permanently on
+that machine:
+
+```matlab
+OptimStore.disablePython          % persists across sessions, per machine
+OptimStore.disablePython(false)   % undo
+```
+
+The usual culprit is the **Microsoft Store build of Python**: the ACLs on
+`%ProgramFiles%\WindowsApps` deny process creation, so MATLAB gets *Access is denied* trying
+to run `pyinfo.py`. Windows emits that at the process layer, so no `try`/`catch` or
+`warning('off')` inside MATLAB can suppress it — the launch simply must not be attempted.
+
+This matters for the **tests** in particular: `OptimStore.selfTestAll` and
+`test_OptimStore_resume` deliberately enumerate *every* backend, so pinning
+`OPT.storeBackend` does not quiet them. `disablePython` does. Note that even asking for
+status via `pyenv` triggers the failure — `pyenv` is what runs `pyinfo.py` — so with the
+preference set nothing in this class touches it.
+
+The real fix, if you want SQLite there, is a python.org or conda interpreter:
+
+```matlab
+pyenv('Version', 'C:\Python312\python.exe')
+OptimStore.disablePython(false)
+```
+
 **Choosing one explicitly.** `OPT.storeBackend` pins the storage layer; `''` (the default)
 auto-detects:
 

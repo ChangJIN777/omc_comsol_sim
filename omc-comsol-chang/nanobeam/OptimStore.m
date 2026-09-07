@@ -708,7 +708,10 @@ classdef OptimStore < handle
                  '  sqlite3 executable        : %s\n', ...
                  'Runs, resume and seeding all work; only ad-hoc SQL ', ...
                  'querying of the results is unavailable. To get SQLite ', ...
-                 'back, configure pyenv or put sqlite3 on the PATH.'], ...
+                 'back, configure pyenv or put sqlite3 on the PATH.\n', ...
+                 'If Python cannot be launched here at all (the Microsoft ', ...
+                 'Store build is the usual culprit), silence the probe ', ...
+                 'permanently with:  OptimStore.disablePython'], ...
                 exist('sqlite', 'file') == 2, ...
                 OptimStore.pyStatusText(), 'not found');
         end
@@ -718,6 +721,16 @@ classdef OptimStore < handle
         %   Warnings are silenced: querying pyenv on a machine with a broken
         %   or terminated interpreter can emit one, and this function exists
         %   only to DESCRIBE the situation, never to add noise to it.
+        %
+        %   Critically, pyenv is what RUNS pyinfo.py to interrogate the
+        %   interpreter -- so on a machine where the interpreter cannot be
+        %   launched, merely asking for its status reproduces the very failure
+        %   we are trying to report. When Python is disabled, say so without
+        %   touching pyenv at all.
+            if getpref('OptimStore', 'skipPython', false)
+                s = 'disabled (OptimStore.disablePython)';
+                return;
+            end
             ws = warning('off', 'all');
             restoreW = onCleanup(@() warning(ws));
             try
@@ -787,6 +800,43 @@ classdef OptimStore < handle
             key = sprintf('%.10g|%.10g', x(1), x(2));
         end
 
+        function disablePython(tf)
+        %DISABLEPYTHON  Stop this machine from ever probing the Python bridge.
+        %
+        %   OptimStore.disablePython        never try Python again here
+        %   OptimStore.disablePython(false) undo it
+        %
+        %   Use this when MATLAB cannot launch the configured interpreter at
+        %   all. The common case is the MICROSOFT STORE build of Python: the
+        %   ACLs on %ProgramFiles%\WindowsApps deny process creation, so every
+        %   probe fails with "Access is denied" -- and because Windows emits
+        %   that at the process layer, no try/catch or warning-off inside
+        %   MATLAB can hide it. The only cure is not to attempt the launch.
+        %
+        %   The setting is a MATLAB preference, so it persists across sessions
+        %   and is per-machine -- exactly the right scope, since this is a
+        %   property of the installation rather than of the code.
+        %
+        %   Fix the underlying problem instead by pointing MATLAB at a
+        %   python.org or conda interpreter:
+        %       pyenv('Version', 'C:\Python312\python.exe')
+        %   then OptimStore.disablePython(false).
+            if nargin < 1
+                tf = true;
+            end
+            setpref('OptimStore', 'skipPython', logical(tf));
+            if tf
+                fprintf(['OptimStore: Python backend disabled on this ', ...
+                         'machine (persists across sessions).\n', ...
+                         '  Remaining backends: %s\n'], ...
+                    strjoin(OptimStore.availableBackends(), ', '));
+            else
+                fprintf(['OptimStore: Python backend re-enabled.\n', ...
+                         '  Backends now: %s\n'], ...
+                    strjoin(OptimStore.availableBackends(), ', '));
+            end
+        end
+
         function backends = availableBackends()
         %AVAILABLEBACKENDS  Every storage backend usable on this machine.
         %   Always contains at least 'jsonl', which needs nothing but a
@@ -825,6 +875,18 @@ classdef OptimStore < handle
         %   costs a failed process spawn and prints OS-level noise. Probing
         %   once per session keeps that to a single occurrence instead of one
         %   per store construction.
+        %   A machine can also opt out permanently with
+        %   OptimStore.disablePython, which is stored as a MATLAB preference
+        %   and checked here BEFORE any launch is attempted. That is the only
+        %   way to silence a failure that happens at the OS process layer:
+        %   Windows writes "Access is denied" itself, so no try/catch or
+        %   warning-off inside MATLAB can suppress it -- the attempt simply
+        %   must not be made.
+            if getpref('OptimStore', 'skipPython', false)
+                ok = false;
+                return;
+            end
+
             persistent cached
             if ~isempty(cached)
                 ok = cached;
