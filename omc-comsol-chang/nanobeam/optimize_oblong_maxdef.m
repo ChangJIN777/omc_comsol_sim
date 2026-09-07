@@ -105,7 +105,13 @@ OPT.defectAspectRatio_max = defectAspectRatio_0*1.5;
 
 % --- maxdef box constraints (dimensionless, 0–<1) ---
 % Fraction by which the mirror lattice constant is reduced at cavity centre.
-OPT.maxdef_min = maxdef_0*0.5;
+% Lower bound is an ABSOLUTE 0.05, not a fraction of maxdef_0, so the box no
+% longer moves if the start point is retuned.  Note the box is now asymmetric
+% about x0 (0.05 .. 0.33 around 0.22), which is fine for both optimizers --
+% neither assumes a centred box -- but it widens the INDUCED oblong range a
+% long way, because oblong = log(r)/(2*log(1-maxdef)) diverges as maxdef -> 0.
+% See the feasibility scan printed at startup.
+OPT.maxdef_min = 0.05;
 OPT.maxdef_max = maxdef_0*1.5;
 
 % --- target mechanical frequency (used for solver target) ---
