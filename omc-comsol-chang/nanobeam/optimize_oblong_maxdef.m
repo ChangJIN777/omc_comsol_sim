@@ -89,14 +89,14 @@ close all;
 % ratio hy/hx.  If the two are written out separately they silently drift
 % apart, and x0 then no longer corresponds to oblong_0 at all.  P.hx / P.hy
 % are assigned from these.
-hx_0 = 196e-9;      % nominal mirror hole height
-hy_0 = 578e-9;      % nominal mirror hole width
+hx_0 = 343e-9;      % nominal mirror hole height
+hy_0 = 617e-9;      % nominal mirror hole width
 
 % --- starting point (same as sweep centre) ---
 % hy ~ (1-maxdef)^(1+oblong), hx ~ (1-maxdef)^(1-oblong).
 % oblong=0 -> equal scaling; oblong=1 -> hx constant, only hy shrinks.
-oblong_0 = 1.96;
-maxdef_0 = 0.22;
+oblong_0 = 1.15;
+maxdef_0 = 0.16;
 defectAspectRatio_0 = (hy_0/hx_0) * (1-maxdef_0)^(2*oblong_0);  % hy/hx * (1-maxdef)^(2*oblong)
 
 % --- defectAspectRatio box constraints (dimensionless) ---
@@ -233,17 +233,17 @@ OPT.bo.plotFcn        = {@plotMinObjective, @plotObjectiveModel};
 
 %% ===================== P STRUCT DEFAULTS =====================
 % Geometry matches test_nanobeamRectFEM_withPML.m (fabricated OMC device).
-P.xsect     = 'isoFit';     % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
+P.xsect     = 'rect';     % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
 P.beamMat   = 'diamond';
 P.celltype  = 'hole';
 P.anisoMat  = 1;
 P.rxtal     = 0;
 P.rxtalInFilename = 1;
 
-P.a   = 529e-9;     % nominal lattice constant (m)
-P.w   = 750e-9;     % beam width (m)
+P.a   = 650e-9;     % nominal lattice constant (m)
+P.w   = 800e-9;     % beam width (m)
 P.theta = 45;       % etch angle (degrees; no effect for isoFit/rect)
-P.th  = 500e-9;     % beam thickness (m)
+P.th  = 250e-9;     % beam thickness (m)
 P.hx  = hx_0;       % nominal mirror hole height (m) - set in TUNABLE KNOBS
 P.hy  = hy_0;       % nominal mirror hole width  (m) - set in TUNABLE KNOBS
 
