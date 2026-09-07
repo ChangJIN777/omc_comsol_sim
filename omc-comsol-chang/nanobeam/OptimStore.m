@@ -688,12 +688,9 @@ classdef OptimStore < handle
                 backend = 'dbtoolbox';
                 return;
             end
-            try
-                py.importlib.import_module('sqlite3');
+            if OptimStore.probePython()
                 backend = 'python';
                 return;
-            catch
-                % Python interface not configured -- fall through to the CLI.
             end
             if ~isempty(OptimStore.findSqliteExe())
                 backend = 'cli';
@@ -718,6 +715,11 @@ classdef OptimStore < handle
 
         function s = pyStatusText()
         %PYSTATUSTEXT  One-line description of the MATLAB Python interface.
+        %   Warnings are silenced: querying pyenv on a machine with a broken
+        %   or terminated interpreter can emit one, and this function exists
+        %   only to DESCRIBE the situation, never to add noise to it.
+            ws = warning('off', 'all');
+            restoreW = onCleanup(@() warning(ws));
             try
                 pe = pyenv;
                 if strcmp(char(pe.Version), '')
@@ -793,15 +795,60 @@ classdef OptimStore < handle
             if exist('sqlite', 'file') == 2 || exist('sqlite', 'builtin') == 5
                 backends{end+1} = 'dbtoolbox';
             end
-            try
-                py.importlib.import_module('sqlite3');
+            if OptimStore.probePython()
                 backends{end+1} = 'python';
-            catch
             end
             if ~isempty(OptimStore.findSqliteExe())
                 backends{end+1} = 'cli';
             end
             backends{end+1} = 'jsonl';
+        end
+
+        function ok = probePython()
+        %PROBEPYTHON  Can we actually DO SQLite through the Python interface?
+        %
+        %   Importing sqlite3 is not a sufficient test. MATLAB's Python bridge
+        %   can import a module and then fail on the next call -- most often
+        %   with an out-of-process interpreter that has died, which surfaces as
+        %   "Unable to communicate with the Python interpreter". Detecting on
+        %   the import alone therefore advertises a backend that breaks later,
+        %   mid-study, after real solve time has been spent.
+        %
+        %   So probe with a complete round-trip against an in-memory database.
+        %   Warnings are silenced as well as errors: a terminating Python
+        %   process WARNS rather than throwing, so a bare try/catch lets the
+        %   message through and it looks like a failure even when we recover.
+        %   The result is cached for the MATLAB session. On a machine where the
+        %   interpreter cannot even be launched -- the Microsoft Store build of
+        %   Python is the common case, since the ACLs on
+        %   %ProgramFiles%\WindowsApps deny process creation -- each attempt
+        %   costs a failed process spawn and prints OS-level noise. Probing
+        %   once per session keeps that to a single occurrence instead of one
+        %   per store construction.
+            persistent cached
+            if ~isempty(cached)
+                ok = cached;
+                return;
+            end
+
+            ok = false;
+            ws = warning('off', 'all');
+            restoreW = onCleanup(@() warning(ws));
+            try
+                conn = py.sqlite3.connect(':memory:');
+                conn.execute('CREATE TABLE probe (a INTEGER, b TEXT)');
+                conn.execute('INSERT INTO probe VALUES (?,?)', ...
+                    py.tuple({py.int(int64(1)), py.str('x')}));
+                cur  = conn.execute('SELECT a, b FROM probe');
+                rows = cell(cur.fetchall());
+                conn.close();
+                ok = isscalar(rows);
+            catch
+                % Any failure at all -- not configured, wrong version, dead
+                % interpreter, blocked by policy -- means "not usable here".
+                ok = false;
+            end
+            cached = ok;
         end
 
         function ok = selfTestAll()
@@ -810,19 +857,37 @@ classdef OptimStore < handle
         %   available and exercises each, so a machine missing SQLite entirely
         %   still gets its JSONL fallback verified.
             backends = OptimStore.availableBackends();
-            fprintf('Backends available here: %s\n\n', strjoin(backends, ', '));
-            ok = true;
+            fprintf('Backends available here: %s\n', strjoin(backends, ', '));
+            fprintf('  Database Toolbox sqlite() : %d\n', ...
+                exist('sqlite', 'file') == 2 || exist('sqlite', 'builtin') == 5);
+            fprintf('  MATLAB Python interface   : %s\n', OptimStore.pyStatusText());
+            exe = OptimStore.findSqliteExe();
+            if isempty(exe); exe = 'not found'; end
+            fprintf('  sqlite3 executable        : %s\n\n', exe);
+
+            ok     = true;
+            failed = {};
             for i = 1:numel(backends)
                 try
                     OptimStore.selfTest([], backends{i});
                 catch ME
+                    % One broken backend must not stop the others: the point
+                    % of this call is to find out what DOES work here.
                     ok = false;
-                    fprintf(2, '  FAILED on backend "%s": %s\n', ...
+                    failed{end+1} = backends{i}; %#ok<AGROW>
+                    fprintf('  backend "%s" FAILED: %s\n', ...
                         backends{i}, ME.message);
                 end
             end
+
             if ok
                 fprintf('\nALL BACKENDS PASSED\n');
+            else
+                fprintf(['\n%d backend(s) failed: %s\n', ...
+                         'This is not fatal -- set OPT.storeBackend to one ', ...
+                         'that passed. "jsonl" needs nothing but a writable ', ...
+                         'directory and is always available.\n'], ...
+                    numel(failed), strjoin(failed, ', '));
             end
         end
 

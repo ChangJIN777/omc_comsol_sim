@@ -154,15 +154,27 @@ OPT.optimizer = 'bayesopt';
 %                date-stamped id would silently start a new study tomorrow.
 %   OPT.resume : 1 = serve already-evaluated points from the database,
 %                0 = re-solve everything (the database is still written).
-%   OPT.storeBackend : '' = auto-detect (recommended).  Force one of
-%                'dbtoolbox' | 'python' | 'cli' | 'jsonl' to pin the storage
-%                layer -- useful on a workstation where auto-detection picks
-%                something you do not want.  'jsonl' needs nothing but a
-%                writable directory and is the right choice on a machine with
-%                no SQLite, or one writing to a network share where SQLite
-%                locking is unreliable.  An unknown name is an error.
-%                OptimStore.availableBackends() lists what this machine has.
+%   OPT.storeBackend : which storage layer to use.  '' auto-detects; force
+%                one of 'dbtoolbox' | 'python' | 'cli' | 'jsonl' to pin it.
+%                An unknown name is an error, never a silent fall-through.
+%                OptimStore.availableBackends() lists what this machine has,
+%                and OptimStore.selfTestAll() exercises each of them.
 OPT.useStore     = 1;
+
+% PINNED to 'jsonl' deliberately, not left on auto-detect.  The remote
+% workstation has the Microsoft Store build of Python, which MATLAB cannot
+% launch at all: the ACLs on %ProgramFiles%\WindowsApps deny process creation,
+% so every probe costs a failed spawn plus an OS-level "Access is denied"
+% message.  Pinning skips detection entirely.
+%
+% Nothing is given up by this.  'jsonl' needs only a writable directory, and
+% test_OptimStore_resume runs its whole suite against EVERY backend and
+% asserts they produce identical numbers -- runs, resume, best, listRuns and
+% GP seeding all behave the same.  What is unavailable is ad-hoc SQL querying
+% of the results.
+%
+% Set back to '' once SQLite is reachable everywhere this runs (a python.org
+% interpreter via pyenv, or a sqlite3 executable on the PATH).
 OPT.storeBackend = 'jsonl';
 OPT.runId    = 'oblongMaxdef_trial1';
 OPT.dbPath   = fullfile('.', 'test', '1D_OMC_hole', 'optim_runs.sqlite3');

@@ -548,11 +548,18 @@ OptimStore.selfTestAll()         % exercises every one of them
 auto-detects:
 
 ```matlab
-OPT.storeBackend = '';        % auto — best available (recommended)
-OPT.storeBackend = 'jsonl';   % force the dependency-free store
+OPT.storeBackend = 'jsonl';   % CURRENT DEFAULT — dependency-free store
+OPT.storeBackend = '';        % auto — best available
 OPT.storeBackend = 'python';  % insist on SQLite via py.sqlite3
 OPT.useStore     = 0;         % no persistence at all — no resume, no store
 ```
+
+> **Currently pinned to `'jsonl'`.** The remote workstation has the Microsoft Store build of
+> Python, which MATLAB cannot launch — the ACLs on `%ProgramFiles%\WindowsApps` deny process
+> creation, so auto-detection costs a failed process spawn and an OS-level *Access is denied*
+> message on every store construction. Pinning skips detection. Nothing is given up: the
+> backends are behaviourally identical, and that is asserted, not assumed. Set back to `''`
+> once SQLite is reachable on every machine this runs on.
 
 An unrecognised name is an **error**, never a silent fall-through to auto-detection: a typo
 would otherwise quietly write to a different store than the one you asked for, and the
@@ -765,7 +772,7 @@ add — see `README_calcGOM.md` §6.4 for the physics.
 | `P.minHoleGap` | 50 nm | lithography: gap between adjacent holes |
 | `P.minFeature` | 50 nm | lithography: smallest hole dimension |
 | `OPT.useStore` | `1` | 0 disables persistence entirely |
-| `OPT.storeBackend` | `''` | `''` auto-detects; force `'dbtoolbox'`/`'python'`/`'cli'`/`'jsonl'` |
+| `OPT.storeBackend` | `'jsonl'` | pinned — see below; `''` auto-detects, or force `'dbtoolbox'`/`'python'`/`'cli'` |
 | `OPT.runId` | `'oblongMaxdef_trial1'` | names the study — **keep it to resume, change it to start fresh** |
 | `OPT.dbPath` | `./test/1D_OMC_hole/optim_runs.sqlite3` | shared database across studies |
 | `OPT.rootLoc` | `./test/1D_OMC_hole/optimize_<runId>/` | output folder, derived from `OPT.runId` |
