@@ -4,26 +4,26 @@ clear all; close all; clc
 
 %% geometry parameters
 % unit cell params
-P.xsect = 'isoFit';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
+P.xsect = 'rect';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
 P.celltype = 'hole';                    % specify what type of unit cells we are simulating
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a = 529e-9;                           % nominal lattice constant
-P.w = 750e-9*1.1;                           % beam width
+P.a = 650e-9;                           % nominal lattice constant
+P.w = 800e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 500e-9;                          % beam thickness
-P.hx = 196e-9;                          % nominal hole height (along x-axis)
-P.hy = 578e-9;                          % nominal hole width (along y-axis)
+P.th = 250e-9;                          % beam thickness
+P.hx = 343e-9;                          % nominal hole height (along x-axis)
+P.hy = 617e-9;                          % nominal hole width (along y-axis)
 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.17;                     % defect percentage
-P.oblong = 2.7;                      % oblong parameter (zero if holes are not changed)
+P.maxdef = 0.16;                     % defect percentage
+P.oblong = 1.15;                      % oblong parameter (zero if holes are not changed)
 
 % cavity taper params
-P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle
+P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
 P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
 % P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
 % P.a_ctr = 392e-9;                     % for taperTo = 'custom': lattice constant of center hole
@@ -84,7 +84,7 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 7e9;                           % target mechanical frequency
+P.freq = 6e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
