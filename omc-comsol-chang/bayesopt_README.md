@@ -2,6 +2,8 @@
 
 Bayesian optimization of the boomerang unit cell for a complete **mechanical** bandgap centred on a target frequency.
 
+> **Scope.** This file documents two scripts. Everything above [Sibling script: `bayesopt_cross.m`](#sibling-script-bayesopt_crossm) describes `bayesopt_boomerang.m`; that section covers the cross-cell optimizer, which reuses the same machinery against a different geometry and is written as a delta against this one.
+
 Searches **three** geometry parameters — lattice constant `a`, hole arm length `r`, hole arm width `w` — using MATLAB's `bayesopt`, where each objective evaluation is a full COMSOL eigenfrequency band structure solve. Slab thickness `th` is **fixed** at `cfg.th`, and an optional **filling-factor constraint** restricts the search to designs whose air/dielectric area ratio sits in a band around `cfg.fillingFactor`.
 
 > **Status: NOT re-verified since the three-variable / constraint changes.** The end-to-end dry run described below was executed against the *four-variable, two-constraint* version of this file. Fixing `th`, adding the filling-factor band, replacing the containment test with a measured one, adding the minimum-solid-feature and hole-edge-clearance tests, and adding the feasibility scan all postdate it, and **none of that has been run** — not even `checkcode`. Treat the next dry run as the verification, not as a formality.
@@ -37,6 +39,16 @@ Searches **three** geometry parameters — lattice constant `a`, hole arm length
 - [`solveBands` quirks this script works around](#solvebands-quirks-this-script-works-around)
 - [Local function reference](#local-function-reference)
 - [Tuning guidance](#tuning-guidance)
+- [Sibling script: `bayesopt_cross.m`](#sibling-script-bayesopt_crossm)
+  - [What differs from `bayesopt_boomerang.m`](#what-differs-from-bayesopt_boomerangm)
+  - [Cross cell geometry](#cross-cell-geometry)
+  - [Quick start](#quick-start-cross)
+  - [Holding the thickness fixed](#holding-the-thickness-fixed)
+  - [Constraints](#constraints-cross)
+  - [The objective](#the-objective-cross)
+  - [Configuration reference](#configuration-reference-cross)
+  - [Outputs](#outputs-cross)
+  - [Known hazards](#known-hazards)
 - [Related files](#related-files)
 
 ---
@@ -732,6 +744,259 @@ Visualization (all best-effort, none on the optimization path):
 
 ---
 
+## Sibling script: `bayesopt_cross.m`
+
+Bayesian optimization of the diamond **cross** unit cell for a complete mechanical bandgap. Same `bayesopt` machinery, same dry-run tiering, same checkpoint/resume story as `bayesopt_boomerang.m` — different geometry, a much smaller length scale, and a **closed-form** fabrication constraint instead of a measured one.
+
+Its Nelder-Mead counterpart is `cross_optimize_sweep_diamond.m`; the two share `isCrossFabricable.m`, so a change to the fab rules moves both at once.
+
+> **Status: exercised on the surrogate backend only.** `checkcode` is clean on `bayesopt_cross.m`, `cross_optimize_sweep_diamond.m` and `isCrossFabricable.m` (MATLAB R2026a, 0 messages each). `cfg.solverBackend = 'comsol'` has **never** been run from this script — `solveCrossBackend`'s `'comsol'` branch is a single `solveBands(P)` call and is untested end-to-end. Treat your first real run as the verification.
+
+### What differs from `bayesopt_boomerang.m`
+
+| | `bayesopt_boomerang.m` | `bayesopt_cross.m` |
+|---|---|---|
+| Cell | rhombic, tri-arm hole, off-centre | **square**, cross-shaped void, **centred** |
+| Searched | `a`, `r`, `w` (3) | `a`, `h`, `w` (+ `th` if `cfg.fixTh = false`) |
+| Length scale | 600-1000 nm cell | **120-600 nm** cell |
+| Min feature | 50 nm | **10 nm** — an order of magnitude finer |
+| Fab constraint | 5 tests, 3 of them **measured** by `calcFillingFactor` (polyshape, lattice translates) | 6 rules, **all closed form** — see [why](#why-closed-form-is-legitimate-here) |
+| Filling-factor band | yes (`cfg.fillingFactor`) | **none** |
+| Provenance guards | 4 | **3** (no `cfg.dryRunSaveBands`; the surrogate writes no `_bds.mat`, so guard 4 has nothing to protect) |
+| Objective sign | `-fitness` | `-fitness` (**not** `-log10`, unlike `optimize_oblong_maxdef.m`) |
+| Figures | 4 custom panels | none beyond `bayesopt`'s own `plotMinObjective` / `plotObjectiveModel` |
+| Thickness | fixed at `cfg.th`, always | fixed **or** searched — `cfg.fixTh` |
+
+### Cross cell geometry
+
+⚠️ **The parameter names do not mean what the comments in `test_CrossUnitCell.m` say.** These were read off `buildCrossUnitCell.m` directly:
+
+| symbol | meaning | source |
+|---|---|---|
+| `a` | square cell side — the lattice constant in **both** x and y | `:38`, `size [a a]` |
+| `h` | **length** of each cross arm | `:43` `[h w]`, `:48` `[w h]` |
+| `w` | **width** of each cross arm — *not* the slab thickness | same |
+| `th` | slab thickness along z | `:33`, `:65` |
+| `r1` | fillet radius applied via `disksel1` | `:137` |
+| `r2` | fillet radius applied via `disksel2` | `:147` |
+
+The compose formula is `'r_ucell-r1-r2'` (`:53`), so **the cross is subtracted**: the solid is a square slab with a cross-shaped void. In the xy plane the void is the union of two crossed bars,
+
+```
+horizontal arm :  |x| <= h/2 ,  |y| <= w/2
+vertical   arm :  |x| <= w/2 ,  |y| <= h/2
+```
+
+Every fabrication rule below is therefore written on the **solid that survives**, or on the etched gap width — never on the arms as though they were solid.
+
+<a name="quick-start-cross"></a>
+### Quick start
+
+```matlab
+cd omc-comsol-chang            % so solveBands and friends are on the path
+
+% 1. Debug the loop with no COMSOL at all (seconds):
+%    cfg.solverBackend = 'surrogate';   <- the shipped default
+run('bayesopt_cross.m')
+
+% 2. Then edit line ~53-54 to
+%    cfg.solverBackend = 'comsol';
+%    and run the real study.
+```
+
+The shipped default is `'surrogate'`, deliberately: running this file as-is costs nothing and cannot produce a number anyone could mistake for physics. Switching to `'comsol'` is an explicit edit.
+
+To extend a finished study:
+
+```matlab
+S = load(cfg.statePath);
+results = resume(S.results, 'MaxObjectiveEvaluations', 20);
+```
+
+### Holding the thickness fixed
+
+`cfg.fixTh` (default **`true`**, `cfg.thFixed = 250e-9`) drops `th` from the search:
+
+- **`true`** — `th` is not an `optimizableVariable` at all; `cfg.bounds.th` is ignored and the study is 3-dimensional.
+- **`false`** — `th` becomes a fourth integer-nm variable over `cfg.bounds.th`.
+
+Fixing it is usually right, for the reason `bayesopt_boomerang.m:270-277` gives for doing the same: the thickness is set by whatever film the process delivers, so there is no point optimizing a dimension you cannot choose. With a 40-evaluation budget, three dimensions is also a materially easier surface for a GP than four.
+
+Every consumer — the constraint function, the objective, the `P` builder, the log, the report — reads the thickness through the local **`thOf(t, cfg)`**, the single place that knows which mode the study is in. That is why adding the option did not require six separate branches, any one of which could have been missed and quietly let a "fixed" dimension start varying again.
+
+`cross_optimize_sweep_diamond.m` has the same knob (`OPT.fixTh` / `OPT.thFixed`, where it also shortens the simplex from 5 vertices to 4). Set both the same way if you want the two optimizers searching the same space.
+
+<a name="constraints-cross"></a>
+### Constraints
+
+All six live in `isCrossFabricable.m`, are **vectorized over a multi-row table**, and are enforced through `XConstraintFcn` — so an unfabricable candidate is pruned before the objective is called at all and never costs a solve. The objective re-checks the same function as belt-and-braces, for the case where someone calls it directly.
+
+| # | rule | expression | binds when |
+|---|---|---|---|
+| 1 | inter-cell wall | `a - h >= minFeature` | cell is barely larger than the arms |
+| 2 | arm width | `w >= minFeature` | narrow etched slit |
+| 3 | is a cross | `h > w` | degenerate — an `h <= w` "cross" is a square hole |
+| 4 | arm-end fillet | `r2 <= w/2` | fat fillet on a thin arm |
+| 5 | fillets fit the arm side | `r1 + r2 <= (h - w)/2` | **the usual binding rule** — needs `h >= w + 40 nm` at the shipped 10 nm radii |
+| 6 | positive thickness | `th > 0` | non-physical input |
+
+`margin` is returned as the **worst** of the six in metres, so a caller can build a graded penalty rather than a flat reject; `why` names the tightest rule. Every comparison carries a 1 fm absolute tolerance, because `(160e-9 - 140e-9)/2` evaluates to `9.9999999999999969e-9` and would otherwise "fail" a 10 nm rule by 3e-24 m.
+
+#### Rule 1 is the wall, not the ligament
+
+The narrowest solid feature is the wall between the voids of **two adjacent cells**, not the distance from an arm end to the cell boundary. The cell boundary is a periodic-BC plane, not a piece of geometry — material continues across it into the next cell. Tile the square lattice and an arm end at `x = h/2` faces the neighbour's opposite arm end at `x = a - h/2`:
+
+```
+wall = (a - h/2) - h/2 = a - h
+```
+
+Checked against the tiled polygons — closest approach between a cell's void and its eight nearest translates, boundary densified at 0.5 nm:
+
+| `a` | `h` | `w` | measured wall | `a - h` |
+|---|---|---|---|---|
+| 160 | 140 | 50 | 20.000 nm | 20 nm |
+| 300 | 220 | 80 | 80.000 nm | 80 nm |
+| 500 | 300 | 120 | 200.000 nm | 200 nm |
+| 240 | 150 | 60 | 90.000 nm | 90 nm |
+
+Exact in every case. An earlier version of this rule constrained `(a-h)/2`, the *half*-distance to the cell boundary — 2x stricter than the process limit, and measuring to something that is not a feature. It admitted nothing unbuildable; it barred designs that are fine.
+
+#### Rules 4-5 come from the two `DiskSelection`s
+
+`buildCrossUnitCell.m:129-148` decides which vertices each radius is applied to:
+
+- **`r1` -> `disksel1`**, an annulus `w/2 <= rho <= 3w/2` about the origin. Always catches the four **reentrant** corners at `(+-w/2, +-w/2)`, whose distance from the origin is `w/sqrt(2)` ~ `0.707w`.
+- **`r2` -> `disksel2`**, a thin annulus at `rho ~ h/2`, aimed at the eight **arm-end** corners at `(+-h/2, +-w/2)` and `(+-w/2, +-h/2)`.
+
+An arm end is a rectangle of width `w` capped by two corners that eat into the *same* end edge, hence `r2 <= w/2`. Along the arm **side**, of length `(h-w)/2`, a reentrant fillet and an arm-end fillet consume the edge from opposite ends — and for a 90-degree or 270-degree corner the tangent length equals the radius exactly — hence `r1 + r2 <= (h-w)/2`.
+
+Note what is **not** a fillet rule: anything involving `a`. Rounding an arm-end corner pulls the void *away* from the cell boundary, so a fillet can only ever **widen** the wall, never threaten it. The old code bounded the fillet by `(a-h)/2` and so redundantly re-imposed rule 1's old, doubled form — which is why fixing rule 1 alone changed nothing measurable.
+
+<a name="why-closed-form-is-legitimate-here"></a>
+#### Why closed form is legitimate here
+
+`calcFillingFactor.m` has to **measure** the equivalent quantity for the boomerang: it rebuilds the void as a `polyshape`, densifies the boundary, translates it to the six nearest lattice sites and takes the closest approach. That is not belt-and-braces — a boomerang void is a complex, possibly off-centre shape on a **rhombic** lattice, where the thinnest wall does not exist until the lattice is applied.
+
+The cross void is two axis-aligned rectangles, **centred**, on a **square** lattice. Every clearance has an exact expression, and the table above confirms the one that matters agrees with a measurement to the digit. There is nothing a polyshape sweep would find here that arithmetic does not — and the analytic form costs microseconds per candidate, which is what lets it sit inside `XConstraintFcn` on thousands of rows per iteration without the tiered ordering `bayesopt_boomerang.m` needs.
+
+`bayesopt_cross.m` therefore builds **one** unit cell (`P.nperiod = 1`) and never tiles anything. `bayesopt_boomerang.m` also solves one period — its multi-cell construction is purely for measurement and for the geometry figure (`cfg.figNPeriods`).
+
+#### Feasible fraction of the box
+
+Measured over a 97 x 101 x 71 grid on `cfg.bounds` with `th` fixed (695 587 designs, `minFeature` = 10 nm, `r1` = `r2` = 10 nm):
+
+| rule set | feasible |
+|---|---|
+| old wall + old fillet | 27.58 % |
+| **new** wall + old fillet | 27.58 % — *the wall fix alone changes nothing* |
+| old wall + **new** fillet | 23.33 % |
+| **new wall + new fillet (shipped)** | **24.67 %** |
+
+The correction **tightened** the box by ~11 % net, rather than loosening it: rule 5 now requires `h >= w + 40 nm` where the old `h > w` did not, rejecting 29 561 designs, while the wall relaxation admits only 9 285. The nominal 160/140/50 nm design passes with a 10 nm margin on rule 1 (`a - h` = 20 nm against a 10 nm limit), 15 nm of headroom on rule 4 and 25 nm on rule 5 — where under the old rules it appeared to sit exactly on two limits at once with no room to move.
+
+`bayesopt_cross.m` runs this scan itself at startup (`nScan = 21`), **errors** if nothing in the box is fabricable, and **warns** below 10 % — because `bayesopt` draws its seed points from the whole box, so a mostly-infeasible box starves the GP.
+
+<a name="the-objective-cross"></a>
+### The objective
+
+```
+f = -( gapRat * exp( -((targetFreq - midGap)/sigma)^2 ) )
+```
+
+- `gapRat = gapSize / midGap`, the fractional gap width, taken from the **widest** complete gap below `cfg.maxFreq`.
+- The frequency term is Gaussian, so `sigma` is the 1/e half-width: landing `sigma` from target costs 1/e, `2*sigma` costs 1/e^4.
+- Negated internally, so it is handed straight to `bayesopt` (which minimizes) with no sign flip at the call site — matching `boomerang_optimize_sweep_diamond.m`.
+- A gapless design scores exactly **0**, the worst attainable value. That plateau is a large part of the box and is precisely why `bayesopt` is used here: a simplex cannot descend a flat region.
+- Unfabricable and failed evaluations also return **0**, not `NaN` — a failed solve is a legitimate outcome of a design, not a reason to abandon a study that may already be COMSOL-hours deep.
+
+⚠️ **Scale check before your first real run.** A ~160 nm cell in diamond is a **tens-of-GHz** structure: with a shear velocity near 12000 m/s the Bragg frequency is `v/(2a)` ~ 37 GHz. The shipped `cfg.targetFreq = 6.5e9` with `cfg.maxFreq = 20e9` was set for the surrogate landscape, **not** for the physics — against real bands at `a` = 160 nm it would discard every gap the cell has. `cross_optimize_sweep_diamond.m` ships the physical values instead (`OPT.targetFreq = 35e9`, `OPT.sigma = 8e9`, `OPT.maxFreq = 120e9`). Reconcile the two before running `'comsol'`.
+
+<a name="configuration-reference-cross"></a>
+### Configuration reference
+
+| field | default | meaning |
+|---|---|---|
+| `cfg.solverBackend` | `'surrogate'` | `'comsol'`, `'surrogate'` or `'stub'`. A string, not a boolean — three tiers do not fit in a boolean, and a name self-documents wherever it is printed or saved |
+| `cfg.isDryRun` | derived | `~strcmp(backend,'comsol')`. Never set by hand |
+| `cfg.dryRunDelay` | `0` | artificial seconds per evaluation, cheap backends only |
+| `cfg.dryRunFailEvery` | `0` | `N > 0` fails every `N`th evaluation, to exercise the failure path |
+| `cfg.dryRunPrefname` | `'DRYRUN'` | folder and filename prefix for synthetic artifacts |
+| `cfg.bounds.a` | `[120, 600]` | nm, square cell side |
+| `cfg.bounds.h` | `[100, 600]` | nm, arm length |
+| `cfg.bounds.w` | `[50, 400]` | nm, arm width |
+| `cfg.bounds.th` | `[150, 400]` | nm — **ignored** when `cfg.fixTh` |
+| `cfg.fixTh` | `true` | hold `th` out of the search |
+| `cfg.thFixed` | `250e-9` | m, used only when `cfg.fixTh` |
+| `cfg.r1`, `cfg.r2` | `10e-9` | m, fillet radii — process rounding, not design freedom |
+| `cfg.targetFreq` | `6.5e9` | Hz, mechanical midgap target — **see the scale warning above** |
+| `cfg.sigma` | `1e9` | Hz, Gaussian width of the frequency penalty |
+| `cfg.maxFreq` | `20e9` | Hz, ignore gaps above this |
+| `cfg.minFeature` | `10e-9` | m, smallest solid wall / etched gap |
+| `cfg.kpts` | `5` | k-points **excluding** gamma |
+| `cfg.nbands` | `18` | |
+| `cfg.meshSize` | `4` | 1-5 quality level |
+| `cfg.max_dof` | `3e6` | |
+| `cfg.maxEvaluations` | `40` | **total** study size — every one is a COMSOL solve under `'comsol'`; time a single evaluation before raising it |
+| `cfg.numSeedPoints` | `8` | |
+| `cfg.acquisition` | `'expected-improvement-plus'` | |
+| `cfg.isDeterministic` | `true` | a band solve is repeatable for a given geometry, and the integer-nm grid removes the mesh-jitter-on-a-nudged-geometry problem that would otherwise argue for `false` |
+| `cfg.plotFcn` | `{@plotMinObjective, @plotObjectiveModel}` | |
+| `cfg.runTag` | `'bayesopt_cross_run1'` | output folder name |
+
+Design variables are **integer nanometres**, as in `bayesopt_boomerang.m`: the design is patterned on a lithography grid, so a continuous variable offers precision the process cannot deliver, and an integer grid lets `bayesopt` recognise a repeated design instead of re-solving a point 0.01 nm away.
+
+Fixed geometry passed through to `solveBands` in `buildCrossP`: `celltype = 'cross'`, `unitcell = 'square'`, `xsect = 'rect'`, `beamMat = 'diamond'`, `nperiod = 1`, `holeatedge = 0`, `anisoMat = 1`, `rxtal = 45`, `mbeveny = 0`, `mbevenz = 1`, `TwoSymPlanes = 0`, `zSymCondition = 1`, `solveasym = 1`, `completeBandGaps = 1`, `bandStruct_2D = 1`.
+
+`TwoSymPlanes` and `zSymCondition` have **no defaults** in `solveBands` (`:138`, `:186`) and are gated on before any solve, so both must be set. `bandStruct_2D = 1` routes to `runBands_2D` and additionally skips the `P.wc` title block at `solveBands.m:478`, which reads a field nothing ever assigns — reachable only when `bandStruct_2D = 0`.
+
+<a name="outputs-cross"></a>
+### Outputs
+
+Everything lands under `test/<cfg.runTag>/<date>/`, or `test/<cfg.runTag>/DRYRUN_<backend>_<date>/` on a dry run:
+
+| artifact | name |
+|---|---|
+| checkpoint | `bayesopt_cross_state.mat` — the `BayesianOptimization` object, rewritten every iteration |
+| log | `bayesopt_cross_log.txt` — tab-separated, opened and closed **per row** so it survives a mid-run crash |
+| results | `bayesopt_cross_results.mat` — `results` and `cfg` together |
+| per-evaluation | `eval_%04d_a%d_h%d_w%d_th%.0f/` — one folder each |
+
+Log columns: `eval`, `a_nm`, `h_nm`, `w_nm`, `th_nm`, `midGap_Hz`, `gapSize_Hz`, `gapFrac`, `objective`, `status`. `status` is one of `ok`, `no_gap`, `unfabricable`, `failed`.
+
+**Why one folder per evaluation.** `solveBands` skips the solve whenever `<fileBase>_bds.mat` already exists in `datLoc`, returning a stub with `.sym`/`.asym` and **no** `.full`. Per-evaluation folders make that unreachable; `crossObjective` also raises `bayesopt_cross:noFull` if one slips through, rather than reporting a design as gapless because its band data was never loaded.
+
+The three provenance guards mirror the boomerang script's: a separate dated folder for synthetic output, a `DRYRUN_` prefix on every synthetic filename, and — the one that actually matters — a **hard error** if a real run is ever handed data carrying `isSynthetic`. Stopping a resumable study is a far smaller loss than finishing one whose numbers cannot be trusted.
+
+`surrogateCrossBands.m` synthesizes analytic bands and passes them through the **real** `findGaps`, so the synthetic gaps are found exactly the way real ones are. It models no physics whatsoever; its asymmetric-sector offset and reduction are tuned (0.02 / 0.02) so that about **9.9 %** of the fabricable region has a complete gap — enough to exercise the success path without making the gapless plateau disappear.
+
+### Known hazards
+
+⚠️ **1. `disksel2` silently misses the arm-end corners over most of the box.** *(Analysis of the selection geometry in `buildCrossUnitCell.m:139-147`; not yet confirmed against a COMSOL build.)*
+
+`disksel2` is an annulus of half-width `selection_width/2` = 5 nm at radius `h/2`, but the arm-end corners sit at `rho = sqrt(h^2 + w^2)/2`, not at `h/2`. They are selected only when
+
+```
+sqrt(h^2 + w^2) <= h + 10 nm      i.e.   w <= sqrt(20h + 100)   [nm]
+```
+
+| `h` | largest `w` still selected |
+|---|---|
+| 140 nm | 53.9 nm |
+| 300 nm | 78.1 nm |
+| 600 nm | 110.0 nm |
+
+Against `cfg.bounds.w = [50, 400]` that is a small corner of the box. The nominal 160/140/50 design squeaks in at `w` = 50; `w` = 60 at the same `h` does not. Everywhere else `r2` is applied to an empty selection and the arm ends come out **unfilleted** — so the geometry actually solved changes character partway across the search space, which is exactly the kind of inconsistency that makes an optimizer's surface untrustworthy.
+
+`disksel1` has the mirror-image issue: its outer radius `3w/2` catches the arm-end corners too whenever `h <= sqrt(8)*w` ~ `2.83w`, so for stubby crosses **both** radii target the same vertices. At the nominal design `h/w` = 2.80, just inside that limit.
+
+Rules 4-5 constrain the radii as though both selections always hit; they do not check whether a selection is non-empty. Fixing this means changing `buildCrossUnitCell.m` — i.e. changing the geometry being solved — so it is flagged here rather than patched.
+
+⚠️ **2. `buildCrossUnitCell.m:68-69` calls `figure; mphgeom(model);` unconditionally**, not gated on `P.plotgeom`. Over a 40-evaluation study that is 40 figure windows. `bayesopt_cross.m` sets `P.plotgeom = 0`, which does not help.
+
+⚠️ **3. The target frequency is set for the surrogate, not the physics.** See the scale warning under [The objective](#the-objective-cross).
+
+---
+
 ## Related files
 
 | file | relationship |
@@ -749,3 +1014,14 @@ Visualization (all best-effort, none on the optimization path):
 | `plotBoomerangCell.m` | Draws cell + hole + landmarks from the same `calcFillingFactor` result; useful for eyeballing a candidate before committing solve time |
 | `python-scripts/src/objective.py` | Source of the string-valued backend selection, the fail-loud-on-unknown-backend rule, and the backend-in-the-cache-key idea |
 | `python-scripts/src/optical_surrogate.py` | Source of the "analytic surrogate, loop debugging only" pattern the surrogate backend follows |
+
+### Cross-cell files
+
+| file | relationship |
+|---|---|
+| `bayesopt_cross.m` | The cross-cell Bayesian optimizer documented above |
+| `cross_optimize_sweep_diamond.m` | Its Nelder-Mead counterpart; same `fixTh` / `minFeature` knobs, same shared fab function |
+| `isCrossFabricable.m` | The six closed-form fab rules, shared by both cross optimizers. Vectorized over a candidate table |
+| `surrogateCrossBands.m` | Analytic fake bands for the cross cell; passes through the real `findGaps` |
+| `buildCrossUnitCell.m` | The geometry builder for `celltype = 'cross'`; authoritative on what `a`, `h`, `w`, `th`, `r1`, `r2` mean |
+| `test_CrossUnitCell.m` | Single-point solve. Note its parameter comments describe a different cell -- trust `buildCrossUnitCell.m` |
