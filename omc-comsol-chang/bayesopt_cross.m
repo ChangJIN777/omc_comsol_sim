@@ -50,8 +50,8 @@ clear all; clc; close all; %#ok<CLALL>
 %   'comsol'    - the real solveBands call. The only real physics.
 %   'surrogate' - analytic fake bands (surrogateCrossBands). Debugs the loop.
 %   'stub'      - no bands at all; every evaluation returns NaN.
-% cfg.solverBackend = 'comsol';
-cfg.solverBackend = 'surrogate';
+cfg.solverBackend = 'comsol';
+% cfg.solverBackend = 'surrogate';
 
 assertKnownBackend(cfg.solverBackend);
 cfg.isDryRun = ~strcmp(cfg.solverBackend, 'comsol');
@@ -66,9 +66,9 @@ cfg.dryRunPrefname  = 'DRYRUN';
 % the process cannot deliver; and an integer grid lets bayesopt recognise a
 % repeated design instead of re-solving a point 0.01 nm away. The objective
 % converts back to metres.
-cfg.bounds.a  = [120, 600];       % nm, square cell side
-cfg.bounds.h  = [ 100, 600];       % nm, arm length
-cfg.bounds.w  = [ 50, 400];       % nm, arm width
+cfg.bounds.a  = [400, 1000];       % nm, square cell side
+cfg.bounds.h  = [ 100, 900];       % nm, arm length
+cfg.bounds.w  = [ 100, 500];       % nm, arm width
 cfg.bounds.th = [ 150, 400];       % nm, slab thickness (ignored if cfg.fixTh)
 
 % --- hold the slab thickness fixed? ---------------------------------------
@@ -95,7 +95,7 @@ cfg.r2 = 10e-9;
 % shear velocity near 12000 m/s the Bragg frequency is v/(2a) ~ 37 GHz. A
 % 10 GHz target would discard every gap this cell has.
 cfg.targetFreq = 6.5e9;            % Hz, mechanical midgap target
-cfg.sigma      = 1e9;             % Hz, Gaussian width of the frequency penalty
+cfg.sigma      = 0.5e9;             % Hz, Gaussian width of the frequency penalty
 cfg.maxFreq    = 20e9;           % ignore gaps above this
 
 % Smallest solid wall / etched gap. 10 nm, NOT the 50 nm used in the nanobeam
@@ -109,7 +109,7 @@ cfg.maxFreq    = 20e9;           % ignore gaps above this
 cfg.minFeature = 10e-9;
 
 % --- solver settings passed through to solveBands -------------------------
-cfg.kpts     = 9;                 % k-points EXCLUDING gamma
+cfg.kpts     = 5;                 % k-points EXCLUDING gamma
 cfg.nbands   = 10;
 cfg.meshSize = 4;
 cfg.max_dof  = 3e6;
@@ -126,7 +126,7 @@ cfg.acquisition    = 'expected-improvement-plus';
 cfg.isDeterministic = true;
 cfg.plotFcn = {@plotMinObjective, @plotObjectiveModel};
 
-cfg.runTag = 'bayesopt_cross_run1';
+cfg.runTag = 'bayesopt_cross_run3';
 
 %% ===================== OUTPUT LOCATIONS =====================
 currentDate = datestr(now, 'mmddyyyy'); %#ok<TNOW1,DATST>

@@ -24,14 +24,14 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'cross';                   % specify the cell type
 P.unitcell = 'square';                  % specify the shape of the unit cell
-P.a = 160e-9;       % unit cell side - the lattice constant along BOTH x and y.
+P.a = 500e-9;       % unit cell side - the lattice constant along BOTH x and y.
                     % ucellPlane is a square of size [a a] (buildCrossUnitCell.m:38).
-P.h = 140e-9;       % LENGTH of each cross arm. rec_1 has size [h w] (x by y) and
+P.h = 420e-9;       % LENGTH of each cross arm. rec_1 has size [h w] (x by y) and
                     % rec_2 the transpose [w h], giving two crossed bars (:43,:48).
                     % h < a is required, or the arms reach the cell boundary and
                     % split the solid into four disconnected corner islands.
-P.w = 50e-9;        % WIDTH of each cross arm (the etched gap width).
-P.th = 120e-9;      % slab THICKNESS along z. The work plane sits at z = -th/2
+P.w = 170e-9;        % WIDTH of each cross arm (the etched gap width).
+P.th = 250e-9;      % slab THICKNESS along z. The work plane sits at z = -th/2
                     % and the profile is extruded a distance th (:33, :65).
 P.r1 = 10e-9;       % fillet radius applied by addFillet - fil1.set('radius',r1)
 P.r2 = 10e-9;       % fillet radius applied by addFillet - fil2.set('radius',r2)
@@ -44,7 +44,7 @@ P.mbevenz = 1;      % 1 to find even mechanical mode about z
                     % z = 0 is subtracted, buildCrossUnitCell.m:72-92)
 
 P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 18;                           % no. of bands to solve for
+P.nbands = 10;                           % no. of bands to solve for
 
 %% symmetry decomposition (required by solveBands)
 % solveBands gates on these two BEFORE any solve; neither has a default, so
