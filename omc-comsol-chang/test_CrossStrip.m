@@ -73,7 +73,7 @@ P.r2 = 10e-9;       % fillet radius, applied via fil2.set('radius',r2) (:557)
                     % The second one only exists in the strip. Inspect the
                     % corners in the GUI before trusting a long strip -- see
                     % the note under P.ncell.
-P.ncell = 3;        % NUMBER OF CROSS CELLS along the strip (y). This is the
+P.ncell = 7;        % NUMBER OF CROSS CELLS along the strip (y). This is the
                     % field that replaces buildHoleStrip_3D's 13 hardcoded
                     % circles. Validated at :381 as a positive integer.
                     % Kept at 3 deliberately for a first run: it is cheap, and
@@ -102,7 +102,7 @@ P.mbevenz = 1;      % 1 to find even mechanical mode about z
                     % z = 0 plane comes back as geom1_ZsymSel / P.bndSel.Zsym)
 
 P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 10;                          % no. of bands to solve for
+P.nbands = 70;                          % no. of bands to solve for
 
 %% symmetry decomposition (required by solveBands)
 % solveBands gates on these two BEFORE any solve; neither has a default, so
@@ -156,7 +156,7 @@ P.bandStruct_2D = 0;                    % 0 to simulate 1D band structures.
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
-P.meshSize = 3;                         % mesh quality for mechanical simulations
+P.meshSize = 4;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                         % 1 to fixed the boundaries for xz planes at y = +/- w/2
                                         % (this is the only path that reads
                                         % P.xEnd1/P.xEnd2/P.yEnd1/P.yEnd2 --

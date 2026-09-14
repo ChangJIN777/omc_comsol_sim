@@ -375,8 +375,8 @@ while (~mesh_ok) && (mesh_quality < 10)
     mesh_ok = 1;
 end
 % mphsave('test_geom')
-% debugging 
-mphlaunch(model);
+% % debugging 
+% mphlaunch(model);
 %% Solve for bands
 solv.runAll;
 pbatch.run;
