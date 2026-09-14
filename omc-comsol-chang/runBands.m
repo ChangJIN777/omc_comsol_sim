@@ -121,6 +121,12 @@ elseif strcmp(P.celltype,'Snowflake_strip')
     [model,P] = buildSnowflakeStrip_3D(model,P);
 elseif strcmp(P.celltype,'boomerang_lower')
     [model,P] = buildLowerBoomerangUnitCell(model,P);
+elseif strcmp(P.celltype,'cross_strip')
+    % Square-lattice strip of P.ncell cross cells. Must be matched BEFORE the
+    % bare else below, which is a fallthrough to buildBoomerangStrip_3D rather
+    % than an "unknown celltype" error - without this branch a cross_strip run
+    % would silently try to build a boomerang strip.
+    [model,P] = buildCrossStrip(model,P);
 else
     [model,P] = buildBoomerangStrip_3D(model,P);
 end
@@ -280,6 +286,19 @@ if evenz == 0 && eveny==0
     asymBCs2.active(false);
 end
     
+% cross_strip has no mirror plane at y = 0 or y = Ly (buildCrossStrip emits
+% both y faces as an ordinary boundary pair, not a symmetry plane), so it runs
+% with eveny = 0 while evenz = +-1. The block just above only deactivates the y
+% symmetry features when BOTH evenz and eveny are zero, so in that combination
+% symBCsy and asymBCsy are left active carrying an empty selection. Turn them
+% off explicitly. Guarded on the celltype so that no existing celltype sees any
+% change - the strip scripts in this directory all run TwoSymPlanes = 1, which
+% drives eveny to +-1 and never reaches this case.
+if strcmp(P.celltype,'cross_strip') && eveny == 0
+    symBCs2.active(false);
+    asymBCs2.active(false);
+end
+
 
 mbfem.bnds = bnds;
 
