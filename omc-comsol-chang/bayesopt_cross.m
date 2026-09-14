@@ -118,7 +118,7 @@ cfg.max_dof  = 3e6;
 cfg.maxEvaluations = 60;          % TOTAL study size. Every one is a COMSOL
                                   % solve under the 'comsol' backend -- time a
                                   % single evaluation before raising this.
-cfg.numSeedPoints  = 8;
+cfg.numSeedPoints  = 10;
 cfg.acquisition    = 'expected-improvement-plus';
 % A COMSOL band-structure solve is repeatable for a given geometry, and the
 % integer-nm grid removes the mesh-jitter-on-a-nudged-geometry problem that

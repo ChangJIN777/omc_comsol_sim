@@ -24,13 +24,13 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'cross';                   % specify the cell type
 P.unitcell = 'square';                  % specify the shape of the unit cell
-P.a = 500e-9;       % unit cell side - the lattice constant along BOTH x and y.
+P.a = 894e-9;       % unit cell side - the lattice constant along BOTH x and y.
                     % ucellPlane is a square of size [a a] (buildCrossUnitCell.m:38).
-P.h = 420e-9;       % LENGTH of each cross arm. rec_1 has size [h w] (x by y) and
+P.h = 863e-9;       % LENGTH of each cross arm. rec_1 has size [h w] (x by y) and
                     % rec_2 the transpose [w h], giving two crossed bars (:43,:48).
                     % h < a is required, or the arms reach the cell boundary and
                     % split the solid into four disconnected corner islands.
-P.w = 170e-9;        % WIDTH of each cross arm (the etched gap width).
+P.w = 416e-9;        % WIDTH of each cross arm (the etched gap width).
 P.th = 250e-9;      % slab THICKNESS along z. The work plane sits at z = -th/2
                     % and the profile is extruded a distance th (:33, :65).
 P.r1 = 10e-9;       % fillet radius applied by addFillet - fil1.set('radius',r1)
@@ -43,7 +43,7 @@ P.mbevenz = 1;      % 1 to find even mechanical mode about z
                     % (nonzero also halves the cell in z: the block below
                     % z = 0 is subtracted, buildCrossUnitCell.m:72-92)
 
-P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
+P.kpts = 7;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 10;                           % no. of bands to solve for
 
 %% symmetry decomposition (required by solveBands)
@@ -80,7 +80,7 @@ P.bandStruct_2D = 1;                 % 1 to simulate 2D band structures
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
-P.meshSize = 4;                         % mesh quality for mechanical simulations
+P.meshSize = 3;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
 P.anisoMat = 1;
