@@ -41,8 +41,23 @@ new builder plus `P`-field gates.
 **Why:** existing mechanical-only cross-shield runs must not move when optics is
 added.
 **How to apply:** one boolean gate derived once (`useOpt = isfield(P,'solveOpt')
-&& P.solveOpt`), every addition inside it, and verify by dry-running both
-branches and diffing the console output.
+&& P.solveOpt`, `fullY = abs(P.meveny) < 1`), every addition inside it, and write
+every changed coordinate as an expression that collapses to the old literal when
+the gate is off (e.g. `ySolidLo` = 0 in half-y, `-w/2` in full-y) rather than as
+an if/else around the whole feature.
+
+**How to PROVE it, without COMSOL:** stub the LiveLink API. A handle class whose
+`create/set/selection/feature/geom/runCurrent` methods just append their
+arguments to a log and return themselves lets the entire builder run under
+`matlab -batch`, and the resulting call log contains every numeric geometry
+argument. Diff that log between `git show HEAD:` and the working copy for each
+gate-off configuration (no PML, no z symmetry, odd symmetry, clamp pad, fillets).
+This was accepted as the bit-identity evidence on 2026-09-16 and is far stronger
+than diffing console output alone. Have `inputEntities()` return a deterministic
+tag-keyed counter so the two runs are comparable; the fake indices will trip some
+of the builder's own cross-check warnings, which is fine because they trip
+identically on both sides. Strip MATLAB's warning stack-trace lines before
+diffing - the file length changes, so line numbers always differ.
 
 **5. `checkcode` must be clean, measured against a `git show HEAD:` baseline.**
 Both edited files should report nothing new. Pre-existing findings in other files

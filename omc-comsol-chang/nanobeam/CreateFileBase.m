@@ -81,21 +81,38 @@ end
 % cross-cell phononic shield tokens. Additive and field-guarded: a caller that
 % does not set the shield fields produces a byte-identical filename.
 %
-% nsyH is the HALF-MODEL cell count (P.nShieldY, what the builder consumes) and
-% nsyP is the physical row count 2*P.nShieldY, spelled out so the convention
-% cannot be misread from a filename months later.
+% THE nsy TOKEN ENCODES THE Y CONVENTION, NOT JUST THE COUNT, because
+% P.nShieldY means two different devices depending on P.meveny:
+%   abs(P.meveny) == 1 (or P.meveny absent)  HALF-Y build. P.nShieldY is the
+%       cell count in the simulated y >= 0 half, the physical device has
+%       2*P.nShieldY rows, and the shield is mirror-symmetric about the beam.
+%       Token: nsyH<half>_nsyP<physical>, spelled out so the convention cannot
+%       be misread from a filename months later. THIS STRING IS UNCHANGED - it
+%       must stay byte for byte what it was, or every cached .mat/.mph under
+%       test/ is orphaned.
+%   P.meveny == 0                            FULL-Y build. P.nShieldY is the
+%       ABSOLUTE row count, all of it on the +y side of the beam, and the
+%       shield bottom is flush with the beam bottom. Token: nsyF<absolute>.
 %
-% The PML length is included because RunNanobeamFEM.m:61-63 skips the whole
-% solve when a matching .mat/.mph already exists in datLoc; without this token
-% a Q vs PMLLen convergence sweep would silently reload the first run.
+% Without the distinction a full-y run and a half-y run at the same P.nShieldY
+% would produce the same P.fileBase, and RunNanobeamFEM.m:64 - which skips the
+% entire solve whenever a matching .mat AND .mph already sit in datLoc - would
+% hand back the other build's result with nothing in the log to say so. The
+% same argument is why the PML length is in here: without that token a Q vs
+% PMLLen convergence sweep would silently reload the first run.
 if isfield(P,'nShieldX') && isfield(P,'nShieldY')
+    if isfield(P,'meveny') && abs(P.meveny) < 1
+        nsyStr = ['nsyF',num2str(P.nShieldY,'%.0f')];
+    else
+        nsyStr = ['nsyH',num2str(P.nShieldY,'%.0f'),'_',...
+                  'nsyP',num2str(2*P.nShieldY,'%.0f')];
+    end
     P.fileBase = [P.fileBase,'_',...
                   'csA',num2str(P.aShield*1e9,'%.0f'),'nm_',...
                   'csH',num2str(P.hShield*1e9,'%.0f'),'nm_',...
                   'csW',num2str(P.wShield*1e9,'%.0f'),'nm_',...
                   'nsx',num2str(P.nShieldX,'%.0f'),'_',...
-                  'nsyH',num2str(P.nShieldY,'%.0f'),'_',...
-                  'nsyP',num2str(2*P.nShieldY,'%.0f')];
+                  nsyStr];
     if isfield(P,'shieldPadLen') && P.shieldPadLen > 0
         P.fileBase = [P.fileBase,'_pad',num2str(P.shieldPadLen*1e9,'%.0f'),'nm'];
     end

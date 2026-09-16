@@ -9,13 +9,27 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %   by a single PML end cap, so that the radiative mechanical Q of the cavity
 %   mode can be extracted from the complex eigenfrequency.
 %
-%   WHAT IT BUILDS  (symmetric cavity: quarter model in x,y; eighth with z)
+%   TWO BUILD PATHS, SELECTED BY P.meveny
+%     abs(P.meveny) == 1   HALF-Y. y = 0 is a mechanical (and, with optics, an
+%                          optical) mirror plane. P.nShieldY is counted in the
+%                          simulated half and the device has 2*P.nShieldY rows.
+%     P.meveny == 0        FULL-Y. There is no y = 0 plane at all. The beam
+%                          spans its full width, the shield bottom is FLUSH
+%                          with the beam bottom at y = -w/2, and P.nShieldY
+%                          cells run upward from there - so the shield is ONE
+%                          SIDED and P.nShieldY is the absolute row count.
+%     Everything that differs is gated on the local flag `fullY`; with
+%     abs(P.meveny) == 1 every expression below reduces to the literal it was
+%     before the full-y path existed.
+%
+%   WHAT IT BUILDS  (symmetric cavity: quarter model in x,y; eighth with z -
+%                    half in x, eighth -> quarter when P.meveny = 0)
 %
 %       x = 0 ................ cavity centre, mirror plane (P.mevenx)
-%       x in [0, xB1] ........ half beam with elliptical holes, y in [0, w/2]
-%       x in [xB1, xS0] ...... optional homogeneous clamp pad, y in [0, yS1]
+%       x in [0, xB1] ........ beam with elliptical holes, y in [yB0, w/2]
+%       x in [xB1, xS0] ...... optional homogeneous clamp pad, y in [yS0, yS1]
 %       x in [xS0, xS1] ...... cross shield, nShieldX by nShieldY cells
-%       x in [xS1, xP1] ...... mechanical PML, +x arm
+%       x in [xS1, xP1] ...... mechanical PML, +x arm    (y in [yS0, yS1])
 %       y in [yS1, yP1] ...... mechanical PML, +y arm    (x in [xB1, xS1])
 %       corner ............... mechanical PML, +x/+y     (2-direction stretch)
 %
@@ -23,8 +37,19 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %       xB1 = P.beamLenHalf                 (P.beamLenPhMHalf if nphonmir > 0)
 %       xS0 = xB1 + P.shieldPadLen
 %       xS1 = xS0 + P.nShieldX*P.aShield
-%       yS1 =       P.nShieldY*P.aShield
+%       yB0 = yS0 = 0       (half-y)   or   -P.w/2   (full-y, flush bottom)
+%       yS1 = yS0 + P.nShieldY*P.aShield
 %       xP1 = xS1 + P.PMLLen,   yP1 = yS1 + P.PMLLenY
+%
+%   For test_nanobeamCrossShieldFEM.m's parameters (w = 800, aShield = 894,
+%   nShieldY = 5, PMLLenY = 2000 nm) the full-y extents are, in nm:
+%       yS0 = -400.0    beam bottom == shield bottom, flush
+%       yS1 = -400.0 + 5*894 = 4070.0
+%       yP1 = 4070.0 + 2000 = 6070.0
+%   against the half-y yS0 = 0, yS1 = 4470.0, yP1 = 6470.0. Note that the
+%   shield is the same 4470 nm TALL either way, so the shield and +x PML mesh
+%   cost is unchanged; what changes is that the 4470 nm is all on one side of
+%   the beam instead of mirrored about it.
 %
 %   CROSS CELL GEOMETRY
 %     Ported from buildCrossStrip.m, which must NOT be called directly: it
@@ -36,7 +61,12 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %     Cross void centres, square lattice, pitch P.aShield in BOTH x and y:
 %
 %         x_i = xS0 + (i - 1/2)*aShield,   i = 1 .. P.nShieldX
-%         y_j =       (j - 1/2)*aShield,   j = 1 .. P.nShieldY
+%         y_j = yS0 + (j - 1/2)*aShield,   j = 1 .. P.nShieldY
+%
+%     yS0 = 0 in half-y, so the half-y centres are the same
+%     ((j - 1/2)*aShield) they always were; yS0 = -w/2 in full-y just shifts
+%     the whole lattice down so that the bottom cell-edge line lands on the
+%     beam's own -y face.
 %
 %     Each void is the union of two crossed rectangles, [hShield wShield] and
 %     [wShield hShield], subtracted from the slab footprint.
@@ -50,8 +80,12 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %     aShield/2 in both directions), so every cell-edge plane is entirely
 %     solid. Three things follow, and all three are load bearing:
 %
-%       1. y = 0 is a full-solid mirror plane bisecting a row of nodes, so the
-%          half-beam y symmetry survives the shield unchanged.
+%       1. The bottom cell-edge line at y = yS0 is a full-solid plane bisecting
+%          a row of nodes. In HALF-Y that line is y = 0 and it is a mirror, so
+%          the half-beam y symmetry survives the shield unchanged. In FULL-Y it
+%          is y = -w/2 and it is a FREE surface, so the bottom node row and the
+%          bottom row of x-running ligaments are physically halved - see THE
+%          CLAMP COMPROMISE and the flushBottomHalvedRow warning.
 %       2. x = xS0 is fully solid, so the beam end face unions cleanly onto
 %          the shield with no dangling or non-manifold geometry.
 %       3. x = xS1 and y = yS1, the shield/PML interfaces, are clean planar
@@ -60,32 +94,66 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %          boundary; a ragged, void-punctured interface is where that
 %          inference goes wrong.
 %
-%   P.nShieldY IS A HALF-MODEL COUNT
-%     P.nShieldY is the number of FULL cells in the simulated y >= 0 half. The
-%     physical device has 2*P.nShieldY rows, and the mirror plane bisects a row
-%     of nodes. P.shield.nYPhys = 2*P.nShieldY is written back into P and
-%     appears in the filename (nsyH<half>_nsyP<physical>) so it cannot be
-%     misread later.
+%   WHAT P.nShieldY COUNTS, AND WHY THE FILENAME CARES
+%     HALF-Y: P.nShieldY is the number of FULL cells in the simulated y >= 0
+%     half. The physical device has 2*P.nShieldY rows and the mirror plane
+%     bisects a row of nodes. P.shield.nYPhys = 2*P.nShieldY.
 %
-%     The alternative convention, a half cell straddling y = 0, is NOT
-%     supported and is not a bug: it would put the beam axis on a VOID centre
-%     line, so the y = 0 plane through the first cell would be solid only over
-%     |y| < (aShield-hShield)/2 and the beam would butt into a membrane of that
+%     FULL-Y: P.nShieldY is the ABSOLUTE number of rows, all on the +y side of
+%     the beam, and P.shield.nYPhys = P.nShieldY.
+%
+%     Because the same integer means two different devices, CreateFileBase.m
+%     spells the convention into the filename: nsyH<half>_nsyP<physical> for
+%     half-y (unchanged, byte for byte) and nsyF<absolute> for full-y. Without
+%     that the two runs would collide on P.fileBase and RunNanobeamFEM.m:64
+%     would find a stale .mat/.mph pair and skip the solve entirely - returning
+%     the other build's answer with nothing in the log to say so.
+%
+%     The alternative phasing, a half cell straddling the bottom edge, is NOT
+%     supported in either build and is not a bug: it would put that edge on a
+%     VOID centre line, so the plane through the first cell would be solid only
+%     over (aShield-hShield)/2 and the beam would butt into a membrane of that
 %     thickness.
 %
-%   THE CLAMP COMPROMISE - READ THIS BEFORE TRUSTING A Q
-%     With P.shieldPadLen = 0 (the default, lattice faithful) the beam end face
-%     lands on a half node of half-width (aShield - wShield)/2, and on the
-%     half-wall fin of thickness (aShield - hShield)/2 for everything beyond
-%     that. For the legacy cross parameters (a=894, h=863, w=416 nm) against a
-%     750 nm beam that is 36% of the beam end half-width landing on a 15.5 nm
-%     wall. auditCrossShield below computes the actual fraction and WARNS. It
-%     never changes the geometry.
+%   THE CLAMP COMPROMISE - READ THIS BEFORE TRUSTING A Q, AND IT IS WORSE IN
+%   FULL-Y
+%     With P.shieldPadLen = 0 (the default, lattice faithful) the x = xS0 plane
+%     is solid but only just: at x = xS0 + (a-h)/2 the cross void's HORIZONTAL
+%     bar opens up and occupies y in [y_j - w_s/2, y_j + w_s/2] for each cell
+%     row j. Inside those y bands the only material behind the beam end face is
+%     the (a-h)/2 thick strip in front of the void - a free-standing fin.
+%     Outside them the face lands on a node, which is the real clamp.
+%
+%     HALF-Y puts the beam axis on a node CENTRE, so the node covers
+%     |y| <= (a-w)/2 and the fin band is everything beyond it:
+%       (a-w)/2 = 239.0 nm against a beam half width of 400.0 nm
+%       -> (400 - 239)/400 = 40.25% of the beam end half-face on a 15.5 nm fin.
+%
+%     FULL-Y puts the beam axis 400 nm above the bottom cell-edge line, i.e.
+%     essentially in the middle of the first cell (a/2 = 447 nm), so the fin
+%     band crosses the face almost centrally and the fraction is set by w_s
+%     rather than by the node width:
+%       beam end face y in [-400.0, 400.0] nm
+%       cell 1 void centre y_1 = -400 + 447 = 47.0 nm
+%       fin band y in [47 - 208, 47 + 208] = [-161.0, 255.0] nm, 416.0 nm wide
+%       cell 2's band is [733.0, 1149.0] nm and never reaches the face
+%       -> 416.0/800.0 = 52.00% of the beam end face on a 15.5 nm fin.
+%     Both halves of the face DO land on node material (the bottom 239 nm on
+%     the halved node row at y = -400, the top 145 nm on the node row at
+%     y = +494), which is why the fraction is not simply larger everywhere -
+%     but the fin is now in the MIDDLE of the clamp rather than at its edges,
+%     which is the worse place for it.
+%
+%     auditCrossShield below computes the fraction for whichever build is
+%     running - the half-y closed form is the wrong shape for full-y, so the
+%     full-y branch measures the band overlap instead - and WARNS. It never
+%     changes the geometry.
 %
 %     The fix, when you want it, is P.shieldPadLen > 0: a homogeneous clamp
 %     slab spanning the full shield height, which is what a real device has.
-%     Recommended production value is about aShield/2. It is implemented and
-%     tested here; it is simply not the default.
+%     Recommended production value is about aShield/2 = 447 nm. It is
+%     implemented and tested here; it is simply not the default, and this
+%     builder will not set it for you.
 %
 %   FILLETS
 %     P.shieldFillet defaults to 'none' and emits no DiskSelection/Fillet
@@ -120,7 +188,8 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %       P.hShield      cross arm length [m]  (hard error if >= aShield)
 %       P.wShield      cross arm width  [m]
 %       P.nShieldX     cells along x (integer >= 1)
-%       P.nShieldY     cells along y in the SIMULATED HALF (integer >= 1)
+%       P.nShieldY     cells along y (integer >= 1). Counted in the SIMULATED
+%                      HALF when abs(P.meveny) = 1, ABSOLUTE when P.meveny = 0.
 %
 %   OPTIONAL P FIELDS
 %       P.shieldPadLen    clamp slab length [m].                 Default 0
@@ -134,11 +203,18 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %       P.PMLLenY         +y PML thickness [m].               Default P.PMLLen
 %
 %   OPTICAL P FIELDS  (read only when P.solveOpt = 1)
-%       P.airrad       radius of the air half-cylinder wrapped round the beam
-%                      [m]. REQUIRED. The house convention, from
+%       P.airrad       radius of the air cylinder wrapped round the beam [m].
+%                      REQUIRED. The house convention, from
 %                      test_nanobeamRectFEM.m:105 and five sibling scripts, is
-%                      2*P.lambda + P.w/2; for lambda = 1550 nm and w = 750 nm
-%                      that is 3475 nm.
+%                      2*P.lambda + P.w/2; for lambda = 1550 nm and w = 800 nm
+%                      that is 3500 nm. How much of the cylinder is built
+%                      follows the symmetry flags, not this field:
+%                        meveny = +/-1, mevenz = +/-1  quarter (y >= 0, z >= 0)
+%                        meveny = 0,    mevenz = +/-1  half    (all y, z >= 0)
+%                        meveny = +/-1, mevenz = 0     half    (y >= 0, all z)
+%                        meveny = 0,    mevenz = 0     whole cylinder
+%                      The y extent comes from the Revolve angles, the z extent
+%                      from the symZ cut.
 %       P.airCylLen    +x extent of that cylinder [m].
 %                      Default min(xB1, xS0 - P.lambda). See WHY THE AIR
 %                      CYLINDER STOPS SHORT below. Hard error if the cylinder
@@ -146,18 +222,20 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %       P.lambda       target vacuum wavelength [m]. REQUIRED (also used for
 %                      the default P.airCylLen).
 %       P.nbeam        beam refractive index. REQUIRED by SetupNanobeamFEM.
-%       P.oevenx/P.oeveny/P.oevenz   optical symmetry, +/-1 (0 for oevenx only,
-%                      which puts a scattering BC on x = 0 instead). P.oevenz
-%                      must agree with P.mevenz on whether z = 0 is a mirror
-%                      plane at all - see the hard error in
-%                      readCrossShieldParams.
+%       P.oevenx/P.oeveny/P.oevenz   optical symmetry, +/-1 (0 for oevenx puts
+%                      a scattering BC on x = 0 instead; 0 for oeveny means the
+%                      full-y build). P.oevenz must agree with P.mevenz, and
+%                      P.oeveny with P.meveny, on whether that plane is a
+%                      mirror plane at all - there is one geometry and two
+%                      physics. See the evenzMismatch and evenyMismatch hard
+%                      errors in readCrossShieldParams.
 %
 %   WHY THE AIR CYLINDER STOPS SHORT  (the reason P.solveOpt used to be barred)
 %     BuildNanobeamFEM.m:202-230 revolves an air half-cylinder of radius
 %     P.airrad over the WHOLE beam length. Ported verbatim that cylinder does
-%     genuinely swallow this geometry: it reaches |z| = P.airrad = 3475 nm
-%     against a slab that is only +/-250 nm thick, and y = 3475 nm against a
-%     shield that starts at x = xS0 and runs to y = yS1 = 8000 nm. A cylinder
+%     genuinely swallow this geometry: it reaches |z| = P.airrad = 3500 nm
+%     against a slab that is only +/-125 nm thick, and y = 3500 nm against a
+%     shield that starts at x = xS0 and runs to y = yS1 = 4070 nm. A cylinder
 %     spanning x in [0, xS1] would enclose most of the shield in air, and the
 %     shield would stop being a shield.
 %
@@ -178,23 +256,34 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %     in the model. Hence the default leaves one free-space wavelength of
 %     vacuum between the cap and the shield.
 %
-%     Worked numbers for test_nanobeamCrossShieldFEM.m (all nm):
-%         xB1 = beamLenHalf = 8951.8,  shieldPadLen = 0  ->  xS0 = 8951.8
-%         xS1 = 8951.8 + 6*1600 = 18551.8,  yS1 = 5*1600 = 8000
-%         xP1 = 20551.8,  yP1 = 10000
-%         airrad = 2*1550 + 375 = 3475
-%         airCylLen = min(8951.8, 8951.8 - 1550) = 7401.8
-%       cylinder envelope   x [0, 7401.8]   y [0, 3475]   z [0, 3475]
-%       shield envelope     x [8951.8, 18551.8]  y [0, 8000]  z [0, 250]
+%     Worked numbers for test_nanobeamCrossShieldFEM.m, FULL-Y (all nm). Every
+%     figure below was recomputed by running
+%       P = LoadMaterialParams(P); P = CreateNanobeamGeom(P);
+%     headless on R2025b at the script's own parameters - do the same before
+%     trusting any of them again, because they all move with P.nholes, P.ndef,
+%     P.maxdef and P.taperFunc:
+%         xB1 = beamLenHalf = 11063.0,  shieldPadLen = 0  ->  xS0 = 11063.0
+%         xS1 = 11063.0 + 6*894 = 16427.0
+%         yS0 = -w/2 = -400.0,  yS1 = -400 + 5*894 = 4070.0
+%         xP1 = 18427.0,  yP1 = 6070.0
+%         airrad = 2*1550 + 400 = 3500
+%         airCylLen = min(11063.0, 11063.0 - 1550) = 9513.0  (the default)
+%       cylinder envelope   x [0, 9513.0]   y [-3500, 3500]   z [0, 3500]
+%       shield envelope     x [11063.0, 16427.0]  y [-400, 4070]  z [0, 125]
 %         -> separated in x by 1550.0 nm.  y and z OVERLAP, so x is the only
-%            separation and it is the thing the hard error guards.
-%       PML +x arm          x [18551.8, 20551.8] -> separated in x by 11150.0
-%       PML +y arm          x [8951.8, 18551.8]  y [8000, 10000]
-%         -> separated in x by 1550.0 nm AND in y by 4525.0 nm
-%       PML corner          separated in x by 11150.0 and in y by 4525.0
-%       The cap at x = 7401.8 falls in solid beam between holes 15 (ends
-%       7198.8) and 16 (starts 7530.8), so 15 of the 18 half-beam holes - the
-%       6 defect holes and 9 mirror periods - are inside the air.
+%            separation and it is the thing the hard error guards. That is
+%            unchanged by full-y: the cylinder now also hangs 3100 nm below the
+%            flush bottom, but there is nothing down there to overlap.
+%       PML +x arm          x [16427.0, 18427.0]  y [-400, 4070]
+%         -> separated in x by 6914.0
+%       PML +y arm          x [11063.0, 16427.0]  y [4070, 6070]
+%         -> separated in x by 1550.0 nm AND in y by 570.0 nm
+%       PML corner          separated in x by 6914.0 and in y by 570.0
+%       The default cap at x = 9513.0 falls INSIDE hole 16 (x in [9266.5,
+%       9609.5]), so the builder raises airCylCutsHole; the script documents
+%       the 9.113 um override that moves it into the solid between holes 15
+%       (ends 8959.5) and 16. 15 of the 18 half-beam holes - the 6 defect holes
+%       and 9 mirror periods - are inside the air either way.
 %
 %   THE END CAP SPLITS THE BEAM, ON PURPOSE
 %     Compose keeps interior boundaries (it must: the beam and the air have to
@@ -223,8 +312,10 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %       P.domSel.shield   shield only          (mesh sizing)
 %       P.domSel.PML      the three PML frame domains
 %       P.bndSel.beamXsym x = 0  cavity mirror
-%       P.bndSel.beamYsym y = 0  faces of beam + pad + shield
-%       P.bndSel.PMLYsym  y = 0  face of the +x PML arm
+%       P.bndSel.beamYsym y = 0  faces of beam + pad + shield  (HALF-Y ONLY -
+%                         the field is NOT SET in the full-y build, because
+%                         there is no y = 0 plane for it to describe)
+%       P.bndSel.PMLYsym  y = 0  face of the +x PML arm        (HALF-Y ONLY)
 %       P.bndSel.beamZsym z = 0  faces of beam + pad + shield   (if symZOn)
 %       P.bndSel.PMLZsym  z = 0  faces of the PML frame         (if symZOn)
 %       P.bndSel.beamXend outer termination faces - the shield perimeter when
@@ -243,6 +334,7 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %       P.bndSel.cylXend  x = airCylLen air end cap, EXTERIOR faces only (the
 %                         imprinted beam cross-section is differenced out)
 %       P.bndSel.cylYsym  y = 0 plane, beam + pad + shield + air faces
+%                         (HALF-Y ONLY, for the same reason as beamYsym)
 %       P.bndSel.cylZsym  z = 0 plane, beam + pad + shield + air faces
 %                         (if symZOn)
 %       P.bndSel.cylCurv  the curved outer surface of the air cylinder
@@ -253,6 +345,19 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %     Solid Mechanics is solved there), while the optical PMC/PEC must cover
 %     the whole plane. beamZsym is cylZsym with the air faces removed.
 %
+%     WHY OMITTING THE Y SELECTIONS IS SAFE, RATHER THAN EMITTING THEM EMPTY.
+%     SetupNanobeamFEM reads P.bndSel.beamYsym and P.bndSel.PMLYsym only from
+%     inside 'if meveny == 1' (:245-250) and 'if meveny == -1' (:271-276), and
+%     P.bndSel.cylYsym only from inside 'if oeveny == 1' (:370-373) and
+%     'if oeveny == -1' (:412-415). CalcGOM.m:92 is guarded the same way. With
+%     P.meveny = 0 - and P.oeveny = 0, which readCrossShieldParams requires to
+%     go with it whenever optics is on - none of those branches is taken, so no
+%     absent field is ever referenced and NO EDIT to SetupNanobeamFEM.m or
+%     CalcGOM.m is needed. Emitting them empty instead would make
+%     assertNonEmptySel warn on every run, which trains the reader to ignore
+%     the one warning in this file whose whole purpose is to catch a boundary
+%     condition applied to nothing.
+%
 %   NOT SUPPORTED IN v1 (all hard errors, see the checks below)
 %       P.asymCav      - needs a mirrored shield and three more PML blocks at
 %                        -x. addCrossShield takes an (xEdge, sgn) pair so the
@@ -261,10 +366,28 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %       P.xsect ~= 'rect' - 'tri'/'isoFit' force P.mevenz = 0 and make the beam
 %                        an intersection with a prism; the junction to a
 %                        prismatic cross slab is undefined.
-%       P.meveny == 0  - there is no full-y build path in this pipeline.
 %       abs(P.oevenz) ~= abs(P.mevenz) when P.solveOpt = 1 - there is a single
 %                        z = 0 cut shared by both physics, so either both want
 %                        it or neither does.
+%       (abs(P.oeveny) > 0) ~= (abs(P.meveny) > 0) when P.solveOpt = 1 - same
+%                        argument for y: half-y and full-y are two different
+%                        geometries and the two physics cannot each have one.
+%     P.meveny == 0 used to be on this list. It is now a supported build path;
+%     see TWO BUILD PATHS at the top.
+%
+%   WHAT THE FULL-Y PATH DELIBERATELY DOES NOT ADD
+%       a -y PML, or a -y shield. Below y = yS0 = -w/2 is vacuum for every x,
+%       and a traction-free surface facing vacuum radiates no elastic energy
+%       because vacuum supports no elastic waves - only material carries it
+%       away. That is the same argument that already excludes the +/-z faces
+%       and the beam's own +/-y flanks at x < xS0 (already free vacuum in the
+%       half-y build too, on the +y side). So the PML stays the same three
+%       blocks, +x / +y / corner, and -y is CLOSED rather than truncated.
+%       The physics consequence, which auditCrossShield reports: y = yS0 is now
+%       a real free edge of a one-sided shield, made of halved nodes and
+%       (a-h)/2 = 15.5 nm half-ligaments, and it can host edge-localised modes
+%       running along it towards the +x PML. That is a property of the device
+%       the caller asked for, not a missing boundary condition.
 %
 %   KNOWN BUG IN THE LEGACY PML PATH, DELIBERATELY NOT TOUCHED HERE
 %     BuildNanobeamFEM.m:508, 518 and 538 build PMLtopSel / PMLbotSel /
@@ -287,8 +410,14 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %     (:307) and re-runs the mesh with hmax = P.shieldHmax on P.domSel.shield.
 %
 %     For test_nanobeamCrossShieldFEM.m's parameters the two meshes are not
-%     remotely the same object in the shield: 310 nm gives about 1.7e3 tets
-%     there, 33.3 nm gives about 1.4e6. The optical study therefore solves on a
+%     remotely the same object in the shield. The shield's solid volume over
+%     z >= 0 is solidFrac*(6*894)*(5*894)*125 = 0.318*2.997e9 = 9.54e8 nm^3
+%     (the same in both builds - full-y shifts the shield, it does not resize
+%     it), so at the optical hmax = lambda/5 = 310 nm that is about 2e2 tets
+%     and at the mechanical default hmax = min((a-h)/3, th/3) = min(10.3, 83.3)
+%     = 10.3 nm it is about 5.2e6. Note that 10.3 nm, not the 33.3 nm an older
+%     copy of this comment quoted: the wall a-h is 31 nm at these cross
+%     parameters, not 100 nm. The optical study therefore solves on a
 %     mesh in which the shield is barely discretised (harmless, the field there
 %     is zero) and the mechanical study solves on a mesh in which the air
 %     cylinder has no size rule at all. CalcGOM.m:124-155 then Joins the two
@@ -355,10 +484,36 @@ ws = P.wShield;
 nx = P.nShieldX;
 ny = P.nShieldY;
 
+% fullY is THE gate for the asymmetric build. Every y extent below is written
+% in terms of ySolidLo/yS0/yS1 so that the half-y path evaluates to the
+% literals it used before: ySolidLo = 0, yS0 = 0, yS1 = ny*as.
+%
+% HALF-Y  (abs(P.meveny) == 1)  y = 0 is a mirror plane. Beam y in [0, w/2],
+%     shield y in [0, ny*as]. P.nShieldY is a HALF-MODEL count and the physical
+%     device has 2*P.nShieldY rows.
+% FULL-Y  (P.meveny == 0)       no y = 0 plane at all. Beam y in [-w/2, +w/2],
+%     shield bottom FLUSH with the beam bottom at y = -w/2 and cells running
+%     upward from there. P.nShieldY is the ABSOLUTE count.
+fullY = abs(P.meveny) < 1;
+
 xB1 = beamLen;                      % beam end / clamp pad start
 xS0 = xB1 + P.shieldPadLen;         % shield left edge
 xS1 = xS0 + nx*as;                  % shield right edge
-yS1 = ny*as;                        % shield top edge
+
+if fullY
+    % Flush bottom. The shield footprint starts on the beam's own -y face, so
+    % the lattice is phased relative to y = -w/2 instead of y = 0. The PHASING
+    % is unchanged - both builds cut the lattice on a cell-corner line, which
+    % bisects a row of nodes and a row of x-running ligaments - but in half-y
+    % that line is a mirror (material continues through it) and here it is a
+    % FREE surface, so the bottom row is genuinely halved. auditCrossShield
+    % reports the consequences; see THE CLAMP COMPROMISE in the header.
+    ySolidLo = -wid/2;
+else
+    ySolidLo = 0;                   % y = 0 mirror plane
+end
+yS0 = ySolidLo;                     % shield bottom edge
+yS1 = yS0 + ny*as;                  % shield top edge
 
 usePML = P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML;
 if usePML
@@ -374,7 +529,7 @@ xMaxAll = xP1;
 yMaxAll = yP1;
 
 xcentres = xS0 + ((1:nx) - 0.5)*as;
-ycentres =       ((1:ny) - 0.5)*as;
+ycentres = yS0 + ((1:ny) - 0.5)*as;
 
 % Air half-cylinder around the CAVITY only. See WHY THE AIR CYLINDER STOPS
 % SHORT in the header. useOpt is the single gate for every optical addition in
@@ -387,6 +542,18 @@ else
     airrad = 0;
     xC1    = 0;
 end
+
+% Lowest y reached by the AIR, and by anything at all. In half-y the cylinder
+% is cut at y = 0 by the Revolve angles so yCylLo = 0 and yMinAll = 0, which is
+% the literal the boxes below used before. In full-y the cylinder is a full
+% revolve and hangs 2*lambda below the beam, so it - not the solid - sets the
+% bottom of the z = 0 cut block and of the z = 0 boundary boxes.
+if fullY
+    yCylLo = -airrad;               % 0 with optics off, which is correct: no air
+else
+    yCylLo = 0;
+end
+yMinAll = min(ySolidLo, yCylLo);
 
 % z symmetry is only meaningful for the rectangular cross-section, and v1 is
 % rect only, so the guard collapses to the symmetry flags. With optics on BOTH
@@ -415,8 +582,8 @@ if useOpt
     % Hard error, not a warning: the guard this replaces existed precisely to
     % stop the cylinder eating the shield, and a later parameter change must
     % not be able to recreate that silently.
-    assertCylClears(P, xC1, airrad, zLoCyl, xB1, xS0, xS1, yS1, xP1, yP1, ...
-                    zLoEff, thi, usePML);
+    assertCylClears(P, xC1, airrad, zLoCyl, yCylLo, xB1, xS0, xS1, yS0, yS1, ...
+                    xP1, yP1, zLoEff, thi, usePML, fullY);
 
     P.airCyl = struct( ...
         'rad',      airrad, ...
@@ -426,13 +593,25 @@ if useOpt
         'nHolesIn', sum(xpos + hx/2 <= xC1));
 end
 
+% nYPhys is the PHYSICAL row count: 2*ny in the half model (the y = 0 mirror
+% doubles the simulated rows), ny in the full-y model where what is built IS
+% the device. The distinction is also encoded in the filename - see the
+% nsyH/nsyP vs nsyF branch in CreateFileBase.m - because otherwise a half-y and
+% a full-y run at the same P.nShieldY would collide and RunNanobeamFEM.m:64
+% would silently reload the wrong cached solve.
+if fullY
+    nYPhys = ny;
+else
+    nYPhys = 2*ny;
+end
+
 P.shield = struct( ...
     'a',            as, ...
     'h',            hs, ...
     'w',            ws, ...
     'nX',           nx, ...
     'nY',           ny, ...
-    'nYPhys',       2*ny, ...
+    'nYPhys',       nYPhys, ...
     'padLen',       P.shieldPadLen, ...
     'xB1',          xB1, 'xS0', xS0, 'xS1', xS1, 'yS1', yS1, ...
     'xP1',          xP1, 'yP1', yP1, ...
@@ -442,8 +621,15 @@ P.shield = struct( ...
     'wallWidth',    as - hs, ...
     'solidFrac',    1 - (2*hs*ws - ws^2)/as^2);
 
+% Extra fields only in the full-y path, so disp(P.shield) for an existing
+% half-y run is unchanged field for field.
+if fullY
+    P.shield.yS0   = yS0;           % shield bottom = beam bottom = -w/2
+    P.shield.fullY = true;
+end
+
 %% Pure-MATLAB audit - warn only, never alters the geometry
-auditCrossShield(P, wid, thi, usePML, useOpt);
+auditCrossShield(P, wid, thi, usePML, useOpt, fullY, yS0);
 
 %% Create component
 comp = model.modelNode.create('comp');
@@ -457,9 +643,19 @@ beamgeom.label('Nanobeam with cross phononic shield');
 beamWP = beamgeom.feature.create('beamWP', 'WorkPlane');
 beamWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -thi/2);
 
+% Half beam (y in [0, w/2]) or full beam (y in [-w/2, +w/2]). The HOLE features
+% below are identical either way: every ellipse is centred on y = ypos(k) = 0
+% with semi-axis max(hy)/2 = 308.5 nm < w/2 = 400 nm, so in the half model the
+% Compose clips it to a half hole against the rectangle edge at y = 0, and in
+% the full model the same ellipse is simply a whole hole strictly inside the
+% rectangle. Nothing about the holes is gated on fullY.
 beamplane = beamWP.geom.feature.create('beamplane', 'Rectangle');
 beamplane.set('type', 'solid').set('base', 'corner');
-beamplane.set('pos', [0 0]).set('size', [beamLen wid/2]);
+if fullY
+    beamplane.set('pos', [0 -wid/2]).set('size', [beamLen wid]);
+else
+    beamplane.set('pos', [0 0]).set('size', [beamLen wid/2]);
+end
 beamgeom.runCurrent;
 
 holeList = cell(1, nholes);
@@ -502,6 +698,19 @@ finBeamTag = 'beamHoles';
 %   * the input selection of the Revolve is set explicitly. The reference omits
 %     it and relies on the default picking the only work plane, and this file
 %     already has three.
+%
+% THE REVOLVE ANGLES ARE THE ONLY THING fullY CHANGES HERE.
+%   The swept 2D profile is the +z half of the xz plane (rectangle at pos [0 0],
+%   so w1 = x in [0, xC1] and w2 = z in [0, airrad]) and the axis is w1 = x.
+%   A sweep of -180 -> 0 is 180 degrees and produces the y >= 0 half of the
+%   cylinder over BOTH z signs; the z < 0 half is then removed by symZComp
+%   below, leaving the QUARTER cylinder (y >= 0, z >= 0) of the half-y model.
+%   A sweep of -180 -> +180 is the full 360 degrees and produces the whole
+%   cylinder over all y and both z signs; symZComp then leaves a HALF cylinder
+%   (all y, z >= 0), which is what the full-y model needs. Note the parity: the
+%   z = 0 cut is what makes the result a quarter/half, not the revolve alone, so
+%   with P.mevenz = 0 (symZOn false) the full-y revolve is a whole cylinder and
+%   stays one.
 displayCylStr = '';
 if useOpt
     cylWP = beamgeom.feature.create('cyl_cut_wp', 'WorkPlane');
@@ -514,7 +723,11 @@ if useOpt
     airCyl = beamgeom.feature.create('air_cyl', 'Revolve');
     airCyl.selection('input').set({'cyl_cut_wp'});
     airCyl.set('angle1', '-180');
-    airCyl.set('angle2', '0');
+    if fullY
+        airCyl.set('angle2', '180');     % 360 deg: all y
+    else
+        airCyl.set('angle2', '0');       % 180 deg: y >= 0
+    end
     airCyl.set('axis', [1,0]).set('pos', [0,0]);
     beamgeom.runCurrent;
 
@@ -539,7 +752,11 @@ end
 % asymmetric cavity is the sgn = -1 call; it is not wired up in v1 (P.asymCav
 % is rejected in readCrossShieldParams) but the emitter takes the argument so
 % adding it later is a sign flip, not a rewrite.
-shieldTag = addCrossShield(beamgeom, P, xB1, +1, thi);
+% yS0 is 0 in the half-y model (the mirror plane) and -w/2 in the full-y model
+% (flush with the beam's own -y face). It is passed rather than recomputed so
+% that the footprint rectangle and the void centres cannot drift apart from the
+% extents the selections below are built from.
+shieldTag = addCrossShield(beamgeom, P, xB1, +1, thi, yS0);
 
 % intbnd = true (KEEP interior boundaries) is set explicitly, not left to the
 % default, because the whole downstream contract depends on it: the beam and
@@ -557,9 +774,25 @@ finBeamTag = 'beamShield';
 %% Mechanical PML - L frame wrapping the shield perimeter
 % Which sides: the structure is a suspended slab in vacuum, so mechanical
 % energy leaks only IN PLANE, through material. There is no material above or
-% below, hence no +/-z PML; x = 0 and y = 0 are mirror planes, hence no -x/-y
-% PML; and the beam's own +y flank for x < xS0 is free vacuum, not a radiating
+% below, hence no +/-z PML; x = 0 is a mirror plane, hence no -x PML; and the
+% beam's own +/-y flanks for x < xS0 are free vacuum, not a radiating
 % interface. That leaves +x, +y and the corner.
+%
+% WHY THERE IS STILL NO -y PML IN THE FULL-Y BUILD.
+%   In half-y, -y needed no PML because y = 0 was a mirror plane. In full-y
+%   there is no mirror plane, so the argument has to be the physical one - and
+%   it is the SAME argument that already excludes +/-z and the beam flanks.
+%   Below y = yS0 = -w/2 is vacuum for every x. A traction-free surface facing
+%   vacuum carries no elastic energy away, because vacuum supports no elastic
+%   waves; only material does. A PML there would be absorbing nothing, and
+%   would cost the DOF of a fourth (and a fifth, and a sixth, once the corner
+%   is counted) block. The -y direction is therefore CLOSED, not truncated, and
+%   the full-y PML stays the same three blocks as the half-y one.
+%
+%   The price, which auditCrossShield reports rather than hides: the free
+%   bottom edge is a real free edge of a one-sided shield and supports
+%   edge-localised modes running along y = yS0 towards the +x PML. That is a
+%   physics consequence of the user's design choice, not a missing BC.
 %
 % Three blocks, NOT two, and interior boundaries kept, so that the PML resolves
 % to THREE domains. COMSOL's box PML assigns stretching per domain from that
@@ -570,10 +803,14 @@ displayPMLStr = '';
 if usePML
     zb = -thi/2;
 
+    % The +x arm spans the FULL shield height, yS0 to yS1. In half-y that is
+    % [0, ny*as] as before; in full-y it is [-w/2, -w/2 + ny*as], i.e. the same
+    % ny*as of thickness, shifted down. So the +x arm volume - and therefore the
+    % PML mesh cost - is identical in the two builds.
     PMLxArm = beamgeom.feature.create('PMLxArm', 'Block');
     PMLxArm.set('base', 'corner');
-    PMLxArm.set('pos',  [xS1, 0, zb]);
-    PMLxArm.set('size', [P.PMLLen, yS1, thi]);
+    PMLxArm.set('pos',  [xS1, yS0, zb]);
+    PMLxArm.set('size', [P.PMLLen, yS1 - yS0, thi]);
 
     % The +y arm spans the whole slab footprint in x, including the clamp pad,
     % because the pad's +y face radiates too.
@@ -618,15 +855,24 @@ end
 % with P.solveOpt = 0, airrad = 0 and zCutLo == thi/2, so this is the byte-for-
 % byte previous behaviour.
 %
-% yMaxAll = yP1 = 10000 nm and xMaxAll = xP1 cover the cylinder's y and x reach
-% (3475 nm and P.airCylLen) with room to spare, so the footprint needs no
-% widening for the cylinder - only the z extent does.
+% yMaxAll = yP1 and xMaxAll = xP1 cover the cylinder's +y and x reach (airrad
+% and P.airCylLen) with room to spare, so the footprint needs no widening at
+% the top - only the z extent does.
+%
+% THE -y END OF THE CUT IS NOT ZERO IN THE FULL-Y BUILD. yMinAll =
+% min(ySolidLo, yCylLo): -w/2 with optics off, -airrad with optics on, and 0 in
+% the half-y build where the Revolve already stopped the air at y = 0. Leave it
+% at 0 in full-y and the cut block would miss the y < 0 half of the model
+% entirely, so the z < 0 half of the beam, the shield, the PML and the air would
+% all survive below the beam axis - a geometry that is neither the half model
+% nor the full one, and whose z = 0 faces at y < 0 would not exist for the
+% symmetry BCs to be hung on.
 if symZOn
     symZWP = beamgeom.feature.create('symZWP', 'WorkPlane');
     symZWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -zCutLo);
     symZPlane = symZWP.geom.feature.create('symZPlane', 'Rectangle');
     symZPlane.set('type', 'solid').set('base', 'corner');
-    symZPlane.set('pos', [xMinAll 0]).set('size', [xMaxAll - xMinAll, yMaxAll]);
+    symZPlane.set('pos', [xMinAll yMinAll]).set('size', [xMaxAll - xMinAll, yMaxAll - yMinAll]);
     beamgeom.runCurrent;
 
     symZPlaneExt = beamgeom.feature.create('symZPlaneExt', 'Extrude');
@@ -642,30 +888,42 @@ end
 
 beamgeom.run;
 
-disp(['Geometry created - nanobeam, rectangular cross-section, ', ...
-      num2str(nx), 'x', num2str(ny), ' cross shield (', ...
-      num2str(2*ny), ' physical rows)', displayCylStr, displayPMLStr]);
+if fullY
+    disp(['Geometry created - nanobeam, rectangular cross-section, FULL-y ', ...
+          '(no y = 0 mirror), ', num2str(nx), 'x', num2str(ny), ...
+          ' cross shield (', num2str(nYPhys), ' physical rows, bottom flush ', ...
+          'with the beam at y = ', num2str(yS0*1e9,'%.1f'), ' nm, top at y = ', ...
+          num2str(yS1*1e9,'%.1f'), ' nm)', displayCylStr, displayPMLStr]);
+else
+    disp(['Geometry created - nanobeam, rectangular cross-section, ', ...
+          num2str(nx), 'x', num2str(ny), ' cross shield (', ...
+          num2str(2*ny), ' physical rows)', displayCylStr, displayPMLStr]);
+end
 
 %% Domain selections
 % WHY THE AIR DOMAIN DOES NOT LEAK INTO THE SOLID SELECTIONS
 % beamSel, shieldSel, structSel and allSel are all condition 'inside' with
-% zmax = thi/2 + d = 260 nm. The air cylinder reaches z = airrad = 3475 nm, so
+% zmax = thi/2 + d = 135 nm. The air cylinder reaches z = airrad = 3500 nm, so
 % it is never 'inside' any of them and needs no explicit exclusion. That is a
 % property of the z extent, not of the x/y extents, so do not widen zmax on
 % these four boxes. The PML 'intersects' probes sit at x >= xB1, well clear of
 % the cylinder's x in [0, airCylLen], so they are unaffected too.
+%
+% EVERY y BOUND IS WRITTEN AS ySolidLo/yS0 (solid) OR yCylLo (air) rather than
+% as a literal, so the half-y path evaluates to exactly the -d / -d2 it used
+% before and the full-y path picks up the y < 0 half automatically.
 d = 10e-9;
 
 beamSel = beamgeom.create('beamSel', 'BoxSelection');
 beamSel.set('xmin', -d).set('xmax', xB1 + d);
-beamSel.set('ymin', -d).set('ymax', wid/2 + d);
+beamSel.set('ymin', ySolidLo - d).set('ymax', wid/2 + d);
 beamSel.set('zmin', zLoEff - d).set('zmax', thi/2 + d);
 beamSel.set('entitydim', 3).set('condition', 'inside');
 beamgeom.runCurrent;
 
 shieldSel = beamgeom.create('shieldSel', 'BoxSelection');
 shieldSel.set('xmin', xS0 - d).set('xmax', xS1 + d);
-shieldSel.set('ymin', -d).set('ymax', yS1 + d);
+shieldSel.set('ymin', yS0 - d).set('ymax', yS1 + d);
 shieldSel.set('zmin', zLoEff - d).set('zmax', thi/2 + d);
 shieldSel.set('entitydim', 3).set('condition', 'inside');
 beamgeom.runCurrent;
@@ -676,7 +934,7 @@ P.domSel.shield = readSel(model, P.geomname, 'shieldSel');
 % leave the shield with no material at all.
 structSel = beamgeom.create('structSel', 'BoxSelection');
 structSel.set('xmin', -d).set('xmax', xS1 + d);
-structSel.set('ymin', -d).set('ymax', yS1 + d);
+structSel.set('ymin', ySolidLo - d).set('ymax', yS1 + d);
 structSel.set('zmin', zLoEff - d).set('zmax', thi/2 + d);
 structSel.set('entitydim', 3).set('condition', 'inside');
 beamgeom.runCurrent;
@@ -692,15 +950,15 @@ P.domSel.beam = readSel(model, P.geomname, 'structSel');
 % cylinder box at all, so it never enters the sum in the first place.
 %
 % The air is a single connected domain even though the holes look isolated: the
-% elliptical holes have semi-axis max(hy)/2 = 289 nm against a half width of
-% w/2 = 375 nm, so they do NOT break out through the beam side wall, but they
+% elliptical holes have semi-axis max(hy)/2 = 308.5 nm against a half width of
+% w/2 = 400 nm, so they do NOT break out through the beam side wall, but they
 % are through-holes in z and open onto the z = +thi/2 face, which is inside the
 % cylinder. Do not assume numel(P.domSel.cyl) == 1 though - the audit only
 % checks that it is non-empty.
 if useOpt
     beamCylSel = beamgeom.create('beamCylSel', 'BoxSelection');
     beamCylSel.set('xmin', -d).set('xmax', xC1 + d);
-    beamCylSel.set('ymin', -d).set('ymax', airrad + d);
+    beamCylSel.set('ymin', yCylLo - d).set('ymax', airrad + d);
     beamCylSel.set('zmin', zLoCyl - d).set('zmax', airrad + d);
     beamCylSel.set('entitydim', 3).set('condition', 'inside');
     beamgeom.runCurrent;
@@ -726,14 +984,16 @@ if usePML
     % zLoEff) being exactly right.
     %
     % Arm extents come from the Block features above:
-    %   PMLxArm    x in [xS1, xP1],  y in [0,   yS1]
+    %   PMLxArm    x in [xS1, xP1],  y in [yS0, yS1]
     %   PMLyArm    x in [xB1, xS1],  y in [yS1, yP1]
     %   PMLcorner  x in [xS1, xP1],  y in [yS1, yP1]
     % Each probe sits at the centre of its arm, so the margin to the nearest
     % arm face is half the smallest arm dimension - microns against d = 10 nm.
+    % Only the +x arm's y centre moves with fullY, because only that arm spans
+    % the shield height; the other two sit above yS1 in both builds.
     zMid = 0.5*(zLoEff + thi/2);
     probes = { ...
-        'PMLxArmSel', 0.5*(xS1 + xP1), 0.5*yS1,         zMid; ...
+        'PMLxArmSel', 0.5*(xS1 + xP1), 0.5*(yS0 + yS1), zMid; ...
         'PMLyArmSel', 0.5*(xB1 + xS1), 0.5*(yS1 + yP1), zMid; ...
         'PMLcornSel', 0.5*(xS1 + xP1), 0.5*(yS1 + yP1), zMid};
 
@@ -758,7 +1018,7 @@ if usePML
     % instead of as an implausible Q. Costs one extra selection feature.
     allSel = beamgeom.create('allSel', 'BoxSelection');
     allSel.set('xmin', -d).set('xmax', xP1 + d);
-    allSel.set('ymin', -d).set('ymax', yP1 + d);
+    allSel.set('ymin', ySolidLo - d).set('ymax', yP1 + d);
     allSel.set('zmin', zLoEff - d).set('zmax', thi/2 + d);
     allSel.set('entitydim', 3).set('condition', 'inside');
     beamgeom.runCurrent;
@@ -785,7 +1045,7 @@ d2 = 5e-9;
 
 beamXsymSel = beamgeom.create('beamXsymSel', 'BoxSelection');
 beamXsymSel.set('xmin', -d2).set('xmax', d2);
-beamXsymSel.set('ymin', -d2).set('ymax', wid/2 + d2);
+beamXsymSel.set('ymin', ySolidLo - d2).set('ymax', wid/2 + d2);
 beamXsymSel.set('zmin', zLoEff - d2).set('zmax', thi/2 + d2);
 beamXsymSel.set('entitydim', 2).set('condition', 'allvertices');
 beamgeom.runCurrent;
@@ -800,13 +1060,30 @@ P.bndSel.beamXsym = readSel(model, P.geomname, 'beamXsymSel');
 % 'allvertices' rejects it. That matters - this selection feeds a Solid
 % Mechanics symmetry/antisymmetry BC, and there is no Solid Mechanics in the
 % air. The optical equivalent, which DOES want the air, is cylYsymSel below.
-structYsymSel = beamgeom.create('structYsymSel', 'BoxSelection');
-structYsymSel.set('xmin', -d2).set('xmax', xS1 + d2);
-structYsymSel.set('ymin', -d2).set('ymax', d2);
-structYsymSel.set('zmin', zLoEff - d2).set('zmax', thi/2 + d2);
-structYsymSel.set('entitydim', 2).set('condition', 'allvertices');
-beamgeom.runCurrent;
-P.bndSel.beamYsym = readSel(model, P.geomname, 'structYsymSel');
+%
+% IN THE FULL-Y BUILD NEITHER SELECTION IS EMITTED AT ALL.
+%   There is no y = 0 plane in the geometry, so there is no face to put in
+%   them, and an empty P.bndSel.beamYsym would trip assertNonEmptySel on every
+%   single run - training the reader to ignore the one warning in this file that
+%   exists to catch silently-unapplied boundary conditions. Omitting the FIELDS
+%   is safe because SetupNanobeamFEM only ever reads them from inside
+%   'if meveny == 1' (:245-250) and 'if meveny == -1' (:271-276), and reads
+%   P.bndSel.cylYsym only from inside 'if oeveny == 1' (:370-373) and
+%   'if oeveny == -1' (:412-415). With P.meveny = 0 and P.oeveny = 0 - which
+%   readCrossShieldParams now REQUIRES to go together when optics is on - none
+%   of those four branches is taken, so no absent field is ever touched and no
+%   edit to SetupNanobeamFEM.m is needed. CalcGOM.m:92 is guarded the same way
+%   ('if abs(P.meveny) && abs(P.oeveny)'), and its symFac at :48 and octant
+%   sign product at :53-60 both already drop the y factor when P.meveny = 0.
+if ~fullY
+    structYsymSel = beamgeom.create('structYsymSel', 'BoxSelection');
+    structYsymSel.set('xmin', -d2).set('xmax', xS1 + d2);
+    structYsymSel.set('ymin', -d2).set('ymax', d2);
+    structYsymSel.set('zmin', zLoEff - d2).set('zmax', thi/2 + d2);
+    structYsymSel.set('entitydim', 2).set('condition', 'allvertices');
+    beamgeom.runCurrent;
+    P.bndSel.beamYsym = readSel(model, P.geomname, 'structYsymSel');
+end
 
 if symZOn
     % z = 0 is the one plane where the air cannot be excluded by a z bound: all
@@ -815,9 +1092,12 @@ if symZOn
     % collects the z = 0 faces of beam + pad + shield AND of the air, which is
     % exactly the optical mirror plane (P.bndSel.cylZsym) but NOT the
     % mechanical one.
+    % ymin = yMinAll - d2, not -d2: in full-y this box must reach -airrad (with
+    % optics) or -w/2 (without), or it drops every z = 0 face at y < 0 and the
+    % mechanical symmetry BC is applied to half the mid-plane.
     structZsymSel = beamgeom.create('structZsymSel', 'BoxSelection');
     structZsymSel.set('xmin', -d2).set('xmax', xS1 + d2);
-    structZsymSel.set('ymin', -d2).set('ymax', yS1 + d2);
+    structZsymSel.set('ymin', yMinAll - d2).set('ymax', yS1 + d2);
     structZsymSel.set('zmin', -d2).set('zmax', d2);
     structZsymSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
@@ -825,27 +1105,50 @@ if symZOn
     if ~useOpt
         P.bndSel.beamZsym = readSel(model, P.geomname, 'structZsymSel');
     else
-        % Remove the air's z = 0 faces, discriminating on y. There are exactly
-        % two families of them and neither overlaps the solid faces in y:
+        % Remove the air's z = 0 faces, discriminating on y. In the HALF-y model
+        % there are exactly two families of them and neither overlaps the solid
+        % faces in y:
         %
         %   outer air  y in [wid/2, airrad]  - the quarter-disc minus the beam
         %              cross-section, one face spanning x in [0, airCylLen].
         %              Its inner edge sits on the beam side wall at y = wid/2,
         %              its outer edge on the cylinder at y = airrad.
         %   hole air   y in [0, hy_k/2] for each enclosed hole k. hy is at most
-        %              max(hy) = 578 nm, so hy/2 <= 289 nm against wid/2 = 375
-        %              nm - the 86 nm of headroom that makes this work. It is
-        %              checked in readCrossShieldParams, which hard-errors if
-        %              the holes are wide enough to reach the side wall.
+        %              max(hy) = 617 nm, so hy/2 <= 308.5 nm against
+        %              wid/2 = 400 nm - the 91.5 nm of headroom that makes this
+        %              work. It is checked in readCrossShieldParams, which
+        %              hard-errors if the holes are wide enough to reach the
+        %              side wall.
         %
         % The SOLID z = 0 faces (beam either side of the end-cap split, pad,
         % shield) all run from y = 0 to y = wid/2 or y = yS1, so they fail both
         % boxes: the outer box because of their vertices at y = 0, the hole box
         % because of their vertices at y = wid/2 or beyond.
         %
-        % Two chained DifferenceSelections rather than one UnionSelection plus
-        % one difference, to stay with the single-string add/subtract form used
-        % everywhere else in this file.
+        % IN THE FULL-Y MODEL THE SAME DISCRIMINATION MUST BE TWO-SIDED IN |y|.
+        %   The air is now a half cylinder over ALL y, so at z = 0 the outer air
+        %   is TWO disjoint strips - y in [+wid/2, +airrad] and
+        %   y in [-airrad, -wid/2] - which are not connected to each other in
+        %   the z = 0 plane (the holes reach only |y| <= max(hy)/2 = 308.5 nm and
+        %   never break through the side wall at |y| = 400 nm). A single box
+        %   spanning y in [-airrad, +airrad] would swallow the SOLID faces too,
+        %   so it must be two boxes, one per sign. The hole box becomes
+        %   |y| <= max(hy)/2 instead of 0 <= y <= max(hy)/2.
+        %
+        %   The rejection argument survives unchanged, and still rests on
+        %   max(hy)/2 < wid/2:
+        %     - beam faces span y in [-wid/2, +wid/2], so their vertices at
+        %       y = -wid/2 fail the +y outer box (ymin = +wid/2 - d2), their
+        %       vertices at y = +wid/2 fail the -y outer box (ymax = -wid/2 + d2),
+        %       and both of those fail the hole box (ymax = max(hy)/2 + d2
+        %       = 313.5 nm < 400 nm).
+        %     - pad and shield faces span y in [-wid/2, yS1] and fail all three
+        %       for the same reasons, plus the +y outer box on their vertices
+        %       at y = yS1 > airrad.
+        %
+        % Chained DifferenceSelections rather than a UnionSelection plus one
+        % difference, to stay with the single-string add/subtract form used
+        % everywhere else in this file. The full-y path adds one more link.
         airZ0OutSel = beamgeom.create('airZ0OutSel', 'BoxSelection');
         airZ0OutSel.set('xmin', -d2).set('xmax', xC1 + d2);
         airZ0OutSel.set('ymin', wid/2 - d2).set('ymax', airrad + d2);
@@ -855,7 +1158,11 @@ if symZOn
 
         airZ0HoleSel = beamgeom.create('airZ0HoleSel', 'BoxSelection');
         airZ0HoleSel.set('xmin', -d2).set('xmax', xC1 + d2);
-        airZ0HoleSel.set('ymin', -d2).set('ymax', max(hy)/2 + d2);
+        if fullY
+            airZ0HoleSel.set('ymin', -max(hy)/2 - d2).set('ymax', max(hy)/2 + d2);
+        else
+            airZ0HoleSel.set('ymin', -d2).set('ymax', max(hy)/2 + d2);
+        end
         airZ0HoleSel.set('zmin', -d2).set('zmax', d2);
         airZ0HoleSel.set('entitydim', 2).set('condition', 'allvertices');
         beamgeom.runCurrent;
@@ -864,10 +1171,28 @@ if symZOn
         structZsymNoOut.set('entitydim', 2);
         structZsymNoOut.set('add', 'structZsymSel').set('subtract', 'airZ0OutSel');
         beamgeom.runCurrent;
+        lastZsymTag = 'structZsymNoOut';
+
+        if fullY
+            % The -y twin of airZ0OutSel. Only created in the full-y path, so
+            % the half-y geometry sequence holds exactly the features it did.
+            airZ0OutNegSel = beamgeom.create('airZ0OutNegSel', 'BoxSelection');
+            airZ0OutNegSel.set('xmin', -d2).set('xmax', xC1 + d2);
+            airZ0OutNegSel.set('ymin', -airrad - d2).set('ymax', -wid/2 + d2);
+            airZ0OutNegSel.set('zmin', -d2).set('zmax', d2);
+            airZ0OutNegSel.set('entitydim', 2).set('condition', 'allvertices');
+            beamgeom.runCurrent;
+
+            structZsymNoNeg = beamgeom.create('structZsymNoNeg', 'DifferenceSelection');
+            structZsymNoNeg.set('entitydim', 2);
+            structZsymNoNeg.set('add', lastZsymTag).set('subtract', 'airZ0OutNegSel');
+            beamgeom.runCurrent;
+            lastZsymTag = 'structZsymNoNeg';
+        end
 
         structZsymSolid = beamgeom.create('structZsymSolid', 'DifferenceSelection');
         structZsymSolid.set('entitydim', 2);
-        structZsymSolid.set('add', 'structZsymNoOut').set('subtract', 'airZ0HoleSel');
+        structZsymSolid.set('add', lastZsymTag).set('subtract', 'airZ0HoleSel');
         beamgeom.runCurrent;
         P.bndSel.beamZsym = readSel(model, P.geomname, 'structZsymSolid');
     end
@@ -877,7 +1202,7 @@ end
 % debug handle when there is.
 shieldXendSel = beamgeom.create('shieldXendSel', 'BoxSelection');
 shieldXendSel.set('xmin', xS1 - d2).set('xmax', xS1 + d2);
-shieldXendSel.set('ymin', -d2).set('ymax', yS1 + d2);
+shieldXendSel.set('ymin', yS0 - d2).set('ymax', yS1 + d2);
 shieldXendSel.set('zmin', zLoEff - d2).set('zmax', thi/2 + d2);
 shieldXendSel.set('entitydim', 2).set('condition', 'allvertices');
 beamgeom.runCurrent;
@@ -892,18 +1217,24 @@ beamgeom.runCurrent;
 P.bndSel.shieldYend = readSel(model, P.geomname, 'shieldYendSel');
 
 if usePML
-    PMLYsymSel = beamgeom.create('PMLYsymSel', 'BoxSelection');
-    PMLYsymSel.set('xmin', xS1 - d2).set('xmax', xP1 + d2);
-    PMLYsymSel.set('ymin', -d2).set('ymax', d2);
-    PMLYsymSel.set('zmin', zLoEff - d2).set('zmax', thi/2 + d2);
-    PMLYsymSel.set('entitydim', 2).set('condition', 'allvertices');
-    beamgeom.runCurrent;
-    P.bndSel.PMLYsym = readSel(model, P.geomname, 'PMLYsymSel');
+    % Not emitted in the full-y build, for the same reason as beamYsym: the
+    % +x PML arm has no y = 0 face because there is no y = 0 plane. Its -y face
+    % at y = yS0 is a free exterior boundary of the PML, which is what a PML
+    % outer face should be (traction-free; see SetupNanobeamFEM.m:226).
+    if ~fullY
+        PMLYsymSel = beamgeom.create('PMLYsymSel', 'BoxSelection');
+        PMLYsymSel.set('xmin', xS1 - d2).set('xmax', xP1 + d2);
+        PMLYsymSel.set('ymin', -d2).set('ymax', d2);
+        PMLYsymSel.set('zmin', zLoEff - d2).set('zmax', thi/2 + d2);
+        PMLYsymSel.set('entitydim', 2).set('condition', 'allvertices');
+        beamgeom.runCurrent;
+        P.bndSel.PMLYsym = readSel(model, P.geomname, 'PMLYsymSel');
+    end
 
     if symZOn
         allZsymSel = beamgeom.create('allZsymSel', 'BoxSelection');
         allZsymSel.set('xmin', -d2).set('xmax', xP1 + d2);
-        allZsymSel.set('ymin', -d2).set('ymax', yP1 + d2);
+        allZsymSel.set('ymin', yMinAll - d2).set('ymax', yP1 + d2);
         allZsymSel.set('zmin', -d2).set('zmax', d2);
         allZsymSel.set('entitydim', 2).set('condition', 'allvertices');
         beamgeom.runCurrent;
@@ -917,7 +1248,7 @@ if usePML
 
     PMLxoutSel = beamgeom.create('PMLxoutSel', 'BoxSelection');
     PMLxoutSel.set('xmin', xP1 - d2).set('xmax', xP1 + d2);
-    PMLxoutSel.set('ymin', -d2).set('ymax', yP1 + d2);
+    PMLxoutSel.set('ymin', yS0 - d2).set('ymax', yP1 + d2);
     PMLxoutSel.set('zmin', zLoEff - d2).set('zmax', thi/2 + d2);
     PMLxoutSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
@@ -933,6 +1264,12 @@ if usePML
                          readSel(model, P.geomname, 'PMLyoutSel')];
     P.bndSel.beamXend = P.bndSel.PMLcurv;
 else
+    % No-PML termination: clamp the shield's TRUNCATED faces only. x = xS1 and
+    % y = yS1 are where the lattice was cut short and the PML would otherwise
+    % sit, so a Fixed constraint there is the right stand-in. The full-y build's
+    % y = yS0 face is deliberately NOT in this list: it is a real free edge of
+    % the one-sided device, not a truncation, and clamping it would stiffen the
+    % structure the simulation is supposed to be measuring.
     P.bndSel.beamXend = [P.bndSel.shieldXend, P.bndSel.shieldYend];
 end
 
@@ -956,10 +1293,13 @@ end
 % check is one-directional (extra defaults are fine), which is what lets the
 % shield's own outer faces keep the default PEC.
 if useOpt
-    % x = 0: beam cross-section plus the air's half-disc face.
+    % x = 0: beam cross-section plus the air's quarter-disc (half-y) or
+    % half-disc (full-y) face. ymin = yCylLo - d2 is 0 - d2 in half-y and
+    % -airrad - d2 in full-y, where the air's x = 0 face spans the whole
+    % diameter and the beam cross-section spans y in [-wid/2, +wid/2].
     cylXsymSel = beamgeom.create('cylXsymSel', 'BoxSelection');
     cylXsymSel.set('xmin', -d2).set('xmax', d2);
-    cylXsymSel.set('ymin', -d2).set('ymax', airrad + d2);
+    cylXsymSel.set('ymin', yCylLo - d2).set('ymax', airrad + d2);
     cylXsymSel.set('zmin', zLoCyl - d2).set('zmax', airrad + d2);
     cylXsymSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
@@ -971,13 +1311,22 @@ if useOpt
     % the full device, so in the half model its y = 0 cut is an exterior face
     % on the mirror plane). xS1 rather than xP1 keeps the PML out: the PML
     % domains are not in the emw selection.
-    cylYsymSel = beamgeom.create('cylYsymSel', 'BoxSelection');
-    cylYsymSel.set('xmin', -d2).set('xmax', xS1 + d2);
-    cylYsymSel.set('ymin', -d2).set('ymax', d2);
-    cylYsymSel.set('zmin', zLoCyl - d2).set('zmax', airrad + d2);
-    cylYsymSel.set('entitydim', 2).set('condition', 'allvertices');
-    beamgeom.runCurrent;
-    P.bndSel.cylYsym = readSel(model, P.geomname, 'cylYsymSel');
+    %
+    % Not emitted in the full-y build - see the note at structYsymSel. The
+    % full-y model has no y = 0 plane, P.oeveny is required to be 0 there, and
+    % SetupNanobeamFEM only reads cylYsym from inside the oeveny == +/-1
+    % branches (:370-373, :412-415). The +/-y sides of the emw region are the
+    % air cylinder's curved surface, which already carries the Scattering BC via
+    % P.bndSel.cylCurv.
+    if ~fullY
+        cylYsymSel = beamgeom.create('cylYsymSel', 'BoxSelection');
+        cylYsymSel.set('xmin', -d2).set('xmax', xS1 + d2);
+        cylYsymSel.set('ymin', -d2).set('ymax', d2);
+        cylYsymSel.set('zmin', zLoCyl - d2).set('zmax', airrad + d2);
+        cylYsymSel.set('entitydim', 2).set('condition', 'allvertices');
+        beamgeom.runCurrent;
+        P.bndSel.cylYsym = readSel(model, P.geomname, 'cylYsymSel');
+    end
 
     % z = 0: exactly structZsymSel, i.e. solid AND air faces. Built above
     % inside the symZOn branch, so reuse it rather than emitting a duplicate
@@ -1002,14 +1351,14 @@ if useOpt
     % back to the defaults. Not replicated: both boxes below set all six.
     cylXendAllSel = beamgeom.create('cylXendAllSel', 'BoxSelection');
     cylXendAllSel.set('xmin', xC1 - d2).set('xmax', xC1 + d2);
-    cylXendAllSel.set('ymin', -d2).set('ymax', airrad + d2);
+    cylXendAllSel.set('ymin', yCylLo - d2).set('ymax', airrad + d2);
     cylXendAllSel.set('zmin', zLoCyl - d2).set('zmax', airrad + d2);
     cylXendAllSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
 
     cylXendBeamSel = beamgeom.create('cylXendBeamSel', 'BoxSelection');
     cylXendBeamSel.set('xmin', xC1 - d2).set('xmax', xC1 + d2);
-    cylXendBeamSel.set('ymin', -d2).set('ymax', wid/2 + d2);
+    cylXendBeamSel.set('ymin', ySolidLo - d2).set('ymax', wid/2 + d2);
     cylXendBeamSel.set('zmin', zLoEff - d2).set('zmax', thi/2 + d2);
     cylXendBeamSel.set('entitydim', 2).set('condition', 'allvertices');
     beamgeom.runCurrent;
@@ -1041,13 +1390,38 @@ if useOpt
     % the cylinder whether or not the z < 0 half has been cut away, so the same
     % probe works for both symZOn cases. The non-rect second probe
     % (cylCurv2Sel) is not ported - v1 is rect only.
+    %
+    % THE FULL-Y BUILD NEEDS A SECOND PROBE AT -y. One 45 degree probe finds
+    % whichever FACE contains that point, and a 360 degree Revolve is free to
+    % represent the lateral surface as two faces split at the y = 0 meridian
+    % rather than as one. In the half-y build there is only ever one lateral
+    % face over y >= 0, so one probe sufficed; here a single +y probe could
+    % silently leave the entire y < 0 half of the outer surface with the EM
+    % interface's default PEC - a perfect mirror on the side of the cavity,
+    % which inflates the optical Q without any warning. Probing both meridians
+    % and unique-ing costs one selection feature and is exact whether COMSOL
+    % emits one face or two.
     cylCurvSel = beamgeom.create('cylCurvSel', 'BoxSelection');
     cylCurvSel.set('xmin', d2).set('xmax', 2*d2);
     cylCurvSel.set('ymin', airrad/sqrt(2) - 10*d2).set('ymax', airrad/sqrt(2) + 10*d2);
     cylCurvSel.set('zmin', airrad/sqrt(2) - 10*d2).set('zmax', airrad/sqrt(2) + 10*d2);
     cylCurvSel.set('entitydim', 2).set('condition', 'intersects');
     beamgeom.runCurrent;
-    P.bndSel.cylCurv = readSel(model, P.geomname, 'cylCurvSel');
+    if fullY
+        cylCurvNegSel = beamgeom.create('cylCurvNegSel', 'BoxSelection');
+        cylCurvNegSel.set('xmin', d2).set('xmax', 2*d2);
+        cylCurvNegSel.set('ymin', -airrad/sqrt(2) - 10*d2).set('ymax', -airrad/sqrt(2) + 10*d2);
+        cylCurvNegSel.set('zmin', airrad/sqrt(2) - 10*d2).set('zmax', airrad/sqrt(2) + 10*d2);
+        cylCurvNegSel.set('entitydim', 2).set('condition', 'intersects');
+        beamgeom.runCurrent;
+        P.bndSel.cylCurv = unique([readSel(model, P.geomname, 'cylCurvSel'), ...
+                                   readSel(model, P.geomname, 'cylCurvNegSel')]);
+        disp(['Air cylinder curved surface: ', ...
+              num2str(numel(P.bndSel.cylCurv)), ' face(s) from the +y and -y ', ...
+              '45 degree probes']);
+    else
+        P.bndSel.cylCurv = readSel(model, P.geomname, 'cylCurvSel');
+    end
 end
 
 %% Audit every emitted selection
@@ -1056,7 +1430,10 @@ end
 assertNonEmptySel('P.domSel.beam',   P.domSel.beam);
 assertNonEmptySel('P.domSel.shield', P.domSel.shield);
 assertNonEmptySel('P.bndSel.beamXsym', P.bndSel.beamXsym);
-assertNonEmptySel('P.bndSel.beamYsym', P.bndSel.beamYsym);
+if ~fullY
+    % Only promised - and only consumed - when y = 0 is a mirror plane.
+    assertNonEmptySel('P.bndSel.beamYsym', P.bndSel.beamYsym);
+end
 assertNonEmptySel('P.bndSel.beamXend', P.bndSel.beamXend);
 assertNonEmptySel('P.bndSel.shieldXend', P.bndSel.shieldXend);
 assertNonEmptySel('P.bndSel.shieldYend', P.bndSel.shieldYend);
@@ -1071,7 +1448,9 @@ if useOpt
     % comes out meaninglessly high.
     assertNonEmptySel('P.domSel.cyl',     P.domSel.cyl);
     assertNonEmptySel('P.bndSel.cylXsym', P.bndSel.cylXsym);
-    assertNonEmptySel('P.bndSel.cylYsym', P.bndSel.cylYsym);
+    if ~fullY
+        assertNonEmptySel('P.bndSel.cylYsym', P.bndSel.cylYsym);
+    end
     assertNonEmptySel('P.bndSel.cylXend', P.bndSel.cylXend);
     assertNonEmptySel('P.bndSel.cylCurv', P.bndSel.cylCurv);
     if symZOn
@@ -1091,13 +1470,21 @@ if useOpt
         end
         nAirZ0 = numel(P.bndSel.cylZsym) - numel(P.bndSel.beamZsym);
         if nAirZ0 <= 0
+            % The half-y wording is left exactly as it was, so that a half-y
+            % run's console output is unchanged down to the string.
+            if fullY
+                outerStr = ['the outer half-disc region, which in full-y is ' ...
+                            'TWO strips (+y and -y), '];
+            else
+                outerStr = 'the outer quarter-disc region ';
+            end
             warning('BuildNanobeamCrossShieldFEM:noAirZsymRemoved', ...
                 ['The z = 0 air-face difference removed %d boundaries. The ' ...
-                 'air cylinder must have z = 0 faces (the outer quarter-disc ' ...
-                 'region plus one per enclosed hole), so 0 means the y ' ...
+                 'air cylinder must have z = 0 faces (%splus one per ' ...
+                 'enclosed hole), so 0 means the y ' ...
                  'discrimination in airZ0OutSel/airZ0HoleSel missed them and ' ...
                  'the Solid Mechanics symmetry BC is about to be hung on air.'], ...
-                nAirZ0);
+                nAirZ0, outerStr);
         else
             disp(['z = 0 plane: ', num2str(numel(P.bndSel.cylZsym)), ...
                   ' faces total, ', num2str(nAirZ0), ' air (optical only), ', ...
@@ -1123,7 +1510,9 @@ if useOpt
 end
 if usePML
     assertNonEmptySel('P.domSel.PML',      P.domSel.PML);
-    assertNonEmptySel('P.bndSel.PMLYsym',  P.bndSel.PMLYsym);
+    if ~fullY
+        assertNonEmptySel('P.bndSel.PMLYsym',  P.bndSel.PMLYsym);
+    end
     assertNonEmptySel('P.bndSel.PMLcurv',  P.bndSel.PMLcurv);
     if symZOn
         assertNonEmptySel('P.bndSel.PMLZsym', P.bndSel.PMLZsym);
@@ -1196,13 +1585,23 @@ if ~P.solveMech
     error('BuildNanobeamCrossShieldFEM:solveMechRequired', ...
         'P.solveMech = 1 is required - this builder exists to get a mechanical Q.');
 end
-if abs(P.meveny) ~= 1
+% P.meveny selects between TWO build paths, both supported:
+%   abs(P.meveny) == 1   half-y. y = 0 is a mirror plane, P.nShieldY is a
+%                        half-model count, the device has 2*P.nShieldY rows.
+%   P.meveny == 0        full-y. No y = 0 plane. The shield bottom is FLUSH
+%                        with the beam bottom at y = -P.w/2 and P.nShieldY
+%                        cells run upward from there, so P.nShieldY is the
+%                        absolute count and the shield is ONE SIDED.
+% Any other value is a typo, not a third convention.
+if ~any(abs(P.meveny) == [0 1])
     error('BuildNanobeamCrossShieldFEM:menevyRequired', ...
-        ['abs(P.meveny) must be 1. There is no full-y build path in this ' ...
-         'pipeline, and with meveny = 0 SetupNanobeamFEM puts the y = 0 face ' ...
-         'in neither the symmetric nor the antisymmetric list, leaving a ' ...
-         'half beam with a FREE mid-plane - a different structure.']);
+        ['abs(P.meveny) = %g is not 0 or 1. Use +/-1 for the half-y build ' ...
+         '(y = 0 mirror plane, P.nShieldY counted in the simulated half) or 0 ' ...
+         'for the full-y build (no mirror plane, shield bottom flush with the ' ...
+         'beam at y = -P.w/2, P.nShieldY the absolute row count).'], ...
+        abs(P.meveny));
 end
+fullY = abs(P.meveny) < 1;
 
 % --- optional fields ----------------------------------------------------
 if ~isfield(P,'shieldPadLen'),     P.shieldPadLen     = 0;       end
@@ -1241,13 +1640,27 @@ if isfield(P,'solveMechPML') && P.solveMechPML
     validateattributes(P.PMLLenY, {'numeric'}, {'scalar','real','finite','positive'}, mfilename, 'P.PMLLenY');
 end
 
-% The shield must be at least as tall as the half beam, or the beam end face
-% hangs over the top of the shield and the union is nonsense.
-if P.nShieldY*P.aShield < P.w/2
+% The shield must be at least as tall as the beam it terminates, or the beam
+% end face hangs over the top of the shield and the union is nonsense.
+%
+% The threshold differs between the two builds because the beam does too. In
+% half-y the shield spans y in [0, ny*a] against a half beam of w/2. In full-y
+% it spans y in [-w/2, -w/2 + ny*a] against a beam of the FULL width w, and
+% because the bottoms are flush the whole of the beam width has to fit inside
+% ny*a - twice as demanding a test.
+if fullY
+    shieldNeed = P.w;
+    needStr    = 'the full beam width';
+else
+    shieldNeed = P.w/2;
+    needStr    = 'the half beam width';
+end
+if P.nShieldY*P.aShield < shieldNeed
     error('BuildNanobeamCrossShieldFEM:shieldNarrowerThanBeam', ...
-        ['The shield reaches y = %.1f nm but the half beam is %.1f nm wide. ' ...
-         'Increase P.nShieldY or P.aShield.'], ...
-        P.nShieldY*P.aShield*1e9, P.w/2*1e9);
+        ['The shield is P.nShieldY*P.aShield = %.1f nm tall but %s is ' ...
+         '%.1f nm, so the beam end face hangs over the shield. Increase ' ...
+         'P.nShieldY or P.aShield.'], ...
+        P.nShieldY*P.aShield*1e9, needStr, shieldNeed*1e9);
 end
 
 % --- optical fields ------------------------------------------------------
@@ -1308,6 +1721,34 @@ if isfield(P,'solveOpt') && P.solveOpt
             P.oevenz, P.mevenz);
     end
 
+    % Same argument, one axis over. There is ONE y situation in the geometry:
+    % either y = 0 is a mirror plane (half-y: the beam rectangle starts at
+    % y = 0, the shield starts at y = 0, and P.bndSel.beamYsym / cylYsym exist)
+    % or it is not (full-y: the beam spans [-w/2, +w/2], the shield bottom is
+    % flush at y = -w/2, and neither selection is emitted). Both physics have to
+    % agree about which, because the geometry can only be one of them:
+    %   * P.meveny = 0 with abs(P.oeveny) = 1 asks for an optical PMC/PEC on a
+    %     plane that does not exist, and SetupNanobeamFEM.m:372/:414 would index
+    %     P.bndSel.cylYsym - a field the full-y builder does not set - and throw
+    %     an unreference-field error in the middle of the physics setup.
+    %   * abs(P.meveny) = 1 with P.oeveny = 0 is the quieter failure: the half
+    %     model IS built, the mechanics gets its y = 0 symmetry BC, and the
+    %     optics gets no y BC at all - so the air's y = 0 face silently falls
+    %     back to the EM interface's default PEC. That is a hard mirror on the
+    %     beam's mid-plane, which forces an odd mode whatever P.oeveny said.
+    % Both are reported here rather than downstream, and only when optics is on.
+    if (abs(P.oeveny) > 0) ~= (abs(P.meveny) > 0)
+        error('BuildNanobeamCrossShieldFEM:evenyMismatch', ...
+            ['P.oeveny = %g and P.meveny = %g disagree about whether y = 0 is ' ...
+             'a mirror plane. There is one y geometry shared by both physics, ' ...
+             'so either both must be +/-1 (half-y model, shield counted in the ' ...
+             'simulated half) or both must be 0 (full-y model, shield bottom ' ...
+             'flush with the beam at y = -w/2). As written, one physics would ' ...
+             'get a symmetry BC on a selection that does not exist - or none ' ...
+             'at all, and silently inherit the default PEC.'], ...
+            P.oeveny, P.meveny);
+    end
+
     % The air's z = 0 faces are separated from the solid ones by y alone (see
     % the airZ0OutSel/airZ0HoleSel comment). That only works while the holes
     % stay clear of the beam side wall, which is also the condition for the
@@ -1326,12 +1767,19 @@ end
 
 % -------------------------------------------------------------------------
 
-function shieldTag = addCrossShield(beamgeom, P, xEdge, sgn, thi)
+function shieldTag = addCrossShield(beamgeom, P, xEdge, sgn, thi, yBase)
 %ADDCROSSSHIELD Build one 2D cross-cell shield slab and return its 3D tag.
 %
 %   xEdge  x coordinate of the beam end this shield attaches to [m]
 %   sgn    +1 to grow towards +x, -1 to mirror towards -x (asymCav, not wired
 %          up in v1 - the argument exists so that adding it is a sign flip)
+%   yBase  y coordinate of the shield's BOTTOM edge [m]. 0 in the half-y model,
+%          where y = 0 is a mirror plane; -P.w/2 in the full-y model, where the
+%          shield bottom is flush with the beam's own -y face. Cells always run
+%          upward from yBase, so the void centres are at
+%          yBase + (j - 1/2)*aShield and the footprint is yBase + [0, ny*a].
+%          Passing it in rather than recomputing it here keeps the footprint and
+%          the caller's selection boxes from drifting apart.
 %
 % The slab is one rectangle spanning the clamp pad AND the cells; the pad is
 % simply extra length at the attached end, with no cross voids in it, so no
@@ -1362,14 +1810,14 @@ rBase = wpGeom.feature.create(baseTag, 'Rectangle');
 rBase.label('Shield footprint');
 rBase.set('type', 'solid').set('base', 'corner');
 if sgn > 0
-    rBase.set('pos', [xEdge 0]);
+    rBase.set('pos', [xEdge yBase]);
 else
-    rBase.set('pos', [xEdge - baseLen, 0]);
+    rBase.set('pos', [xEdge - baseLen, yBase]);
 end
 rBase.set('size', [baseLen, ny*as]);
 
-xcentres = xS0 + sgn*(((1:nx) - 0.5)*as);
-ycentres =           ((1:ny) - 0.5)*as;
+xcentres = xS0   + sgn*(((1:nx) - 0.5)*as);
+ycentres = yBase +      ((1:ny) - 0.5)*as;
 
 subTags = addCrossVoidArray(wpGeom, sfx, xcentres, ycentres, hs, ws);
 
@@ -1446,8 +1894,8 @@ end
 
 % -------------------------------------------------------------------------
 
-function assertCylClears(P, xC1, airrad, zLoCyl, xB1, xS0, xS1, yS1, ...
-                         xP1, yP1, zLoEff, thi, usePML)
+function assertCylClears(P, xC1, airrad, zLoCyl, yCylLo, xB1, xS0, xS1, ...
+                         yS0, yS1, xP1, yP1, zLoEff, thi, usePML, fullY)
 %ASSERTCYLCLEARS Hard error if the air cylinder envelope touches shield or PML.
 %
 % This is the replacement for the blanket "P.solveOpt is not supported" guard,
@@ -1461,12 +1909,15 @@ function assertCylClears(P, xC1, airrad, zLoCyl, xB1, xS0, xS1, yS1, ...
 % and z extents genuinely DO overlap and x is the only thing keeping the
 % cylinder out of the shield - a reader needs to see which term saved them.
 
-cylBox = [0, xC1; 0, airrad; zLoCyl, airrad];
+% yCylLo is 0 in the half-y build (the Revolve stops at y = 0) and -airrad in
+% full-y (a 360 degree Revolve), and yS0 is 0 or -w/2 on the same switch. The
+% test itself is unchanged; only the boxes move.
+cylBox = [0, xC1; yCylLo, airrad; zLoCyl, airrad];
 
-boxes = {'cross shield', [xS0, xS1; 0, yS1; zLoEff, thi/2]};
+boxes = {'cross shield', [xS0, xS1; yS0, yS1; zLoEff, thi/2]};
 if usePML
     boxes = [boxes, { ...
-        'PML +x arm',  [xS1, xP1; 0,   yS1; zLoEff, thi/2], ...
+        'PML +x arm',  [xS1, xP1; yS0, yS1; zLoEff, thi/2], ...
         'PML +y arm',  [xB1, xS1; yS1, yP1; zLoEff, thi/2], ...
         'PML corner',  [xS1, xP1; yS1, yP1; zLoEff, thi/2]}];
 end
@@ -1517,13 +1968,26 @@ end
 % production shield, because it means the air is wider than the device.
 if airrad > yS1
     warning('BuildNanobeamCrossShieldFEM:airCylTallerThanShield', ...
-        ['P.airrad = %.1f nm exceeds the shield height yS1 = ' ...
-         'P.nShieldY*P.aShield = %.1f nm. The geometry is still valid - the ' ...
-         'cylinder and the shield are separated in x - but the air now ' ...
-         'extends in y past the whole shield/PML frame, so nothing is meshed ' ...
-         'alongside the frame''s inboard flank for x < P.airCylLen. Expected ' ...
-         'if you have shrunk P.nShieldY for a bring-up run.'], ...
+        ['P.airrad = %.1f nm exceeds the shield top edge yS1 = %.1f nm. The ' ...
+         'geometry is still valid - the cylinder and the shield are separated ' ...
+         'in x - but the air now extends in y past the whole shield/PML frame, ' ...
+         'so nothing is meshed alongside the frame''s inboard flank for ' ...
+         'x < P.airCylLen. Expected if you have shrunk P.nShieldY for a ' ...
+         'bring-up run.'], ...
         airrad*1e9, yS1*1e9);
+end
+
+% The -y side is NOT checked the same way, on purpose. In the full-y build the
+% air always hangs below the shield bottom, because airrad = 2*lambda + w/2 is
+% by construction larger than w/2 = -yS0, so a symmetric version of the warning
+% above would fire on every single run and say nothing. The air reaching into
+% the bare vacuum below the device is expected and harmless: there is no
+% material there to be shielded from it. Report it once, as a number.
+if fullY
+    disp(['Air cylinder -y reach: y = ', num2str(yCylLo*1e9,'%.1f'), ...
+          ' nm, i.e. ', num2str((yS0 - yCylLo)*1e9,'%.1f'), ...
+          ' nm below the flush shield/beam bottom at y = ', ...
+          num2str(yS0*1e9,'%.1f'), ' nm (bare vacuum, nothing to overlap)']);
 end
 
 % Cutting a hole is not fatal but it breaks the cylXend difference: the air
@@ -1601,13 +2065,15 @@ end
 
 % -------------------------------------------------------------------------
 
-function auditCrossShield(P, wid, thi, usePML, useOpt)
+function auditCrossShield(P, wid, thi, usePML, useOpt, fullY, yS0)
 %AUDITCROSSSHIELD Pure-MATLAB, warn-only checks run before anything is built.
 %
 % Nothing here changes the geometry. The point is that every compromise in this
 % design is numeric and knowable in advance, so none of them should be silent.
 %
-% useOpt gates the optical block at the end; the checks above it are unchanged.
+% useOpt gates the optical block at the end; fullY switches the clamp-overlap
+% arithmetic between the mirror-plane and the flush-bottom phasings. Neither
+% gate changes any check that does not mention them.
 
 as = P.aShield;
 hs = P.hShield;
@@ -1636,17 +2102,91 @@ else
 end
 
 % --- how the beam actually lands on the shield --------------------------
+% WHAT THE BEAM END FACE SEES, AND WHY THE TWO BUILDS NEED DIFFERENT ARITHMETIC
+%
+% At x = xS0 + eps the cross void of cell (1,j) has only its HORIZONTAL bar in
+% play: that bar is hs long in x and ws wide in y, so it reaches back to
+% x = xS0 + (as - hs)/2 = xS0 + finThk and occupies
+% y in [ycentre(j) - ws/2, ycentre(j) + ws/2]. Inside that y band the only
+% material behind the beam end face is the finThk-thick strip between x = xS0
+% and the start of the void - a free-standing fin. Outside it the face lands on
+% a node, which runs finThk + ... deep into the shield and is the real clamp.
+% (The VERTICAL bar, ws wide in x and hs long in y, starts a further
+% (as - ws)/2 back and does not touch the end face.)
+%
+% HALF-Y: the cell corners are at y = 0, +/-as, ... and y = 0 is a mirror, so
+%   the beam axis sits on the CENTRE of a node row. The node covers
+%   |y| <= nodeHalf and everything beyond it, out to the beam half width, is
+%   fin - one band, and the old (wid/2 - nodeHalf)/(wid/2) is exact.
+%
+% FULL-Y: the cell corners are at yS0 = -wid/2, yS0 + as, ... The lattice
+%   PHASING is the same (both builds cut on a cell-corner line) but the beam is
+%   no longer centred on a node row: it now spans yS0 to yS0 + wid, so the fin
+%   bands fall wherever they fall and the mirror-plane formula is simply the
+%   wrong shape. Measure the overlap instead.
 if P.shieldPadLen <= 0
-    if nodeHalf < wid/2
-        fracOnFin = (wid/2 - nodeHalf)/(wid/2);
-        warning('BuildNanobeamCrossShieldFEM:beamOverhangsNode', ...
-            ['P.shieldPadLen = 0 and the node is narrower than the beam: ' ...
-             'node half-width (a-w)/2 = %.1f nm vs beam half-width %.1f nm. ' ...
-             '%.0f%% of the beam end half-face lands on the %.1f nm ' ...
-             'half-wall fin instead of on solid material. Set ' ...
-             'P.shieldPadLen > 0 (about a/2) for a proper clamp, or choose ' ...
-             'a - w >= %.1f nm.'], ...
-            nodeHalf*1e9, wid/2*1e9, 100*fracOnFin, finThk*1e9, wid*1e9);
+    if fullY
+        % Sum the overlap of every cell's fin band with the beam end face.
+        % Only the first one or two bands can reach for as > wid, but loop over
+        % all of them so the number stays right if P.aShield shrinks.
+        yFaceLo = yS0;
+        yFaceHi = yS0 + wid;
+        finLen  = 0;
+        for j = 1:P.nShieldY
+            yc    = yS0 + (j - 0.5)*as;
+            bandLo = max(yFaceLo, yc - ws/2);
+            bandHi = min(yFaceHi, yc + ws/2);
+            finLen = finLen + max(0, bandHi - bandLo);
+        end
+        if finLen > 0
+            warning('BuildNanobeamCrossShieldFEM:beamOverhangsNode', ...
+                ['P.shieldPadLen = 0 in the FULL-y build: the beam end face ' ...
+                 'spans y in [%.1f, %.1f] nm and %.1f nm of that - %.2f%% - ' ...
+                 'lands on a %.1f nm free-standing wall fin ((a-h)/2) instead ' ...
+                 'of on a node. The flush bottom is what costs this: the beam ' ...
+                 'axis now sits %.1f nm above the bottom cell-corner line, ' ...
+                 'close to the middle of the first cell, so the cross void''s ' ...
+                 '%.1f nm wide horizontal bar (w_shield) crosses the face ' ...
+                 'almost centrally. The half-y build put the beam axis on a ' ...
+                 'node CENTRE instead and got %.2f%% on fin for the same ' ...
+                 'cell. Set P.shieldPadLen > 0 (about a/2 = %.1f nm) for a ' ...
+                 'proper clamp; this function does NOT change the geometry.'], ...
+                yFaceLo*1e9, yFaceHi*1e9, finLen*1e9, 100*finLen/wid, ...
+                finThk*1e9, (0 - yS0)*1e9, ws*1e9, ...
+                100*max(0, wid/2 - nodeHalf)/(wid/2), as/2*1e9);
+        end
+
+        % New in full-y, and not a variant of anything above: the bottom edge
+        % of the shield is now a FREE surface cut along a cell-corner line, so
+        % it bisects the bottom node row AND the bottom row of x-running
+        % ligaments. In the half-y build that same line was the mirror plane,
+        % so the material continued through it and the full-width ligaments
+        % existed physically.
+        warning('BuildNanobeamCrossShieldFEM:flushBottomHalvedRow', ...
+            ['The flush bottom at y = %.1f nm cuts the lattice on a ' ...
+             'cell-corner line, so the bottom row is HALVED: %d node columns ' ...
+             'of depth (a-w)/2 = %.1f nm instead of a-w = %.1f nm, joined by ' ...
+             '%d x-running ligaments of HALF thickness (a-h)/2 = %.1f nm ' ...
+             'instead of a-h = %.1f nm. Those half-ligaments are free on one ' ...
+             'side, sit directly alongside the beam clamp, and are the ' ...
+             'softest part of the shield; expect edge-localised modes running ' ...
+             'along y = %.1f nm towards the +x PML. This is inherent to a ' ...
+             'one-sided shield flush with the beam - P.shieldPadLen does not ' ...
+             'fix it, only a different y phasing or a two-sided shield would.'], ...
+            yS0*1e9, P.nShieldX + 1, nodeHalf*1e9, (as - ws)*1e9, ...
+            P.nShieldX, finThk*1e9, wall*1e9, yS0*1e9);
+    else
+        if nodeHalf < wid/2
+            fracOnFin = (wid/2 - nodeHalf)/(wid/2);
+            warning('BuildNanobeamCrossShieldFEM:beamOverhangsNode', ...
+                ['P.shieldPadLen = 0 and the node is narrower than the beam: ' ...
+                 'node half-width (a-w)/2 = %.1f nm vs beam half-width %.1f nm. ' ...
+                 '%.0f%% of the beam end half-face lands on the %.1f nm ' ...
+                 'half-wall fin instead of on solid material. Set ' ...
+                 'P.shieldPadLen > 0 (about a/2) for a proper clamp, or choose ' ...
+                 'a - w >= %.1f nm.'], ...
+                nodeHalf*1e9, wid/2*1e9, 100*fracOnFin, finThk*1e9, wid*1e9);
+        end
     end
     warning('BuildNanobeamCrossShieldFEM:freeEdgeFins', ...
         ['P.shieldPadLen = 0 leaves the shield''s x = xS0 edge cut through ' ...
@@ -1809,18 +2349,33 @@ if useOpt
     % emw on P.domSel.beam + P.domSel.cyl and smech on P.domSel.beam +
     % P.domSel.PML, so the air never contributes a mechanical DOF and the PML
     % never contributes an optical one. They only share the mesh.
+    % Two independent halvings, so they need two independent factors: zFrac for
+    % the z = 0 cut (abs(P.mevenz) > 0) and yFrac for the y = 0 mirror
+    % (~fullY). The reference code folded yFrac into the literal /2 on the air
+    % volume, which is right for the half-y build and a factor of two low for
+    % full-y. Both together: eighth model = 0.5*0.5, quarter = one of them, and
+    % in full-y with no z cut the air is a whole cylinder.
     if abs(P.mevenz) > 0
-        zFrac = 0.5;        % eighth model: air is a quarter cylinder
+        zFrac = 0.5;        % z = 0 cut made
     else
-        zFrac = 1.0;        % quarter model: air is a half cylinder
+        zFrac = 1.0;
+    end
+    if fullY
+        yFrac = 1.0;        % air spans all y
+    else
+        yFrac = 0.5;        % air stops at the y = 0 mirror
     end
     hOpt   = lam/5;                                  % SolveNanobeamFEM.m:131
-    vAir   = zFrac*pi*ac.rad^2/2 * ac.len;
+    vAir   = zFrac*yFrac*pi*ac.rad^2 * ac.len;
     nTetO  = vAir/(hOpt^3/6);
     dofO   = 20*nTetO;                               % 2nd order curl elements
 
     if usePML
-        vPML = (P.PMLLen*P.shield.yS1 + ...
+        % The +x arm spans yS0 to yS1, which is ny*aShield tall in BOTH builds
+        % (full-y just shifts it down by w/2), so this term is fullY-invariant -
+        % but write it as the difference rather than as yS1 alone, or full-y
+        % silently understates it by w/2 * PMLLen * thi.
+        vPML = (P.PMLLen*(P.shield.yS1 - yS0) + ...
                 (P.shield.xS1 - P.shield.xB1)*P.PMLLenY + ...
                 P.PMLLen*P.PMLLenY) * thi*zFrac;
         if isfield(P,'PMLmeshDiv') && ~isempty(P.PMLmeshDiv) && P.PMLmeshDiv > 0
