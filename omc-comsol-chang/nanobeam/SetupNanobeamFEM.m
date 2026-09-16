@@ -301,14 +301,32 @@ if isfield(P,'solveMechPML') && P.solveMechPML
     end
 
     if strcmp(PMLScalingType,'userDefined')
+        % FREQUENCY DEPENDENT stretching, keyed to the target frequency
+        % P.freq. This is the default and reproduces the original node
+        % exactly: c11 (longitudinal) unless P.PMLWaveSpeed overrides it.
         pml.set('ScalingType', 'userDefined');
         pml.set('directions', '2');
         pml.setIndex('dmax', '1[mm]', 0);
         pml.setIndex('dmax', '1[mm]', 1);
         pml.set('wavelengthSourceType', 'userDefined');
-        v_long = sqrt(P.D(1) / P.rho);
-        lambda_mech = v_long / P.freq;
+        if isfield(P,'PMLWaveSpeed') && ~isempty(P.PMLWaveSpeed)
+            v_ref = P.PMLWaveSpeed;
+        else
+            v_ref = sqrt(P.D(1) / P.rho);   % c11, longitudinal (legacy)
+        end
+        lambda_mech = v_ref / P.freq;
         pml.set('typicalWavelength', [num2str(lambda_mech), '[m]']);
+        disp(['PML: frequency dependent, f = ', ...
+              num2str(P.freq*1e-9,'%.2f'),' GHz, v = ', ...
+              num2str(v_ref,'%.0f'),' m/s, lambda = ', ...
+              num2str(lambda_mech*1e6,'%.2f'),' um']);
+        if isfield(P,'PMLLen') && P.PMLLen < 0.5*lambda_mech
+            warning('SetupNanobeamFEM:PMLthin', ...
+                ['P.PMLLen = %.2f um is under half the reference wavelength ' ...
+                 '(%.2f um). A PML this thin reflects; check Q against a ' ...
+                 'PMLLen sweep before believing it.'], ...
+                P.PMLLen*1e6, lambda_mech*1e6);
+        end
     else
         % 'rational' stretching is wavelength independent, which is what an
         % eigenfrequency study wants: the wavelength is the unknown. The

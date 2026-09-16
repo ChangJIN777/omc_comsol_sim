@@ -142,9 +142,16 @@ P.zSlc = 0;
 P.PMLLen  = 2e-6;                       % +x frame thickness
 P.PMLLenY = 2e-6;                       % +y frame thickness
 P.PMLmeshDiv = 8;                       % elements across the absorbing direction
-P.PMLScalingType = 'rational';          % wavelength independent - right for an
-                                        % eigenfrequency study. 'userDefined'
-                                        % reproduces the legacy PML node.
+P.PMLScalingType = 'userDefined';       % FREQUENCY DEPENDENT: the PML stretch
+                                        % is keyed to P.freq via
+                                        % typicalWavelength = v/P.freq.
+                                        % Set 'rational' for a wavelength
+                                        % independent cross-check in S6.
+% Reference speed for typicalWavelength. Unset = c11 (longitudinal, 17.5 km/s,
+% lambda = 2.50 um at 7 GHz), which is the legacy choice. Uncomment for the
+% shear branch (12.85 km/s, 1.84 um), which is what actually carries radiation
+% out of a thin suspended slab.
+% P.PMLWaveSpeed = sqrt(P.D(10)/P.rho);
 
 %% simulation settings
 P.max_dof = 5e6;
@@ -187,21 +194,21 @@ datLoc = [fullfile('.','test','1D_OMC_crossShield',currentDate),filesep];
 % S8  independent bandgap check via buildCrossUnitCell + runBands at th = P.th.
 %
 %% test the model building function (geometry only - no solve)
-import com.comsol.model.*
-import com.comsol.model.util.*
-
-ModelUtil.showProgress(true);
-ModelUtil.clear();
-clear ds model
-ds = []; model = [];
-
-model = ModelUtil.create('model');
-P = LoadMaterialParams(P);
-P = CreateNanobeamGeom(P);
-[model,P] = BuildNanobeamCrossShieldFEM(model,P);
-
-disp('--- domain selections ---'); disp(P.domSel);
-disp('--- boundary selections ---'); disp(P.bndSel);
-disp('--- shield extents (m) ---'); disp(P.shield);
-
-mphlaunch(model);
+% import com.comsol.model.*
+% import com.comsol.model.util.*
+%
+% ModelUtil.showProgress(true);
+% ModelUtil.clear();
+% clear ds model
+% ds = []; model = [];
+%
+% model = ModelUtil.create('model');
+% P = LoadMaterialParams(P);
+% P = CreateNanobeamGeom(P);
+% [model,P] = BuildNanobeamCrossShieldFEM(model,P);
+%
+% disp('--- domain selections ---'); disp(P.domSel);
+% disp('--- boundary selections ---'); disp(P.bndSel);
+% disp('--- shield extents (m) ---'); disp(P.shield);
+%
+% mphlaunch(model);
