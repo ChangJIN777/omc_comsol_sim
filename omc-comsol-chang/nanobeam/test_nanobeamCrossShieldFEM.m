@@ -81,8 +81,8 @@ P.wShield =  800e-9;                    % cross arm width
 % Tight-pitch alternative - expect the beamOverhangsNode warning:
 % P.aShield = 900e-9;  P.hShield = 800e-9;  P.wShield = 400e-9;
 
-P.nShieldX = 3;                         % cells along x
-P.nShieldY = 2;                         % cells along y IN THE SIMULATED HALF
+P.nShieldX = 6;                         % cells along x
+P.nShieldY = 5;                         % cells along y IN THE SIMULATED HALF
                                         % -> 4 physical rows; y = 0 bisects a
                                         %    row of nodes. Filename records
                                         %    both as nsyH2_nsyP4.
@@ -187,21 +187,21 @@ datLoc = [fullfile('.','test','1D_OMC_crossShield',currentDate),filesep];
 % S8  independent bandgap check via buildCrossUnitCell + runBands at th = P.th.
 %
 %% test the model building function (geometry only - no solve)
-% import com.comsol.model.*
-% import com.comsol.model.util.*
-%
-% ModelUtil.showProgress(true);
-% ModelUtil.clear();
-% clear ds model
-% ds = []; model = [];
-%
-% model = ModelUtil.create('model');
-% P = LoadMaterialParams(P);
-% P = CreateNanobeamGeom(P);
-% [model,P] = BuildNanobeamCrossShieldFEM(model,P);
-%
-% disp('--- domain selections ---'); disp(P.domSel);
-% disp('--- boundary selections ---'); disp(P.bndSel);
-% disp('--- shield extents (m) ---'); disp(P.shield);
-%
-% mphlaunch(model);
+import com.comsol.model.*
+import com.comsol.model.util.*
+
+ModelUtil.showProgress(true);
+ModelUtil.clear();
+clear ds model
+ds = []; model = [];
+
+model = ModelUtil.create('model');
+P = LoadMaterialParams(P);
+P = CreateNanobeamGeom(P);
+[model,P] = BuildNanobeamCrossShieldFEM(model,P);
+
+disp('--- domain selections ---'); disp(P.domSel);
+disp('--- boundary selections ---'); disp(P.bndSel);
+disp('--- shield extents (m) ---'); disp(P.shield);
+
+mphlaunch(model);
