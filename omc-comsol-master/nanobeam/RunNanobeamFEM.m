@@ -35,6 +35,25 @@ if isfield(P,'scriptLoc')
     addpath(P.scriptLoc); % directory containing scripts used together with FDTD simulations
 end
 
+% P.celltype = 'crossShield' dispatches the geometry build to
+% BuildNanobeamCrossShieldFEM, which is NOT part of this directory - it lives in
+% the chang tree, omc-comsol-chang/nanobeam/. Check for it here, straight after
+% the P.scriptLoc addpath above, rather than discovering it is missing part way
+% through a build. Deliberately no addpath to a hardcoded sibling directory: a
+% pasted absolute path only works on the machine it was typed on.
+if isfield(P,'celltype') && strcmp(P.celltype,'crossShield') ...
+        && exist('BuildNanobeamCrossShieldFEM','file') ~= 2
+    error('RunNanobeamFEM:missingCrossShieldBuilder', ...
+        ['P.celltype = ''crossShield'' needs BuildNanobeamCrossShieldFEM.m, ' ...
+         'which is not on the MATLAB path. It lives in the chang tree, in ' ...
+         'omc-comsol-chang/nanobeam/. Point P.scriptLoc at that directory ' ...
+         '(it is addpath''d a few lines above), or addpath it yourself before ' ...
+         'calling RunNanobeamFEM. Note the builder''s lithography audit also ' ...
+         'looks for isCrossFabricable.m, which sits one level further up in ' ...
+         'omc-comsol-chang/; that one is not fatal - the builder skips the ' ...
+         'audit with a warning if it is absent.']);
+end
+
 % create base filename for saving of files and plots
 if ~isfield(P,'fileBase')
     P = CreateFileBase(P);
@@ -91,7 +110,44 @@ try
         P = LoadMaterialParams(P);
 
         %% Run simulations
-        [model,P] = BuildNanobeamFEM(model,P);              % generates nanobeam in COMSOL
+        if isfield(P,'celltype') && strcmp(P.celltype,'crossShield')
+            % Beam + hole cavity terminated by a 2D cross-cell phononic shield
+            % and a wrap-around (L-frame) mechanical PML. The geometry-array
+            % step above fell through to CreateNanobeamGeom, which is exactly
+            % what this builder wants - same dispatch as
+            % omc-comsol-chang/nanobeam/RunNanobeamFEM.m:116-121.
+            %
+            % WHY P.PMLstr IS FORCED TO ZERO HERE
+            % This tree's SetupNanobeamFEM has no native COMSOL PML node. With
+            % P.solveMechPML it instead fakes absorption by multiplying all 21
+            % P.D entries by the complex decay
+            %   (1+1i*P.PMLstr*((x>len)*(y>0)*(...) + (x<xL)*(y>0)*(...)))
+            % at SetupNanobeamFEM.m:117-133. That expression is keyed to a
+            % straight beam end at x > P.beamLenHalf, so it is geometrically
+            % wrong for an L-shaped frame that also absorbs in +y, and it would
+            % double-count the absorption of the native PML node added after
+            % Setup below - giving a meaningless Q.
+            %
+            % PMLstr = 0 makes the factor exactly (1+1i*0*(...)) == 1, i.e. an
+            % algebraic no-op, while leaving intact everything ELSE that
+            % P.solveMechPML gates in Setup: the PML domains still join the
+            % diamond material and smech selection (SetupNanobeamFEM.m:148-151)
+            % and P.bndSel.PMLYsym / P.bndSel.PMLZsym still pick up their
+            % symmetry / anti-symmetry BCs (SetupNanobeamFEM.m:259-269,
+            % 285-295). It also removes a hard failure: num2str(P.PMLstr) is
+            % read unconditionally at line 120, so a caller that never sets
+            % PMLstr - as the crossShield test script does not - would error
+            % inside Setup before any PML existed.
+            if isfield(P,'PMLstr') && any(P.PMLstr ~= 0)
+                disp(['crossShield: overriding P.PMLstr = ', ...
+                      num2str(P.PMLstr),' with 0; absorption comes from the ', ...
+                      'native PML node, not from the complex-stiffness hack'])
+            end
+            P.PMLstr = 0;
+            [model,P] = BuildNanobeamCrossShieldFEM(model,P);
+        else
+            [model,P] = BuildNanobeamFEM(model,P);              % generates nanobeam in COMSOL
+        end
 
         % optional - plot geometry
         if P.plotgeom
@@ -102,8 +158,41 @@ try
         end
 
         [model,ds] = SetupNanobeamFEM(model,P);         % set up nanobeam FEM simulations
+
+        % crossShield: supply the mechanical physics that this tree's Setup
+        % cannot. Has to sit between Setup (which creates 'smech' and needs the
+        % geometry to exist) and Solve (which meshes and solves).
+        if isfield(P,'celltype') && strcmp(P.celltype,'crossShield') ...
+                && P.solveMech && isfield(P,'solveMechPML') && P.solveMechPML
+            % (1) Release the PML's outer faces.
+            % SetupNanobeamFEM.m:236-237 adds P.bndSel.beamXend to the Fixed
+            % Constraint unconditionally, and the crossShield builder sets
+            % beamXend = P.bndSel.PMLcurv - the PML's own outer faces - whenever
+            % the PML is on; with P.mevenx = 0 line 240 adds PMLcurv a second
+            % time. Behind a native PML that face must stay traction free,
+            % which is what the reference implementation does: see the comment
+            % at omc-comsol-chang/nanobeam/SetupNanobeamFEM.m:225-226. For
+            % crossShield + PML, PMLcurv is the ONLY entry in fixed_inds
+            % (P.bndSel.beamXsym goes to the symmetry / anti-symmetry nodes for
+            % P.mevenx = +/-1, and Setup skips it for P.mevenx = 0), so
+            % deactivating the whole node reproduces the reference exactly.
+            % A clamp behind a well-sized PML is usually harmless - the wave is
+            % absorbed before it arrives - but it is a real difference from the
+            % reference, and a too-thin PML would reflect off it.
+            model.physics('smech').feature('fixedBCs').active(false);
+            ds.mfem.bnds.fixed_inds = [];   % keep the recorded BC list honest
+
+            % (2) Add the native PML coordinate system on P.domSel.PML.
+            % ds.P, not P: SetupNanobeamFEM.m:103-108 rotates P.D through
+            % RotateXtalTensor when P.rxtal is set and only returns the rotated
+            % tensor in ds.P, and the PML's reference wavelength is derived from
+            % a stiffness constant. The reference implementation runs inside
+            % Setup, i.e. after the rotation, so reading ds.P matches it.
+            addMechPML(model,ds.P);
+        end
+
         [model,ds] = SolveNanobeamFEM(model,ds);        % solve and postprocess FEM simulations
-        
+
     elseif ~isempty(matFile) && ~isempty(mphFile)
         disp('loading existing simulation results...')
         load([datLoc,matFile(1).name])
@@ -310,3 +399,125 @@ tEnd = toc(tStart);
 disp(['Simulation time = ',num2str(tEnd/60,'%.2f'),' mins'])
 disp(['Files saved in ',datLoc])
 close all
+
+% -------------------------------------------------------------------------
+
+function addMechPML(model,P)
+%ADDMECHPML Native COMSOL mechanical PML on the crossShield PML frame domains.
+%
+% This directory's SetupNanobeamFEM has no model.coordSystem(...,'PML') node at
+% all, so for P.celltype = 'crossShield' the PML physics is created here
+% instead. Ported from the reference implementation at
+% omc-comsol-chang/nanobeam/SetupNanobeamFEM.m:291-345, so that the two trees
+% emit the same node for the same P.
+%
+% BuildNanobeamCrossShieldFEM builds the PML as THREE separate domains (+x arm,
+% +y arm, corner) and hands them over as P.domSel.PML. All three go into one
+% selection: COMSOL infers the stretching direction of a box PML per domain,
+% from that domain's inner boundary, which is how the corner ends up stretched
+% in x AND y while each arm stretches in one direction only. The builder
+% already warns if the domain count is not 3.
+%
+% Reads:  P.domSel.PML (required), P.geomname, P.freq,
+%         P.PMLScalingType (optional, default 'userDefined'),
+%         P.PMLWaveSpeed / P.D / P.rho / P.E / P.nu (reference wave speed),
+%         P.PMLLen (optional, thin-PML warning only)
+
+if ~(isfield(P,'domSel') && isfield(P.domSel,'PML') && ~isempty(P.domSel.PML))
+    error('RunNanobeamFEM:noPMLDomains', ...
+        ['P.solveMechPML is on but P.domSel.PML is absent or empty, so there ' ...
+         'is nothing to turn into a PML. BuildNanobeamCrossShieldFEM only ' ...
+         'builds the PML blocks when P.solveMech and P.solveMechPML are both ' ...
+         'true at BUILD time - check that nothing changed P in between.']);
+end
+
+% geometry name: the builder writes P.geomname ('beam'), but fall back to the
+% same lookup SetupNanobeamFEM/SolveNanobeamFEM use
+if isfield(P,'geomname') && ~isempty(P.geomname)
+    geomname = P.geomname;
+else
+    geomnames = fieldnames(mphmodel(model.geom));
+    geomname = geomnames{1};
+end
+
+pml = model.coordSystem.create('pml1', geomname, 'PML');
+pml.selection.set(P.domSel.PML);
+
+% P.PMLScalingType is OPTIONAL; unset means the frequency dependent stretching
+% of the reference implementation
+if isfield(P,'PMLScalingType') && ~isempty(P.PMLScalingType)
+    PMLScalingType = P.PMLScalingType;
+else
+    PMLScalingType = 'userDefined';
+end
+
+if strcmp(PMLScalingType,'userDefined')
+    % FREQUENCY DEPENDENT stretching, keyed to the target frequency P.freq via
+    % typicalWavelength = v_ref/P.freq, with v_ref = c11 (longitudinal) unless
+    % P.PMLWaveSpeed overrides it
+    pml.set('ScalingType', 'userDefined');
+    pml.set('directions', '2');
+    pml.setIndex('dmax', '1[mm]', 0);
+    pml.setIndex('dmax', '1[mm]', 1);
+    pml.set('wavelengthSourceType', 'userDefined');
+    if isfield(P,'PMLWaveSpeed') && ~isempty(P.PMLWaveSpeed)
+        v_ref = P.PMLWaveSpeed;
+    else
+        v_ref = sqrt(P.D(1) / P.rho);   % c11, longitudinal
+    end
+    lambda_mech = v_ref / P.freq;
+    pml.set('typicalWavelength', [num2str(lambda_mech), '[m]']);
+    disp(['PML: frequency dependent, f = ', ...
+          num2str(P.freq*1e-9,'%.2f'),' GHz, v = ', ...
+          num2str(v_ref,'%.0f'),' m/s, lambda = ', ...
+          num2str(lambda_mech*1e6,'%.2f'),' um']);
+    if isfield(P,'PMLLen') && P.PMLLen < 0.5*lambda_mech
+        warning('RunNanobeamFEM:PMLthin', ...
+            ['P.PMLLen = %.2f um is under half the reference wavelength ' ...
+             '(%.2f um). A PML this thin reflects; check Q against a ' ...
+             'PMLLen sweep before believing it.'], ...
+            P.PMLLen*1e6, lambda_mech*1e6);
+    end
+else
+    % 'rational' stretching is wavelength independent, which is what an
+    % eigenfrequency study wants - there the wavelength is the unknown. The
+    % dmax = 1[mm] of the frequency dependent path is dropped here; it is
+    % meaningless next to a PML a few microns thick.
+    pml.set('ScalingType', PMLScalingType);
+    if ~strcmp(PMLScalingType,'rational')
+        % polynomial (and any other wavelength-driven type) still needs a
+        % typical wavelength. Use the SHEAR speed: radiation out of a thin
+        % suspended slab is carried by the slow branches, so c11 overestimates
+        % the wavelength and under-stretches the PML.
+        lambda_mech = pmlWaveSpeed(P) / P.freq;
+        pml.set('wavelengthSourceType', 'userDefined');
+        pml.set('typicalWavelength', [num2str(lambda_mech), '[m]']);
+    end
+end
+
+disp(['Mechanical PML added on domain(s) ',num2str(P.domSel.PML), ...
+      ' (ScalingType = ',PMLScalingType,')'])
+
+
+% -------------------------------------------------------------------------
+
+function v = pmlWaveSpeed(P)
+%PMLWAVESPEED Reference bulk wave speed for the mechanical PML [m/s].
+%
+% The SHEAR speed, not the longitudinal one: a suspended slab radiates through
+% the slow (shear/Lamb) branches, so sizing the PML on c11 overestimates the
+% wavelength and under-stretches the absorber. P.D(10) is c44 in the COMSOL
+% Voigt ordering built by LoadMaterialParams.m. Only reached from the
+% non-'userDefined' path, so the default behaviour above is untouched.
+
+if isfield(P,'PMLWaveSpeed') && ~isempty(P.PMLWaveSpeed)
+    v = P.PMLWaveSpeed;
+elseif isfield(P,'D') && numel(P.D) >= 10 && isfield(P,'rho')
+    v = sqrt(P.D(10)/P.rho);
+elseif isfield(P,'E') && isfield(P,'nu') && isfield(P,'rho')
+    v = sqrt(P.E/(2*(1+P.nu))/P.rho);        % shear modulus G = E/(2*(1+nu))
+else
+    error('RunNanobeamFEM:noStiffness', ...
+        ['Need P.D (anisotropic) or P.E and P.nu, plus P.rho, to set the PML ' ...
+         'reference wavelength. Set P.PMLWaveSpeed explicitly to override.']);
+end
