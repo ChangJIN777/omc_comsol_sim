@@ -452,9 +452,49 @@ beamgeom.runCurrent;
 P.domSel.beam = readSel(model, P.geomname, 'structSel');
 
 if usePML
-    % A wrap-around PML is not an 'inside' box, so it needs the same
-    % BoxSelection + DifferenceSelection pair BuildNanobeamFEM.m:363-378 uses
-    % for its L-shaped end cap.
+    % PML domains are selected with 'intersects' PROBE boxes, one per arm.
+    %
+    % Why probes rather than one frame-shaped 'intersects' box: the PML is an
+    % L (+x arm, +y arm, corner), which no single box bounds without also
+    % containing the shield. An 'intersects' box drawn around the whole frame
+    % would ALSO select the shield and the beam, because a domain that merely
+    % shares the x = xS1 or y = yS1 face with the box still intersects it.
+    % A small box placed strictly inside one arm intersects that arm and
+    % nothing else, and unlike the previous 'inside' + DifferenceSelection
+    % construction it does not depend on the outer PML bounds (xP1, yP1,
+    % zLoEff) being exactly right.
+    %
+    % Arm extents come from the Block features above:
+    %   PMLxArm    x in [xS1, xP1],  y in [0,   yS1]
+    %   PMLyArm    x in [xB1, xS1],  y in [yS1, yP1]
+    %   PMLcorner  x in [xS1, xP1],  y in [yS1, yP1]
+    % Each probe sits at the centre of its arm, so the margin to the nearest
+    % arm face is half the smallest arm dimension - microns against d = 10 nm.
+    zMid = 0.5*(zLoEff + thi/2);
+    probes = { ...
+        'PMLxArmSel', 0.5*(xS1 + xP1), 0.5*yS1,         zMid; ...
+        'PMLyArmSel', 0.5*(xB1 + xS1), 0.5*(yS1 + yP1), zMid; ...
+        'PMLcornSel', 0.5*(xS1 + xP1), 0.5*(yS1 + yP1), zMid};
+
+    PMLinds = [];
+    for k = 1:size(probes,1)
+        tag = probes{k,1};
+        pk  = beamgeom.create(tag, 'BoxSelection');
+        pk.set('xmin', probes{k,2} - d).set('xmax', probes{k,2} + d);
+        pk.set('ymin', probes{k,3} - d).set('ymax', probes{k,3} + d);
+        pk.set('zmin', probes{k,4} - d).set('zmax', probes{k,4} + d);
+        pk.set('entitydim', 3).set('condition', 'intersects');
+        beamgeom.runCurrent;
+        ik = readSel(model, P.geomname, tag);
+        assertNonEmptySel(['PML probe ', tag], ik);
+        PMLinds = [PMLinds, ik];                                    %#ok<AGROW>
+    end
+    P.domSel.PML = unique(PMLinds);
+    disp(['PML domain indices: ', num2str(P.domSel.PML)]);
+
+    % Warn-only cross-check against the 'inside' + DifferenceSelection
+    % construction this replaced, so a disagreement surfaces on the first run
+    % instead of as an implausible Q. Costs one extra selection feature.
     allSel = beamgeom.create('allSel', 'BoxSelection');
     allSel.set('xmin', -d).set('xmax', xP1 + d);
     allSel.set('ymin', -d).set('ymax', yP1 + d);
@@ -465,8 +505,14 @@ if usePML
     PMLSel = beamgeom.create('PMLSel', 'DifferenceSelection');
     PMLSel.set('entitydim', 3).set('add', 'allSel').set('subtract', 'structSel');
     beamgeom.runCurrent;
-    P.domSel.PML = readSel(model, P.geomname, 'PMLSel');
-    disp(['PML domain indices: ', num2str(P.domSel.PML)]);
+    PMLindsInside = readSel(model, P.geomname, 'PMLSel');
+    if ~isequal(sort(P.domSel.PML), sort(PMLindsInside))
+        warning('BuildNanobeamCrossShieldFEM:PMLSelMismatch', ...
+            ['The intersects probes selected PML domains [%s] but the ' ...
+             'inside/difference construction gives [%s]. Inspect the ' ...
+             'geometry in the GUI before trusting the PML.'], ...
+            num2str(P.domSel.PML), num2str(PMLindsInside));
+    end
 end
 
 %% Boundary selections
