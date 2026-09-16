@@ -69,7 +69,38 @@ else
               'o',num2str(P.oblong,'%.4f'),'_',...
               'd',num2str(P.maxdef,'%.4f')];
 end
-          
+
+% cross-cell phononic shield tokens. Additive and field-guarded: a caller that
+% does not set the shield fields produces a byte-identical filename. Kept in
+% sync with nanobeam/CreateFileBase.m per CLAUDE.md - either copy can win the
+% path lookup, so the shield must be encoded in both.
+%
+% nsyH is the HALF-MODEL cell count (P.nShieldY, what the builder consumes) and
+% nsyP is the physical row count 2*P.nShieldY, spelled out so the convention
+% cannot be misread from a filename months later.
+%
+% The PML length is included because RunNanobeamFEM.m:61-63 skips the whole
+% solve when a matching .mat/.mph already exists in datLoc; without this token
+% a Q vs PMLLen convergence sweep would silently reload the first run.
+if isfield(P,'nShieldX') && isfield(P,'nShieldY')
+    P.fileBase = [P.fileBase,'_',...
+                  'csA',num2str(P.aShield*1e9,'%.0f'),'nm_',...
+                  'csH',num2str(P.hShield*1e9,'%.0f'),'nm_',...
+                  'csW',num2str(P.wShield*1e9,'%.0f'),'nm_',...
+                  'nsx',num2str(P.nShieldX,'%.0f'),'_',...
+                  'nsyH',num2str(P.nShieldY,'%.0f'),'_',...
+                  'nsyP',num2str(2*P.nShieldY,'%.0f')];
+    if isfield(P,'shieldPadLen') && P.shieldPadLen > 0
+        P.fileBase = [P.fileBase,'_pad',num2str(P.shieldPadLen*1e9,'%.0f'),'nm'];
+    end
+    if isfield(P,'shieldFillet') && ~strcmp(P.shieldFillet,'none')
+        P.fileBase = [P.fileBase,'_fil',P.shieldFillet];
+    end
+    if isfield(P,'solveMechPML') && P.solveMechPML && isfield(P,'PMLLen')
+        P.fileBase = [P.fileBase,'_pml',num2str(P.PMLLen*1e9,'%.0f'),'nm'];
+    end
+end
+
 if strcmp(P.xsect,'tri')
     P.fileBase = [num2str(P.theta,'%.0f'),'o_',P.fileBase];
 elseif strcmp(P.xsect,'rect')

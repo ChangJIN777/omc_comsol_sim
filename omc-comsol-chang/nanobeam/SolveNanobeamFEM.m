@@ -292,10 +292,11 @@ else
     mesh = model.mesh('mesh');
 end
 
-% Apply a separate, coarser mesh quality to the PML domains if requested.
-% The PML-specific size node overrides the global 'size' node on the PML
-% domains only; changing the global size does NOT remove this override.
-usePMLmesh = isfield(P,'solveMechPML') && P.solveMechPML && isfield(P,'PMLmesh');
+% Domain-scoped mesh overrides for the PML and (if present) the phononic
+% shield are applied by applyMeshOverrides below. They override the global
+% 'size' node on their own domains only; changing the global size does NOT
+% remove the override, but it is re-asserted after every global change so the
+% intent stays visible in the sequence.
 
 % Solve for eigenfrequencies, adjust mesh if max DOFs exceeded
 ok = 0;
@@ -305,18 +306,9 @@ if P.mAdjMesh
     disp(['Meshing with quality: ' num2str(mfem.mesh)]);
 	mesh.feature('size').set('custom','off').set('hauto',mfem.mesh);
     mesh.run;   % applied to ALL domains including PML
-    % Create the PML-specific size node once (reuse it if the mesh was
+    % Create the domain-scoped size nodes once (reuse them if the mesh was
     % carried over from a previous run), before the first DOF estimate.
-    if usePMLmesh
-        if any(strcmp('size_pml', cellstr(char(mesh.feature.tags()))))
-            szPML = mesh.feature('size_pml');
-        else
-            szPML = mesh.feature.create('size_pml', 'Size');
-        end
-        szPML.selection.geom(geomname, 3).set(P.domSel.PML);
-        szPML.set('custom','off').set('hauto', P.PMLmesh);
-        disp(['PML mesh quality: ' num2str(P.PMLmesh)]);
-    end
+    applyMeshOverrides(mesh, geomname, P);
     mxmesh = mphxmeshinfo(model, 'soltag', 'msolv', ...
                              'studysteptag', 'msolv_stdstep');
     dofs = mxmesh.ndofs;
@@ -328,11 +320,9 @@ if P.mAdjMesh
             mfem.mesh = mfem.mesh + 1;
             disp(['Meshing with quality: ' num2str(mfem.mesh)]);
             mesh.feature('size').set('custom','off').set('hauto',mfem.mesh);
-            % Re-assert the PML override; the global change above leaves it
-            % in place, but set it explicitly to keep intent clear.
-            if usePMLmesh
-                mesh.feature('size_pml').set('hauto', P.PMLmesh);
-            end
+            % Re-assert the domain overrides; the global change above leaves
+            % them in place, but set them explicitly to keep intent clear.
+            applyMeshOverrides(mesh, geomname, P);
 
             mesh.run;
             mxmesh = mphxmeshinfo(model, 'soltag', 'msolv', ...
@@ -361,9 +351,7 @@ if P.mAdjMesh
             disp(['Meshing with quality: ' num2str(mfem.mesh)]);
             mesh.feature('size').set('custom','off').set('hauto',mfem.mesh);
             %mesh.feature('size').set('custom','on').set('hmax',lambda/5);
-            if usePMLmesh
-                mesh.feature('size_pml').set('hauto', P.PMLmesh);
-            end
+            applyMeshOverrides(mesh, geomname, P);
             mesh.run;
             mxmesh = mphxmeshinfo(model, 'soltag', 'msolv', ...
                                          'studysteptag', 'msolv_stdstep');
@@ -375,18 +363,9 @@ if P.mAdjMesh
 else
     disp(['Meshing with quality: ' num2str(P.mMesh)]);
     mesh.feature('size').set('custom','off').set('hauto',P.mMesh);
-    % Create the PML-specific size node (reuse if it already exists) so
-    % the PML domains get a coarser mesh than the beam.
-    if usePMLmesh
-        if any(strcmp('size_pml', cellstr(char(mesh.feature.tags()))))
-            szPML = mesh.feature('size_pml');
-        else
-            szPML = mesh.feature.create('size_pml', 'Size');
-        end
-        szPML.selection.geom(geomname, 3).set(P.domSel.PML);
-        szPML.set('custom','off').set('hauto', P.PMLmesh);
-        disp(['PML mesh quality: ' num2str(P.PMLmesh)]);
-    end
+    % Domain-scoped size nodes (created once, reused if they already exist) so
+    % the PML and the phononic shield can be meshed differently to the beam.
+    applyMeshOverrides(mesh, geomname, P);
     mesh.run;
     msolv.runAll;
 end
@@ -474,4 +453,80 @@ for i=1:5
 end
 % % mphmodel(model.result.dataset)
 
+end
+
+% -------------------------------------------------------------------------
+
+function applyMeshOverrides(mesh, geomname, P)
+%APPLYMESHOVERRIDES Domain-scoped Size nodes for the PML and the phononic shield.
+%
+% Every branch is field-guarded. A caller that sets only P.PMLmesh gets exactly
+% the 'size_pml' hauto override this file has always applied, on exactly the
+% same domains.
+%
+% P.PMLmeshDiv and P.shieldHmax are opt-in additions:
+%
+%   P.PMLmeshDiv  number of elements across the absorbing direction. hmax =
+%                 P.PMLLen/P.PMLmeshDiv; 8 is the usual minimum. Takes
+%                 precedence over P.PMLmesh when both are set, because a PML
+%                 needs a resolution tied to its own thickness, not a global
+%                 quality level.
+%                 GATED to P.celltype = 'crossShield'. This field was
+%                 previously read by nothing at all, and
+%                 test_nanobeamRectFEM_withPML.m:125-126 already sets it
+%                 (PMLmeshDiv = 20) with P.PMLmesh commented out. Honouring
+%                 it for every caller would silently move that script's PML
+%                 from the global mesh quality to hmax = 500 nm and shift its
+%                 results. Legacy callers keep the P.PMLmesh path untouched.
+%
+%   P.shieldHmax  max element size in P.domSel.shield [m]. The cross-shield
+%                 ligaments are the narrowest solid feature in the model and
+%                 carry the whole shield response, so they need their own
+%                 resolution independent of the global quality level.
+
+if isfield(P,'solveMechPML') && P.solveMechPML && ...
+        isfield(P,'domSel') && isfield(P.domSel,'PML') && ~isempty(P.domSel.PML)
+
+    % See the P.PMLmeshDiv note in the header: gated to the cross-shield
+    % path so that pre-existing callers which set the field are unaffected.
+    isCrossShield = isfield(P,'celltype') && strcmp(P.celltype,'crossShield');
+
+    usePMLdiv = isCrossShield && ...
+                isfield(P,'PMLmeshDiv') && ~isempty(P.PMLmeshDiv) && ...
+                P.PMLmeshDiv > 0 && isfield(P,'PMLLen');
+
+    if usePMLdiv || isfield(P,'PMLmesh')
+        szPML = getOrCreateSizeNode(mesh, 'size_pml');
+        szPML.selection.geom(geomname, 3).set(P.domSel.PML);
+        if usePMLdiv
+            szPML.set('custom','on').set('hmaxactive',true);
+            szPML.set('hmax', P.PMLLen/P.PMLmeshDiv);
+            disp(['PML mesh: hmax = PMLLen/',num2str(P.PMLmeshDiv),' = ', ...
+                  num2str(P.PMLLen/P.PMLmeshDiv*1e9,'%.0f'),' nm']);
+        else
+            szPML.set('custom','off').set('hauto', P.PMLmesh);
+            disp(['PML mesh quality: ' num2str(P.PMLmesh)]);
+        end
+    end
+end
+
+if isfield(P,'shieldHmax') && ~isempty(P.shieldHmax) && ...
+        isfield(P,'domSel') && isfield(P.domSel,'shield') && ~isempty(P.domSel.shield)
+    szS = getOrCreateSizeNode(mesh, 'size_shield');
+    szS.selection.geom(geomname, 3).set(P.domSel.shield);
+    szS.set('custom','on').set('hmaxactive',true);
+    szS.set('hmax', P.shieldHmax);
+    disp(['Shield mesh: hmax = ',num2str(P.shieldHmax*1e9,'%.1f'),' nm']);
+end
+end
+
+% -------------------------------------------------------------------------
+
+function sz = getOrCreateSizeNode(mesh, tag)
+%GETORCREATESIZENODE Fetch a mesh Size feature, creating it on first use.
+if any(strcmp(tag, cellstr(char(mesh.feature.tags()))))
+    sz = mesh.feature(tag);
+else
+    sz = mesh.feature.create(tag, 'Size');
+end
 end

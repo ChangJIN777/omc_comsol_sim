@@ -291,14 +291,40 @@ mfem.bnds = bnds;
 if isfield(P,'solveMechPML') && P.solveMechPML
     pml = model.coordSystem.create('pml1', geomname, 'PML');
     pml.selection.set(P.domSel.PML);
-    pml.set('ScalingType', 'userDefined');
-    pml.set('directions', '2');
-    pml.setIndex('dmax', '1[mm]', 0);
-    pml.setIndex('dmax', '1[mm]', 1);
-    pml.set('wavelengthSourceType', 'userDefined');
-    v_long = sqrt(P.D(1) / P.rho);
-    lambda_mech = v_long / P.freq;
-    pml.set('typicalWavelength', [num2str(lambda_mech), '[m]']);
+
+    % P.PMLScalingType is OPTIONAL. A caller that does not set it gets the
+    % original user-defined stretching below, byte for byte.
+    if isfield(P,'PMLScalingType') && ~isempty(P.PMLScalingType)
+        PMLScalingType = P.PMLScalingType;
+    else
+        PMLScalingType = 'userDefined';
+    end
+
+    if strcmp(PMLScalingType,'userDefined')
+        pml.set('ScalingType', 'userDefined');
+        pml.set('directions', '2');
+        pml.setIndex('dmax', '1[mm]', 0);
+        pml.setIndex('dmax', '1[mm]', 1);
+        pml.set('wavelengthSourceType', 'userDefined');
+        v_long = sqrt(P.D(1) / P.rho);
+        lambda_mech = v_long / P.freq;
+        pml.set('typicalWavelength', [num2str(lambda_mech), '[m]']);
+    else
+        % 'rational' stretching is wavelength independent, which is what an
+        % eigenfrequency study wants: the wavelength is the unknown. The
+        % dmax = 1[mm] of the legacy path is also dropped here - it is
+        % meaningless next to a PML a few microns thick.
+        pml.set('ScalingType', PMLScalingType);
+        if ~strcmp(PMLScalingType,'rational')
+            % Polynomial (and any other wavelength-driven type) still needs a
+            % typical wavelength. Use the SHEAR speed: radiation into a thin
+            % suspended slab is carried by the slow branches, so c11
+            % overestimates the wavelength and under-stretches the PML.
+            lambda_mech = pmlWaveSpeed(P) / P.freq;
+            pml.set('wavelengthSourceType', 'userDefined');
+            pml.set('typicalWavelength', [num2str(lambda_mech), '[m]']);
+        end
+    end
 end
 
 display('Solid Mechanics added - boundary conditions done');
@@ -399,5 +425,31 @@ if P.solveMech
 end
 if P.solveOpt
     ds.ofem = ofem;
+end
+end
+
+% -------------------------------------------------------------------------
+
+function v = pmlWaveSpeed(P)
+%PMLWAVESPEED Reference bulk wave speed for the mechanical PML [m/s].
+%
+% The SHEAR speed, not the longitudinal one. A suspended slab radiates through
+% the slow (shear/Lamb) branches, so sizing the PML on c11 overestimates the
+% wavelength and under-stretches the absorber. P.D(10) is c44 in the COMSOL
+% Voigt ordering built by LoadMaterialParams.m:81.
+%
+% Only reached from the non-'userDefined' PML path, so the legacy behaviour of
+% this file is untouched.
+
+if isfield(P,'PMLWaveSpeed') && ~isempty(P.PMLWaveSpeed)
+    v = P.PMLWaveSpeed;
+elseif isfield(P,'D') && numel(P.D) >= 10 && isfield(P,'rho')
+    v = sqrt(P.D(10)/P.rho);
+elseif isfield(P,'E') && isfield(P,'nu') && isfield(P,'rho')
+    v = sqrt(P.E/(2*(1+P.nu))/P.rho);        % shear modulus G = E/(2(1+nu))
+else
+    error('pmlWaveSpeed:noStiffness', ...
+        ['Need P.D (anisotropic) or P.E and P.nu, plus P.rho, to set the PML ' ...
+         'reference wavelength. Set P.PMLWaveSpeed explicitly to override.']);
 end
 end

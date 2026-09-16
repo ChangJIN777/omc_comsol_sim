@@ -113,6 +113,12 @@ try
             [model,P] = BuildNanobeamBoomerang1DFEM(model,P);
         elseif isfield(P,'celltype') && strcmp(P.celltype,'snowflake')
             [model,P] = BuildNanobeamSnowflakeFEM(model,P);
+        elseif isfield(P,'celltype') && strcmp(P.celltype,'crossShield')
+            % beam + hole cavity terminated by a 2D cross-cell phononic shield
+            % and a wrap-around mechanical PML. The geometry-array step above
+            % already fell through to CreateNanobeamGeom, which is what this
+            % builder wants; Setup/Solve below are reused unchanged.
+            [model,P] = BuildNanobeamCrossShieldFEM(model,P);
         else
             [model,P] = BuildNanobeamFEM(model,P);              % generates nanobeam in COMSOL
         end
