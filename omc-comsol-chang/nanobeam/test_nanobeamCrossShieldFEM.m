@@ -1,7 +1,13 @@
 % Front panel script for a nanobeam OMC cavity terminated by a 2D cross-cell
 % phononic shield, with a wrap-around mechanical PML for the radiative Q, and
-% with the optical mode solved in the SAME COMSOL model so that the
-% optomechanical coupling g_OM can be computed.
+% - when P.solveOpt = 1 - with the optical mode solved in the SAME COMSOL
+% model so that the optomechanical coupling g_OM can be computed.
+%
+% P.solveOpt (MASTER SWITCH block below, immediately after the clear) is the
+% single on/off for the optical half of the run. With it at 0 this is a
+% mechanics-only Q simulation and nothing in the optical sections applies;
+% results land in a separate datLoc so the two states cannot reuse each
+% other's cached solve.
 %
 % Pipeline:  RunNanobeamFEM -> CreateNanobeamGeom
 %                           -> BuildNanobeamCrossShieldFEM   (P.celltype)
@@ -15,7 +21,8 @@
 % have to come out of a single geometry. That is the whole reason the builder
 % had to learn optics instead of the optical run being a separate script.
 %
-% THE AIR CYLINDER IS SCOPED TO THE CAVITY. The full-length air cylinder of
+% THE AIR CYLINDER IS SCOPED TO THE CAVITY (P.solveOpt = 1 only; with the
+% switch off no air domain is created at all). The full-length air cylinder of
 % BuildNanobeamFEM would enclose the shield and the PML frame and destroy the
 % phononic bandgap. Here it stops at P.airCylLen, one free-space wavelength
 % short of the shield front face, with 15 of the 18 half-beam holes inside it.
@@ -27,6 +34,28 @@
 % bottom of this file; S0-S3 need no solver and S1 needs only the geometry.
 
 clear all; close all; clc                                   %#ok<CLALL>
+
+%% MASTER SWITCH - optics on (1) or off (0)
+% P.solveOpt is the ONLY toggle for the optical side of this run. Everything
+% else is derived from it - P.calcG and P.plotOpt further down, the datLoc
+% suffix at the bottom, and every optical addition in
+% BuildNanobeamCrossShieldFEM.m (which gates on useOpt at :382). Do NOT add a
+% second flag: two sources of truth can disagree, and the builder would then
+% have to decide which one it believes.
+%
+% What = 1 buys, and costs, relative to a mechanics-only run:
+%   + the cavity-scoped air quarter-cylinder (P.airrad / P.airCylLen below)
+%     plus its end-cap imprint, which splits the beam into two domains;
+%   + the emw physics and its own hmax = lambda/5 mesh pass;
+%   + the optical eigenfrequency study and the g_OM calculation in CalcGOM.
+% It costs no extra MECHANICAL degrees of freedom - emw and solid are selected
+% on disjoint domain sets - so the DOF budget note at P.max_dof binds either
+% way. See "WHY ONE MODEL" above for why optics has to live in this model.
+%
+% What = 0 needs: nothing. The builder's optical field checks, the air
+% cylinder, and the oevenz/mevenz consistency guard all sit inside the useOpt
+% branch, so P.airrad / P.airCylLen / P.oeven* below may stay set and unused.
+P.solveOpt = 1;
 
 %% geometry parameters - beam and holes
 P.xsect = 'rect';                       % v1 of the cross-shield builder is rect only
@@ -115,16 +144,17 @@ P.shieldMinFeature = 50e-9;             % for the isCrossFabricable audit
 
 %% simulation / calculation / plot / save options
 P.solveMech = 1;
-P.solveOpt = 1;                         % air cylinder is cavity-scoped - see
-                                        % the header and P.airCylLen below
-P.calcG = 1*(P.solveMech && P.solveOpt);    % -> 1
+% P.solveOpt is set ONCE, in the MASTER SWITCH block at the top of the file.
+% The two lines below derive from it and must not be hand-edited.
+P.calcG = 1*(P.solveMech && P.solveOpt);    % g_OM needs both modes, so this is
+                                        % the AND of the two solve flags
 P.calcS = 0*P.solveMech;
 P.solveMechPML = 1;                     % 1 to extract the radiative mechanical Q
 
 P.plotgeom = 1;                         % mphgeom snapshot into datLoc
 P.storeMPH = 1;                         % keep the .mph - you will want to look
 P.plotMech = 1*P.solveMech;
-P.plotOpt = 1*P.solveOpt;               % -> 1, follows solveOpt
+P.plotOpt = 1*P.solveOpt;               % follows the master switch
 P.plotStrCpl = 1*P.calcS;
 
 %% mechanical simulation parameters
@@ -140,17 +170,23 @@ P.mAdjMesh = 1;
 P.rxtal = 0;
 P.rxtalInFilename = 1;
 
-%% optical simulation parameters
+%% optical simulation parameters - READ ONLY WHEN P.solveOpt = 1
+% Everything in this section is inert with the master switch off: the builder
+% reads no optical field outside its useOpt branch, so these may stay set.
+%
 % Symmetries are the rect-beam fundamental, identical to
 % test_nanobeamRectFEM.m:99-102, the closest sibling:
 %   oevenx = (-1)^holeatctr = -1 for a hole at the centre. SetupNanobeamFEM.m:39
 %           then raises it to the power holeatctr again, so the value that
 %           reaches the BC is (-1)^1 = -1 -> PEC on the x = 0 plane.
 %   oeveny = -1  TE-like (E mostly along y, so E_y is odd about y = 0 -> PEC).
-%   oevenz = +1  even about the slab mid-plane -> PMC on z = 0. This MUST have
-%           the same |value| as P.mevenz (both 1 here): there is one z = 0 cut
-%           in the geometry and the builder hard-errors if the two physics
-%           disagree about whether to make it.
+%   oevenz = +1  even about the slab mid-plane -> PMC on z = 0. WHILE OPTICS IS
+%           ON this must have the same |value| as P.mevenz (both 1 here):
+%           there is one z = 0 cut in the geometry and the builder
+%           hard-errors (evenzMismatch) if the two physics disagree about
+%           whether to make it. With P.solveOpt = 0 that guard is not reached
+%           and P.mevenz alone decides the cut, so a leftover P.oevenz cannot
+%           fire a spurious error.
 P.oevenx = (-1)^(P.holeatctr);
 P.oeveny = -1;
 P.oevenz = 1;
@@ -171,25 +207,33 @@ P.oAdjMesh = 1;
 
 % Air half-cylinder around the CAVITY. 2*lambda + w/2 is the convention in
 % test_nanobeamRectFEM.m:105 and five sibling scripts.
-P.airrad = 2*P.lambda + P.w/2;          % 2*1550 + 375 = 3475 nm
+P.airrad = 2*P.lambda + P.w/2;          % 2*1550 + 400 = 3500 nm
 %
 % P.airCylLen is the +x extent of that cylinder and is the field that makes
 % optics compatible with the shield at all. Leave it unset to take the builder
-% default, min(beamLenHalf, xS0 - P.lambda):
+% default, min(beamLenHalf, xS0 - P.lambda). At the parameters above
+% (verified by running LoadMaterialParams + CreateNanobeamGeom, stage S0b):
 %
-%   beamLenHalf = 8951.8 nm (CreateNanobeamGeom, nholes = 18, a ~ 529 nm)
-%   shieldPadLen = 0   ->  xS0 = 8951.8 nm
-%   airCylLen   = 8951.8 - 1550 = 7401.8 nm
+%   beamLenHalf = 11063.0 nm (CreateNanobeamGeom, nholes = 18)
+%   shieldPadLen = 0   ->  xS0 = 11063.0 nm
+%   airCylLen   = 11063.0 - 1550 = 9513.0 nm
 %   x-gap to the shield front face   = 1550.0 nm  (1.00 lambda)
-%   x-gap to the +x PML arm          = 11150.0 nm
-%   x-gap to the +y PML arm          = 1550.0 nm, y-gap = 4525.0 nm
-%   cap lands between hole 15 (ends 7198.8) and hole 16 (starts 7530.8), so
-%   15 of 18 half-beam holes - 6 defect + 9 mirror periods - are in the air.
+%   x-gap to the +x PML arm          = 6914.0 nm
+%   x-gap to the +y PML arm          = 1550.0 nm, y-gap = 970.0 nm
+%   15 of 18 half-beam holes - 6 defect + 9 mirror periods - end before the
+%   cap, so the mirror the optical mode sees is a real one.
 %
-% The cylinder reaches |z| = 3475 nm against a 500 nm slab and y = 3475 nm
-% against an 8000 nm tall shield, so x is the ONLY separation. Shorten the beam
+% BUT the default cap at 9513.0 nm lands INSIDE hole 16 (x in [9266.5, 9609.5]),
+% so the builder will raise airCylCutsHole: that hole's cross-section sits
+% inside the beam bounding box and gets differenced out of P.bndSel.cylXend,
+% leaving part of the cap with no scattering BC. Uncomment the override below
+% to put the cap in the solid between hole 15 (ends 8959.5) and hole 16, which
+% moves the gap to the shield to 1950 nm = 1.26 lambda.
+%
+% The cylinder reaches |z| = 3500 nm against a 250 nm slab and y = 3500 nm
+% against a 4470 nm tall shield, so x is the ONLY separation. Shorten the beam
 % (P.nholes) or lengthen the pad (P.shieldPadLen) and this number moves with it.
-% P.airCylLen = 7.4e-6;                 % uncomment to override the default
+% P.airCylLen = 9.113e-6;               % uncomment: mid-solid, hole 15|16
 
 %% SiV strain coupling (unused while calcS = 0)
 P.zSiV = {[1 1 1]};
@@ -250,8 +294,27 @@ P.PMLScalingType = 'userDefined';       % FREQUENCY DEPENDENT: the PML stretch
 P.max_dof = 5e6;
 
 %% single run
+% THE OPTICS TAG IN datLoc IS WHAT MAKES P.solveOpt SAFE TO FLIP.
+% CreateFileBase.m encodes no optical parameter at all, so a mechanics-only run
+% and a combined optical+mechanical run produce the SAME P.fileBase.
+% RunNanobeamFEM.m:64 skips the entire solve whenever a matching .mat AND .mph
+% already sit in datLoc, takes its elseif branch instead, and there does
+% P = ds.P (RunNanobeamFEM.m:157) - which overwrites the caller's P, P.calcG
+% included. Run with optics off, flip the master switch on, re-run into the
+% same directory and you would silently get the old mechanics-only result:
+% no gOM, no error, nothing in the log to say so.
+%
+% Giving each toggle state its own directory makes that collision impossible
+% and keeps the fix inside this script - CreateFileBase.m is shared with the
+% band-structure pipeline and every other test script, so it is not the place
+% to encode a per-script flag.
+if P.solveOpt
+    optTag = 'optMech';                 % emw + solid, gOM computed
+else
+    optTag = 'mechOnly';                % solid only, no air domain
+end
 currentDate = datestr(now,'mmddyyyy');                      %#ok<TNOW1,DATST>
-datLoc = [fullfile('.','test','1D_OMC_crossShield',currentDate),filesep];
+datLoc = [fullfile('.','test','1D_OMC_crossShield',currentDate,optTag),filesep];
 [ds,model] = RunNanobeamFEM(P,datLoc);
 
 %% ========================================================================
@@ -266,22 +329,24 @@ datLoc = [fullfile('.','test','1D_OMC_crossShield',currentDate),filesep];
 % S0b geometry arithmetic, no COMSOL. P = LoadMaterialParams(P);
 %     P = CreateNanobeamGeom(P); then check the numbers the air cylinder
 %     depends on:
-%       P.beamLenHalf                       expect 8951.8 nm
-%       2*P.lambda + P.w/2                   expect 3475.0 nm
-%       P.beamLenHalf - P.lambda             expect 7401.8 nm  (= airCylLen)
-%       max(P.geomHalf(:,2))/2 vs P.w/2      expect 289 vs 375 nm
+%       P.beamLenHalf                       expect 11063.0 nm
+%       2*P.lambda + P.w/2                   expect 3500.0 nm
+%       P.beamLenHalf - P.lambda             expect 9513.0 nm  (= airCylLen)
+%       max(P.geomHalf(:,2))/2 vs P.w/2      expect 308.5 vs 400.0 nm
 %     The last one is load bearing: the builder separates the air's z = 0
 %     faces from the beam's by a y bound, and needs max(hy)/2 < w/2.
 %
 % S1  geometry only, MECHANICS ONLY. Comment out the RunNanobeamFEM call above,
-%     set P.solveOpt = 0, P.nShieldX = P.nShieldY = 2 and P.solveMechPML = 0,
-%     then run the block below. Check in the GUI that the beam unions cleanly
-%     onto the shield at x = beamLenHalf and that no selection warned about
-%     being empty. This is the unchanged v1 path and must look exactly as it
-%     did before optics existed.
+%     set the MASTER SWITCH P.solveOpt = 0, P.nShieldX = P.nShieldY = 2 and
+%     P.solveMechPML = 0, then run the block below. Check in the GUI that the
+%     beam unions cleanly onto the shield at x = beamLenHalf and that no
+%     selection warned about being empty. This is the unchanged v1 path and
+%     must look exactly as it did before optics existed.
 %
-% S1b geometry only, OPTICS ON. Set P.solveOpt = 1 and repeat. What to check in
-%     the GUI, in order of how badly it bites:
+% S1b geometry only, OPTICS ON. Set the MASTER SWITCH back to P.solveOpt = 1
+%     and repeat - note this writes into a DIFFERENT datLoc, by design, so S1
+%     and S1b never collide. What to check in the GUI, in order of how badly
+%     it bites:
 %       - the air cylinder is a QUARTER cylinder (y >= 0 and z >= 0). If the
 %         z < 0 half is still there, the symZ cut block did not span far
 %         enough in z and the z = 0 optical mirror plane is wrong.
@@ -321,7 +386,7 @@ datLoc = [fullfile('.','test','1D_OMC_crossShield',currentDate),filesep];
 %     cylinder.
 %
 % S4b optical convergence against the truncated air. Sweep
-%     P.airCylLen = [5.5, 6.5, 7.4] um and watch lambda, Q and (once S7 runs)
+%     P.airCylLen = [7.5, 8.5, 9.113] um and watch lambda, Q and (once S7 runs)
 %     g_OM. lambda and g_OM should be flat - they are set by the field at
 %     x ~ 0. Q will NOT be flat and will be OVERESTIMATED at short airCylLen,
 %     because the beam beyond the cylinder is clad in the EM interface's
