@@ -104,7 +104,7 @@ clear all; close all; clc                                   %#ok<CLALL>
 % cylinder, and BOTH consistency guards (oevenz vs mevenz, oeveny vs meveny)
 % all sit inside the useOpt branch, so P.airrad / P.airCylLen / P.oeven* below
 % may stay set and unused - and cannot fire a spurious error either.
-P.solveOpt = 1;
+P.solveOpt = 0;
 
 %% geometry parameters - beam and holes
 P.xsect = 'rect';                       % v1 of the cross-shield builder is rect only
