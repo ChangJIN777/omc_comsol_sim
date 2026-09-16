@@ -161,7 +161,6 @@ currentDate = datestr(now,'mmddyyyy');                      %#ok<TNOW1,DATST>
 datLoc = [fullfile('.','test','1D_OMC_crossShield',currentDate),filesep];
 [ds,model] = RunNanobeamFEM(P,datLoc);
 
-
 %% ========================================================================
 %  STAGED BRING-UP
 %  ========================================================================
@@ -194,21 +193,21 @@ datLoc = [fullfile('.','test','1D_OMC_crossShield',currentDate),filesep];
 % S8  independent bandgap check via buildCrossUnitCell + runBands at th = P.th.
 %
 %% test the model building function (geometry only - no solve)
-import com.comsol.model.*
-import com.comsol.model.util.*
-
-ModelUtil.showProgress(true);
-ModelUtil.clear();
-clear ds model
-ds = []; model = [];
-
-model = ModelUtil.create('model');
-P = LoadMaterialParams(P);
-P = CreateNanobeamGeom(P);
-[model,P] = BuildNanobeamCrossShieldFEM(model,P);
-
-disp('--- domain selections ---'); disp(P.domSel);
-disp('--- boundary selections ---'); disp(P.bndSel);
-disp('--- shield extents (m) ---'); disp(P.shield);
-
-mphlaunch(model);
+% import com.comsol.model.*
+% import com.comsol.model.util.*
+% 
+% ModelUtil.showProgress(true);
+% ModelUtil.clear();
+% clear ds model
+% ds = []; model = [];
+% 
+% model = ModelUtil.create('model');
+% P = LoadMaterialParams(P);
+% P = CreateNanobeamGeom(P);
+% [model,P] = BuildNanobeamCrossShieldFEM(model,P);
+% 
+% disp('--- domain selections ---'); disp(P.domSel);
+% disp('--- boundary selections ---'); disp(P.bndSel);
+% disp('--- shield extents (m) ---'); disp(P.shield);
+% 
+% mphlaunch(model);
