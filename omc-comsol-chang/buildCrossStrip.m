@@ -121,8 +121,19 @@ function [model,P] = buildCrossStrip(model,P)
 %     named selections   geom1_xboundaries_bnd   (x = -a/2 and x = +a/2)
 %                        geom1_yboundaries_bnd   (y = yLo and y = yTop)
 %                        geom1_ZsymSel           (z = 0 plane, if P.mbevenz)
+%                        geom1_yFixedSel         (y = yTop face ALONE)
 %     P.bndSel.Zsym      boundary indices of the z symmetry plane
-%     P.xEnd1 P.xEnd2    bndindex lookups for the x faces (runBands fixed_bc)
+%     P.bndSel.yFixed    NAME of the y = yTop selection, 'geom1_yFixedSel'.
+%                        This is what a fixed BC should be hung on:
+%                        fixedBCs.selection.named(P.bndSel.yFixed), the way
+%                        runBands.m:373 already does for geom1_ZsymSel. A name
+%                        re-resolves on every geometry rebuild; an index list
+%                        does not. Distinct from geom1_yboundaries_bnd, which
+%                        holds BOTH y faces for the symmetry path.
+%     P.bndSel.yFixedInds  the indices that selection resolved to, for
+%                        printing/debugging only - do not build a BC from them.
+%     P.xEnd1 P.xEnd2    bndindex lookups for the x faces (runBands fixed_bc
+%                        FALLBACK path only)
 %     P.yEnd1 P.yEnd2    bndindex lookups for the y faces at y = yLo and
 %                        y = yTop. P.yEnd1 is TWO boundaries, not one, when
 %                        P.cutBottomHalfCell cuts the footprint through a void.
@@ -387,6 +398,27 @@ y_boundary_boxsel_t.set('inputent', 'all');
 y_boundary_boxsel_t.set('condition', 'inside');
 y_boundary_boxsel_t.set('contributeto','yboundaries');
 
+%% Named selection for the FIXED boundary condition: the y = yTop face alone
+% Separate node from y_boundary_boxsel_t on purpose. That one contributes to
+% 'yboundaries', which deliberately holds BOTH y faces because the symmetry /
+% antisymmetry path in runBands.m:362,:367 needs the pair; a fixed condition
+% must hit the top face ONLY, so it needs a selection of its own.
+%
+% This is the ZsymSel pattern (a standalone geometry BoxSelection exposed as
+% geom1_<tag> and consumed with selection.named), which is the one mechanism in
+% this file already proven to reach the physics intact: runBands.m:373 has been
+% hanging the z symmetry condition on 'geom1_ZsymSel' all along. Unlike a
+% captured index list it re-resolves on every geometry rebuild, so it cannot go
+% stale when P.ncell, P.mbevenz or a fillet radius changes.
+%
+% The z span covers BOTH cases in one box: z in [0, th/2] when P.mbevenz cut
+% the lower half away, z in [-th/2, th/2] when it did not.
+yFixedSel = ucellgeom.create('yFixedSel', 'BoxSelection');
+yFixedSel.set('xmin', -a/2-sel_delta).set('xmax', a/2+sel_delta);
+yFixedSel.set('ymin', yTop-sel_delta).set('ymax', yTop+sel_delta);
+yFixedSel.set('zmin', -th/2-sel_delta).set('zmax', th/2+sel_delta);
+yFixedSel.set('entitydim', 2).set('condition', 'allvertices');
+
 % Run the whole sequence so the named selections resolve and the FINALIZED
 % geometry exists before this function returns.
 %
@@ -399,7 +431,7 @@ y_boundary_boxsel_t.set('contributeto','yboundaries');
 % 114 boundaries and 1 domain and every lookup below resolves. The repo-wide
 % runAll idiom (buildCrossUnitCell.m:71, buildBoomerangUnitCell.m:264,
 % buildHoleStrip_3D.m:180) survives only because the callers later reach
-% runBands.m:198 / runBands_2D, which call geom('geom1').run - too late for any
+% runBands.m:203 / runBands_2D, which call geom('geom1').run - too late for any
 % P.xEnd*/P.yEnd*/P.zEnd the builder itself returns. buildHoleStrip_3D.m:184
 % has that call sitting commented out for the same reason.
 ucellgeom.run;
@@ -409,12 +441,21 @@ ucellgeom.run;
 % there. Same accessor pair as checkNamedBndSel, for the same version-to-version
 % reason.
 if abs(P.mbevenz)
-    try
-        inds = double(model.selection([ucellname,'_ZsymSel']).entities(2));
-    catch
-        inds = double(model.selection([ucellname,'_ZsymSel']).inputEntities());
-    end
-    P.bndSel.Zsym = inds(:)';
+    P.bndSel.Zsym = resolveBndSel(model, [ucellname,'_ZsymSel']);
+end
+
+% The fixed-BC selection. The caller gets the NAME, not the indices, so that
+% runBands can do fixedBCs.selection.named(P.bndSel.yFixed) and never has to
+% know anything about this geometry. P.bndSel.yFixedInds is informational (the
+% geomOnly print) - do not build a boundary condition out of it.
+P.bndSel.yFixed     = [ucellname,'_yFixedSel'];
+P.bndSel.yFixedInds = resolveBndSel(model, P.bndSel.yFixed);
+if isempty(P.bndSel.yFixedInds)
+    warning('buildCrossStrip:yFixedSelEmpty', ...
+        ['%s resolved to no boundaries, so a fixed condition using it would ' ...
+         'constrain nothing. The box spans y = [%g, %g] nm; the y = yTop face ' ...
+         'should be at %g nm.'], P.bndSel.yFixed, ...
+        (yTop-sel_delta)*1e9, (yTop+sel_delta)*1e9, yTop*1e9);
 end
 
 %% Index-based selections (runBands fixed_bc path, and P.zEnd)
@@ -692,6 +733,30 @@ if r2 > 0
     fil2.set('radius', r2);
     fil2.selection('point').named(disksel2_label);
 end
+end
+
+% -------------------------------------------------------------------------
+
+function inds = resolveBndSel(model, tag)
+%RESOLVEBNDSEL Boundary indices of a geometry selection, as a row vector.
+%
+% Two accessors because they differ across COMSOL versions, the same pair (and
+% the same order) checkNamedBndSel uses. Returns [] rather than throwing if
+% neither works: the caller decides whether an empty selection is fatal.
+%
+% Only meaningful AFTER the geometry has been finalized with geom.run - before
+% that every selection resolves to nothing. See the comment on the run call.
+
+try
+    inds = double(model.selection(tag).entities(2));
+catch
+    try
+        inds = double(model.selection(tag).inputEntities());
+    catch
+        inds = [];
+    end
+end
+inds = inds(:)';
 end
 
 % -------------------------------------------------------------------------

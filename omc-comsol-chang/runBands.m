@@ -3,14 +3,19 @@ function ds = runBands(P)
 %   Detailed explanation goes here
 %
 %   OPTIONAL P FIELDS READ HERE
-%     P.fixed_bc     nonzero -> apply a Fixed (zero displacement) condition.
-%     P.fixed_faces  which faces that condition lands on: a char or cellstr
-%                    subset of {'xEnd1','xEnd2','yEnd1','yEnd2'}, naming the
-%                    P fields the geometry builder filled with boundary
-%                    indices. Default {'yEnd2'}, which reproduces the
-%                    behaviour this function had before the field existed.
-%                    Only read when P.fixed_bc is nonzero. See the boundary
-%                    conditions section below.
+%     P.fixed_bc       nonzero -> apply a Fixed (zero displacement) condition.
+%     P.bndSel.yFixed  PREFERRED. The NAME of a geometry selection holding the
+%                      boundaries to clamp, e.g. 'geom1_yFixedSel' from
+%                      buildCrossStrip. When present the Fixed feature is hung
+%                      on it with selection.named, exactly as pbcX and symBCs
+%                      are, and P.fixed_faces is not consulted.
+%     P.fixed_faces    FALLBACK, for builders that supply no such name: a char
+%                      or cellstr subset of {'xEnd1','xEnd2','yEnd1','yEnd2'},
+%                      naming the P fields the builder filled with boundary
+%                      indices. Default {'yEnd2'}, which reproduces the
+%                      behaviour this function had before either field existed.
+%                      Both are only read when P.fixed_bc is nonzero. See the
+%                      boundary conditions section below.
 % import COMSOL class
 import com.comsol.model.*
 import com.comsol.model.util.*
@@ -222,15 +227,65 @@ smech.selection.all;
 clear bnds
 bnds.pbc_inds = [];
 if P.fixed_bc
-    % WHICH faces get the zero-displacement (Fixed) condition. P.fixed_faces is
-    % any nonempty subset of {'xEnd1','xEnd2','yEnd1','yEnd2'}, naming the
-    % fields the geometry builder filled in with boundary indices.
+    fixedBCs = smech.feature.create('fix1', 'Fixed', 2);
+end
+if P.fixed_bc && isfield(P,'bndSel') && isfield(P.bndSel,'yFixed') && ...
+        ~isempty(P.bndSel.yFixed)
+    %% PREFERRED PATH - a NAMED selection supplied by the geometry builder
+    % Exactly how pbcX and symBCs below get their boundaries, and the only
+    % mechanism in this file that has never needed the geometry to be described
+    % twice. buildCrossStrip returns P.bndSel.yFixed = 'geom1_yFixedSel', a
+    % BoxSelection isolating the y = yTop face, and the name re-resolves every
+    % time the geometry is rebuilt - so it cannot go stale when P.ncell,
+    % P.mbevenz or a fillet radius changes, the way a captured index list does.
     %
-    % The default {'yEnd2'} is exactly what this block did before the field
-    % existed: only the y = Ly / y = yTop face was passed to
-    % fixedBCs.selection.set (fixedYinds was [fixedY2]), and the x faces were
-    % deliberately commented out so they keep the Floquet pair created below.
-    % So every existing caller of runBands is unaffected.
+    % Note this is NOT 'geom1_yboundaries_bnd': that one deliberately holds
+    % BOTH y faces because the symmetry/antisymmetry path below needs the pair.
+    fixedSelTag = P.bndSel.yFixed;
+    fixedBCs.selection.named(fixedSelTag);
+
+    % Resolve it purely to check it is not empty. An empty Fixed feature is the
+    % dangerous failure: COMSOL solves happily and the result looks like a
+    % converged free-boundary run, so this must stay an error.
+    try
+        fixedInds = double(model.selection(fixedSelTag).entities(2));
+    catch
+        try
+            fixedInds = double(model.selection(fixedSelTag).inputEntities());
+        catch
+            fixedInds = [];
+        end
+    end
+    fixedInds = reshape(fixedInds, 1, []);
+    if isempty(fixedInds)
+        error('runBands:fixedSelEmpty', ...
+            ['P.fixed_bc = 1 with the named selection ''%s'' from celltype ' ...
+             '''%s'', but it resolves to no boundaries, so the Fixed ' ...
+             'condition would constrain nothing and the solve would silently ' ...
+             'return free-boundary modes. Check that the geometry builder ' ...
+             'finalized the geometry (geom.run, not geom.runAll) before ' ...
+             'returning, and that the selection box still straddles the ' ...
+             'intended face.'], fixedSelTag, P.celltype);
+    end
+    bnds.fixed_inds = fixedInds;
+    disp(['Fixed (zero displacement) BC on ',fixedSelTag, ...
+          ' -> boundaries [',num2str(fixedInds),']']);
+elseif P.fixed_bc
+    %% FALLBACK PATH - the P.xEnd*/P.yEnd* index lists
+    % For celltypes whose builders supply no named fixed-BC selection:
+    % sweep_boomerangLower_code.m:67 and sweep_boomerangLower_code_v2.m:63,:113
+    % run fixed_bc = 1 through buildLowerBoomerangUnitCell, which returns
+    % indices only. Behaviour here is unchanged from before either field
+    % existed.
+    %
+    % WHICH faces get the condition: P.fixed_faces, any nonempty subset of
+    % {'xEnd1','xEnd2','yEnd1','yEnd2'}, naming the fields the geometry builder
+    % filled in with boundary indices.
+    %
+    % The default {'yEnd2'} is exactly what this block did originally: only the
+    % y = Ly / y = yTop face was passed to fixedBCs.selection.set (fixedYinds
+    % was [fixedY2]), and the x faces were deliberately commented out so they
+    % keep the Floquet pair created below.
     %
     % Do NOT list an x face here while the Floquet condition below is active:
     % clamping a face that is one half of a periodic pair over-constrains it and
@@ -270,7 +325,6 @@ if P.fixed_bc
     bnds.fixed_inds = fixedInds;
 
     % set the fixed BCs
-    fixedBCs = smech.feature.create('fix1', 'Fixed', 2);
     fixedBCs.selection.set(fixedInds);
     disp(['Fixed (zero displacement) BC on ',strjoin(fixedFaces,', '), ...
           ' -> boundaries [',num2str(fixedInds),']']);
