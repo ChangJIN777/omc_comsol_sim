@@ -53,30 +53,30 @@ P.rxtal = 45;                           % ccw rotation of elasticity matrix in d
 %% define the maximum number of degree of freedom to limit the simulation time
 P.max_dof = 3e6;                        % max # of degrees of freedom
 
-% %% debugging the unit cells 
-% % import COMSOL class
-% import com.comsol.model.*
-% import com.comsol.model.util.*
-% 
-% ModelUtil.showProgress(true);
-% ModelUtil.clear();
-% clear model
-% 
-% % create COMSOL model named 'model' from which COMSOL methods can be called, 
-% % e.g. model.save
-% model = ModelUtil.create('model');
-% 
-% buildRibUnitCell_LN(model,P);
-% mphlaunch(model);
-%% Single solve
-if P.run_optical
-    currentDate = datestr(now,'mmddyyyy');
-    datLoc = [fullfile('.','test','LN_ribUnitCell_optical',currentDate),filesep];
-    P.datLoc = datLoc;
-    bds = solveOpticalBands(P);
-else
-    currentDate = datestr(now,'mmddyyyy');
-    datLoc = [fullfile('.','test','LN_ribUnitCell',currentDate),filesep];
-    P.datLoc = datLoc;
-    bds = solveBands_noSym(P);
-end
+%% debugging the unit cells 
+% import COMSOL class
+import com.comsol.model.*
+import com.comsol.model.util.*
+
+ModelUtil.showProgress(true);
+ModelUtil.clear();
+clear model
+
+% create COMSOL model named 'model' from which COMSOL methods can be called, 
+% e.g. model.save
+model = ModelUtil.create('model');
+
+buildRibUnitCell_LN(model,P);
+mphlaunch(model);
+% %% Single solve
+% if P.run_optical
+%     currentDate = datestr(now,'mmddyyyy');
+%     datLoc = [fullfile('.','test','LN_ribUnitCell_optical',currentDate),filesep];
+%     P.datLoc = datLoc;
+%     bds = solveOpticalBands(P);
+% else
+%     currentDate = datestr(now,'mmddyyyy');
+%     datLoc = [fullfile('.','test','LN_ribUnitCell',currentDate),filesep];
+%     P.datLoc = datLoc;
+%     bds = solveBands_noSym(P);
+% end

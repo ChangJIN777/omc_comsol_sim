@@ -24,9 +24,9 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'cross';                   % specify the cell type
 P.unitcell = 'square';                  % specify the shape of the unit cell
-P.a = 894e-9;       % unit cell side - the lattice constant along BOTH x and y.
+P.a = 889e-9;       % unit cell side - the lattice constant along BOTH x and y.
                     % ucellPlane is a square of size [a a] (buildCrossUnitCell.m:38).
-P.h = 863e-9;       % LENGTH of each cross arm. rec_1 has size [h w] (x by y) and
+P.h = 820e-9;       % LENGTH of each cross arm. rec_1 has size [h w] (x by y) and
                     % rec_2 the transpose [w h], giving two crossed bars (:43,:48).
                     % h < a is required, or the arms reach the cell boundary and
                     % split the solid into four disconnected corner islands.

@@ -372,7 +372,7 @@ else
     end
 
     currentDate = datestr(now, 'mmddyyyy');
-    datLoc = [fullfile('.','test','cross_strip',currentDate),filesep];
+    datLoc = [fullfile('.','test','cross_strip_v2',currentDate),filesep];
     P.datLoc = datLoc;
     bds = solveBands(P);
 end
