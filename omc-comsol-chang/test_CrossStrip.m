@@ -31,8 +31,8 @@ clear P;
 % NO MIRROR AT y = 0. buildCrossStrip borrows buildHoleStrip_3D's half-strip
 % FOOTPRINT (y from yLo to yTop rather than -Ly/2 to +Ly/2) but does not treat
 % y = 0 as a symmetry plane. Both y faces are emitted -- y = yLo and y = yTop
-% go into the 'yboundaries' cumulative selection (:372) and come back as
-% P.yEnd1 and P.yEnd2 (:399,:400) -- and the choice of boundary condition is
+% go into the 'yboundaries' cumulative selection (:373) and come back as
+% P.yEnd1 and P.yEnd2 (:424,:425) -- and the choice of boundary condition is
 % left to the caller. THIS SCRIPT uses that freedom twice, see
 % P.cutBottomHalfCell and P.fixed_bc / P.fixed_faces below: the bottom face is
 % cut through the middle of cell 1 and the top face is clamped.
@@ -74,13 +74,13 @@ P.a = 914e-9;       % lattice constant along BOTH x and y. Sets the x width of
 P.h = 847e-9;       % LENGTH of each cross arm. recH has size [h w] (x by y)
                     % and recV the transpose [w h] (:259,:264).
                     % h < a is REQUIRED and enforced -- buildCrossStrip errors
-                    % with :armTooLong (:450) rather than letting COMSOL build
+                    % with :armTooLong (:475) rather than letting COMSOL build
                     % a chain of disconnected corner islands.
 P.w = 184e-9;       % WIDTH of each cross arm (the etched gap width).
 P.th = 250e-9;      % slab THICKNESS along z. The work plane sits at z = -th/2
                     % and the profile is extruded a distance th (:239,:291).
-P.r1 = 10e-9;       % fillet radius, applied via fil1.set('radius',r1) (:653)
-P.r2 = 10e-9;       % fillet radius, applied via fil2.set('radius',r2) (:667)
+P.r1 = 10e-9;       % fillet radius, applied via fil1.set('radius',r1) (:678)
+P.r2 = 10e-9;       % fillet radius, applied via fil2.set('radius',r2) (:692)
                     % See the KNOWN ISSUE block at buildCrossStrip.m:139. These
                     % are the LEGACY selections from buildCrossUnitCell,
                     % reproduced unchanged so results stay comparable with
@@ -104,7 +104,7 @@ P.r2 = 10e-9;       % fillet radius, applied via fil2.set('radius',r2) (:667)
                     % strip -- see the note under P.ncell.
 P.ncell = 7;        % NUMBER OF CROSS CELLS along the strip (y). This is the
                     % field that replaces buildHoleStrip_3D's 13 hardcoded
-                    % circles. Validated at :444 as a positive integer.
+                    % circles. Validated at :469 as a positive integer.
                     % Any N >= 3 has a cell with neighbours on BOTH sides,
                     % which is what makes the :filletSelectionBleed case above
                     % visible; N = 3 is the cheap version to start from.
@@ -116,7 +116,7 @@ P.ncell = 7;        % NUMBER OF CROSS CELLS along the strip (y). This is the
                     %                                 yLo = y_1 = 457 nm)
                     % Raise it only after the GUI shows the fillets are sane.
 P.b = 0;            % extra y shift applied to CELL 1 ONLY, mirroring the role
-                    % of P.b in buildHoleStrip_3D. Range-checked at :481 so it
+                    % of P.b in buildHoleStrip_3D. Range-checked at :506 so it
                     % cannot silently push cell 1 outside the footprint.
 P.b_wvg = 0;        % y offset applied to the WHOLE array, widening the gap
                     % between y = 0 and the first cell. Leave at 0 unless you
@@ -170,7 +170,7 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell. Not read by
                     % kept for parity with the other test scripts.
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
                     % (nonzero also halves the cell in z: the block below
-                    % z = 0 is subtracted, buildCrossStrip.m:299-332, and the
+                    % z = 0 is subtracted, buildCrossStrip.m:299-334, and the
                     % z = 0 plane comes back as geom1_ZsymSel / P.bndSel.Zsym)
 
 P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
@@ -247,7 +247,7 @@ P.fixed_faces = {'yEnd2'};              % WHICH faces the Fixed condition lands
                                         % existed, so no other script changes
                                         % behaviour.
                                         % {'yEnd2'} = the y = yTop face only
-                                        % (buildCrossStrip.m:400). Deliberately
+                                        % (buildCrossStrip.m:425). Deliberately
                                         % NOT all four faces:
                                         %   - the x faces must keep their
                                         %     Floquet/periodic condition

@@ -327,9 +327,10 @@ if abs(P.mbevenz)
     ZsymSel.set('zmin', -delta).set('zmax', delta);
     ZsymSel.set('entitydim', 2).set('condition', 'allvertices');
     ucellgeom.runCurrent;
-
-    inds = model.selection([ucellname,'_ZsymSel']).inputEntities();
-    P.bndSel.Zsym = inds';
+    % P.bndSel.Zsym is NOT read here. The other builders read it at this point
+    % (buildCrossUnitCell.m:104, buildBoomerangUnitCell.m:146, ...), but the
+    % selection cannot resolve until the geometry is finalized, so it comes back
+    % empty. It is read after the ucellgeom.run below instead.
 end
 
 %% Named (cumulative) boundary selections
@@ -386,11 +387,35 @@ y_boundary_boxsel_t.set('inputent', 'all');
 y_boundary_boxsel_t.set('condition', 'inside');
 y_boundary_boxsel_t.set('contributeto','yboundaries');
 
-% Run the whole sequence so the named selections resolve before this function
-% returns. buildHoleStrip_3D creates its box selections after its last runAll
-% and never re-runs; it works only because the callers happen to call
-% geom('geom1').run afterwards.
-ucellgeom.runAll;
+% Run the whole sequence so the named selections resolve and the FINALIZED
+% geometry exists before this function returns.
+%
+% THIS MUST BE run, NOT runAll. runAll builds the geometry objects of the
+% sequence but does not finalize (it does not run the 'fin' feature), and every
+% query below reads the finalized geometry: measured on COMSOL 6.3, after
+% runAll the sequence reports getNVertices = 0, getNBoundaries = 0,
+% getNDomains = 0, so bndindex returns [] for all four faces and the
+% cumulative selections resolve to nothing. After run it reports 224 vertices,
+% 114 boundaries and 1 domain and every lookup below resolves. The repo-wide
+% runAll idiom (buildCrossUnitCell.m:71, buildBoomerangUnitCell.m:264,
+% buildHoleStrip_3D.m:180) survives only because the callers later reach
+% runBands.m:198 / runBands_2D, which call geom('geom1').run - too late for any
+% P.xEnd*/P.yEnd*/P.zEnd the builder itself returns. buildHoleStrip_3D.m:184
+% has that call sitting commented out for the same reason.
+ucellgeom.run;
+
+%% Selections that need the FINALIZED geometry
+% Z symmetry plane, deferred from the mbevenz block above for the reason given
+% there. Same accessor pair as checkNamedBndSel, for the same version-to-version
+% reason.
+if abs(P.mbevenz)
+    try
+        inds = double(model.selection([ucellname,'_ZsymSel']).entities(2));
+    catch
+        inds = double(model.selection([ucellname,'_ZsymSel']).inputEntities());
+    end
+    P.bndSel.Zsym = inds(:)';
+end
 
 %% Index-based selections (runBands fixed_bc path, and P.zEnd)
 P.xEnd1 = bndindex(ucellgeom, [-a/2 0 0], [1 0 0]);
