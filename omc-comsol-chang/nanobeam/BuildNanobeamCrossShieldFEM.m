@@ -311,6 +311,12 @@ function [model,P] = BuildNanobeamCrossShieldFEM(model,P)
 %       P.domSel.beam     beam + pad + shield  (material and smech selection)
 %       P.domSel.shield   shield only          (mesh sizing)
 %       P.domSel.PML      the three PML frame domains
+%       P.domSel.PMLarm   struct .x / .y / .corner, the SAME three domains
+%                         split by arm. Only a directional mesh operation
+%                         needs the split - see applyPMLSweep in
+%                         SolveNanobeamFEM.m. Everything else (material, the
+%                         PML coordinate system, the Size node) uses the
+%                         merged P.domSel.PML.
 %       P.bndSel.beamXsym x = 0  cavity mirror
 %       P.bndSel.beamYsym y = 0  faces of beam + pad + shield  (HALF-Y ONLY -
 %                         the field is NOT SET in the full-y build, because
@@ -991,11 +997,21 @@ if usePML
     % arm face is half the smallest arm dimension - microns against d = 10 nm.
     % Only the +x arm's y centre moves with fullY, because only that arm spans
     % the shield height; the other two sit above yS1 in both builds.
+    % The fifth column is the P.domSel.PMLarm field each probe fills. The
+    % MERGED list P.domSel.PML is what the material, the PML coordinate system
+    % and the Size-node path all use, and it is unchanged. The PER-ARM lists
+    % exist because a DIRECTIONAL mesh operation cannot be expressed on the
+    % merged list: the +x arm absorbs along x and the +y arm along y, so a
+    % swept mesh needs one operation per arm with its own sweep axis. See
+    % applyPMLSweep in SolveNanobeamFEM.m, which is the only consumer and is
+    % itself opt-in (P.PMLmeshSwept). Purely additive - no geometry feature,
+    % ordering or existing field changes, so every existing caller is
+    % bit-identical.
     zMid = 0.5*(zLoEff + thi/2);
     probes = { ...
-        'PMLxArmSel', 0.5*(xS1 + xP1), 0.5*(yS0 + yS1), zMid; ...
-        'PMLyArmSel', 0.5*(xB1 + xS1), 0.5*(yS1 + yP1), zMid; ...
-        'PMLcornSel', 0.5*(xS1 + xP1), 0.5*(yS1 + yP1), zMid};
+        'PMLxArmSel', 0.5*(xS1 + xP1), 0.5*(yS0 + yS1), zMid, 'x'; ...
+        'PMLyArmSel', 0.5*(xB1 + xS1), 0.5*(yS1 + yP1), zMid, 'y'; ...
+        'PMLcornSel', 0.5*(xS1 + xP1), 0.5*(yS1 + yP1), zMid, 'corner'};
 
     PMLinds = [];
     for k = 1:size(probes,1)
@@ -1008,10 +1024,14 @@ if usePML
         beamgeom.runCurrent;
         ik = readSel(model, P.geomname, tag);
         assertNonEmptySel(['PML probe ', tag], ik);
+        P.domSel.PMLarm.(probes{k,5}) = ik;
         PMLinds = [PMLinds, ik];                                    %#ok<AGROW>
     end
     P.domSel.PML = unique(PMLinds);
-    disp(['PML domain indices: ', num2str(P.domSel.PML)]);
+    disp(['PML domain indices: ', num2str(P.domSel.PML), ...
+          '  (+x arm ', num2str(P.domSel.PMLarm.x), ...
+          ', +y arm ', num2str(P.domSel.PMLarm.y), ...
+          ', corner ', num2str(P.domSel.PMLarm.corner), ')']);
 
     % Warn-only cross-check against the 'inside' + DifferenceSelection
     % construction this replaced, so a disagreement surfaces on the first run

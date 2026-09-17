@@ -39,9 +39,12 @@ subset is the tell that it is a sequence fault, not a selection fault.
   creating anything, and return untouched when none fire - otherwise it flips
   legacy callers off the physics-controlled mesh and changes their results (rule
   4 in [[feedback-house-style]]).
-- Going user-controlled loses COMSOL's automatic **swept mesh in PML domains**.
-  Tets there are valid but less efficient; worth a swept-mesh operation ahead of
-  the `FreeTet` if PML DOF ever dominates.
+- Going user-controlled loses COMSOL's automatic **swept mesh in PML domains**,
+  and on 2026-09-16 that was MEASURED and found not to matter for the
+  cross-shield model. See [[project-pml-mesh-cost]] before spending any more
+  effort there. `SolveNanobeamFEM.m` now has an opt-in swept path
+  (`P.PMLmeshSwept`), default OFF, and the arithmetic for why it is off is in
+  its `applyPMLSweep` doc block.
 - `mesh.isAutomatic()` exists on 6.3 but prefer inspecting `mesh.feature.tags()`
   when you need version tolerance.
 - Relevant to the "separate optical and mechanical mesh nodes" refactor flagged

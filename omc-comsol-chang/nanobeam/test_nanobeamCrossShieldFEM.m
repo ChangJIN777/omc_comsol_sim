@@ -386,6 +386,17 @@ P.zSlc = 0;
 P.PMLLen  = 2e-6;                       % +x frame thickness
 P.PMLLenY = 2e-6;                       % +y frame thickness
 P.PMLmeshDiv = 8;                       % elements across the absorbing direction
+% Swept PML arms instead of a free tet. OFF, and the arithmetic says leave it
+% off unless you are chasing the last percent: at these parameters the PML is
+% 2.958 um^3 against 0.954 um^3 of solid shield, but at hmax = PMLLen/
+% PMLmeshDiv = 250 nm it is only ~4.98e4 elements (1.14e3 in the bulk, the rest
+% in the 11-layer graded shell where it meets the shield's 10.33 nm mesh)
+% against the shield's 5.19e6 - i.e. 0.95% of the mechanical element count.
+% A sweep cannot coarsen the shell either, because the shell IS the sweep
+% source face. P.PMLmeshLayers = 4 buys 1.68x on that 0.95%; = 8 is worse than
+% the free tet. See applyPMLSweep in SolveNanobeamFEM.m.
+% P.PMLmeshSwept  = 1;
+% P.PMLmeshLayers = 4;                  % default P.PMLmeshDiv
 P.PMLScalingType = 'userDefined';       % FREQUENCY DEPENDENT: the PML stretch
                                         % is keyed to P.freq via
                                         % typicalWavelength = v/P.freq.
