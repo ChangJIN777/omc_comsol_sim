@@ -483,6 +483,13 @@ function applyMeshOverrides(mesh, geomname, P)
 %                 ligaments are the narrowest solid feature in the model and
 %                 carry the whole shield response, so they need their own
 %                 resolution independent of the global quality level.
+%
+%   P.beamHmax    max element size in the beam (P.domSel.beam minus the
+%                 shield) [m]. Default min(P.th, min(hx))/3. GATED to
+%                 P.celltype = 'crossShield'. Without it the beam is the only
+%                 domain the mAdjMesh coarsening loop can touch - see the long
+%                 comment at the node itself for why that loop cannot converge
+%                 once the shield carries its own hmax.
 
 if isfield(P,'solveMechPML') && P.solveMechPML && ...
         isfield(P,'domSel') && isfield(P.domSel,'PML') && ~isempty(P.domSel.PML)
@@ -507,6 +514,60 @@ if isfield(P,'solveMechPML') && P.solveMechPML && ...
             szPML.set('custom','off').set('hauto', P.PMLmesh);
             disp(['PML mesh quality: ' num2str(P.PMLmesh)]);
         end
+    end
+end
+
+% Beam. WHY THIS EXISTS: the mAdjMesh loop above raises the GLOBAL hauto while
+% dofs >= max_dof, capped only by mfem.mesh < 10, i.e. up to 9 - "extremely
+% coarse". The shield and the PML each carry their own hmax and are immune to
+% that, so the shield's contribution - which dominates the DOF count - never
+% shrinks and the loop cannot converge. It therefore runs hauto all the way up,
+% and the beam, the one part of the model with no override, is the only thing
+% that actually gets coarsened. At hauto = 9 the global element size is set by
+% an ~18 um model against a 250 nm slab, so the beam ends up unmeshed or
+% degenerate while the shield and PML still look perfectly meshed.
+%
+% Pinning the beam makes it independent of that loop: an undersized max_dof can
+% still stop the solve, but it can no longer silently destroy the cavity mesh,
+% which is the part the physics of interest lives in.
+%
+% Gated to crossShield for the same reason P.PMLmeshDiv is (see the header):
+% legacy callers reach this function with no beam override and must keep the
+% mesh they have always had.
+if isfield(P,'celltype') && strcmp(P.celltype,'crossShield') && ...
+        isfield(P,'domSel') && isfield(P.domSel,'beam') && ~isempty(P.domSel.beam)
+
+    % P.domSel.beam is beam + pad + shield; the shield has its own node below,
+    % so take the difference rather than relying on Size-node ordering.
+    beamOnly = P.domSel.beam;
+    if isfield(P.domSel,'shield') && ~isempty(P.domSel.shield)
+        beamOnly = setdiff(beamOnly, P.domSel.shield);
+    end
+
+    if ~isempty(beamOnly)
+        if isfield(P,'beamHmax') && ~isempty(P.beamHmax)
+            beamHmax = P.beamHmax;
+        else
+            % Three elements across the narrowest beam feature, matching the
+            % convention P.shieldHmax uses for the ligaments. The slab
+            % thickness and the smallest hole dimension are the candidates.
+            narrow = P.th;
+            if isfield(P,'geomHalf') && ~isempty(P.geomHalf)
+                narrow = min(narrow, min(P.geomHalf(:,1)));
+            end
+            beamHmax = narrow/3;
+        end
+        szB = getOrCreateSizeNode(mesh, 'size_beam');
+        szB.selection.geom(geomname, 3).set(beamOnly);
+        szB.set('custom','on').set('hmaxactive',true);
+        szB.set('hmax', beamHmax);
+        disp(['Beam mesh: hmax = ',num2str(beamHmax*1e9,'%.1f'),' nm on ', ...
+              num2str(numel(beamOnly)),' domain(s)']);
+    else
+        warning('SolveNanobeamFEM:noBeamDomain', ...
+            ['P.domSel.beam minus P.domSel.shield is empty, so the beam got ' ...
+             'no mesh override and the mAdjMesh loop can coarsen it away. ' ...
+             'Check the builder''s domain selections.']);
     end
 end
 

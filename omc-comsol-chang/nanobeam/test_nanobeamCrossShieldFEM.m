@@ -453,7 +453,34 @@ P.PMLScalingType = 'userDefined';       % FREQUENCY DEPENDENT: the PML stretch
 %      memory setting away, it is a different mesh.
 % A fifth fix - separate optical and mechanical mesh nodes - would need an
 % edit to SolveNanobeamFEM, which this script deliberately does not require.
-P.max_dof = 5e6;
+%
+% BUDGET RAISED TO MATCH THE MESH THIS GEOMETRY ACTUALLY WANTS (2.18e7 above).
+% 2.5e7 leaves ~15% headroom over the estimate, and the estimate uses the crude
+% V_tet = h^3/6 which understates a real tet fill by roughly 1.4x - so treat
+% 2.5e7 as "do not coarsen", not as a promise that the solve fits in RAM.
+%
+% WHAT THIS DOES AND DOES NOT FIX. It stops mAdjMesh coarsening the mesh in a
+% loop it cannot win: with the shield pinned at hmax = 10.3 nm the DOF count
+% never fell below the old 5e6, so the loop drove the GLOBAL hauto to 9
+% ("extremely coarse") and the beam - the only domain without its own override
+% - stopped being meshed. That is the "nanobeam was never meshed" symptom. The
+% beam now also carries its own hmax (P.beamHmax, applyMeshOverrides in
+% SolveNanobeamFEM), so it cannot be coarsened away even if the budget is wrong
+% again.
+%
+% It does NOT make the eigensolve cheap. msolv_eigv uses the MUMPS direct
+% solver (SetupNanobeamFEM sets linsolver = 'mumps'), whose factorisation
+% memory grows far faster than linearly in DOF; a 2e7-DOF 3D elasticity
+% factorisation is a many-hundred-GB proposition, not a workstation one. If the
+% solve dies on memory rather than on mesh, levers 1-3 above are the real fix
+% and lever 3 (widen a-h) is the one that also clears notFabricable.
+P.max_dof = 2.5e7;
+
+% Beam mesh floor. Default is min(P.th, min(hx))/3 = min(250, 343)/3 = 83.3 nm,
+% i.e. three elements across the slab thickness. Uncomment to pin it yourself;
+% raising it is the cheapest way to trim DOF without touching the shield, which
+% is where the resolution actually matters.
+% P.beamHmax = 83e-9;
 
 %% single run
 % THE OPTICS TAG IN datLoc IS WHAT MAKES P.solveOpt SAFE TO FLIP.
