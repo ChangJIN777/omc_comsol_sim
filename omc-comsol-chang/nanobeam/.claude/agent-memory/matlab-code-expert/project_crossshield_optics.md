@@ -45,8 +45,12 @@ path is the user's explicit device change, not a modelling convenience.
 - **The binding constraint is the shield mesh, and it is not close.** At the
   script's current cross cell (`a = 894`, `h = 863`, `w = 416 nm`) the default
   `shieldHmax = min((a-h)/3, th/3) = 10.3 nm`, giving ~5.2e6 shield tets and
-  ~2.2e7 DOF against `P.max_dof = 5e6` - about 4x over, in BOTH y builds and
-  with optics off. Switching to full-y adds under 1% (only the beam doubles;
+  ~2.2e7 DOF. `test_nanobeamCrossShieldFEM.m` raised `P.max_dof` to `2.5e7` on
+  2026-09-16 to accommodate that (other scripts still sit at `5e6`), so the
+  budget is now marginal rather than 4x over - but it is untested at full size
+  and a MUMPS factorisation there will exhaust a workstation. Shrink to
+  `nShieldX = nShieldY = 2` and `solveMechPML = 0` for any mesh-only check.
+  Switching to full-y adds under 1% (only the beam doubles;
   the shield and +x PML arm are the same `nShieldY*aShield = 4470 nm` tall
   either way). `mAdjMesh` cannot rescue it because `applyMeshOverrides`
   re-applies the shield `hmax` on every coarsening pass. Older comments quoting

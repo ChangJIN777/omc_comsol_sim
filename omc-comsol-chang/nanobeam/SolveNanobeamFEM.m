@@ -120,6 +120,12 @@ if ~isfield(meshTags,'mesh')
 else
     mesh = model.mesh('mesh');
 end
+% The optical and the mechanical pass share this one sequence but only the
+% mechanical pass calls applyMeshOverrides, so the optical pass can inherit a
+% sequence that is already user-controlled. No-op unless it is user-controlled
+% AND has no meshing operation - see ensureFreeTet for why that state meshes
+% nothing at all.
+ensureMeshOperation(mesh);
 
 % Solve for eigenfrequencies, adjust mesh if max DOFs exceeded
 ok = 0;
@@ -292,11 +298,14 @@ else
     mesh = model.mesh('mesh');
 end
 
+ensureMeshOperation(mesh);   % see the note in the optical pass above
+
 % Domain-scoped mesh overrides for the PML and (if present) the phononic
-% shield are applied by applyMeshOverrides below. They override the global
-% 'size' node on their own domains only; changing the global size does NOT
-% remove the override, but it is re-asserted after every global change so the
-% intent stays visible in the sequence.
+% shield are applied by applyMeshOverrides below. They are Size nodes nested
+% inside the sequence's FreeTet operation and override the global 'size' node
+% on their own domains only; changing the global size does NOT remove the
+% override, but it is re-asserted after every global change so the intent
+% stays visible in the sequence.
 
 % Solve for eigenfrequencies, adjust mesh if max DOFs exceeded
 ok = 0;
@@ -490,30 +499,80 @@ function applyMeshOverrides(mesh, geomname, P)
 %                 domain the mAdjMesh coarsening loop can touch - see the long
 %                 comment at the node itself for why that loop cannot converge
 %                 once the shield carries its own hmax.
+%
+% WHY THE DECISIONS ARE ALL MADE BEFORE ANY NODE IS CREATED
+% A mesh sequence with nothing in it but the global 'size' node is
+% PHYSICS-CONTROLLED and meshes itself. Creating even one extra feature flips
+% it to user-controlled, and from then on it runs only what it contains - see
+% ensureFreeTet. So this function must not touch the sequence at all unless it
+% is actually going to override something, and when it does it must add the
+% FreeTet operation as well as the Size nodes. Hence: work out every condition
+% first, bail out if none of them fired, then create.
 
+isCrossShield = isfield(P,'celltype') && strcmp(P.celltype,'crossShield');
+hasDomSel     = isfield(P,'domSel');
+
+% --- PML -----------------------------------------------------------------
+% See the P.PMLmeshDiv note in the header: gated to the cross-shield path so
+% that pre-existing callers which set the field are unaffected.
+doPML     = false;
+usePMLdiv = false;
 if isfield(P,'solveMechPML') && P.solveMechPML && ...
-        isfield(P,'domSel') && isfield(P.domSel,'PML') && ~isempty(P.domSel.PML)
-
-    % See the P.PMLmeshDiv note in the header: gated to the cross-shield
-    % path so that pre-existing callers which set the field are unaffected.
-    isCrossShield = isfield(P,'celltype') && strcmp(P.celltype,'crossShield');
-
+        hasDomSel && isfield(P.domSel,'PML') && ~isempty(P.domSel.PML)
     usePMLdiv = isCrossShield && ...
                 isfield(P,'PMLmeshDiv') && ~isempty(P.PMLmeshDiv) && ...
                 P.PMLmeshDiv > 0 && isfield(P,'PMLLen');
+    doPML = usePMLdiv || isfield(P,'PMLmesh');
+end
 
-    if usePMLdiv || isfield(P,'PMLmesh')
-        szPML = getOrCreateSizeNode(mesh, 'size_pml');
-        szPML.selection.geom(geomname, 3).set(P.domSel.PML);
-        if usePMLdiv
-            szPML.set('custom','on').set('hmaxactive',true);
-            szPML.set('hmax', P.PMLLen/P.PMLmeshDiv);
-            disp(['PML mesh: hmax = PMLLen/',num2str(P.PMLmeshDiv),' = ', ...
-                  num2str(P.PMLLen/P.PMLmeshDiv*1e9,'%.0f'),' nm']);
-        else
-            szPML.set('custom','off').set('hauto', P.PMLmesh);
-            disp(['PML mesh quality: ' num2str(P.PMLmesh)]);
-        end
+% --- Beam ----------------------------------------------------------------
+% P.domSel.beam is beam + pad + shield; the shield has its own node, so take
+% the difference rather than relying on Size-node ordering.
+doBeam   = false;
+beamOnly = [];
+if isCrossShield && hasDomSel && ...
+        isfield(P.domSel,'beam') && ~isempty(P.domSel.beam)
+    beamOnly = P.domSel.beam;
+    if isfield(P.domSel,'shield') && ~isempty(P.domSel.shield)
+        beamOnly = setdiff(beamOnly, P.domSel.shield);
+    end
+    if isempty(beamOnly)
+        warning('SolveNanobeamFEM:noBeamDomain', ...
+            ['P.domSel.beam minus P.domSel.shield is empty, so the beam got ' ...
+             'no mesh override and the mAdjMesh loop can coarsen it away. ' ...
+             'Check the builder''s domain selections.']);
+    else
+        doBeam = true;
+    end
+end
+
+% --- Shield --------------------------------------------------------------
+doShield = isfield(P,'shieldHmax') && ~isempty(P.shieldHmax) && ...
+           hasDomSel && isfield(P.domSel,'shield') && ~isempty(P.domSel.shield);
+
+% Nothing to override: leave the sequence physics-controlled. This is the path
+% every legacy caller takes (test_nanobeamRectFEM.m has P.solveMechPML = 0;
+% test_nanobeamRectFEM_withPML.m sets only P.PMLmeshDiv, which is gated to
+% crossShield), and it must stay byte-for-byte the mesh they have always had.
+if ~(doPML || doBeam || doShield)
+    return;
+end
+
+% From here on the sequence is user-controlled, so it needs a real meshing
+% operation and the Size nodes must be nested inside it.
+ftet = ensureFreeTet(mesh);
+
+if doPML
+    szPML = getOrCreateSizeNode(ftet, 'size_pml');
+    szPML.selection.geom(geomname, 3).set(P.domSel.PML);
+    if usePMLdiv
+        szPML.set('custom','on').set('hmaxactive',true);
+        szPML.set('hmax', P.PMLLen/P.PMLmeshDiv);
+        disp(['PML mesh: hmax = PMLLen/',num2str(P.PMLmeshDiv),' = ', ...
+              num2str(P.PMLLen/P.PMLmeshDiv*1e9,'%.0f'),' nm']);
+    else
+        szPML.set('custom','off').set('hauto', P.PMLmesh);
+        disp(['PML mesh quality: ' num2str(P.PMLmesh)]);
     end
 end
 
@@ -534,46 +593,29 @@ end
 % Gated to crossShield for the same reason P.PMLmeshDiv is (see the header):
 % legacy callers reach this function with no beam override and must keep the
 % mesh they have always had.
-if isfield(P,'celltype') && strcmp(P.celltype,'crossShield') && ...
-        isfield(P,'domSel') && isfield(P.domSel,'beam') && ~isempty(P.domSel.beam)
-
-    % P.domSel.beam is beam + pad + shield; the shield has its own node below,
-    % so take the difference rather than relying on Size-node ordering.
-    beamOnly = P.domSel.beam;
-    if isfield(P.domSel,'shield') && ~isempty(P.domSel.shield)
-        beamOnly = setdiff(beamOnly, P.domSel.shield);
-    end
-
-    if ~isempty(beamOnly)
-        if isfield(P,'beamHmax') && ~isempty(P.beamHmax)
-            beamHmax = P.beamHmax;
-        else
-            % Three elements across the narrowest beam feature, matching the
-            % convention P.shieldHmax uses for the ligaments. The slab
-            % thickness and the smallest hole dimension are the candidates.
-            narrow = P.th;
-            if isfield(P,'geomHalf') && ~isempty(P.geomHalf)
-                narrow = min(narrow, min(P.geomHalf(:,1)));
-            end
-            beamHmax = narrow/3;
-        end
-        szB = getOrCreateSizeNode(mesh, 'size_beam');
-        szB.selection.geom(geomname, 3).set(beamOnly);
-        szB.set('custom','on').set('hmaxactive',true);
-        szB.set('hmax', beamHmax);
-        disp(['Beam mesh: hmax = ',num2str(beamHmax*1e9,'%.1f'),' nm on ', ...
-              num2str(numel(beamOnly)),' domain(s)']);
+if doBeam
+    if isfield(P,'beamHmax') && ~isempty(P.beamHmax)
+        beamHmax = P.beamHmax;
     else
-        warning('SolveNanobeamFEM:noBeamDomain', ...
-            ['P.domSel.beam minus P.domSel.shield is empty, so the beam got ' ...
-             'no mesh override and the mAdjMesh loop can coarsen it away. ' ...
-             'Check the builder''s domain selections.']);
+        % Three elements across the narrowest beam feature, matching the
+        % convention P.shieldHmax uses for the ligaments. The slab
+        % thickness and the smallest hole dimension are the candidates.
+        narrow = P.th;
+        if isfield(P,'geomHalf') && ~isempty(P.geomHalf)
+            narrow = min(narrow, min(P.geomHalf(:,1)));
+        end
+        beamHmax = narrow/3;
     end
+    szB = getOrCreateSizeNode(ftet, 'size_beam');
+    szB.selection.geom(geomname, 3).set(beamOnly);
+    szB.set('custom','on').set('hmaxactive',true);
+    szB.set('hmax', beamHmax);
+    disp(['Beam mesh: hmax = ',num2str(beamHmax*1e9,'%.1f'),' nm on ', ...
+          num2str(numel(beamOnly)),' domain(s)']);
 end
 
-if isfield(P,'shieldHmax') && ~isempty(P.shieldHmax) && ...
-        isfield(P,'domSel') && isfield(P.domSel,'shield') && ~isempty(P.domSel.shield)
-    szS = getOrCreateSizeNode(mesh, 'size_shield');
+if doShield
+    szS = getOrCreateSizeNode(ftet, 'size_shield');
     szS.selection.geom(geomname, 3).set(P.domSel.shield);
     szS.set('custom','on').set('hmaxactive',true);
     szS.set('hmax', P.shieldHmax);
@@ -583,11 +625,80 @@ end
 
 % -------------------------------------------------------------------------
 
-function sz = getOrCreateSizeNode(mesh, tag)
-%GETORCREATESIZENODE Fetch a mesh Size feature, creating it on first use.
-if any(strcmp(tag, cellstr(char(mesh.feature.tags()))))
-    sz = mesh.feature(tag);
+function ensureMeshOperation(mesh)
+%ENSUREMESHOPERATION Repair a user-controlled sequence that meshes nothing.
+%
+% No-op in both of the states this code normally produces:
+%   {size}              physics-controlled, COMSOL generates its own operations
+%   {size, ftet_all, …} already carries an explicit meshing operation
+% It only acts on {size, size_pml, …} with no operation - the state a model
+% built by an earlier version of this file is left in. Detected by inspecting
+% tags rather than by calling mesh.isAutomatic(), so it does not depend on that
+% accessor being present in the installed COMSOL release.
+tags = cellstr(char(mesh.feature.tags()));
+if any(~strcmp(tags, 'size')) && ~any(strcmp(tags, 'ftet_all'))
+    ensureFreeTet(mesh);
+end
+end
+
+% -------------------------------------------------------------------------
+
+function ftet = ensureFreeTet(mesh)
+%ENSUREFREETET Guarantee the mesh sequence contains a meshing operation.
+%
+% WHY THIS IS NEEDED. model.mesh.create(tag, geom) returns a sequence holding a
+% single global 'size' node, with isAutomatic = 1: it is PHYSICS-CONTROLLED and
+% COMSOL generates the meshing operations itself at run time. Writing to 'size'
+% keeps it that way - which is why setting hauto has always worked. Creating any
+% OTHER feature, including a domain-scoped Size node, flips the sequence to
+% user-controlled, and a user-controlled sequence runs only the features it
+% actually holds. A Size node is not a meshing operation, so the run then
+% produces no elements anywhere and COMSOL reports
+%   "No mesh on domains 1-N in the meshing sequence with tag mesh"
+% for every domain in the geometry - not for a subset, which is the tell that
+% this is a sequence fault and not a selection fault.
+%
+% Measured on COMSOL 6.3, LiveLink, two-domain test block, hauto = 5:
+%   'size' only                   isAutomatic = 1    4877 elements
+%   'size' + a top-level Size     isAutomatic = 0       0 elements
+%   + an explicit FreeTet         isAutomatic = 0    3446 elements, hmax honoured
+%
+% The FreeTet's selection is deliberately left at its default ("Remaining" -
+% every domain no earlier operation has meshed). With this as the sole
+% operation that is all of them, and it stays correct if a swept PML mesh is
+% ever inserted ahead of it.
+%
+% Same construction the band-structure pipeline already uses:
+% bands/optmechbands1D/RunOpticalBands.m:370-374, Size nested inside FreeTet.
+tag  = 'ftet_all';
+tags = cellstr(char(mesh.feature.tags()));
+if any(strcmp(tag, tags))
+    ftet = mesh.feature(tag);
+    return;
+end
+% Discard top-level Size overrides left by an earlier version of this file.
+% They are re-created nested inside the FreeTet; left where they are they would
+% sit AFTER the operation in the sequence and so would not apply to it.
+for stale = {'size_pml','size_shield','size_beam'}
+    if any(strcmp(stale{1}, tags))
+        mesh.feature.remove(stale{1});
+    end
+end
+ftet = mesh.feature.create(tag, 'FreeTet');
+ftet.label('Free Tetrahedral - all domains');
+disp('Mesh: added explicit FreeTet (sequence is user-controlled once a Size override exists).');
+end
+
+% -------------------------------------------------------------------------
+
+function sz = getOrCreateSizeNode(parent, tag)
+%GETORCREATESIZENODE Fetch a Size feature under PARENT, creating it on first use.
+% PARENT is the FreeTet operation, NOT the mesh sequence: a Size node nested
+% inside the operation always runs before it, whereas a top-level Size created
+% after the operation would never apply to it.
+if any(strcmp(tag, cellstr(char(parent.feature.tags()))))
+    sz = parent.feature(tag);
 else
-    sz = mesh.feature.create(tag, 'Size');
+    sz = parent.create(tag, 'Size');
 end
 end
