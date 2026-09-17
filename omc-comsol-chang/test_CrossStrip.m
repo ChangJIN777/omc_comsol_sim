@@ -6,18 +6,22 @@ clear P;
 % buildCrossStrip.m. It is to test_CrossUnitCell.m what buildHoleStrip_3D is to
 % a single hole cell -- but on a SQUARE lattice, not the hexagonal one.
 %
-% A base rectangle with its corner at [-a/2, 0] and size [a, Ly]
-% (buildCrossStrip.m:187) is etched with P.ncell cross-shaped VOIDS, then
-% extruded by th (:232). Each void is the union of two crossed bars, exactly as
+% A base rectangle with its corner at [-a/2, yLo] and size [a, Ly]
+% (buildCrossStrip.m:245) is etched with P.ncell cross-shaped VOIDS, then
+% extruded by th (:291). Each void is the union of two crossed bars, exactly as
 % in the single cell:
-%     horizontal arm :  |x| <= h/2 ,  |y - y_i| <= w/2      (:201)
-%     vertical   arm :  |x| <= w/2 ,  |y - y_i| <= h/2      (:206)
+%     horizontal arm :  |x| <= h/2 ,  |y - y_i| <= w/2      (:260)
+%     vertical   arm :  |x| <= w/2 ,  |y - y_i| <= h/2      (:265)
 % and all of them are SUBTRACTED from the base rectangle by the Compose at
-% :214, so the solid is what remains around the crosses.
+% :274, so the solid is what remains around the crosses.
 %
-% Square lattice -- every cross sits at x = 0, spaced a apart in y (:157):
-%     y_i = b_wvg + (i - 1/2)*a + b*(i == 1),   i = 1 .. P.ncell
-%     Ly  = b_wvg + P.ncell*a                                   (:159)
+% Square lattice -- every cross sits at x = 0, spaced a apart in y (:202):
+%     y_i  = b_wvg + (i - 1/2)*a + b*(i == 1),  i = 1 .. P.ncell
+%     yTop = b_wvg + P.ncell*a                                  (:204)
+%     yLo  = 0, or y_1 when P.cutBottomHalfCell (:210-214)
+%     Ly   = yTop - yLo                                         (:215)
+% Note Ly is the EXTENT, not the y of the top face: once the footprint starts
+% above 0 the two stop being the same number.
 % Contrast buildHoleStrip_3D, whose hexagonal lattice has a row pitch of
 % sqrt(3)*a/2 and alternates x = 0 with x = +-a/2, so that half its holes are
 % deliberately cut in two by the Floquet planes. Here nothing is cut by
@@ -25,19 +29,39 @@ clear P;
 % two x faces are plain rectangles.
 %
 % NO MIRROR AT y = 0. buildCrossStrip borrows buildHoleStrip_3D's half-strip
-% FOOTPRINT (y from 0 to Ly rather than -Ly/2 to +Ly/2) but does not treat
-% y = 0 as a symmetry plane. Both y faces are emitted -- y = 0 and y = Ly go
-% into the 'yboundaries' cumulative selection (:309) and come back as P.yEnd1
-% and P.yEnd2 (:336,:337) -- and the choice of boundary condition is left to
-% the caller. With b = b_wvg = 0 (the defaults, and what is set below) y = 0
-% and y = Ly land exactly on cell edges, one lattice vector apart, so they are
-% a legitimate periodic pair and the strip is exactly P.ncell whole cells.
+% FOOTPRINT (y from yLo to yTop rather than -Ly/2 to +Ly/2) but does not treat
+% y = 0 as a symmetry plane. Both y faces are emitted -- y = yLo and y = yTop
+% go into the 'yboundaries' cumulative selection (:372) and come back as
+% P.yEnd1 and P.yEnd2 (:399,:400) -- and the choice of boundary condition is
+% left to the caller. THIS SCRIPT uses that freedom twice, see
+% P.cutBottomHalfCell and P.fixed_bc / P.fixed_faces below: the bottom face is
+% cut through the middle of cell 1 and the top face is clamped.
 %
-% The narrowest solid feature is unchanged from the single cell: the ligament
-% (a - h)/2 = 15.5 nm between an arm end and the cell edge. In the strip it
-% appears at the y = 0 and y = Ly faces and, back to back across each interior
-% cell boundary, as an (a - h) = 31 nm bridge between neighbouring crosses.
-% Watch the mesh there.
+% WHAT THAT MEANS FOR PERIODICITY. With b = b_wvg = 0 and no truncation the two
+% y faces sit exactly one lattice vector apart and are a legitimate periodic
+% pair. With P.cutBottomHalfCell = 1 they are half a lattice vector apart and
+% no longer a pair -- which is fine here, because this is a 1D kx sweep
+% (P.bandStruct_2D = 0): runBands only ever Floquet-pairs the two X faces
+% (runBands.m:280-285). The y faces get nothing at all unless P.fixed_bc asks
+% for it, and P.mbeveny = 0 with the cross_strip guard at runBands.m:334-345
+% keeps the y symmetry/antisymmetry features switched off.
+%
+% THIN FEATURES / MESH. The narrowest solid feature is the ligament
+% (a - h)/2 = 33.5 nm at these parameters (a = 914, h = 847 nm) between an arm
+% end and the cell edge. It appears at both y faces and, back to back across
+% each interior cell boundary, as an (a - h) = 67 nm bridge between
+% neighbouring crosses. Watch the mesh there.
+%   The half-cell truncation does not change that width: the cut at y = y_1
+% passes through the WIDEST part of cell 1's void (the horizontal arm spans
+% |x| <= h/2 there), so the bottom face is two rectangles of exactly the same
+% (a - h)/2 = 33.5 nm width, by th/2 = 125 nm tall with mbevenz cutting z < 0 -
+% the ligament that is already in the model, just exposed as a boundary rather
+% than a bridge.
+%   What DOES get thinner is a side effect of the legacy fillets: the cut
+% corners land inside disksel2, so r2 = 10 nm rounds them and each bottom face
+% is left with (a - h)/2 - r2 = 23.5 nm of flat plus a 10 nm arc. That 23.5 nm
+% is the thinnest flat feature in the model. See the P.cutBottomHalfCell and
+% P.r2 comments below; P.r2 = 0 removes it at no other cost here.
 %
 % Physical parameters below are IDENTICAL to test_CrossUnitCell.m so that the
 % strip is directly comparable with the single cell.
@@ -48,48 +72,96 @@ P.unitcell = 'square';                  % specify the shape of the unit cell
 P.a = 914e-9;       % lattice constant along BOTH x and y. Sets the x width of
                     % the footprint (:187) and the y pitch of the cells (:157).
 P.h = 847e-9;       % LENGTH of each cross arm. recH has size [h w] (x by y)
-                    % and recV the transpose [w h] (:201,:206).
+                    % and recV the transpose [w h] (:259,:264).
                     % h < a is REQUIRED and enforced -- buildCrossStrip errors
-                    % with :armTooLong (:387) rather than letting COMSOL build
+                    % with :armTooLong (:450) rather than letting COMSOL build
                     % a chain of disconnected corner islands.
 P.w = 184e-9;       % WIDTH of each cross arm (the etched gap width).
 P.th = 250e-9;      % slab THICKNESS along z. The work plane sits at z = -th/2
-                    % and the profile is extruded a distance th (:180,:232).
-P.r1 = 10e-9;       % fillet radius, applied via fil1.set('radius',r1) (:543)
-P.r2 = 10e-9;       % fillet radius, applied via fil2.set('radius',r2) (:557)
-                    % See the KNOWN ISSUE block at buildCrossStrip.m:95. These
+                    % and the profile is extruded a distance th (:239,:291).
+P.r1 = 10e-9;       % fillet radius, applied via fil1.set('radius',r1) (:653)
+P.r2 = 10e-9;       % fillet radius, applied via fil2.set('radius',r2) (:667)
+                    % See the KNOWN ISSUE block at buildCrossStrip.m:139. These
                     % are the LEGACY selections from buildCrossUnitCell,
                     % reproduced unchanged so results stay comparable with
-                    % already-simulated designs. At these parameters that means
-                    % two warnings you should expect and not be alarmed by:
-                    %   :filletR2NoOp        disksel2 spans [426.5, 436.5] nm
-                    %                        but the arm tips sit at 479.0 nm,
-                    %                        so r2 does nothing
-                    %   :filletSelectionBleed disksel1 spans [208, 624] nm,
-                    %                        which reaches into the NEIGHBOURING
-                    %                        cells (they are only a = 894 nm
-                    %                        away), so a cell's fillet rounds
-                    %                        corners belonging to its neighbour
-                    % The second one only exists in the strip. Inspect the
-                    % corners in the GUI before trusting a long strip -- see
-                    % the note under P.ncell.
+                    % already-simulated designs. AT THESE PARAMETERS
+                    % (a = 914, h = 847, w = 184 nm) expect exactly these
+                    % warnings and do not be alarmed by them:
+                    %   :filletR2NoOp        disksel2 spans [418.5, 428.5] nm
+                    %                        but the arm tips sit at 433.4 nm,
+                    %                        so r2 does nothing TO THE TIPS
+                    %   :filletSelectionBleed fires only because
+                    %                        P.cutBottomHalfCell = 1 below:
+                    %                        the two vertices the cut leaves at
+                    %                        (+-h/2, y_1) sit at exactly
+                    %                        h/2 = 423.5 nm, inside disksel2, so
+                    %                        r2 rounds those instead
+                    % disksel1's annulus is only [92, 276] nm here, well short
+                    % of the a = 914 nm to the next cell, so the neighbour-cell
+                    % bleed that the KNOWN ISSUE block warns about does NOT
+                    % happen at this w. It would if P.w grew past about a/3.
+                    % Inspect the corners in the GUI before trusting a long
+                    % strip -- see the note under P.ncell.
 P.ncell = 7;        % NUMBER OF CROSS CELLS along the strip (y). This is the
                     % field that replaces buildHoleStrip_3D's 13 hardcoded
-                    % circles. Validated at :381 as a positive integer.
-                    % Kept at 3 deliberately for a first run: it is cheap, and
-                    % it is the smallest N that has a cell with neighbours on
-                    % BOTH sides, which is what makes the :filletSelectionBleed
-                    % case above visible. With N = 3:
-                    %     y_i = 447, 1341, 2235 nm      Ly = 2682 nm
+                    % circles. Validated at :444 as a positive integer.
+                    % Any N >= 3 has a cell with neighbours on BOTH sides,
+                    % which is what makes the :filletSelectionBleed case above
+                    % visible; N = 3 is the cheap version to start from.
+                    % With N = 7, a = 914 nm, b = b_wvg = 0:
+                    %     y_i  = 457, 1371, 2285, 3199, 4113, 5027, 5941 nm
+                    %     yTop = 6398 nm
+                    %     Ly   = 6398 nm             (cutBottomHalfCell = 0)
+                    %     Ly   = 5941 nm = 6.5*a     (cutBottomHalfCell = 1,
+                    %                                 yLo = y_1 = 457 nm)
                     % Raise it only after the GUI shows the fillets are sane.
 P.b = 0;            % extra y shift applied to CELL 1 ONLY, mirroring the role
-                    % of P.b in buildHoleStrip_3D. Range-checked at :412 so it
+                    % of P.b in buildHoleStrip_3D. Range-checked at :481 so it
                     % cannot silently push cell 1 outside the footprint.
 P.b_wvg = 0;        % y offset applied to the WHOLE array, widening the gap
                     % between y = 0 and the first cell. Leave at 0 unless you
-                    % want a line defect: with b_wvg ~= 0 the y = 0 face is no
-                    % longer a lattice translation of the y = Ly face, so a
+                    % want a line defect: with b_wvg ~= 0 the lower face is no
+                    % longer a lattice translation of the y = yTop face, so a
                     % Floquet pair across them is no longer the square lattice.
+P.cutBottomHalfCell = 1;
+                    % REMOVE THE LOWER HALF OF THE BOTTOM UNIT CELL.
+                    % 0 (default, and what every other caller of
+                    %   buildCrossStrip gets) -> footprint starts at y = 0, so
+                    %   the strip is exactly P.ncell whole cells.
+                    % 1 -> footprint starts at yLo = y_1, the CENTRE of the
+                    %   first cross, so the strip is P.ncell - 1/2 cells long
+                    %   (6.5 cells, Ly = 5941 nm at the numbers above) and the
+                    %   bottom face cuts cell 1 through the middle.
+                    % Only the base rectangle's lower extent and Ly change:
+                    % the cell centres y_i and every cross void stay at the
+                    % SAME absolute y, so cells 2..N are untouched and results
+                    % stay comparable cell for cell. The y = yLo face is still
+                    % emitted into 'yboundaries' and still returned as
+                    % P.yEnd1 -- as TWO boundary indices now, because the cut
+                    % plane crosses the void and leaves one ligament face
+                    % either side of it.
+                    % Validated in buildCrossStrip:readCrossStripParams --
+                    % :truncationLeavesNothing if the cut is at or past the end
+                    % of the strip, :truncationCutsSecondCell if a large P.b
+                    % has moved cell 1 far enough up that the cut would land
+                    % inside cell 2's void.
+                    % ONE EXTRA WARNING TO EXPECT at these parameters: the cut
+                    % leaves two new vertices at (+-h/2, y_1), i.e. at radius
+                    % exactly h/2 = 423.5 nm from the cell-1 centre, which is
+                    % the middle of the legacy disksel2 annulus
+                    % [418.5, 428.5] nm. So P.r2 -- a no-op on the arm tips,
+                    % see :filletR2NoOp above -- DOES round those two corners,
+                    % and :filletSelectionBleed now names them.
+                    % MESH CONSEQUENCE, the one thing here that is genuinely
+                    % new: that fillet eats into the bottom face, which goes
+                    % from (a-h)/2 = 33.5 nm of flat to
+                    % (a-h)/2 - r2 = 23.5 nm of flat plus a 10 nm arc. 23.5 nm
+                    % is then the thinnest flat feature in the model. If you
+                    % would rather keep the full 33.5 nm, set P.r2 = 0: at THIS
+                    % parameter set that changes nothing else at all, because
+                    % disksel2 selects nothing without the truncation (that is
+                    % exactly what :filletR2NoOp is telling you), and
+                    % addCrossFillet skips disksel2/fil2 entirely when r2 = 0.
 P.nperiod = 1;      % no. of periods to simulate for -- still means periods
                     % along X. buildCrossStrip does not read it; P.ncell counts
                     % the cells along y.
@@ -98,7 +170,7 @@ P.holeatedge = 0;   % 1/0 for hole at edge/center of unit cell. Not read by
                     % kept for parity with the other test scripts.
 P.mbevenz = 1;      % 1 to find even mechanical mode about z
                     % (nonzero also halves the cell in z: the block below
-                    % z = 0 is subtracted, buildCrossStrip.m:240-262, and the
+                    % z = 0 is subtracted, buildCrossStrip.m:299-332, and the
                     % z = 0 plane comes back as geom1_ZsymSel / P.bndSel.Zsym)
 
 P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
@@ -148,7 +220,7 @@ P.bandStruct_2D = 0;                    % 0 to simulate 1D band structures.
                                         % for (it emits exactly the
                                         % geom1_xboundaries_bnd /
                                         % geom1_yboundaries_bnd / geom1_ZsymSel
-                                        % that runBands.m:232,:257,:262
+                                        % that runBands.m:283,:308,:319
                                         % consumes).
 
 %% mechanical simulation parameters
@@ -157,10 +229,40 @@ P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 1;                          % 1 to find even mechanical mode about z
 P.freq = 0;                             % target frequency - set to 0 for bandstructure simulations
 P.meshSize = 4;                         % mesh quality for mechanical simulations
-P.fixed_bc = 0;                         % 1 to fixed the boundaries for xz planes at y = +/- w/2
-                                        % (this is the only path that reads
-                                        % P.xEnd1/P.xEnd2/P.yEnd1/P.yEnd2 --
-                                        % runBands.m:212-219)
+P.fixed_bc = 1;                         % 1 to apply a Fixed (zero displacement)
+                                        % condition. This is the only path that
+                                        % reads P.xEnd1/P.xEnd2/P.yEnd1/P.yEnd2
+                                        % (runBands.m:224-277). Set to 1 here
+                                        % to CLAMP THE TOP y SURFACE of the
+                                        % strip, which is what makes the
+                                        % supercell behave like a shield
+                                        % anchored to bulk rather than a free
+                                        % ribbon.
+P.fixed_faces = {'yEnd2'};              % WHICH faces the Fixed condition lands
+                                        % on. Any nonempty subset of
+                                        % {'xEnd1','xEnd2','yEnd1','yEnd2'};
+                                        % char or cellstr. Unset defaults to
+                                        % {'yEnd2'}, which is exactly what
+                                        % runBands did before the field
+                                        % existed, so no other script changes
+                                        % behaviour.
+                                        % {'yEnd2'} = the y = yTop face only
+                                        % (buildCrossStrip.m:400). Deliberately
+                                        % NOT all four faces:
+                                        %   - the x faces must keep their
+                                        %     Floquet/periodic condition
+                                        %     (runBands.m:280-285); clamping
+                                        %     one half of a periodic pair
+                                        %     over-constrains it
+                                        %   - yEnd1 is the cut face created by
+                                        %     P.cutBottomHalfCell and is meant
+                                        %     to stay free
+                                        %   - z = 0 keeps its symmetry
+                                        %     condition from P.mbevenz = 1
+                                        % runBands errors with
+                                        % :fixedFaceEmpty rather than silently
+                                        % constraining nothing if the builder
+                                        % returned no indices for a named face.
 
 P.anisoMat = 1;
 P.rxtal = 45;                           % ccw rotation of elasticity matrix in deg
@@ -174,29 +276,35 @@ P.max_dof = 3e6;                        % max # of degrees of freedom
 %      WORKING DEFAULT and it runs today.
 % 0 -> run the full band-structure solve through solveBands.
 %
-% READ THIS BEFORE SETTING IT TO 0. The 'cross_strip' celltype is NOT yet
-% wired into the solver chain, so a solve cannot work until two existing files
-% are edited (buildCrossStrip.m was delivered as a geometry builder only):
+% BOTH SOLVER BRANCHES NOW EXIST, so 0 no longer stops at the guard below:
 %
-%   1. solveBands.m  -- add a 'cross_strip' branch to the fileBase chain,
+%   1. solveBands.m:50  -- the 'cross_strip' branch of the fileBase chain,
 %      alongside the 'cross' branch at :39. Without it P.fileBase is never
 %      assigned and solveBands dies at :134 (fBase = P.fileBase) with an
 %      unhelpful "Unrecognized field name 'fileBase'".
 %
-%   2. runBands.m    -- add a 'cross_strip' branch to the geometry dispatch at
-%      :113-125 calling buildCrossStrip(model,P). This one matters MORE than it
-%      looks: that if/elseif chain ends in a bare `else` that falls through to
+%   2. runBands.m:124   -- the 'cross_strip' branch of the geometry dispatch,
+%      calling buildCrossStrip(model,P). That branch matters MORE than it
+%      looks: the if/elseif chain ends in a bare `else` that falls through to
 %      buildBoomerangStrip_3D, so an unrecognised celltype does not raise
 %      "unknown celltype" -- it quietly tries to build a BOOMERANG strip
-%      instead, and whatever it then complains about will point you at the
-%      wrong file.
+%      instead, and whatever it then complains about points at the wrong file.
+%      It must therefore stay ABOVE that bare else.
 %
 %   CreateFileBase.m does NOT need touching: solveBands builds fBase with its
 %   own inline chain and never calls it.
 %
-% The guard below checks for both branches and, if either is missing, stops
-% with those instructions rather than letting you hit the errors above. Once
-% you have added them the guard passes on its own.
+% The guard below still checks for both branches, so it catches a regression;
+% as things stand it passes and a solve is attempted.
+%
+% CONSIDER RUNNING WITH 1 FIRST, NOW THAT THE FOOTPRINT HAS CHANGED.
+% P.cutBottomHalfCell moves the bottom face into the middle of cell 1, which
+% (a) makes P.yEnd1 two boundaries instead of one, (b) makes P.r2 actually
+% round two corners for the first time, and (c) exposes a 23.5 nm x 125 nm
+% ligament face (33.5 nm before that fillet) that the mesh has to resolve. All
+% three are worth one look in the GUI before paying for a 70-band, 6-k-point
+% solve -- and P.yEnd1 having two entries is exactly what the print block below
+% reports.
 P.geomOnly = 0;
 
 if P.geomOnly
@@ -215,14 +323,20 @@ if P.geomOnly
 
     [model,P] = buildCrossStrip(model,P);
 
-    % Expect two warnings at these parameters -- :filletR2NoOp and
-    % :filletSelectionBleed. Both are the reproduced legacy fillet selections
-    % reporting themselves; neither changes the geometry. See the P.r1/P.r2
-    % comments above.
+    % Expect two warnings at these parameters -- :filletSelectionBleed (the
+    % P.cutBottomHalfCell cut vertices land in disksel2) and :filletR2NoOp (the
+    % arm tips do not). Both are the reproduced legacy fillet selections
+    % reporting themselves; the first one does change the geometry, by rounding
+    % the two cut corners with r2. See the P.r1/P.r2 comments above.
     fprintf('\nbuildCrossStrip: %d cells, Ly = %.1f nm\n', P.ncell, P.Ly*1e9);
     fprintf('  cell centres [nm] : %s\n', num2str(P.ycentres*1e9, '%.1f  '));
     fprintf('  xEnd1 / xEnd2     : [%s] / [%s]\n', num2str(P.xEnd1), num2str(P.xEnd2));
+    fprintf('  yLo / yHi    [nm] : %.1f / %.1f\n', P.yLo*1e9, P.yHi*1e9);
     fprintf('  yEnd1 / yEnd2     : [%s] / [%s]\n', num2str(P.yEnd1), num2str(P.yEnd2));
+    if P.cutBottomHalfCell
+        fprintf(['  bottom face is CUT through cell 1, so yEnd1 should hold ' ...
+                 'TWO boundaries,\n  each %.1f nm wide in x.\n'], (P.a-P.h)/2*1e9);
+    end
     fprintf('  zEnd              : [%s]\n', num2str(P.zEnd));
     if isfield(P,'bndSel') && isfield(P.bndSel,'Zsym')
         fprintf('  bndSel.Zsym       : [%s]\n', num2str(P.bndSel.Zsym));

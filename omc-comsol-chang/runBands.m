@@ -1,6 +1,16 @@
 function ds = runBands(P)
 %RUNBANDS Summary of this function goes here
 %   Detailed explanation goes here
+%
+%   OPTIONAL P FIELDS READ HERE
+%     P.fixed_bc     nonzero -> apply a Fixed (zero displacement) condition.
+%     P.fixed_faces  which faces that condition lands on: a char or cellstr
+%                    subset of {'xEnd1','xEnd2','yEnd1','yEnd2'}, naming the
+%                    P fields the geometry builder filled with boundary
+%                    indices. Default {'yEnd2'}, which reproduces the
+%                    behaviour this function had before the field existed.
+%                    Only read when P.fixed_bc is nonzero. See the boundary
+%                    conditions section below.
 % import COMSOL class
 import com.comsol.model.*
 import com.comsol.model.util.*
@@ -212,24 +222,59 @@ smech.selection.all;
 clear bnds
 bnds.pbc_inds = [];
 if P.fixed_bc
-    bnds.fixed_inds = [];
-    % fixed BCs for xz planes at y = +/- w/2
+    % WHICH faces get the zero-displacement (Fixed) condition. P.fixed_faces is
+    % any nonempty subset of {'xEnd1','xEnd2','yEnd1','yEnd2'}, naming the
+    % fields the geometry builder filled in with boundary indices.
+    %
+    % The default {'yEnd2'} is exactly what this block did before the field
+    % existed: only the y = Ly / y = yTop face was passed to
+    % fixedBCs.selection.set (fixedYinds was [fixedY2]), and the x faces were
+    % deliberately commented out so they keep the Floquet pair created below.
+    % So every existing caller of runBands is unaffected.
+    %
+    % Do NOT list an x face here while the Floquet condition below is active:
+    % clamping a face that is one half of a periodic pair over-constrains it and
+    % COMSOL will either complain or silently win with the constraint.
+    if isfield(P,'fixed_faces')
+        fixedFaces = P.fixed_faces;
+        if ischar(fixedFaces)
+            fixedFaces = {fixedFaces};
+        end
+    else
+        fixedFaces = {'yEnd2'};
+    end
+    validFaces = {'xEnd1','xEnd2','yEnd1','yEnd2'};
+    if ~iscellstr(fixedFaces) || isempty(fixedFaces) || ...
+            ~all(ismember(fixedFaces, validFaces))
+        error('runBands:badFixedFaces', ...
+            ['P.fixed_faces must be a char or a nonempty cellstr drawn from ' ...
+             '{%s}. Leave it unset for the default {''yEnd2''}.'], ...
+            strjoin(validFaces, ', '));
+    end
+    fixedFaces = unique(fixedFaces);
+
+    fixedInds = [];
+    for fi = 1:numel(fixedFaces)
+        faceName = fixedFaces{fi};
+        if ~isfield(P, faceName) || isempty(P.(faceName))
+            % An empty index list would create a Fixed feature that constrains
+            % nothing, which looks like a converged free-boundary solve.
+            error('runBands:fixedFaceEmpty', ...
+                ['P.fixed_bc = 1 asks for a fixed condition on P.%s, but the ' ...
+                 'geometry builder for celltype ''%s'' returned no boundary ' ...
+                 'indices for it.'], faceName, P.celltype);
+        end
+        fixedInds = [fixedInds, reshape(double(P.(faceName)), 1, [])]; %#ok<AGROW>
+    end
+    fixedInds = unique(fixedInds);
+    bnds.fixed_inds = fixedInds;
+
+    % set the fixed BCs
     fixedBCs = smech.feature.create('fix1', 'Fixed', 2);
-    fixedY1 = P.yEnd1;
-    fixedY2 = P.yEnd2;
-    fixedYinds = [fixedY2];
-    bnds.fixed_inds(end+1:end+length(fixedYinds)) = fixedYinds;
-    
-    % fixed BCs for xz planes at x = +/- w/2
-    fixedX1 = P.xEnd1;
-    fixedX2 = P.xEnd2;
-    % fixedXinds = [fixedX1 fixedX2];
-    fixedXinds = [];
-    bnds.fixed_inds(end+1:end+length(fixedXinds)) = fixedXinds;
-    
-    % set the fixed BCs 
-    fixedBCs.selection.set(fixedYinds);
-end 
+    fixedBCs.selection.set(fixedInds);
+    disp(['Fixed (zero displacement) BC on ',strjoin(fixedFaces,', '), ...
+          ' -> boundaries [',num2str(fixedInds),']']);
+end
 
 % periodic BCs for yz planes at x = +/- a/2
 pbcX = smech.create('pbcX', 'PeriodicCondition', 2);

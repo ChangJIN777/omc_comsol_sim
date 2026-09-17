@@ -17,35 +17,71 @@ function [model,P] = buildCrossStrip(model,P)
 %       extent hardcoded sqrt(3)*4.5*a    extent = P.ncell*a + P.b_wvg
 %
 %   GEOMETRY
-%     A base rectangle with its corner at [-a/2, 0] and size [a, Ly] is etched
-%     with P.ncell cross-shaped voids, all centred on x = 0 and spaced a apart
-%     in y, then extruded by P.th. Each void is the union of two crossed
+%     A base rectangle with its corner at [-a/2, yLo] and size [a, Ly] is
+%     etched with P.ncell cross-shaped voids, all centred on x = 0 and spaced a
+%     apart in y, then extruded by P.th. Each void is the union of two crossed
 %     rectangles, [h w] and [w h], exactly as in buildCrossUnitCell.
 %
-%         y_i = b_wvg + (i - 1/2)*a + b*(i == 1),      i = 1 .. P.ncell
-%         Ly  = b_wvg + P.ncell*a
+%         y_i  = b_wvg + (i - 1/2)*a + b*(i == 1),     i = 1 .. P.ncell
+%         yTop = b_wvg + P.ncell*a
+%         yLo  = 0     (default)  or  y_1  (P.cutBottomHalfCell ~= 0)
+%         Ly   = yTop - yLo
 %
-%     With the defaults b = b_wvg = 0 this is a plain square lattice: y = 0 and
-%     y = Ly land exactly on cell edges, one lattice vector apart, so the two y
-%     faces are a legitimate periodic pair.
+%     Ly is the EXTENT (the Rectangle 'size'); yLo and yTop are ABSOLUTE y.
+%     They coincide only in the default case, so do not read Ly as the y of the
+%     top face.
+%
+%     With the defaults b = b_wvg = 0 and P.cutBottomHalfCell = 0 this is a
+%     plain square lattice: y = 0 and y = yTop land exactly on cell edges, one
+%     lattice vector apart, so the two y faces are a legitimate periodic pair.
+%
+%   HALF-CELL TRUNCATION (P.cutBottomHalfCell ~= 0)
+%     The footprint starts at yLo = y_1, the CENTRE of the first cross, so the
+%     lower half of the bottom unit cell is gone and the strip is
+%     P.ncell - 1/2 cells long. NOTHING MOVES: every cell centre and every void
+%     keeps the same absolute y; only the lower extent of the base rectangle,
+%     and hence Ly, changes.
+%
+%     Consequences worth knowing:
+%       * The bottom face cuts cell 1 through the middle of its horizontal arm,
+%         so it is no longer one rectangle but TWO, each only (a - h)/2 wide in
+%         x - the same ligament that already appears back to back across every
+%         interior cell boundary. It is still contributed to 'yboundaries' and
+%         still returned as P.yEnd1, now as two boundary indices.
+%       * The two y faces are then half a lattice vector apart, so they are NO
+%         LONGER a periodic pair. Use this only when the y faces carry
+%         something other than a Floquet pairing - e.g. runBands with
+%         P.fixed_bc = 1 and P.fixed_faces = {'yEnd2'}, which clamps the top
+%         face and leaves the cut face free.
+%       * The cut creates two new vertices at (+-h/2, yLo), at radius exactly
+%         h/2 from the cell-1 centre, i.e. dead centre of the legacy disksel2
+%         annulus [h/2 - 5nm, h/2 + 5nm]. So P.r2, a no-op on the arm tips (see
+%         KNOWN ISSUE below), DOES round those two corners, which trims each
+%         bottom face from (a - h)/2 of flat to (a - h)/2 - r2 of flat plus an
+%         r2 arc - the thinnest flat feature in the model, so check the mesh
+%         there. checkFilletSelectionBleed reports it under
+%         :filletSelectionBleed. P.r2 = 0 avoids it and, wherever
+%         :filletR2NoOp is also firing, costs nothing elsewhere.
 %
 %     h < a is REQUIRED (enforced). At h = a the arms reach the cell boundary
 %     and the solid falls into disconnected corner islands.
 %
 %   TOPOLOGY ASSUMPTION - PLEASE READ
 %     This builder uses the half-strip FOOTPRINT of buildHoleStrip_3D (y runs
-%     from 0 to Ly, not -Ly/2 to +Ly/2) but deliberately does NOT assume a
+%     from yLo to yTop, not -Ly/2 to +Ly/2) but deliberately does NOT assume a
 %     mirror/symmetry plane at y = 0. buildHoleStrip_3D treats y = 0 as a
 %     mirror and therefore emits only ONE y selection; this file emits TWO,
-%     at y = 0 and at y = Ly, contributes both to the 'yboundaries' cumulative
-%     selection, and returns both P.yEnd1 (y = 0) and P.yEnd2 (y = Ly). Which
-%     boundary condition to hang on them - Floquet pair, symmetry, free - is
-%     left entirely to the caller.
+%     at y = yLo and at y = yTop, contributes both to the 'yboundaries'
+%     cumulative selection, and returns both P.yEnd1 (y = yLo) and P.yEnd2
+%     (y = yTop). Which boundary condition to hang on them - Floquet pair,
+%     symmetry, fixed, free - is left entirely to the caller.
 %
-%     Consequence worth knowing: with b_wvg ~= 0 the y = 0 face is no longer a
-%     lattice translation of the y = Ly face, so a Floquet pair across them is
-%     no longer the physical square lattice. The faces are still congruent
-%     rectangles, so COMSOL will accept the pairing without complaint.
+%     Consequence worth knowing: with b_wvg ~= 0 the lower face is no longer a
+%     lattice translation of the y = yTop face, so a Floquet pair across them
+%     is no longer the physical square lattice. The faces are still congruent
+%     rectangles, so COMSOL will accept the pairing without complaint. With
+%     P.cutBottomHalfCell the two faces are not even congruent - see HALF-CELL
+%     TRUNCATION above.
 %
 %   SOLVER TARGET - runBands (MECHANICAL)
 %     NO air region is built. buildHoleStrip_3D's air disk (the 'wpair' work
@@ -72,23 +108,31 @@ function [model,P] = buildCrossStrip(model,P)
 %                P.b in buildHoleStrip_3D. Default 0.
 %     P.b_wvg    y offset applied to the whole array, widening the gap between
 %                y = 0 and the first cell. Default 0.
+%     P.cutBottomHalfCell
+%                nonzero -> start the footprint at yLo = y_1 instead of y = 0,
+%                removing the lower half of the bottom unit cell (see HALF-CELL
+%                TRUNCATION above). Default 0, which reproduces the original
+%                full-cell footprint exactly.
 %     P.plotgeom nonzero -> draw the geometry with mphgeom. Default 0. All
 %                plotting is gated: this builder is called once per evaluation
 %                inside bayesopt_cross.
 %
 %   PROVIDED TO THE CALLER
 %     named selections   geom1_xboundaries_bnd   (x = -a/2 and x = +a/2)
-%                        geom1_yboundaries_bnd   (y = 0 and y = Ly)
+%                        geom1_yboundaries_bnd   (y = yLo and y = yTop)
 %                        geom1_ZsymSel           (z = 0 plane, if P.mbevenz)
 %     P.bndSel.Zsym      boundary indices of the z symmetry plane
 %     P.xEnd1 P.xEnd2    bndindex lookups for the x faces (runBands fixed_bc)
-%     P.yEnd1 P.yEnd2    bndindex lookups for the y faces at y = 0 and y = Ly
+%     P.yEnd1 P.yEnd2    bndindex lookups for the y faces at y = yLo and
+%                        y = yTop. P.yEnd1 is TWO boundaries, not one, when
+%                        P.cutBottomHalfCell cuts the footprint through a void.
 %     P.zEnd             boundaries on the z = 0 plane when P.mbevenz ~= 0,
 %                        else on z = -th/2. buildCrossUnitCell probes -th/2
 %                        unconditionally, which returns EMPTY once the z < 0
 %                        half has been cut away; runOpticalBand_3D then sets a
 %                        symmetry plane on nothing. Fixed here.
-%     P.Ly               total strip extent in y [m]
+%     P.Ly               total strip extent in y [m], = P.yHi - P.yLo
+%     P.yLo P.yHi        absolute y of the lower and the upper face [m]
 %     P.ycentres         1xN cell-centre y coordinates [m]
 %     P.ucellname        geometry tag, 'geom1'
 %
@@ -149,21 +193,36 @@ r2   = P.r2;
 N    = P.ncell;
 b    = P.b;
 bwvg = P.b_wvg;
+cutHalf = abs(P.cutBottomHalfCell);
 
-% Cell centres and total extent. Ly deliberately does not include b, matching
+% Cell centres and total extent. yTop deliberately does not include b, matching
 % buildHoleStrip_3D, where b moves only the first hole. That file never checks
 % that the shifted hole still fits inside its footprint; readCrossStripParams
 % does, so the two cannot drift apart silently.
 ycentres = bwvg + ((1:N) - 0.5)*a;
 ycentres(1) = ycentres(1) + b;
-Ly = bwvg + N*a;
+yTop = bwvg + N*a;
+
+% Lower extent of the footprint. The truncation moves ONLY where the base
+% rectangle starts - the cell centres above are untouched, so every void stays
+% at the same absolute y. Ly is from here on a size, never a coordinate: all y
+% coordinates below are written as yLo/yTop.
+if cutHalf
+    yLo = ycentres(1);      % cut through the centre of cell 1
+else
+    yLo = 0;
+end
+Ly = yTop - yLo;
 
 P.ycentres = ycentres;
 P.Ly       = Ly;
+P.yLo      = yLo;
+P.yHi      = yTop;
 
-% Pure-MATLAB check of the legacy fillet annuli against the neighbouring cells
-% and the strip ends. Warn only - see KNOWN ISSUE above.
-checkFilletSelectionBleed(a, h, w, r1, r2, ycentres, Ly);
+% Pure-MATLAB check of the legacy fillet annuli against the neighbouring cells,
+% the strip ends and, when truncating, the two vertices the cut creates. Warn
+% only - see KNOWN ISSUE above.
+checkFilletSelectionBleed(a, h, w, r1, r2, ycentres, yLo, yTop, cutHalf);
 
 %% Create component
 ucellcomp = model.modelNode.create('comp1');
@@ -183,7 +242,7 @@ wpGeom = ucellWP.geom;
 baseRect = wpGeom.feature.create('r_base', 'Rectangle');
 baseRect.label('Strip footprint');
 baseRect.set('base', 'corner');
-baseRect.set('pos',  [-a/2 0]);
+baseRect.set('pos',  [-a/2 yLo]);
 baseRect.set('size', [a Ly]);
 
 % One loop, two rectangles per cell, unique tags. No runCurrent inside the
@@ -247,7 +306,7 @@ if abs(P.mbevenz)
     symZWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -symZth);
     symZPlane = symZWP.geom.feature.create('symZPlane', 'Rectangle');
     symZPlane.set('type', 'solid').set('base', 'corner');
-    symZPlane.set('pos', [-a/2 0]).set('size', [a Ly]);
+    symZPlane.set('pos', [-a/2 yLo]).set('size', [a Ly]);
     ucellgeom.runCurrent;
 
     symZPlaneExt = ucellgeom.feature.create('symZPlaneExt', 'Extrude');
@@ -264,7 +323,7 @@ if abs(P.mbevenz)
     delta = 10e-9;
     ZsymSel = ucellgeom.create('ZsymSel', 'BoxSelection');
     ZsymSel.set('xmin', -a/2-delta).set('xmax', a/2+delta);
-    ZsymSel.set('ymin', -delta).set('ymax', Ly+delta);
+    ZsymSel.set('ymin', yLo-delta).set('ymax', yTop+delta);
     ZsymSel.set('zmin', -delta).set('zmax', delta);
     ZsymSel.set('entitydim', 2).set('condition', 'allvertices');
     ucellgeom.runCurrent;
@@ -305,20 +364,24 @@ x_boundary_boxsel_r.set('inputent', 'all');
 x_boundary_boxsel_r.set('condition', 'inside');
 x_boundary_boxsel_r.set('contributeto','xboundaries');
 
-% BOTH y faces, because this strip does not assume a mirror at y = 0.
+% BOTH y faces, because this strip does not assume a mirror at y = 0. The lower
+% one sits at yLo: y = 0 by default, the centre of cell 1 when
+% P.cutBottomHalfCell truncates the footprint. In that case it resolves to the
+% TWO (a - h)/2-wide ligament faces either side of the halved void, which the
+% 'inside' condition picks up just as well as a single full-width face.
 ucellgeom.selection.create('yboundaries','CumulativeSelection');
 ucellgeom.selection('yboundaries').label('Cumulative Selection y boundaries');
 
 y_boundary_boxsel_b = ucellgeom.feature.create('y_boundary_boxsel_b', 'BoxSelection');
 y_boundary_boxsel_b.set('entitydim', 2);
-y_boundary_boxsel_b.set('ymin', -sel_delta/2).set('ymax', sel_delta/2);
+y_boundary_boxsel_b.set('ymin', yLo-sel_delta/2).set('ymax', yLo+sel_delta/2);
 y_boundary_boxsel_b.set('inputent', 'all');
 y_boundary_boxsel_b.set('condition', 'inside');
 y_boundary_boxsel_b.set('contributeto','yboundaries');
 
 y_boundary_boxsel_t = ucellgeom.feature.create('y_boundary_boxsel_t', 'BoxSelection');
 y_boundary_boxsel_t.set('entitydim', 2);
-y_boundary_boxsel_t.set('ymin', Ly-sel_delta/2).set('ymax', Ly+sel_delta/2);
+y_boundary_boxsel_t.set('ymin', yTop-sel_delta/2).set('ymax', yTop+sel_delta/2);
 y_boundary_boxsel_t.set('inputent', 'all');
 y_boundary_boxsel_t.set('condition', 'inside');
 y_boundary_boxsel_t.set('contributeto','yboundaries');
@@ -333,8 +396,8 @@ ucellgeom.runAll;
 P.xEnd1 = bndindex(ucellgeom, [-a/2 0 0], [1 0 0]);
 P.xEnd2 = bndindex(ucellgeom, [ a/2 0 0], [1 0 0]);
 
-P.yEnd1 = bndindex(ucellgeom, [0  0 0], [0 1 0]);
-P.yEnd2 = bndindex(ucellgeom, [0 Ly 0], [0 1 0]);
+P.yEnd1 = bndindex(ucellgeom, [0 yLo  0], [0 1 0]);
+P.yEnd2 = bndindex(ucellgeom, [0 yTop 0], [0 1 0]);
 
 % bndindex uses p0 only to define a plane (bndindex.m:39-45), so only the z
 % coordinate matters here. The z < 0 half is gone when P.mbevenz is nonzero, so
@@ -401,8 +464,14 @@ if ~isfield(P,'b'),        P.b = 0;        end
 if ~isfield(P,'b_wvg'),    P.b_wvg = 0;    end
 if ~isfield(P,'plotgeom'), P.plotgeom = 0; end
 
+% Default 0 = the original full-cell footprint, so existing callers
+% (bayesopt_cross, cross_optimize_sweep_diamond, ...) are unaffected.
+if ~isfield(P,'cutBottomHalfCell'), P.cutBottomHalfCell = 0; end
+
 validateattributes(P.b,     {'numeric'}, {'scalar','real','finite'}, mfilename, 'P.b');
 validateattributes(P.b_wvg, {'numeric'}, {'scalar','real','finite','nonnegative'}, mfilename, 'P.b_wvg');
+validateattributes(P.cutBottomHalfCell, {'numeric','logical'}, ...
+    {'scalar','real','finite','binary'}, mfilename, 'P.cutBottomHalfCell');
 
 % Cell 1 carries the extra shift b while Ly does not, so it is the only cell
 % that can be pushed outside the footprint. buildHoleStrip_3D has exactly this
@@ -419,11 +488,35 @@ if y1 + P.h/2 > P.b_wvg + P.ncell*P.a
         'P.b = %g nm pushes the first cross void past the end of the strip.', ...
         P.b*1e9);
 end
+
+% Half-cell truncation. The cut lands on y1 by construction, so it always
+% bisects cell 1; what it must not do is leave nothing behind or reach into
+% cell 2. Only P.b can take it there (b moves cell 1 but not the strip ends),
+% which is the same desynchronisation the two checks above guard.
+if P.cutBottomHalfCell
+    yTop = P.b_wvg + P.ncell*P.a;
+    if y1 >= yTop
+        error('buildCrossStrip:truncationLeavesNothing', ...
+            ['P.cutBottomHalfCell truncates the footprint at the centre of ' ...
+             'cell 1 (y = %g nm), which is at or past the end of the strip ' ...
+             '(y = %g nm), so no solid would remain.'], y1*1e9, yTop*1e9);
+    end
+    if P.ncell > 1
+        y2lower = P.b_wvg + 1.5*P.a - P.h/2;    % lower edge of cell 2's void
+        if y1 >= y2lower
+            error('buildCrossStrip:truncationCutsSecondCell', ...
+                ['P.cutBottomHalfCell truncates the footprint at y = %g nm, ' ...
+                 'which is already inside the SECOND cross void (its lower ' ...
+                 'edge is at %g nm). The truncation is only meant to halve ' ...
+                 'cell 1; reduce P.b.'], y1*1e9, y2lower*1e9);
+        end
+    end
+end
 end
 
 % -------------------------------------------------------------------------
 
-function checkFilletSelectionBleed(a, h, w, r1, r2, ycentres, Ly)
+function checkFilletSelectionBleed(a, h, w, r1, r2, ycentres, yLo, yTop, cutHalf)
 %CHECKFILLETSELECTIONBLEED Warn when a legacy fillet annulus reaches another cell.
 %
 % The two DiskSelections are reproduced from buildCrossUnitCell unchanged, and
@@ -450,8 +543,19 @@ owner = owner(:);
 
 % Plus the four outer corners of the strip footprint, owner 0.
 allX  = [allX;  -a/2;  a/2; -a/2;  a/2];
-allY  = [allY;     0;    0;   Ly;   Ly];
+allY  = [allY;   yLo;  yLo; yTop; yTop];
 owner = [owner;    0;    0;    0;    0];
+
+% And, when the bottom half of cell 1 is cut away, the two vertices the cut
+% leaves where it crosses the horizontal arm of that void: (+-h/2, yLo). They
+% sit at radius exactly h/2 from the cell-1 centre, which is the middle of the
+% legacy disksel2 annulus, so they are the one case where r2 stops being a
+% no-op. Owner -1 so they read as foreign to every cell and get reported.
+if cutHalf
+    allX  = [allX;  -h/2;  h/2];
+    allY  = [allY;   yLo;  yLo];
+    owner = [owner;   -1;   -1];
+end
 
 % The legacy annuli, in the same order the fillets are applied.
 sel_width = 10e-9;
@@ -475,12 +579,18 @@ for k = 1:numel(annuli)
             culprits = unique(hitOwner(inAnnulus));
             cellHits = culprits(culprits > 0);
             edgeHit  = any(culprits == 0);
+            cutHit   = any(culprits == -1);
             parts = {};
             if ~isempty(cellHits)
                 parts{end+1} = ['cell(s) ', num2str(cellHits(:).')]; %#ok<AGROW>
             end
             if edgeHit
                 parts{end+1} = 'the strip end corners'; %#ok<AGROW>
+            end
+            if cutHit
+                parts{end+1} = ['the two vertices left by the ' ...
+                    'P.cutBottomHalfCell cut at y = ', ...
+                    num2str(yLo*1e9,'%.1f'), ' nm']; %#ok<AGROW>
             end
             msgs{end+1} = sprintf('  %s on cell %d (annulus [%.1f, %.1f] nm) reaches %s', ...
                 A.name, i, A.rin*1e9, A.rout*1e9, strjoin(parts, ' and ')); %#ok<AGROW>
