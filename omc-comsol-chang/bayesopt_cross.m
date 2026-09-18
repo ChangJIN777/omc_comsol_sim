@@ -38,6 +38,12 @@
 %   3. To extend a finished study:
 %        S = load(cfg.statePath);
 %        results = resume(S.results, 'MaxObjectiveEvaluations', 20);
+%      BUT NOT ACROSS A CONSTRAINT CHANGE. XConstraintFcn is baked into the
+%      saved BayesianOptimization object, so a resumed study re-applies the
+%      fabricability rule it was STARTED with, and the designs that rule
+%      admitted stay in the GP's training set either way. After changing
+%      cfg.minFeature or cfg.minWall, start a FRESH study under a new
+%      cfg.runTag rather than resuming.
 %
 % See also CROSS_OPTIMIZE_SWEEP_DIAMOND, ISCROSSFABRICABLE, SURROGATECROSSBANDS.
 
@@ -98,15 +104,30 @@ cfg.targetFreq = 6.5e9;            % Hz, mechanical midgap target
 cfg.sigma      = 0.5e9;             % Hz, Gaussian width of the frequency penalty
 cfg.maxFreq    = 20e9;           % ignore gaps above this
 
-% Smallest solid wall / etched gap. 10 nm, NOT the 50 nm used in the nanobeam
-% code: this cell is designed an order of magnitude finer.
-%
-% The binding solid feature is the wall between the voids of ADJACENT cells,
-% a - h, which for the nominal 160/140 nm design is 20 nm -- twice this limit,
-% so the nominal starts with real margin. isCrossFabricable used to constrain
-% the half-distance to the cell boundary instead, which made the nominal look
-% like it sat exactly on the limit and halved the reachable box.
+% GLOBAL floor under every feature -- the etched gap w as well as the wall.
+% 10 nm, NOT the 50 nm used in the nanobeam code: this cell is designed an
+% order of magnitude finer. As configured it is not actually binding on w,
+% since cfg.bounds.w starts at 100 nm.
 cfg.minFeature = 10e-9;
+
+% FLOOR ON THE INTER-CELL WALL specifically: the solid between the voids of two
+% ADJACENT cells, wall = a - h (isCrossFabricable.m:99, checked there against
+% the tiled polygons; the cell boundary itself is a periodic-BC plane, not a
+% piece of geometry, so the half-distance to it is NOT the limit -- an earlier
+% version of the rule made that mistake and quietly halved the usable box).
+%
+% This is the feature that actually breaks in the etch, so it gets its own,
+% stricter knob. Raising cfg.minFeature to 60e-9 instead would ALSO demand a
+% 60 nm etched gap, which is a different process limit -- and because that rule
+% is slack here it would have looked like it worked while meaning something
+% else. Passed as isCrossFabricable's optional 8th argument, so the other
+% callers (cross_optimize_sweep_diamond.m, and the nanobeam shield audit in
+% BuildNanobeamCrossShieldFEM.m, which runs a deliberate 31 nm wall) keep their
+% 7-argument behaviour untouched.
+%
+% For scale: the nominal a = 889, h = 820 nm cell has a 69 nm wall, so it
+% clears this by 9 nm.
+cfg.minWall = 60e-9;
 
 % --- solver settings passed through to solveBands -------------------------
 cfg.kpts     = 5;                 % k-points EXCLUDING gamma
@@ -183,13 +204,14 @@ else
         linspace(cfg.bounds.th(1), cfg.bounds.th(2), nScan)*1e-9);
     nDim = 4;
 end
-scanOK  = isCrossFabricable(sa, sh, sw, sth, cfg.minFeature, cfg.r1, cfg.r2);
+scanOK  = crossFabOK(sa, sh, sw, sth, cfg);
 fracFab = mean(scanOK(:));
 fprintf('Fabricable: %.1f%% of the %d^%d design box\n', 100*fracFab, nScan, nDim);
 if fracFab == 0
     error('bayesopt_cross:boxInfeasible', ...
-        ['No point on a %d^4 scan of cfg.bounds is fabricable, so the study ', ...
-         'was NOT started. Widen the bounds or relax cfg.minFeature.'], nScan);
+        ['No point on a %d^%d scan of cfg.bounds is fabricable, so the study ', ...
+         'was NOT started. Widen the bounds, or relax cfg.minFeature / ', ...
+         'cfg.minWall.'], nScan, nDim);
 elseif fracFab < 0.10
     warning('bayesopt_cross:boxMostlyInfeasible', ...
         ['Only %.1f%% of the box is fabricable. bayesopt can work here, but ', ...
@@ -217,8 +239,12 @@ objFcn  = @(x) crossObjective(x, cfg);
 % XConstraintFcn prunes CANDIDATES, before the objective is called at all, so
 % an unfabricable design never costs a solve. That is strictly cheaper than
 % evaluating and penalising it.
-xConFcn = @(t) isCrossFabricable(t.a*1e-9, t.h*1e-9, t.w*1e-9, thOf(t, cfg), ...
-                                 cfg.minFeature, cfg.r1, cfg.r2);
+% double() is defensive, matching buildCrossP: bayesopt stores an 'integer'
+% variable as a double today, but were a column ever to arrive as a genuine
+% integer class, int32(500)*1e-9 would evaluate to 0 and EVERY candidate would
+% be judged unfabricable -- a failure that looks like an infeasible box.
+xConFcn = @(t) crossFabOK(double(t.a)*1e-9, double(t.h)*1e-9, ...
+                          double(t.w)*1e-9, thOf(t, cfg), cfg);
 outFcn  = @(res, state) checkpointState(res, state, cfg.statePath);
 
 fprintf('Starting Bayesian optimization: %d evaluations, target %.1f GHz\n', ...
@@ -247,7 +273,9 @@ else
 end
 fprintf('  objective = %.6g   (fitness = %.6g)\n', ...
     results.MinObjective, -results.MinObjective);
-fprintf('  inter-cell wall a-h = %.1f nm\n', xBest.a - xBest.h);
+fprintf('  inter-cell wall a-h = %d nm  (limit %.0f nm, margin %d nm)\n', ...
+    xBest.a - xBest.h, cfg.minWall*1e9, ...
+    (xBest.a - xBest.h) - round(cfg.minWall*1e9));
 if cfg.isDryRun
     fprintf('  *** SYNTHETIC -- backend was ''%s'' ***\n', cfg.solverBackend);
 end
@@ -289,7 +317,7 @@ P = buildCrossP(x, cfg);
 
 % Belt and braces: XConstraintFcn should already have pruned this, but a
 % future caller might invoke the objective directly.
-if ~isCrossFabricable(P.a, P.h, P.w, P.th, cfg.minFeature, cfg.r1, cfg.r2)
+if ~crossFabOK(P.a, P.h, P.w, P.th, cfg)
     objective = 0;      % no gap credit; bayesopt minimizes, best is negative
     logRow(cfg.itrPath, nEval, P, NaN, NaN, NaN, objective, 'unfabricable');
     return;
@@ -377,6 +405,19 @@ if cfg.fixTh
 else
     th = double(t.th) * 1e-9;
 end
+end
+
+%% ========================================================================
+function ok = crossFabOK(a, h, w, th, cfg)
+%CROSSFABOK  The ONE place that decides fabricability for this study.
+%
+%   Metres in, logical out, same size as the broadcast inputs -- so the 21^3
+%   feasibility scan, the Nx1 candidate table bayesopt hands XConstraintFcn,
+%   and the scalar belt-and-braces check inside the objective are all served by
+%   this single expression. Three call sites spelling out the same argument
+%   list is how a constraint starts meaning one thing to the optimizer and
+%   another to the scan that was supposed to predict it.
+ok = isCrossFabricable(a, h, w, th, cfg.minFeature, cfg.r1, cfg.r2, cfg.minWall);
 end
 
 %% ========================================================================

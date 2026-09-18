@@ -1,7 +1,7 @@
-function [ok, margin, why] = isCrossFabricable(a, h, w, th, minFeature, r1, r2)
+function [ok, margin, why] = isCrossFabricable(a, h, w, th, minFeature, r1, r2, minWall)
 %ISCROSSFABRICABLE  Lithography feasibility of a cross unit cell, no solve.
 %
-%   [ok, margin, why] = isCrossFabricable(a, h, w, th, minFeature, r1, r2)
+%   [ok, margin, why] = isCrossFabricable(a, h, w, th, minFeature, r1, r2, minWall)
 %
 %   VECTORIZED over a/h/w/th (scalars broadcast), because bayesopt hands an
 %   XConstraintFcn a TABLE of many candidate rows at once and expects a logical
@@ -15,6 +15,17 @@ function [ok, margin, why] = isCrossFabricable(a, h, w, th, minFeature, r1, r2)
 %     th  slab thickness along z                                  (:33, :65)
 %     r1  fillet radius 1                                              (:137)
 %     r2  fillet radius 2                                              (:147)
+%
+%   MINWALL (optional, 8th argument) floors the INTER-CELL WALL a-h ALONE. It
+%   is kept separate from minFeature, which floors EVERY feature including the
+%   etched gap w, because those are two different process limits: the wall is
+%   what breaks in the etch, the gap is what the lithography can open. Folding
+%   them into one knob means you cannot tighten the wall without also demanding
+%   an equally wide gap. The effective limit is max(minFeature, minWall), so
+%   minFeature stays a true global floor and the wall limit can only be raised.
+%   It DEFAULTS to minFeature, so every 7-argument call is unchanged, bit for
+%   bit -- which is what keeps cross_optimize_sweep_diamond.m and the nanobeam
+%   shield audit in BuildNanobeamCrossShieldFEM.m on their existing behaviour.
 %
 %   The compose formula is 'r_ucell-r1-r2' (:53), so the cross is SUBTRACTED:
 %   the solid is a square slab with a cross-shaped VOID. In the xy plane the
@@ -51,9 +62,17 @@ function [ok, margin, why] = isCrossFabricable(a, h, w, th, minFeature, r1, r2)
 %
 %   See also BUILDCROSSUNITCELL, BAYESOPT_CROSS, CROSS_OPTIMIZE_SWEEP_DIAMOND.
 
-narginchk(5, 7);
+narginchk(5, 8);
 if nargin < 6; r1 = 0; end
 if nargin < 7; r2 = 0; end
+if nargin < 8 || isempty(minWall); minWall = minFeature; end
+
+% max(), not minWall outright: minFeature is documented as the floor under
+% every feature, so a caller that passes a SMALLER minWall must not be able to
+% punch the wall below the global limit. Left as-is (scalar or array) rather
+% than broadcast to sz -- it only ever appears in 'wall - wallLimit + tol',
+% where implicit expansion already handles both cases.
+wallLimit = max(minFeature, minWall);
 
 % Broadcast to a common size so scalar/array mixes work.
 %
@@ -119,7 +138,7 @@ wall = a - h;                          % solid between voids of adjacent cells
 % the void AWAY from the boundary, so a fillet can only ever WIDEN the wall,
 % never threaten it. Nothing about a fillet depends on a.
 rules = { ...
-    'inter-cell wall (a-h)',      wall        - minFeature + tol; ...
+    'inter-cell wall (a-h)',      wall        - wallLimit  + tol; ...
     'arm width w',                w           - minFeature + tol; ...
     'h > w (is a cross)',         h - w       - tol;              ...
     'arm-end fillet r2 <= w/2',   w/2         - r2 + tol;         ...
