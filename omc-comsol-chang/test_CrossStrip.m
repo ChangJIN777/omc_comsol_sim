@@ -69,14 +69,14 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'cross_strip';             % specify the cell type
 P.unitcell = 'square';                  % specify the shape of the unit cell
-P.a = 914e-9;       % lattice constant along BOTH x and y. Sets the x width of
+P.a = 889e-9;       % lattice constant along BOTH x and y. Sets the x width of
                     % the footprint (:187) and the y pitch of the cells (:157).
-P.h = 847e-9;       % LENGTH of each cross arm. recH has size [h w] (x by y)
+P.h = 820e-9;       % LENGTH of each cross arm. recH has size [h w] (x by y)
                     % and recV the transpose [w h] (:270,:275).
                     % h < a is REQUIRED and enforced -- buildCrossStrip errors
                     % with :armTooLong (:516) rather than letting COMSOL build
                     % a chain of disconnected corner islands.
-P.w = 184e-9;       % WIDTH of each cross arm (the etched gap width).
+P.w = 416e-9;       % WIDTH of each cross arm (the etched gap width).
 P.th = 250e-9;      % slab THICKNESS along z. The work plane sits at z = -th/2
                     % and the profile is extruded a distance th (:250,:302).
 P.r1 = 10e-9;       % fillet radius, applied via fil1.set('radius',r1) (:719)

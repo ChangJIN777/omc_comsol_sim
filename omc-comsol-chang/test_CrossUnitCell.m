@@ -43,7 +43,7 @@ P.mbevenz = 1;      % 1 to find even mechanical mode about z
                     % (nonzero also halves the cell in z: the block below
                     % z = 0 is subtracted, buildCrossUnitCell.m:72-92)
 
-P.kpts = 7;                             % no. of k-points, EXCLUDING gamma point
+P.kpts = 5;                             % no. of k-points, EXCLUDING gamma point
 P.nbands = 10;                           % no. of bands to solve for
 
 %% symmetry decomposition (required by solveBands)
