@@ -72,8 +72,8 @@ cfg.dryRunPrefname  = 'DRYRUN';
 % the process cannot deliver; and an integer grid lets bayesopt recognise a
 % repeated design instead of re-solving a point 0.01 nm away. The objective
 % converts back to metres.
-cfg.bounds.a  = [400, 1000];       % nm, square cell side
-cfg.bounds.h  = [ 100, 900];       % nm, arm length
+cfg.bounds.a  = [400, 1200];       % nm, square cell side
+cfg.bounds.h  = [ 100, 1000];       % nm, arm length
 cfg.bounds.w  = [ 100, 500];       % nm, arm width
 cfg.bounds.th = [ 150, 400];       % nm, slab thickness (ignored if cfg.fixTh)
 
@@ -90,7 +90,7 @@ cfg.bounds.th = [ 150, 400];       % nm, slab thickness (ignored if cfg.fixTh)
 % different problem from four.
 %
 % Leave it false only if you genuinely can pick the thickness.
-cfg.fixTh   = true;
+cfg.fixTh   = false;
 cfg.thFixed = 250e-9;             % m, used only when cfg.fixTh is true
 
 cfg.r1 = 10e-9;                   % fillet radii, held fixed
@@ -108,7 +108,7 @@ cfg.maxFreq    = 20e9;           % ignore gaps above this
 % 10 nm, NOT the 50 nm used in the nanobeam code: this cell is designed an
 % order of magnitude finer. As configured it is not actually binding on w,
 % since cfg.bounds.w starts at 100 nm.
-cfg.minFeature = 10e-9;
+cfg.minFeature = 50e-9;
 
 % FLOOR ON THE INTER-CELL WALL specifically: the solid between the voids of two
 % ADJACENT cells, wall = a - h (isCrossFabricable.m:99, checked there against
@@ -136,10 +136,10 @@ cfg.meshSize = 4;
 cfg.max_dof  = 3e6;
 
 % --- bayesopt settings ----------------------------------------------------
-cfg.maxEvaluations = 60;          % TOTAL study size. Every one is a COMSOL
+cfg.maxEvaluations = 80;          % TOTAL study size. Every one is a COMSOL
                                   % solve under the 'comsol' backend -- time a
                                   % single evaluation before raising this.
-cfg.numSeedPoints  = 10;
+cfg.numSeedPoints  = 15;
 cfg.acquisition    = 'expected-improvement-plus';
 % A COMSOL band-structure solve is repeatable for a given geometry, and the
 % integer-nm grid removes the mesh-jitter-on-a-nudged-geometry problem that
