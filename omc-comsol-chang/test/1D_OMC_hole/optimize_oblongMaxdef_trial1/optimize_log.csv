@@ -1,0 +1,3 @@
+eval,oblong,maxdef,wM_GHz,gOM_kHz,gMB_kHz,gPE_kHz,LSiV_MHz,Q_mech,Q_opt,lambda_opt_nm,fitness,status
+1,4.622194,0.132840,7.4001,15.2831,-0.486002,15.7691,NaN,3.11052e+09,243619,1559.68,5.63719e+13,no_opt_modes
+2,2.327540,0.264716,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,NaN,no_mech_modes+no_opt_modes
