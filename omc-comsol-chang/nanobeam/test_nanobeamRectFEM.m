@@ -9,21 +9,21 @@ P.celltype = 'hole';                    % specify what type of unit cells we are
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a = 650e-9;                           % nominal lattice constant
-P.w = 800e-9;                           % beam width
+P.a = 503e-9;                           % nominal lattice constant
+P.w = 750e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 250e-9;                          % beam thickness
-P.hx = 343e-9;                          % nominal hole height (along x-axis)
-P.hy = 617e-9;                          % nominal hole width (along y-axis)
+P.th = 223e-9;                          % beam thickness
+P.hx = 196e-9;                          % nominal hole height (along x-axis)
+P.hy = 578e-9;                          % nominal hole width (along y-axis)
 
 % hole params for symmetric cavity / right half of asymmetric cavity
 P.nholes = 18;                          % # holes in 1/2 beam length
 P.ndef = 8;                             % # of holes in 1/2 defect region
-P.maxdef = 0.16;                     % defect percentage
-P.oblong = 1.15;                      % oblong parameter (zero if holes are not changed)
+P.maxdef = 0.17;                     % defect percentage
+P.oblong = 2.7;                      % oblong parameter (zero if holes are not changed)
 
 % cavity taper params
-P.holeatctr = 1;                        % 1/0 for hole/dielectric in middle
+P.holeatctr = 0;                        % 1/0 for hole/dielectric in middle
 P.taperFunc = 'cubic';                  % linear/cubic/quadratic taper function to center hole in cavity
 % P.taperTo = 'custom';                 % taper to custom hole in center of cavity; disable for taper to maxdef
 % P.a_ctr = 392e-9;                     % for taperTo = 'custom': lattice constant of center hole
@@ -66,7 +66,7 @@ P.asym = 0;                             % cross-section asymmetry (target y-offs
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
-P.solveOpt = 1;                         % 1 to solve for optics
+P.solveOpt = 0;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
 P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)
