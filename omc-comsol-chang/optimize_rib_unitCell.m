@@ -30,7 +30,7 @@ if nargin < 2 || isempty(pOverrides),   pOverrides   = struct(); end
 % --- dry run: analytic surrogate instead of solveBands (no COMSOL) ---
 % Exercises the plumbing only (normalization, clamping, feasibility penalty,
 % CSV log, BEST re-run path). The surrogate is NOT physics.
-OPT.dryRun = false;
+OPT.dryRun = true;
 
 % --- design variables -----------------------------------------------------
 % Any subset of {'t','s','L','a','d'}, in meters (d in radians):
@@ -42,7 +42,7 @@ OPT.dryRun = false;
 %   d  sidewall angle. Needs P.r1 = P.r2 = 0 (fillets cannot be combined
 %      with d ~= 0) and switches the solve to y-symmetry only (see below)
 % Variables that are not listed keep their P value.
-OPT.vars = {'t','s','L'};
+OPT.vars = {'t','s','L','th'};
 
 % Initial values and [lb, ub] box per variable. Sources:
 %   t, s : 100 nm = ribDefaultParams.m, t0/s0 in rib_optimize_sweep_diamond.m,
@@ -69,7 +69,7 @@ OPT.fixDependent = 'L';           % currently only 'L' is supported
 % --- target mechanical frequency (Hz) the gap should be centred on ---
 % Visible design: the template's mechanical eigen-shift is 11.2 GHz
 % (comsol_templates/visible_rib_omc.m:23488, eigen-unit GHz at :1262).
-OPT.targetFreq = 11.2e9;
+OPT.targetFreq = 8e9;
 
 % --- penalty (in the MINIMIZED objective) for no usable gap / infeasible ---
 % Must exceed any realistic fitness. Infeasible candidates get
@@ -132,8 +132,8 @@ P.celltype = 'rib';
 P.rxtal = 0;
 P.anisoMat = 1;
 P.d = 0;                    % vertical walls: fillets r1 = r2 = 40 nm allowed
-P.kpts = 10;                % k-points, EXCLUDING gamma
-P.nbands = 10;              % bands per symmetry sector
+P.kpts = 7;                % k-points, EXCLUDING gamma
+P.nbands = 5;              % bands per symmetry sector
 % Symmetry: with TwoSymPlanes = 0 solveBands solves ONE sector into ds.sym
 % (plus ds.asym if solveasym = 1):
 %   zSymCondition = 1 -> mbevenz = +1, mbeveny kept from P. With mbeveny = 1
@@ -141,10 +141,10 @@ P.nbands = 10;              % bands per symmetry sector
 %                        breathing modes) on a quarter model. d = 0 only.
 %   zSymCondition = 0 -> mbeveny = +1, mbevenz kept (0): y-even, both z
 %                        parities. Required when d ~= 0 (set automatically).
-P.TwoSymPlanes  = 0;
+P.TwoSymPlanes  = 1;
 P.zSymCondition = 1;
 P.mbeveny = 1;
-P.mbevenz = 0;
+P.mbevenz = 1;
 P.solveasym = 0;            % only the symmetric sector (one FEM solve per point)
 P.completeBandGaps = 1;
 P.plotgeom = 0;             % off during optimization
@@ -163,7 +163,7 @@ P = mergeStruct(P, pOverrides);
 
 % --- consistency of the knobs ---
 nv = numel(OPT.vars);
-allowed = {'t','s','L','a','d'};
+allowed = {'t','s','L','a','th'};
 if nv == 0 || ~all(ismember(OPT.vars, allowed))
     error('optimize_rib_unitCell:badVars', ...
         'OPT.vars must be a nonempty subset of {%s}.', strjoin(allowed, ', '));
