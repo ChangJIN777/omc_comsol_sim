@@ -131,6 +131,16 @@ if strcmp(P.celltype,'boomerang_strip_v2')
 elseif strcmp(P.celltype,'hole')
     [model,P] = buildHoleUnitCell(model,P);
 elseif strcmp(P.celltype,'rib')
+    % Rib cell (spine + centred rib, optional sidewall angle P.d). Its
+    % optional air region would become a second domain, and the material and
+    % physics below use selection.all, so it would silently turn into the
+    % beam material. Refuse that.
+    if isfield(P,'run_optical') && P.run_optical
+        error('runBands:ribOptical', ...
+            ['P.run_optical = 1 adds an air domain to the rib cell, which ' ...
+             'runBands would assign the beam material. Set P.run_optical = 0 ' ...
+             'for mechanical bands.']);
+    end
     [model,P] = buildRibUnitCell_LN(model,P);
 elseif strcmp(P.celltype,'Snowflake_strip')
     [model,P] = buildSnowflakeStrip_3D(model,P);
@@ -394,6 +404,13 @@ end
 % change - the strip scripts in this directory all run TwoSymPlanes = 1, which
 % drives eveny to +-1 and never reaches this case.
 if strcmp(P.celltype,'cross_strip') && eveny == 0
+    symBCs2.active(false);
+    asymBCs2.active(false);
+end
+% Same situation for rib: with P.mbeveny = 0 buildRibUnitCell_LN builds the
+% full y extent and emits no 'yboundaries', so the y features would sit
+% active with an empty selection.
+if strcmp(P.celltype,'rib') && eveny == 0
     symBCs2.active(false);
     asymBCs2.active(false);
 end

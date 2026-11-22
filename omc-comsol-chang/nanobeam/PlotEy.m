@@ -120,6 +120,9 @@ eytopplot_slc.set('colortable', 'WaveLight');
 
 if strcmp(P.celltype,'snowflake') || strcmp(P.celltype,'boomerang_v2')
     dielCtrX = P.xc;
+elseif strcmp(P.celltype,'rib')
+    % centre of the first rib: x = 0 with a rib at the centre, else cell 1
+    dielCtrX = P.xc + ds.P.ribGeomHalf(1,ds.P.ribGeomCols.x);
 else
     ctrHoleRX = P.xc + ds.P.hx_hole(1)/2;
     adjHoleLX = P.xc + ds.P.a_hole(2) - ds.P.hx_hole(2)/2;

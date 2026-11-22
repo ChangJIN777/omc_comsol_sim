@@ -54,7 +54,7 @@ test_*.m  →  RunNanobeamFEM(P, datLoc)
                         ├── CalcGOM             optomechanical coupling g_OM
                         └── CalcStrCplSiV       strain coupling to SiV
 ```
-`RunNanobeamFEM` dispatches to snowflake or boomerang variants based on `P.celltype`. It skips the full solve if `.mat` and `.mph` output files already exist in `datLoc`.
+`RunNanobeamFEM` dispatches to snowflake, boomerang or rib (`'rib'`, see rib_README.md) variants based on `P.celltype`. It skips the full solve if `.mat` and `.mph` output files already exist in `datLoc`.
 
 ### The `P` Struct
 

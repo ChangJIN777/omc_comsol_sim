@@ -57,8 +57,8 @@ All follow the signature `[model, P] = buildXXX(model, P)`.
 | `buildSnowflakeUnitCell.m` | 6-arm snowflake hole geometry |
 | `buildSnowflakeStrip_2D.m` | Snowflake array in strip (2D) |
 | `buildSnowflakeStrip_3D.m` | Snowflake array in strip (3D) |
-| `buildRibUnitCell.m` | Rib waveguide unit cell |
-| `buildRibUnitCell_LN.m` | Rib unit cell for lithium niobate |
+| `buildRibUnitCell.m` | `'2D_ribs'` unit cell: slab with T-shaped voids (unrelated to `'rib'`) |
+| `buildRibUnitCell_LN.m` | `'rib'` unit cell (historical name): spine + centred rib, fillets, optional sidewall angle `P.d`. See [Rib Celltype](#rib-celltype-rib) |
 | `buildCrossUnitCell.m` | Cross-shaped hole unit cell |
 
 ### Band Structure Solvers
@@ -117,6 +117,9 @@ All follow the pattern: set up `P` struct → call solver → optionally save.
 | `test_Snowflake.m` | Snowflake geometry |
 | `test_Rib.m` | Rib waveguide geometry |
 | `test_Cross.m` | Cross-hole geometry |
+| `test_rib_unitCell.m` | `'rib'` mirror cell (visible design), mechanical bands |
+| `test_rib_unitCell_explicitW.m` | `'rib'` cell with explicit `P.w` and fillets, mechanical or optical bands |
+| `test_rib_unitCell_LN.m` | `'rib'` cell in LiNbO3 with 15° sidewalls (old LN shape), optical or mechanical bands |
 | *(others)* | Optical/2D variants |
 
 ---
@@ -145,6 +148,7 @@ test_nanobeam*.m
 | `CreateNanobeamGeomSnowflake.m` | Nanobeam with snowflake mirror unit cells |
 | `CreateNanobeamGeomBoomerang1D.m` | Nanobeam with 1D boomerang mirror lattice |
 | `CreateNanobeamBlockTetGeom.m` | Block-with-tether geometry for FEM testing |
+| `createRibCavityGeom.m` | `'rib'` cavity: per-cell rib dimensions and positions (`P.ribGeomHalf`) |
 
 ### COMSOL Model Building
 
@@ -154,6 +158,7 @@ test_nanobeam*.m
 | `BuildNanobeamFEMGen.m` | Generalized geometry builder for nanobeam FEM. Handles multiple hole types (`hole`/ellipse, `tri`/triangular polygon, `anvil`/filleted triangle, `rib`/parabolic profile), rectangular and triangular beam cross-sections, optional air cylinder for optical simulations, optional mechanical PML on beam ends (for Q-factor studies), z-symmetry plane clipping, and both symmetric and asymmetric cavities. Populates `P.domSel` (domain selections) and `P.bndSel` (boundary selections) on return, used by downstream physics and solver setup. |
 | `BuildNanobeamSnowflakeFEM.m` | Same for snowflake nanobeam |
 | `BuildNanobeamBoomerang1DFEM.m` | Same for 1D boomerang nanobeam |
+| `buildRibCavity.m` | `'rib'` cavity geometry; same tags and `P.domSel`/`P.bndSel` outputs as `BuildNanobeamFEMGen.m` |
 | `SetupNanobeamFEM.m` | Configures COMSOL study (eigenfrequency solvers for mechanical and optical) |
 | `SetupNanobeamSnowflakeFEM.m` | Snowflake variant |
 
@@ -207,6 +212,34 @@ test_nanobeam*.m
 |------|-------------|
 | `LoadMaterialParams.m` | Duplicate of root-level version (diamond/silicon/LN parameters) |
 | `CreateFileBase.m` | Duplicate of root-level version (output filename generation) |
+
+---
+
+## Rib Celltype (`'rib'`)
+
+One device in both pipelines: a continuous **spine** (width `s`) carrying one centred **rib** per cell (width `t` in x, reaching `|y| = L`). It has in-plane fillets `r1`/`r2` and an optional sidewall angle `P.d` (radians; walls lean inward toward the top face). It merges the visible-rib design of `comsol_templates/visible_rib_omc.m` (defaults: diamond, a = 300 nm, t = s = 100 nm, th = 110 nm) with the former lithium-niobate rib cell (`P.w`, `P.d`). The LN rib scripts keep working unchanged.
+
+**Every parameter, with defaults, sources, rib-length precedence, sidewall rules, validation limits, file names and the LN compatibility notes, is in [rib_README.md](rib_README.md).**
+
+| File | Role |
+|------|------|
+| `ribDefaultParams.m` | Single source of defaults; used by both pipelines |
+| `ribLength.m` | Rib half-length: explicit `P.L` > explicit `P.w`/2 > rule `L(a) = L_ref + dLda*(a - a_ref)` |
+| `validateRibParams.m` | Pre-COMSOL checks |
+| `addRibCell.m`, `addRibPrisms.m` | One cell: vertical walls with fillets (2D work plane) / sidewall angle (3D tapered prisms) |
+| `buildRibUnitCell_LN.m` | Unit cell for `runBands`, `runBands_noSym`, `runOpticalBand_1D`/`_3D` (historical name) |
+| `nanobeam/createRibCavityGeom.m`, `nanobeam/buildRibCavity.m` | Cavity taper and geometry for `RunNanobeamFEM` |
+| `test_rib_unitCell.m` (visible design, L(a) rule), `test_rib_unitCell_explicitW.m` (explicit `P.w`, fillets, mechanical/optical), `test_rib_unitCell_LN.m` (LiNbO3, 15° sidewalls, optical/mechanical), `nanobeam/test_nanobeamRibFEM.m` (cavity) | Run scripts |
+| `rib_optimize_*.m` | Rib sweeps / optimizations (LN and diamond) |
+| `RibUnitCellTest.m` | `runtests` suite (`'PureMATLAB'` / `'COMSOL'` tags) |
+
+The shared helpers live in the root folder. `nanobeam/test_nanobeamRibFEM.m` adds the root with `addpath(root,'-end')`, so `nanobeam/`'s own `CreateFileBase.m`, `LoadMaterialParams.m` and `RotateXtalTensor.m` still take precedence.
+
+```matlab
+run('test_rib_unitCell.m')             % solveBands -> runBands -> buildRibUnitCell_LN
+cd nanobeam
+run('test_nanobeamRibFEM.m')           % RunNanobeamFEM -> createRibCavityGeom -> buildRibCavity
+```
 
 ---
 

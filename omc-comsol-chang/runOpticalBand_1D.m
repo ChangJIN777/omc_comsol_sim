@@ -118,6 +118,9 @@ model.component('comp1').material('mat2').selection.all;
 model.component('comp1').material.create('mat1', 'Common');
 if strcmp(P.celltype,'boomerang_strip_v2')
     model.component('comp1').material('mat1').selection.named([P.ucellname,'_beamSel']);
+elseif strcmp(P.celltype,'rib')
+    % rib: mat1 is the air (see below); the builder names the air domains
+    model.component('comp1').material('mat1').selection.named('geom1_airDomSel');
 else
     model.component('comp1').material('mat1').selection.set([1]);
 end
@@ -190,7 +193,9 @@ else
     model.component('comp1').physics('emw').create('pc2', 'PeriodicCondition', 2);
     model.component('comp1').physics('emw').feature('pc2').selection.named('geom1_yboundaries_bnd');
 end
-if ~strcmp(P.celltype,'rib') && P.mbevenz   
+% rib: buildRibUnitCell_LN provides geom1_ZsymSel when it cuts z < 0 (the old
+% LN cell never did, so this was skipped for 'rib'; LN scripts use mbevenz = 0).
+if P.mbevenz
     model.component('comp1').physics('emw').create('symp1', 'SymmetryPlane', 2);
     model.component('comp1').physics('emw').feature('symp1').selection.named('geom1_ZsymSel');
 end
@@ -206,6 +211,9 @@ end
 model.component('comp1').physics('emw').create('sctr1', 'Scattering', 2);
 if strcmp(P.celltype,'boomerang_strip_v2')
     model.component('comp1').physics('emw').feature('sctr1').selection.set([7]);
+elseif strcmp(P.celltype,'rib')
+    % curved outer surface of the air cylinder, named by the builder
+    model.component('comp1').physics('emw').feature('sctr1').selection.named('geom1_airOuter_bnd');
 else
     model.component('comp1').physics('emw').feature('sctr1').selection.set([3 12]);
 end

@@ -35,6 +35,14 @@ if P.solveOpt
     if isfield(P,'asymCav') && P.asymCav
         oevenx = 0;
         P.oevenx = oevenx;
+    elseif isfield(P,'celltype') && strcmp(P.celltype,'rib')
+        % A rib centred on x = 0 puts DIELECTRIC at the cavity centre, the
+        % analogue of holeatctr = 0 (dielectric between two holes): the
+        % fundamental dielectric-band mode then has its Ey antinode on the
+        % centre rib and is even in x, so oevenx is forced to 1 exactly as
+        % holeatctr = 0 forces it. A spine gap at the centre (ribatctr = 0) is
+        % the holeatctr = 1 analogue, and P.oevenx is honoured as given.
+        oevenx = P.oevenx^(1 - P.ribatctr);
     else
         oevenx = P.oevenx^(P.holeatctr);  % 1/-1 for symmetry/anti-symmetry; 0 for no symmetry
     end
@@ -218,8 +226,27 @@ smech.selection.set(mfem.dia_domind);
 bnds.fixed_inds = [];
 fixedBCs = smech.create('fixedBCs', 'Fixed', 2);
 fixedBCs.label('Fixed Constraint');
+% Beam-end condition. 'fixed' is the default for every celltype, as before;
+% rib defaults to 'lowreflecting', as its COMSOL template
+% (comsol_templates/visible_rib_omc.m, lrb1). P.mEndBC overrides either.
+mEndBC = 'fixed';
+if isfield(P,'mEndBC')
+    mEndBC = P.mEndBC;
+elseif isfield(P,'celltype') && strcmp(P.celltype,'rib')
+    mEndBC = 'lowreflecting';
+end
 if ~(isfield(P,'solveMechPML') && P.solveMechPML)
+    if strcmp(mEndBC,'fixed')
     bnds.fixed_inds = [bnds.fixed_inds,P.bndSel.beamXend];
+    elseif strcmp(mEndBC,'lowreflecting')
+        lrbEnd = smech.create('lrbEnd', 'LowReflectingBoundary', 2);
+        lrbEnd.label('Low-reflecting beam end');
+        lrbEnd.selection.set(P.bndSel.beamXend);
+        bnds.lrb_inds = P.bndSel.beamXend;
+    else
+        error('SetupNanobeamFEM:badEndBC', ...
+            'P.mEndBC = ''%s'' must be ''fixed'' or ''lowreflecting''.', mEndBC);
+    end
 end
 if mevenx == 0
     if isfield(P,'solveMechPML') && P.solveMechPML

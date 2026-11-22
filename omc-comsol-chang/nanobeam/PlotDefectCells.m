@@ -15,6 +15,39 @@
 % M.J. Burek, 08/16
 
 function PlotDefectCells(P)
+%% rib: rib cavity, no elliptical holes (createRibCavityGeom)
+% Top: local a_n and rib half-length L_n per cell, normalised to P.a.
+% Bottom: xy outline of the full beam, ribs and spine drawn as rectangles
+% (fillets not drawn).
+if isfield(P,'celltype') && strcmp(P.celltype,'rib')
+    C = P.ribGeomCols;
+    G = P.ribGeom;
+    figure;
+    ax = axes('position',[0.1 0.1 0.85 0.35]);
+    hold(ax,'on')
+    plot(ax,G(:,C.x)*1e6,G(:,C.a)/P.a,'-ks','LineWidth',1,'MarkerSize',6,'Markerfacecolor','k');
+    plot(ax,G(:,C.x)*1e6,G(:,C.L)/P.a,'-bs','LineWidth',1,'MarkerSize',6,'Markerfacecolor','b');
+    plot(ax,G(:,C.x)*1e6,(G(:,C.xR)-G(:,C.xL))/P.a,'--','color',[0 102 51]/255,'LineWidth',1);
+    xlabel(ax,'x (\mum)','FontName','arial','FontSize',12);
+    ylabel(ax,'(a, L, segment)/a_{nom}','FontName','arial','FontSize',12);
+    legend(ax,{'a_n','L_n','spine segment'},'location','best');
+    hold(ax,'off'); box(ax,'on');
+
+    bx = axes('position',[0.1 0.55 0.85 0.4]);
+    hold(bx,'on')
+    for j = 1:size(G,1)
+        xj = G(j,C.x); tj = G(j,C.t); Lj = G(j,C.L); sj = G(j,C.s);
+        rectangle(bx,'Position',[xj-tj/2, -Lj, tj, 2*Lj]*1e6,'EdgeColor','k');
+        rectangle(bx,'Position',[G(j,C.xL), -sj/2, G(j,C.xR)-G(j,C.xL), sj]*1e6,'EdgeColor','k');
+    end
+    plot(bx,[0 0],1.1*max(G(:,C.L))*[-1 1]*1e6,'r--','linewidth',.5);
+    axis(bx,'equal'); axis(bx,'tight');
+    title(bx,sprintf('rib cavity: %d cells, L_{beam} = %.3f \\mum', ...
+        size(G,1), P.beamLen*1e6));
+    hold(bx,'off'); box(bx,'on');
+    return
+end
+
 %% Geometry parameters
 
 %a = P.ahole;

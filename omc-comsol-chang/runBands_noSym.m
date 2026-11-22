@@ -72,6 +72,14 @@ if strcmp(P.celltype,'boomerang_strip_v2')
 elseif strcmp(P.celltype,'hole_unitCell')
     [model,P] = buildHoleUnitCell(model,P);
 elseif strcmp(P.celltype,'rib')
+    % The rib cell's optional air region would be assigned the beam material
+    % below (selection.all). Refuse it rather than solve the wrong structure.
+    if isfield(P,'run_optical') && P.run_optical
+        error('runBands_noSym:ribOptical', ...
+            ['P.run_optical = 1 adds an air domain to the rib cell, which ' ...
+             'runBands_noSym would assign the beam material. Set ' ...
+             'P.run_optical = 0 for mechanical bands.']);
+    end
     [model,P] = buildRibUnitCell_LN(model,P);
 else
     [model,P] = buildBoomerangStrip_3D(model,P);

@@ -1,235 +1,261 @@
 function [model,P] = buildRibUnitCell_LN(model,P)
+%BUILDRIBUNITCELL_LN  'rib' unit cell: spine + centred rib, optional sidewall angle.
+%
+%   [model,P] = buildRibUnitCell_LN(model,P)
+%
+%   The single unit-cell builder for celltype 'rib'. The name is historical:
+%   this file used to hold the lithium-niobate rib cell, and it now holds the
+%   merged builder (the visible-rib cell of comsol_templates/visible_rib_omc.m
+%   plus the LN sidewall-angle construction). Its callers are unchanged:
+%   runBands, runBands_noSym, runOpticalBand_1D and runOpticalBand_3D. The
+%   default material is diamond; set P.beamMat = 'LN' as before for LN.
+%
+%   GEOMETRY. Spine x in [-a/2, a/2], |y| <= s/2; rib x in [-t/2, t/2],
+%   |y| <= L; slab z in [-th/2, th/2]. All widths are at the bottom face.
+%     P.d = 0  vertical walls, in-plane fillets r1 (root) and r2 (tip), drawn
+%              with the template's feature chain (addRibCell)
+%     P.d > 0  walls lean in by th*tan(d) toward the top face, built as
+%              tapered prisms (addRibPrisms, the LN construction). No fillets.
+%   L follows ribLength: an explicit P.L or P.w wins, otherwise the L(a) rule.
+%   The value used is written back to P.L and P.w = 2L.
+%
+%   DIFFERENCE FROM THE OLD LN CELL. The rib is centred in the cell (the LN
+%   cell put half-ribs on x = +-a/2). That is the same lattice shifted by
+%   a/2, so the band structure is identical, but the Floquet faces at
+%   x = +-a/2 now cut only the spine. The old builder's model parameters a, s,
+%   w, t, th, d, airrad, kx, k and its result tables tbl1-tbl4 are no longer
+%   created. The runners set a/k/kx/ky themselves, and runOpticalBand_3D
+%   creates tbl1-tbl14 itself (it collided with the old tables). Only lbd0,
+%   read by the LN refractive index in the optical runners, is still set.
+%
+%   P FIELDS  see ribDefaultParams / rib_README.md (defaults filled here).
+%     P.mbeveny ~= 0 or P.run_optical   only y >= 0 is built; the y = 0 face
+%                     goes to 'yboundaries' (the optical runners always treat
+%                     y = 0 as a symmetry plane, as the old LN cell did)
+%     P.mbevenz ~= 0  z < 0 is cut away (d = 0 only); the z = 0 face(s) are 'ZsymSel'
+%     P.run_optical   air cylinder of radius P.airradUC (default 5a) around the
+%                     cell, as the LN cell. Optical solvers only: runBands and
+%                     runBands_noSym refuse it, because they assign the beam
+%                     material with selection.all.
+%     Missing P.mbeveny / P.mbevenz are treated as 0.
+%
+%   PROVIDED TO THE CALLER
+%     geom1_xboundaries_bnd   x = +-a/2 faces (beam, plus air when present)
+%     geom1_yboundaries_bnd   y = 0 face(s)                  (half-y builds)
+%     geom1_ZsymSel           z = 0 face(s)                  (P.mbevenz ~= 0)
+%     geom1_beamDomSel, geom1_airDomSel   domain selections  (air: run_optical)
+%     geom1_airOuter_bnd      curved outer air surface       (run_optical)
+%     P.domSel.beam, P.domSel.air, P.bndSel.Zsym, P.bndSel.airOuter
+%     P.zEnd2                 = P.bndSel.airOuter, read by runOpticalBand_3D's
+%                             scattering boundary (airTopBoundary)
+%     P.xEnd1, P.xEnd2, P.yEnd1, P.zEnd   bndindex lookups
+%     P.L, P.w (+ P.ribDerived)           rib length used
+%   No flat outer y face exists, so there is no P.yEnd2 and runBands'
+%   fixed_bc fallback errors, correctly.
 
-%% read the input parameters 
-a = P.a;    % lattice constants 
-s = P.s;  % spine width 
-w = P.w;    % the beam width 
-t = P.t;    % the rib width
-th = P.th;  % thickness of the cavity 
-d = P.d;    % side wall angle 
+P = ribDefaultParams(P);
+validateRibParams(P, 'unitcell');
 
-%% set the parameters 
-model.param.set('a', a, 'lattice constant');
-model.param.set('s', s, 'spine width');
-model.param.set('w', w, 'beam width');
-model.param.set('t', t, 'rib width');
-model.param.set('th', th, 'thickness');
-model.param.set('d', d, 'side wall angle');
-model.param.set('airrad', '5*a');
-model.param.set('kx', 'k*pi/a');
-model.param.set('k', '1');
-model.param.set('lbd0', '1.55[um]', 'wavelength band edge');
+a  = P.a;   t  = P.t;   s  = P.s;   th = P.th;   d = P.d;
+[L, Lsrc] = ribLength(P, a);
+P.L = L;
+P.w = 2*L;
+% Record only what was computed here, so a caller's explicit value stays explicit.
+if ~strcmp(Lsrc,'L'), P.ribDerived.L = P.L; end
+if ~strcmp(Lsrc,'w'), P.ribDerived.w = P.w; end
 
-%% Create the components 
+mbeveny = 0;  mbevenz = 0;
+if isfield(P,'mbeveny'), mbeveny = P.mbeveny; end
+if isfield(P,'mbevenz'), mbevenz = P.mbevenz; end
+runOpt = isfield(P,'run_optical') && P.run_optical;
+symY   = mbeveny ~= 0 || runOpt;
+symZ   = mbevenz ~= 0;       % validateRibParams rejects this with d > 0
+R      = P.airradUC;
+selDelta = 10e-9;
+
+%% Component and geometry. The runners hard-code 'comp1' / 'geom1'.
 ucellcomp = model.modelNode.create('comp1');
 ucellcomp.label('Unit cell FEM simulation');
 ucellname = 'geom1';
-ucellgeom = model.geom.create(ucellname,3);
+ucellgeom = model.geom.create(ucellname, 3);
+ucellgeom.label('Rib unit cell');
 
-%% create the unit cell
-model.result.table.create('tbl1', 'Table');
-model.result.table.create('tbl2', 'Table');
-model.result.table.create('tbl3', 'Table');
-model.result.table.create('tbl4', 'Table');
+% Model parameter read by the LN dispersion in runOpticalBand_1D/_3D.
+model.param.set('lbd0', sprintf('%.12g[m]', P.lbd0), 'wavelength band edge');
 
-model.component('comp1').geom('geom1').geomRep('comsol');
-model.component('comp1').geom('geom1').create('wp1', 'WorkPlane');
-model.component('comp1').geom('geom1').feature('wp1').set('quickz', '-th/2');
-model.component('comp1').geom('geom1').feature('wp1').set('unite', true);
-model.component('comp1').geom('geom1').feature('wp1').geom.create('pol1', 'Polygon');
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('pol1').active(false);
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('pol1').set('source', 'table');
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('pol1').set('table', {'-a-a/2+t/2' 's/2';  ...
-'-a/2-t/2' 's/2';  ...
-'-a/2-t/2' 'w/2';  ...
-'-a/2+t/2' 'w/2';  ...
-'-a/2+t/2' 's/2';  ...
-'a/2-t/2' 's/2';  ...
-'a/2-t/2' 'w/2';  ...
-'a/2+t/2' 'w/2';  ...
-'a/2+t/2' 's/2';  ...
-'a+a/2-t/2' 's/2';  ...
-'a+a/2-t/2' '-s/2';  ...
-'a/2+t/2' '-s/2';  ...
-'a/2+t/2' '-w/2';  ...
-'a/2-t/2' '-w/2';  ...
-'a/2-t/2' '-s/2';  ...
-'-a/2+t/2' '-s/2';  ...
-'-a/2+t/2' '-w/2';  ...
-'-a/2-t/2' '-w/2';  ...
-'-a/2-t/2' '-s/2';  ...
-'-a-a/2+t/2' '-s/2'});
-model.component('comp1').geom('geom1').feature('wp1').geom.create('fil1', 'Fillet');
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('fil1').active(false);
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('fil1').set('radius', 'r1');
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('fil1').selection('point').set('pol1(1)', [3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18]);
-model.component('comp1').geom('geom1').feature('wp1').geom.create('r1', 'Rectangle');
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('r1').set('size', {'t' 'w'});
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('r1').set('base', 'center');
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('r1').set('pos', {'-a/2' '0'});
-model.component('comp1').geom('geom1').feature('wp1').geom.create('r2', 'Rectangle');
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('r2').set('size', {'t' 'w'});
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('r2').set('base', 'center');
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('r2').set('pos', {'a/2' '0'});
-model.component('comp1').geom('geom1').feature('wp1').geom.create('r3', 'Rectangle');
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('r3').set('size', {'a*2' 's'});
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('r3').set('base', 'center');
-model.component('comp1').geom('geom1').feature('wp1').geom.feature('r3').set('pos', [0 0]);
-model.component('comp1').geom('geom1').create('ext1', 'Extrude');
-model.component('comp1').geom('geom1').feature('ext1').set('extrudefrom', 'faces');
-model.component('comp1').geom('geom1').feature('ext1').set('inputhandling', 'keep');
-model.component('comp1').geom('geom1').feature('ext1').setIndex('distance', 'th', 0);
-model.component('comp1').geom('geom1').feature('ext1').set('crossfaces', false);
-model.component('comp1').geom('geom1').feature('ext1').selection('inputface').set('wp1.uni', [2 3 4 6 7 8]);
-model.component('comp1').geom('geom1').create('wp3', 'WorkPlane');
-model.component('comp1').geom('geom1').feature('wp3').set('quickplane', 'yz');
-model.component('comp1').geom('geom1').feature('wp3').set('quickx', '-a');
-model.component('comp1').geom('geom1').feature('wp3').set('unite', true);
-model.component('comp1').geom('geom1').feature('wp3').geom.create('pol1', 'Polygon');
-model.component('comp1').geom('geom1').feature('wp3').geom.feature('pol1').set('source', 'table');
-model.component('comp1').geom('geom1').feature('wp3').geom.feature('pol1').set('table', {'w/2' '-th/2'; '(w-2*tan(d)*th)/2' 'th/2'; '-(w-2*tan(d)*th)/2' 'th/2'; '-w/2' '-th/2'});
-model.component('comp1').geom('geom1').create('ext3', 'Extrude');
-model.component('comp1').geom('geom1').feature('ext3').setIndex('distance', '2*a', 0);
-model.component('comp1').geom('geom1').feature('ext3').selection('input').set({'wp3'});
-model.component('comp1').geom('geom1').create('int1', 'Intersection');
-model.component('comp1').geom('geom1').feature('int1').selection('input').set({'ext1' 'ext3'});
-model.component('comp1').geom('geom1').create('wp4', 'WorkPlane');
-model.component('comp1').geom('geom1').feature('wp4').set('quickplane', 'xz');
-model.component('comp1').geom('geom1').feature('wp4').set('quicky', '-w/2');
-model.component('comp1').geom('geom1').feature('wp4').set('unite', true);
-model.component('comp1').geom('geom1').feature('wp4').geom.create('pol1', 'Polygon');
-model.component('comp1').geom('geom1').feature('wp4').geom.feature('pol1').set('source', 'table');
-model.component('comp1').geom('geom1').feature('wp4').geom.feature('pol1').set('table', {'-a/2-t/2' '-th/2'; '(-a/2-(1-2*tan(d)*th/t)*t/2)' 'th/2'; '-a/2+(1-2*tan(d)*th/t)*t/2' 'th/2'; '-a/2+t/2' '-th/2'});
-model.component('comp1').geom('geom1').feature('wp4').geom.create('pol2', 'Polygon');
-model.component('comp1').geom('geom1').feature('wp4').geom.feature('pol2').set('source', 'table');
-model.component('comp1').geom('geom1').feature('wp4').geom.feature('pol2').set('table', {'a/2+t/2' '-th/2'; '-(-a/2-(1-2*tan(d)*th/t)*t/2)' 'th/2'; '-(-a/2+(1-2*tan(d)*th/t)*t/2)' 'th/2'; '-(-a/2+t/2)' '-th/2'});
-model.component('comp1').geom('geom1').create('ext4', 'Extrude');
-model.component('comp1').geom('geom1').feature('ext4').setIndex('distance', 'w', 0);
-model.component('comp1').geom('geom1').feature('ext4').set('reverse', true);
-model.component('comp1').geom('geom1').feature('ext4').selection('input').set({'wp4'});
-model.component('comp1').geom('geom1').create('int2', 'Intersection');
-model.component('comp1').geom('geom1').feature('int2').selection('input').set({'ext4' 'int1'});
-model.component('comp1').geom('geom1').create('ext5', 'Extrude');
-model.component('comp1').geom('geom1').feature('ext5').set('extrudefrom', 'faces');
-model.component('comp1').geom('geom1').feature('ext5').setIndex('distance', 'th', 0);
-model.component('comp1').geom('geom1').feature('ext5').selection('inputface').set('wp1.uni', [1 3 5 7 9]);
-model.component('comp1').geom('geom1').create('wp2', 'WorkPlane');
-model.component('comp1').geom('geom1').feature('wp2').set('quickplane', 'yz');
-model.component('comp1').geom('geom1').feature('wp2').set('quickx', '-a');
-model.component('comp1').geom('geom1').feature('wp2').set('unite', true);
-model.component('comp1').geom('geom1').feature('wp2').geom.create('pol1', 'Polygon');
-model.component('comp1').geom('geom1').feature('wp2').geom.feature('pol1').set('source', 'table');
-model.component('comp1').geom('geom1').feature('wp2').geom.feature('pol1').set('table', {'-s/2' '-th/2'; 's/2' '-th/2'; '(s-2*tan(d)*th)/2' 'th/2'; '-(s-2*tan(d)*th)/2' 'th/2'});
-model.component('comp1').geom('geom1').create('ext2', 'Extrude');
-model.component('comp1').geom('geom1').feature('ext2').setIndex('distance', '2*a', 0);
-model.component('comp1').geom('geom1').feature('ext2').selection('input').set({'wp2'});
-model.component('comp1').geom('geom1').create('int3', 'Intersection');
-model.component('comp1').geom('geom1').feature('int3').selection('input').set({'ext2' 'ext5'});
-model.component('comp1').geom('geom1').create('wp5', 'WorkPlane');
-model.component('comp1').geom('geom1').feature('wp5').set('quickplane', 'zy');
-model.component('comp1').geom('geom1').feature('wp5').set('quickx', '-a/2');
-model.component('comp1').geom('geom1').feature('wp5').set('unite', true);
-model.component('comp1').geom('geom1').feature('wp5').geom.create('r1', 'Rectangle');
-model.component('comp1').geom('geom1').feature('wp5').geom.feature('r1').set('size', {'th' 'w'});
-model.component('comp1').geom('geom1').feature('wp5').geom.feature('r1').set('pos', {'-th/2' '-w/2'});
-model.component('comp1').geom('geom1').create('ext6', 'Extrude');
-model.component('comp1').geom('geom1').feature('ext6').setIndex('distance', 'a/2', 0);
-model.component('comp1').geom('geom1').feature('ext6').selection('input').set({'wp5'});
-model.component('comp1').geom('geom1').create('wp6', 'WorkPlane');
-model.component('comp1').geom('geom1').feature('wp6').set('quickplane', 'zy');
-model.component('comp1').geom('geom1').feature('wp6').set('quickx', 'a/2');
-model.component('comp1').geom('geom1').feature('wp6').set('unite', true);
-model.component('comp1').geom('geom1').feature('wp6').geom.create('r1', 'Rectangle');
-model.component('comp1').geom('geom1').feature('wp6').geom.feature('r1').set('size', {'th' 'w'});
-model.component('comp1').geom('geom1').feature('wp6').geom.feature('r1').set('pos', {'-th/2' '-w/2'});
-model.component('comp1').geom('geom1').create('ext7', 'Extrude');
-model.component('comp1').geom('geom1').feature('ext7').setIndex('distance', 'a/2', 0);
-model.component('comp1').geom('geom1').feature('ext7').set('reverse', true);
-model.component('comp1').geom('geom1').feature('ext7').selection('input').set({'wp6'});
-model.component('comp1').geom('geom1').create('co1', 'Compose');
-model.component('comp1').geom('geom1').feature('co1').set('formula', 'int2+int3-ext6-ext7');
-model.component('comp1').geom('geom1').create('wp7', 'WorkPlane');
-if ~P.run_optical
-    model.component('comp1').geom('geom1').feature('wp7').active(false);
+%% Beam solid
+if d == 0
+    ucellWP = ucellgeom.feature.create('wp1', 'WorkPlane');
+    ucellWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -th/2);
+    addRibCell(ucellWP.geom, 'u', 0, a/2, a/2, t, L, s, P.r1, P.r2, ~symY);
+    finTag = 'ext1';
+    ext = ucellgeom.feature.create(finTag, 'Extrude');
+    ext.set('distance', th);
+    ext.selection('input').set({'wp1'});
+else
+    finTag = addRibPrisms(ucellgeom, 'u', 0, -a/2, a/2, t, L, s, th, d, symY);
 end
-model.component('comp1').geom('geom1').feature('wp7').set('quickplane', 'xz');
-model.component('comp1').geom('geom1').feature('wp7').set('unite', true);
-model.component('comp1').geom('geom1').feature('wp7').geom.create('r1', 'Rectangle');
-model.component('comp1').geom('geom1').feature('wp7').geom.feature('r1').set('size', {'a' 'th'});
-model.component('comp1').geom('geom1').feature('wp7').geom.feature('r1').set('pos', {'-a/2' '-th/2'});
-model.component('comp1').geom('geom1').create('ext8', 'Extrude');
-if ~P.run_optical
-    model.component('comp1').geom('geom1').feature('ext8').active(false);
+
+%% Optional air region (optical runs only), as the LN cell's wp8/rev1
+yExt = L;
+if runOpt
+    wpAir = ucellgeom.feature.create('wpAir', 'WorkPlane');
+    wpAir.set('quickplane', 'xz');
+    airRect = wpAir.geom.feature.create('airRect', 'Rectangle');
+    airRect.set('pos', [-a/2 0]).set('size', [a R]);
+    revAir = ucellgeom.feature.create('revAir', 'Revolve');
+    revAir.selection('input').set({'wpAir'});
+    revAir.set('axis', [-1 0]);
+    revAir.set('angle2', 180);          % y >= 0 half (symY is true here)
+    cellAir = ucellgeom.feature.create('cellAir', 'Compose');
+    cellAir.selection('input').set({finTag 'revAir'});
+    cellAir.set('formula', [finTag,' + revAir']);
+    finTag = 'cellAir';
+    yExt = R;
 end
-model.component('comp1').geom('geom1').feature('ext8').setIndex('distance', 'w/2', 0);
-model.component('comp1').geom('geom1').feature('ext8').selection('input').set({'wp7'});
-model.component('comp1').geom('geom1').create('co2', 'Compose');
-if ~P.run_optical
-    model.component('comp1').geom('geom1').feature('co2').active(false);
+
+%% z symmetry: remove z < 0 (vertical walls only)
+if symZ
+    zCut = max(th/2, runOpt*R) + selDelta;
+    symZWP = ucellgeom.feature.create('symZWP', 'WorkPlane');
+    symZWP.set('planetype', 'quick').set('quickplane', 'xy').set('quickz', -zCut);
+    symZPlane = symZWP.geom.feature.create('symZPlane', 'Rectangle');
+    symZPlane.set('type', 'solid').set('base', 'corner');
+    symZPlane.set('pos', [-a/2-selDelta, -yExt-selDelta]).set('size', [a+2*selDelta, 2*yExt+2*selDelta]);
+    symZExt = ucellgeom.feature.create('symZPlaneExt', 'Extrude');
+    symZExt.set('distance', zCut);
+    symZExt.selection('input').set({'symZWP'});
+    symZComp = ucellgeom.feature.create('symZComp', 'Compose');
+    symZComp.selection('input').set({finTag 'symZPlaneExt'});
+    symZComp.set('formula', [finTag,' - symZPlaneExt']);
+
+    % allvertices in this box: the beam's z = 0 face for mechanics, all
+    % z = 0 faces (beam + air) when the air is present.
+    ZsymSel = ucellgeom.create('ZsymSel', 'BoxSelection');
+    ZsymSel.set('xmin', -a/2-selDelta).set('xmax', a/2+selDelta);
+    ZsymSel.set('ymin', -yExt-selDelta).set('ymax', yExt+selDelta);
+    ZsymSel.set('zmin', -selDelta).set('zmax', selDelta);
+    ZsymSel.set('entitydim', 2).set('condition', 'allvertices');
 end
-model.component('comp1').geom('geom1').feature('co2').set('formula', 'co1-ext8');
-model.component('comp1').geom('geom1').create('wp8', 'WorkPlane');
-if ~P.run_optical
-    model.component('comp1').geom('geom1').feature('wp8').active(false);
+
+%% Domain selections
+beamDomSel = ucellgeom.create('beamDomSel', 'BoxSelection');
+beamDomSel.set('xmin', -a/2-selDelta).set('xmax', a/2+selDelta);
+beamDomSel.set('ymin', -L-selDelta).set('ymax', L+selDelta);
+beamDomSel.set('zmin', -th/2-selDelta).set('zmax', th/2+selDelta);
+beamDomSel.set('entitydim', 3).set('condition', 'inside');
+if runOpt
+    allDomSel = ucellgeom.create('allDomSel', 'BoxSelection');
+    allDomSel.set('xmin', -a/2-selDelta).set('xmax', a/2+selDelta);
+    allDomSel.set('ymin', -R-selDelta).set('ymax', R+selDelta);
+    allDomSel.set('zmin', -R-selDelta).set('zmax', R+selDelta);
+    allDomSel.set('entitydim', 3).set('condition', 'inside');
+    airDomSel = ucellgeom.create('airDomSel', 'DifferenceSelection');
+    airDomSel.set('entitydim', 3).set('add', 'allDomSel').set('subtract', 'beamDomSel');
 end
-model.component('comp1').geom('geom1').feature('wp8').set('quickplane', 'xz');
-model.component('comp1').geom('geom1').feature('wp8').set('unite', true);
-model.component('comp1').geom('geom1').feature('wp8').geom.create('r1', 'Rectangle');
-model.component('comp1').geom('geom1').feature('wp8').geom.feature('r1').set('size', {'a' '5*a'});
-model.component('comp1').geom('geom1').feature('wp8').geom.feature('r1').set('pos', {'-a/2' '0'});
-model.component('comp1').geom('geom1').create('rev1', 'Revolve');
-if ~P.run_optical
-    model.component('comp1').geom('geom1').feature('rev1').active(false);
-end
-model.component('comp1').geom('geom1').feature('rev1').set('angle2', 180);
-model.component('comp1').geom('geom1').feature('rev1').set('axis', [-1 0]);
-model.component('comp1').geom('geom1').feature('rev1').selection('input').set({'wp8'});
-model.component('comp1').geom('geom1').run;
-model.component('comp1').geom('geom1').run('fin');
 
-
-% %% Making selections (with box select)
-% mphgeom(model);
-selection_width = 10e-9;
-
-% box selection for the boundary condition 
-x_boundary_disksel_r = ucellgeom.feature.create('x_boundary_boxsel_r', 'BoxSelection');
-x_boundary_disksel_r.set('entitydim', 2);
-x_boundary_disksel_r.set('xmin', a/2-selection_width/2);
-x_boundary_disksel_r.set('xmax', a/2+selection_width/2);
-x_boundary_disksel_r.set('inputent', 'all');
-x_boundary_disksel_r.set('condition', 'inside');
-
-x_boundary_disksel_l = ucellgeom.feature.create('x_boundary_boxsel_l', 'BoxSelection');
-x_boundary_disksel_l.set('entitydim', 2);
-x_boundary_disksel_l.set('xmin', -a/2-selection_width/2);
-x_boundary_disksel_l.set('xmax', -a/2+selection_width/2);
-x_boundary_disksel_l.set('inputent', 'all');
-x_boundary_disksel_l.set('condition', 'inside');
-
-ucellgeom.selection.create('xboundaries','CumulativeSelection');
+%% Named boundary selections consumed by the runners
+% Cumulative selections are created before the boxes that contribute to them.
+ucellgeom.selection.create('xboundaries', 'CumulativeSelection');
 ucellgeom.selection('xboundaries').label('Cumulative Selection x boundaries');
-x_boundary_disksel_r.set('contributeto','xboundaries');
-x_boundary_disksel_l.set('contributeto','xboundaries');
-
-if P.run_optical    
-    y_boundary_symmetry = ucellgeom.feature.create('y_boundary_symmetry', 'BoxSelection');
-    y_boundary_symmetry.set('entitydim', 2);
-    y_boundary_symmetry.set('ymin', -selection_width/2);
-    y_boundary_symmetry.set('ymax', selection_width/2);
-    y_boundary_symmetry.set('inputent', 'all');
-    y_boundary_symmetry.set('condition', 'inside');
-    ucellgeom.selection.create('yboundaries','CumulativeSelection');
+addFaceBox(ucellgeom, 'x_boundary_boxsel_l', 'x', -a/2, selDelta, 'xboundaries');
+addFaceBox(ucellgeom, 'x_boundary_boxsel_r', 'x',  a/2, selDelta, 'xboundaries');
+if symY
+    ucellgeom.selection.create('yboundaries', 'CumulativeSelection');
     ucellgeom.selection('yboundaries').label('Cumulative Selection y boundaries');
-    y_boundary_symmetry.set('contributeto','yboundaries');
+    addFaceBox(ucellgeom, 'y_boundary_symmetry', 'y', 0, selDelta, 'yboundaries');
+end
+if runOpt
+    % Curved outer air surface (scattering boundary): small 'intersects'
+    % boxes at 45 deg above and below the axis. Only the curved face reaches
+    % them; with the z cut only the upper one finds anything.
+    ucellgeom.selection.create('airOuter', 'CumulativeSelection');
+    ucellgeom.selection('airOuter').label('Cumulative Selection air outer surface');
+    for sgn = [1 -1]
+        tag = sprintf('airOuterBox%d', (3 - sgn)/2);
+        box = ucellgeom.feature.create(tag, 'BoxSelection');
+        box.set('entitydim', 2).set('condition', 'intersects');
+        box.set('xmin', -selDelta).set('xmax', selDelta);
+        box.set('ymin', R/sqrt(2) - 10*selDelta).set('ymax', R/sqrt(2) + 10*selDelta);
+        box.set('zmin', sgn*R/sqrt(2) - 10*selDelta).set('zmax', sgn*R/sqrt(2) + 10*selDelta);
+        box.set('contributeto', 'airOuter');
+    end
 end
 
-model.component('comp1').geom('geom1').run;
+%% Finalize. run, NOT runAll: runAll leaves the geometry unfinalized and every
+% selection / bndindex lookup below would come back empty.
+ucellgeom.run;
 
-% Note that this will return no indices if there is no boundary at z=0
+if symZ
+    P.bndSel.Zsym = resolveSel(model, [ucellname,'_ZsymSel'], 2);
+end
+P.domSel.beam = resolveSel(model, [ucellname,'_beamDomSel'], 3);
+if runOpt
+    P.domSel.air = resolveSel(model, [ucellname,'_airDomSel'], 3);
+    P.bndSel.airOuter = resolveSel(model, [ucellname,'_airOuter_bnd'], 2);
+    P.zEnd2 = P.bndSel.airOuter;
+end
+P.xEnd1 = bndindex(ucellgeom, [-a/2 0 0], [1 0 0]);
+P.xEnd2 = bndindex(ucellgeom, [ a/2 0 0], [1 0 0]);
+if symY
+    P.yEnd1 = bndindex(ucellgeom, [0 0 0], [0 1 0]);
+end
+% bndindex uses p0 only to fix the plane: the bottom face is at z = 0 after the
+% z cut, otherwise at z = -th/2.
+if symZ
+    zProbe = 0;
+else
+    zProbe = -th/2;
+end
+P.zEnd = bndindex(ucellgeom, [0 0 zProbe], [0 0 1]);
 
-% % debugging
-% mphplot(model);
-disp(P) % debugging
-out = model;
+warnIfEmpty(model, [ucellname,'_xboundaries_bnd'], 2);
+if symY,   warnIfEmpty(model, [ucellname,'_yboundaries_bnd'], 2); end
+if symZ,   warnIfEmpty(model, [ucellname,'_ZsymSel'], 2); end
+if runOpt, warnIfEmpty(model, [ucellname,'_airOuter_bnd'], 2); end
+if isempty(P.domSel.beam)
+    warning('rib:emptyDomSel', 'geom1_beamDomSel resolved to no domains.');
+end
+% The runners draw the geometry themselves when P.plotgeom is set.
+end
+
+% -------------------------------------------------------------------------
+
+function addFaceBox(geom, tag, axisName, pos, selDelta, contributeTo)
+%ADDFACEBOX  'inside' BoxSelection of the faces lying in one axis-normal plane.
+box = geom.feature.create(tag, 'BoxSelection');
+box.set('entitydim', 2);
+box.set([axisName,'min'], pos-selDelta/2).set([axisName,'max'], pos+selDelta/2);
+box.set('inputent', 'all');
+box.set('condition', 'inside');
+box.set('contributeto', contributeTo);
+end
+
+% -------------------------------------------------------------------------
+
+function inds = resolveSel(model, tag, dim)
+%RESOLVESEL  Entity indices of a geometry selection, as a row vector.
+% Two-accessor fallback as in buildCrossStrip's resolveBndSel. Returns []
+% rather than throwing. Only meaningful after geom.run.
+try
+    inds = double(model.selection(tag).entities(dim));
+catch
+    try
+        inds = double(model.selection(tag).inputEntities());
+    catch
+        inds = [];
+    end
+end
+inds = inds(:)';
+end
+
+% -------------------------------------------------------------------------
+
+function warnIfEmpty(model, tag, dim)
+%WARNIFEMPTY  Warn when a selection a solver will hang a BC on is empty.
+if isempty(resolveSel(model, tag, dim))
+    warning('rib:selectionEmpty', ...
+        ['%s resolved to no entities. A periodic, symmetry or scattering ' ...
+         'condition using it would be applied to nothing.'], tag);
+end
 end

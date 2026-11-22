@@ -32,6 +32,10 @@ speculative extra geometry feature can silently misassign materials.
   than the `model = []` trick, which stops at the first `model.*` call, and it
   runs the real code rather than a re-typed copy.
 - Do not attempt a COMSOL run unless asked; LiveLink must already be running.
+- Verified 2026-11-21: headless `matlab.exe -batch` has NO LiveLink on the path
+  (`mphstart`/`mphmeasure` absent, `com.comsol.model.util.ModelUtil` unresolvable),
+  so COMSOL-dependent tests skip there. `omc-comsol-chang/RibUnitCellTest.m` uses
+  an assumption for this; COMSOL-tagged tests in it have never actually executed.
 - The MATLAB MCP tools (`mcp__matlab__*`) are not always exposed to subagents;
   fall back to the `matlab -batch` CLI above rather than reporting unverified.
 - Nuance: "don't touch other files" is about *unrequested* edits. When a task

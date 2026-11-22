@@ -69,6 +69,10 @@ try
             P = CreateNanobeamGeomBoomerang1D(P); % the boomerang unit cells 
         elseif isfield(P,'celltype') && strcmp(P.celltype,'snowflake')
             P = CreateNanobeamGeomSnowflake(P); % the boomerang unit cells 
+        elseif isfield(P,'celltype') && strcmp(P.celltype,'rib')
+            P = createRibCavityGeom(P);                     % rib cavity (rib arrays)
+            PlotDefectCells(P);                             % plots rib taper + outline
+            saveas(gcf,[datLoc,P.fileBase,'_geom.png']);
         else
             % create beam-hole geometry by default
             if isfield(P,'asymCav') && P.asymCav && isfield(P,'PL')
@@ -119,6 +123,9 @@ try
             % already fell through to CreateNanobeamGeom, which is what this
             % builder wants; Setup/Solve below are reused unchanged.
             [model,P] = BuildNanobeamCrossShieldFEM(model,P);
+        elseif isfield(P,'celltype') && strcmp(P.celltype,'rib')
+            % rib cavity; Setup/Solve below are reused unchanged
+            [model,P] = buildRibCavity(model,P);
         else
             [model,P] = BuildNanobeamFEM(model,P);              % generates nanobeam in COMSOL
         end

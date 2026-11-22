@@ -128,8 +128,9 @@ model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex'
 model.component('comp1').material('mat2').selection.set([2]);
 model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
 if strcmp(P.celltype,'rib')
-    model.component('comp1').material('mat2').selection.set([1]);
-    model.component('comp1').material('mat1').selection.set([2 3 4 5 6 7 8 9 10]);
+    % mat2 = air, mat1 = beam; domains named by buildRibUnitCell_LN
+    model.component('comp1').material('mat2').selection.named('geom1_airDomSel');
+    model.component('comp1').material('mat1').selection.named('geom1_beamDomSel');
 end
 
 model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
@@ -216,7 +217,8 @@ model.component('comp1').physics('emw').create('sctr1', 'Scattering', 2);
 model.component('comp1').physics('emw').feature('sctr1').selection.set(sctrBnd);
 model.component('comp1').physics('emw').feature('sctr1').label('Low-reflecting boundary, air top');
 
-if ~strcmp(P.celltype,'rib')
+% rib: only when the builder cut z < 0 (P.mbevenz ~= 0); P.zEnd is then z = 0
+if ~strcmp(P.celltype,'rib') || (isfield(P,'mbevenz') && P.mbevenz)
     model.component('comp1').physics('emw').create('symp1', 'SymmetryPlane', 2);
     model.component('comp1').physics('emw').feature('symp1').selection.set(P.zEnd);
 end
