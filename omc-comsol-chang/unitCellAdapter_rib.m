@@ -35,14 +35,14 @@ nm  = 1e-9;
 %   t >= 90 nm keeps 2*r2 < t with 40 nm fillets; t <= 200 nm keeps
 %   r1 < (a - t)/2 at a = 300 nm; s >= 50 nm is the floor of
 %   rib_optimize_sweep_diamond.m:84.
-cfg.vars.a  = struct('search', false, 'bounds', [240 360], 'fixed', 300e-9, 'step', nm);
+cfg.vars.a  = struct('search', true,  'bounds', [240 360], 'fixed', 300e-9, 'step', nm);
 cfg.vars.t  = struct('search', true,  'bounds', [ 90 200], 'fixed', 100e-9, 'step', nm);
 cfg.vars.s  = struct('search', true,  'bounds', [ 50 200], 'fixed', 100e-9, 'step', nm);
 cfg.vars.L  = struct('search', true,  'bounds', [250 500], 'fixed', 370e-9, 'step', nm);
 % d: grid of 1 degree, [0, 15] deg (optimize_rib_unitCell.m:59-60). Searching
 % d, or fixing it > 0, switches the WHOLE study to r1 = r2 = 0 and the y-even
-% sector (see ribPrepareCfg). TODO(confirm): search d at all? It is an etch
-% outcome, like th.
+% sector (see ribPrepareCfg). Not searched by default (user decision,
+% 2026-11-22): it is an etch outcome, like th.
 cfg.vars.d  = struct('search', false, 'bounds', [0 15], 'fixed', 0, 'step', pi/180);
 % th: 110 nm effective / 120 nm nominal (ribDefaultParams.m:77 and header).
 % The bounds are NOT from an existing script. TODO(confirm) before searching th.
@@ -60,10 +60,9 @@ cfg.requireStraightFlank = true;   % r1 + r2 < L - s/2; validateRibParams only
                                    % WARNS (rib:filletsMeet, :109-113).
                                    % TODO(confirm) hard rule or not.
 
-% TODO(confirm): 0 (beam along <100>, template/cavity) or 45 (<110>).
-cfg.rxtal      = 0;           % optimize_rib_unitCell.m:128-132
+cfg.rxtal      = 0;           % beam along <100> (user decision 2026-11-22, "for now")
 cfg.targetFreq = 11.2e9;      % optimize_rib_unitCell.m:72
-cfg.sigma      = 1.0e9;       % TODO(confirm): no existing source
+cfg.sigma      = 0.5e9;       % detuning tolerance (user decision 2026-11-22)
 cfg.maxFreq    = 25e9;        % TODO(confirm): no existing source
 cfg.solveasym  = 0;           % optimize_rib_unitCell.m:148
 
@@ -217,13 +216,14 @@ P.max_dof  = cfg.max_dof;
 end
 
 %% ========================================================================
-function [fCentre, gapFrac] = ribSurrogate(P, cfg) %#ok<INUSD>
+function [fCentre, gapFrac] = ribSurrogate(P, cfg)
 %RIBSURROGATE  NOT PHYSICS. The bump of surrogateBands in
 %   optimize_rib_unitCell.m:400-413 (optimum near t = 130, s = 80, L = 400 nm),
 %   as a relative gap with a floor so part of the box is gapless, and a mild
-%   penalty on the sidewall angle.
+%   penalty on the sidewall angle. Centred on cfg.targetFreq at the baseline
+%   (a = 300, L = 370, t = 100 nm) so the dry run stays meaningful for any target.
 L = ribLength(ribDefaultParams(P), P.a);
-fCentre = 11.2e9*(300e-9/P.a)*sqrt(370e-9/L)*(P.t/100e-9)^0.2;
+fCentre = cfg.targetFreq*(300e-9/P.a)*sqrt(370e-9/L)*(P.t/100e-9)^0.2;
 gap = 2e9*exp(-((P.t - 130e-9)/60e-9)^2 - ((P.s - 80e-9)/50e-9)^2 ...
               - ((L - 400e-9)/120e-9)^2) * exp(-(P.d/(20*pi/180))^2);
 gapFrac = gap/fCentre - 0.03;

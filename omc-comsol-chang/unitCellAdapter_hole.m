@@ -46,7 +46,8 @@ cfg.vars.th = struct('search', false, 'bounds', [350 550], 'fixed', 380e-9, 'ste
 
 % Fixed ellipse area, as the existing optimizer and sweep: hx*hy = A0, so
 % hy = A0/hx is DERIVED (not on the nm grid) and hy must not be searched.
-% false -> hx and hy are both free (2-D). TODO(confirm) which mode.
+% false -> hx and hy are both free (2-D). Free is the default (user decision
+% 2026-11-22).
 cfg.fixArea     = false;
 cfg.A0          = [];         % [] -> hx.fixed*hy.fixed (optimize_hole_unitCell.m:27)
 cfg.aspectRange = [];         % [rMin rMax] on hx/hy, or [] for none
@@ -61,12 +62,13 @@ cfg.minFeature     = 50e-9;   % smallest hole diameter
 cfg.xsect = 'isoFit';         % optimize_hole_unitCell.m:59
 cfg.d_in  = 0;                % :69-70, radians
 cfg.d_out = 0;
-cfg.rxtal = 45;               % :97. TODO(confirm) against the rib choice.
+cfg.rxtal = 0;                % user decision 2026-11-22 ("0 deg for now");
+                              % optimize_hole_unitCell.m:97 uses 45
 
-% TODO(confirm): 5 GHz (optimize_hole_unitCell.m:32), 7 GHz
-% (sweep_hole_unitCell.m:40) or 3 GHz (P.freq in test_hole_unitCell.m:57).
-cfg.targetFreq = 5e9;
-cfg.sigma      = 0.5e9;       % TODO(confirm): no existing source
+% User decision 2026-11-22. (Existing scripts: 5 GHz optimize_hole_unitCell.m:32,
+% 7 GHz sweep_hole_unitCell.m:40, 3 GHz test_hole_unitCell.m:57.)
+cfg.targetFreq = 8e9;
+cfg.sigma      = 0.5e9;       % detuning tolerance (user decision 2026-11-22)
 cfg.maxFreq    = 15e9;        % TODO(confirm): no existing source
 cfg.solveasym  = 0;           % :79
 
@@ -208,12 +210,14 @@ P.max_dof  = cfg.max_dof;
 end
 
 %% ========================================================================
-function [fCentre, gapFrac] = holeSurrogate(P, cfg) %#ok<INUSD>
+function [fCentre, gapFrac] = holeSurrogate(P, cfg)
 %HOLESURROGATE  NOT PHYSICS. A Bragg-like 1/a frequency that drifts with the
 %   hole size, and a gap bump with an interior optimum near hx/a = 0.45,
-%   hy/bw = 0.70, minus a floor so most of the box is gapless.
+%   hy/bw = 0.70, minus a floor so most of the box is gapless. Centred on
+%   cfg.targetFreq at the baseline so the dry run stays meaningful for any
+%   target.
 u = P.hx / P.a;
 v = P.hy / P.beam_width;
-fCentre = 5e9*(618e-9/P.a)*(1 + 0.4*(u - 0.45))*(1 - 0.3*(v - 0.70));
+fCentre = cfg.targetFreq*(618e-9/P.a)*(1 + 0.4*(u - 0.45))*(1 - 0.3*(v - 0.70));
 gapFrac = 0.30*exp(-((u - 0.45)/0.15)^2)*exp(-((v - 0.70)/0.15)^2) - 0.03;
 end

@@ -30,8 +30,8 @@ cfg.solverBackend = 'surrogate';
 cfg.vars.t.search = true;    cfg.vars.t.bounds = [ 90 200];
 cfg.vars.s.search = true;    cfg.vars.s.bounds = [ 50 200];
 cfg.vars.L.search = true;    cfg.vars.L.bounds = [250 500];
-cfg.vars.a.search = false;   cfg.vars.a.fixed  = 300e-9;    % TODO(confirm): search a? [240 360]
-cfg.vars.d.search = false;   cfg.vars.d.fixed  = 0;         % TODO(confirm): search d? [0 15] deg
+cfg.vars.a.search = true;    cfg.vars.a.bounds = [240 360]; % lattice constant (fixed: 300e-9)
+cfg.vars.d.search = false;   cfg.vars.d.fixed  = 0;         % sidewall angle; [0 15] deg if searched
 cfg.vars.th.search = false;  cfg.vars.th.fixed = 110e-9;    % effective; nominal 120e-9
 
 cfg.fixFootprint = false;    % true: L derived from the footprint area; set
@@ -39,10 +39,11 @@ cfg.fixFootprint = false;    % true: L derived from the footprint area; set
 
 % --- objective ------------------------------------------------------------
 cfg.targetFreq = 11.2e9;     % Hz, optimize_rib_unitCell.m:72
-cfg.sigma      = 1.0e9;      % Hz, TODO(confirm)
+cfg.sigma      = 0.5e9;      % Hz, detuning tolerance
+% fitness = gapSize[GHz] * exp(-((targetFreq - midGap)/sigma)^2), absolute gap
 cfg.gapField   = 'sym';      % y-even & z-even sector (y-even only with a sidewall)
-cfg.gapSelect  = 'bestScore';% TODO(confirm): 'closest' = optimize_rib rule
-cfg.rxtal      = 0;          % TODO(confirm): 0 (<100>) or 45 (<110>)
+cfg.gapSelect  = 'bestScore';% gap with the highest fitness ('closest' = optimize_rib rule)
+cfg.rxtal      = 0;          % beam along <100> (45 = <110>)
 
 % --- budget -----------------------------------------------------------------
 cfg.maxEvaluations = 60;     % time ONE solve (test_rib_unitCell.m) first

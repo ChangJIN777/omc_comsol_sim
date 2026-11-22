@@ -31,11 +31,12 @@ cfg.vars.th.search = false;  cfg.vars.th.fixed  = 380e-9;      %    vs sweep/tes
 cfg.fixArea = false;
 
 % --- objective ------------------------------------------------------------
-cfg.targetFreq = 5e9;        % Hz, TODO(confirm): 5 (optimizer), 7 (sweep) or 3 GHz (test)
-cfg.sigma      = 0.5e9;      % Hz, TODO(confirm)
+cfg.targetFreq = 8e9;        % Hz
+cfg.sigma      = 0.5e9;      % Hz, detuning tolerance
+% fitness = gapSize[GHz] * exp(-((targetFreq - midGap)/sigma)^2), absolute gap
 cfg.gapField   = 'sym';      % y-even sector
-cfg.gapSelect  = 'bestScore';% TODO(confirm): 'closest' = optimize_hole rule
-cfg.rxtal      = 45;         % optimize_hole_unitCell.m:97
+cfg.gapSelect  = 'bestScore';% gap with the highest fitness ('closest' = optimize_hole rule)
+cfg.rxtal      = 0;          % 0 for now (optimize_hole_unitCell.m:97 uses 45)
 
 % --- budget -----------------------------------------------------------------
 cfg.maxEvaluations = 60;     % time ONE solve (test_hole_unitCell.m) first

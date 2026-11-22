@@ -340,10 +340,10 @@ catch ME
     return;
 end
 
-objective = calFitness(midGap, gapRat, cfg.targetFreq, cfg.sigma);
+objective = calFitness(midGap, gapSize, cfg.targetFreq, cfg.sigma);
 
-fprintf('  eval %3d: %s -> midGap=%.3f GHz  gapFrac=%.4f  obj=%.6g  [%s]%s\n', ...
-    nEval, describeDesign(D, adapter), midGap*1e-9, gapRat, objective, status, ...
+fprintf('  eval %3d: %s -> midGap=%.3f GHz  gap=%.4f GHz  obj=%.6g  [%s]%s\n', ...
+    nEval, describeDesign(D, adapter), midGap*1e-9, gapSize*1e-9, objective, status, ...
     repmat('  [SYNTHETIC]', 1, cfg.isDryRun));
 
 logRow(cfg, adapter, nEval, D, midGap, gapSize, gapRat, objective, status);
@@ -397,8 +397,8 @@ if isempty(gs)
 end
 ratio = gs ./ mg;
 switch cfg.gapSelect
-    case 'bestScore'    % the gap that maximizes the fitness itself
-        [~, k] = max(ratio .* exp(-((cfg.targetFreq - mg)/cfg.sigma).^2));
+    case 'bestScore'    % the gap that maximizes the fitness itself (calFitness)
+        [~, k] = max(gs .* exp(-((cfg.targetFreq - mg)/cfg.sigma).^2));
     case 'closest'      % rule of optimize_hole/rib_unitCell (closestGap)
         [~, k] = min(abs(mg - cfg.targetFreq));
     case 'widest'       % rule of bayesopt_cross.m:361
@@ -410,10 +410,13 @@ gapRat  = ratio(k);
 end
 
 %% ========================================================================
-function f = calFitness(midGap, gapRat, targetFreq, sigma)
-%CALFITNESS  f = -( gapRat * exp(-((targetFreq - midGap)/sigma)^2) ). LOWER is
-%   better; a gapless design scores exactly 0 (as calFitnessCross).
-f = -(gapRat * exp(-((targetFreq - midGap)/sigma)^2));
+function f = calFitness(midGap, gapSize, targetFreq, sigma)
+%CALFITNESS  f = -( gapSize[GHz] * exp(-((targetFreq - midGap)/sigma)^2) ).
+%   ABSOLUTE gap size, not the gap-to-midgap ratio. In GHz so the objective
+%   the GP models is O(0.1-1) rather than O(1e9). sigma is the detuning
+%   tolerance (1/e half-width). LOWER is better; a gapless design scores
+%   exactly 0 (as calFitnessCross).
+f = -(gapSize*1e-9 * exp(-((targetFreq - midGap)/sigma)^2));
 f = f + 0;          % -0 -> +0, so a gapless row logs as 0, not -0
 end
 
