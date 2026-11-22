@@ -301,6 +301,7 @@ bds = solveBands(P);
   - `test_rib_unitCell_explicitW.m`: explicit `P.w`, d = 0, 20 nm fillets, mechanical (`solveBands`, `zSymCondition = 0`) or optical bands, output in `test/ribUnitCell[_optical]/`.
   - `test_rib_unitCell_LN.m`: LiNbO3, d = 15°, explicit `P.w`, no fillets (the old LN shape), optical (`solveOpticalBands`) or mechanical (`solveBands_noSym`) bands, output in `test/LN_ribUnitCell[_optical]/`, which reuses the legacy LN results.
   - `nanobeam/test_nanobeamRibFEM.m`: the cavity.
+  - `optimize_rib_unitCell.m`: geometry optimization of the unit cell for a target gap (§8).
 - Tests: `runtests('RibUnitCellTest','Tag','PureMATLAB')` (no COMSOL) and `runtests('RibUnitCellTest','Tag','COMSOL')` (builds geometry; skipped without LiveLink).
 - Both test scripts end in a commented-out geometry block that finishes with `mphlaunch(model)`.
 
@@ -327,3 +328,60 @@ bds = solveBands(P);
 - `runOpticalBand_3D` still puts a Floquet periodic condition on the single y = 0 plane for `'rib'` (as before). A symmetry plane would be the right condition.
 - Fillets and an explicit L are global (no per-cell override in the cavity).
 - No mechanical PML or asymmetric cavity.
+
+---
+
+## 8. Optimization (`optimize_rib_unitCell.m`)
+
+`optimize_rib_unitCell.m` is a function modelled on `optimize_hole_unitCell.m`. It runs a Nelder–Mead (`fminsearch`) search over selected rib dimensions to maximize a fitness computed from the `solveBands` band structure. Edit the **TUNABLE KNOBS** at the top, or pass overrides:
+
+```matlab
+[xBest, fitnessBest, dsBest, PBest, OPT] = optimize_rib_unitCell();                 % defaults
+optimize_rib_unitCell(struct('vars',{{'t','s','L','a'}}, 'targetFreq', 10e9));      % OPT overrides
+optimize_rib_unitCell(struct(), struct('rxtal',45));                                % P overrides
+optimize_rib_unitCell(struct('dryRun',true));                                       % no COMSOL
+```
+
+Overrides are merged over the defaults. Nested structs (`OPT.init`, `OPT.lb`, `OPT.ub`, `OPT.fminOpts`) merge field by field.
+
+### Design variables and bounds
+
+`OPT.vars` is any subset of `{'t','s','L','a','d'}`; the default is **`{'t','s','L'}`** with `a` fixed. `L` is applied as an explicit `P.L`, which wins over the L(a) rule. Variables not listed keep their `P` value.
+
+| Var | Init | Bounds | Source |
+|---|---|---|---|
+| `t` | 100 nm | [90, 200] nm | `ribDefaultParams`; `t0` in `rib_optimize_sweep_diamond.m`; logged runs in `test/diamond_ribUnitCell*/` (100–105 nm). Lower bound keeps 2·r2 < t (40 nm fillets); upper bound keeps r1 < (a − t)/2 at a = 300 nm |
+| `s` | 100 nm | [50, 200] nm | as `t`. 50 nm is the fabrication floor used in `rib_optimize_sweep_diamond.m` |
+| `L` | 370 nm | [250, 500] nm | L(a = 300 nm) from the rule; the logged runs used w = 2L = 600–840 nm |
+| `a` | 300 nm | [240, 360] nm | `ribDefaultParams` (template mirror pitch); the logged runs used 250–262 nm |
+| `d` | 0 | [0, 15°] (radians) | vertical walls; the LN scripts use 15°. Requires `r1 = r2 = 0` (passed as P overrides) |
+
+- **Normalization.** The search runs in normalized coordinates v ∈ [1, 2], mapped linearly onto [lb, ub]. With the offset, `fminsearch`'s default 5 % initial simplex becomes a uniform 5–10 % step of every range. Proposals outside the box are clamped (as in the hole optimizer) and penalized by `OPT.boxPenaltySlope` per unit of normalized distance.
+- **Optional constraint (off by default).** `OPT.fixFootprint = true` holds the footprint area A = a·s + t·(2L − s) at its initial value by solving for `L`, the analogue of the hole optimizer's fixed ellipse area. `L` must then not be in `OPT.vars`.
+
+### Target, fitness and symmetry
+- **`OPT.targetFreq` = 11.2 GHz:** the visible template's mechanical eigen-shift (`comsol_templates/visible_rib_omc.m:23488`, unit GHz at `:1262`).
+- **`OPT.fitnessFcn`** takes a handle `@(ds, targetFreq)` or one of these names:
+  - `'closestGap_sym'` (default): size of the symmetric gap (`ds.sym`) nearest the target;
+  - `'closestGapRatio_sym'`: gap-to-midgap ratio of that gap. It is dimensionless, so lower `TolFun` to about 1e-3;
+  - `'closestGap'`: complete gap (`ds.full`). This is complete only over the sectors actually solved, so set `P.TwoSymPlanes = 1` (d = 0 only) or `P.solveasym = 1`.
+- **Symmetry defaults:** `TwoSymPlanes = 0`, `zSymCondition = 1`, `mbeveny = 1`, `solveasym = 0`. `solveBands` then solves one sector into `ds.sym`: y-even **and** z-even, i.e. the optomechanical breathing modes, on a quarter model. If `d` is optimized or nonzero, the script switches to `zSymCondition = 0`, `mbevenz = 0` (y-even, both z parities), because angled walls are not z-symmetric.
+
+### Feasibility
+- Before any COMSOL call, each candidate goes through `ribLength` and `validateRibParams(P, 'unitcell')`. The checks use `mbevenz = 1` when `zSymCondition = 1`, because that is the symmetry `solveBands` will impose.
+- An invalid candidate is not solved. It scores `OPT.noGapPenalty·(1 + violation)` and is logged as infeasible with its error ID (`rib:ribTooWide`, `rib:rootFilletTooLarge`, …).
+- The violation is a sum of relative constraint excesses: t/a, s/(2L), 2·r2/t, (t + 2·r1)/a, and for d > 0 the top-face widths. It grows monotonically outside the feasible region, so the simplex is pushed back rather than sitting on a flat plateau.
+- A candidate with no usable gap scores `OPT.noGapPenalty`. If nothing feasible is found, `fitnessBest` is NaN (warning `optimize_rib_unitCell:noUsableDesign`) and the final re-run is skipped.
+
+### Output
+- `OPT.rootDir` defaults to `test/ribUnitCell_opt/opt_<mmddyyyy_HHMMSS>/`. The **time stamp** keeps a second run on the same day from reusing the first run's cached results; the hole optimizer has that problem.
+- Each feasible evaluation solves in its own `eval_NNNN/` folder. The best design is re-run with plots in `BEST/`.
+- **`opt_log.csv`** columns: `eval`, each variable (`t_nm`, …, `d_deg`), its normalized value (`v_t`, …), `feasible`, `errorID`, `boxDist`, `fitness`, `J`. Rows are appended per evaluation, so the log survives a crash.
+- All paths use `fullfile`/`filesep`. On macOS/Linux, `solveBands` appends a literal `'\'` to `datLoc`, which creates an empty sub-folder named `\`. The script removes it after each solve. Its cache lookup never hits there, which is harmless because each evaluation uses a fresh folder.
+
+### Dry run
+`OPT.dryRun = true` replaces `solveBands` with an analytic surrogate: a smooth bump with its optimum at t = 130, s = 80, L = 400 nm and a 2 GHz gap. **This is not physics.** It exercises normalization, clamping, the feasibility penalty, the CSV log and the BEST path without COMSOL. `RibUnitCellTest` runs it under the `PureMATLAB` tag.
+
+### Caveats
+- **`P.rxtal` defaults to 0** (beam along ⟨100⟩, as in the template and the cavity) and is a `TODO(confirm)` knob. At 45° (⟨110⟩) the in-plane shear velocity drops about 9 % and the longitudinal velocity rises about 5 %, so the optimized gap moves by several percent. Use the same value as the cavity runs.
+- Each evaluation is a full `solveBands` run (one symmetry sector at the defaults). Budget accordingly with `MaxFunEvals`.

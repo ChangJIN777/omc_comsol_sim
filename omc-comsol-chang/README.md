@@ -231,6 +231,7 @@ One device in both pipelines: a continuous **spine** (width `s`) carrying one ce
 | `nanobeam/createRibCavityGeom.m`, `nanobeam/buildRibCavity.m` | Cavity taper and geometry for `RunNanobeamFEM` |
 | `test_rib_unitCell.m` (visible design, L(a) rule), `test_rib_unitCell_explicitW.m` (explicit `P.w`, fillets, mechanical/optical), `test_rib_unitCell_LN.m` (LiNbO3, 15° sidewalls, optical/mechanical), `nanobeam/test_nanobeamRibFEM.m` (cavity) | Run scripts |
 | `rib_optimize_*.m` | Rib sweeps / optimizations (LN and diamond) |
+| `optimize_rib_unitCell.m` | `fminsearch` optimization of the rib unit cell (t, s, L, …) for a target gap; `dryRun` option without COMSOL (see rib_README.md §8) |
 | `RibUnitCellTest.m` | `runtests` suite (`'PureMATLAB'` / `'COMSOL'` tags) |
 
 The shared helpers live in the root folder. `nanobeam/test_nanobeamRibFEM.m` adds the root with `addpath(root,'-end')`, so `nanobeam/`'s own `CreateFileBase.m`, `LoadMaterialParams.m` and `RotateXtalTensor.m` still take precedence.

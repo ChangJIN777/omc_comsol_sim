@@ -348,6 +348,45 @@ classdef RibUnitCellTest < matlab.unittest.TestCase
             testCase.verifyEqual(Pn.fileBase, expected, 'nanobeam/CreateFileBase');
         end
 
+        % ---- optimize_rib_unitCell dry run (surrogate, no COMSOL) ---------
+        function optimizeRibDryRunFindsSurrogateOptimum(testCase)
+            o = dryRunOpts(testCase, 120);
+            [xb, fb, dsb, Pb, O] = optimize_rib_unitCell(o);
+            % surrogate optimum is t = 130, s = 80, L = 400 nm with a 2 GHz gap
+            testCase.verifyEqual([xb.t xb.s xb.L], [130 80 400]*1e-9, 'AbsTol', 5e-9);
+            testCase.verifyEqual(fb, 2e9, 'RelTol', 1e-2);
+            testCase.verifyEqual(Pb.L, xb.L, 'explicit P.L not applied to the BEST run');
+            testCase.verifyNotEmpty(dsb, 'BEST re-run skipped');
+            T = readtable(O.logFile, 'Delimiter', ',', 'TextType', 'string');
+            testCase.verifyEqual(T.Properties.VariableNames(1:5), ...
+                {'eval','t_nm','s_nm','L_nm','v_t'});
+            testCase.verifyTrue(all(T.feasible == 1), 'defaults box should be feasible');
+            testCase.verifyTrue(all(T.v_t >= 1 & T.v_t <= 2), 'normalized values not clamped');
+        end
+
+        function optimizeRibInfeasibleStartIsPenalizedAndEscapes(testCase)
+            o = dryRunOpts(testCase, 60);
+            o.ub = struct('t',320e-9);  o.init = struct('t',290e-9);   % t near / beyond a = 300 nm
+            [xb, fb, ~, ~, O] = optimize_rib_unitCell(o);
+            T = readtable(O.logFile, 'Delimiter', ',', 'TextType', 'string');
+            bad = T.feasible == 0;
+            testCase.verifyTrue(any(bad), 'expected infeasible proposals');
+            testCase.verifyTrue(all(ismember(T.errorID(bad), ...
+                ["rib:ribTooWide","rib:rootFilletTooLarge"])), 'unexpected error IDs');
+            testCase.verifyTrue(all(T.J(bad) >= O.noGapPenalty), 'infeasible not penalized');
+            testCase.verifyLessThan(xb.t, 200e-9, 'optimizer did not leave the infeasible region');
+            testCase.verifyGreaterThan(fb, 0);
+        end
+
+        function optimizeRibNoFeasibleDesignReturnsNaN(testCase)
+            o = dryRunOpts(testCase, 15);
+            o.lb = struct('t',300e-9);  o.ub = struct('t',320e-9);  o.init = struct('t',310e-9);
+            [~, fb, dsb] = testCase.verifyWarning(@() optimize_rib_unitCell(o), ...
+                'optimize_rib_unitCell:noUsableDesign');
+            testCase.verifyTrue(isnan(fb));
+            testCase.verifyEmpty(dsb, 'an infeasible BEST design must not be re-run');
+        end
+
         % ---- solver -> builder routing (source inspection) ---------------
         function solverDispatchesRibCelltype(testCase, WiringCase)
             [file, celltype, builder] = WiringCase{:};
@@ -744,6 +783,14 @@ tok = regexp(rest, '\[\s*model\s*,\s*P\s*\]\s*=\s*(\w+)\s*\(', 'tokens', 'once')
 if ~isempty(tok)
     name = tok{1};
 end
+end
+
+function o = dryRunOpts(testCase, maxEvals)
+% optimize_rib_unitCell options for a quiet dry run in a temporary folder
+f = testCase.applyFixture(matlab.unittest.fixtures.TemporaryFolderFixture);
+o = struct('dryRun', true, 'rootDir', fullfile(f.Folder, 'opt'), ...
+    'fminOpts', optimset('Display','off','MaxFunEvals',maxEvals,'MaxIter',maxEvals, ...
+                         'TolX',1e-4,'TolFun',1e3));
 end
 
 function dl = tempDatLoc(testCase)
