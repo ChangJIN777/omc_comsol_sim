@@ -44,7 +44,7 @@ P.holeatedge = 0;   % read by runBands, unused by this builder
 P.run_optical = 0;  % MUST be 0 for runBands (an air domain would become diamond)
 
 P.kpts = 10;                            % no. of k-points, EXCLUDING gamma point
-P.nbands = 20;                          % no. of bands to solve for
+P.nbands = 8;                          % no. of bands to solve for
 
 P.TwoSymPlanes = 1;                     % solve all four y/z symmetry sectors
 P.zSymCondition = 1;                    % used only when TwoSymPlanes = 0

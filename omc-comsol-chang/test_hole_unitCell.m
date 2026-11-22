@@ -2,7 +2,7 @@ clear all; clc; close all;
 clear P;
 
 %% unit cell params 
-P.xsect = 'rect';                    % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
+P.xsect = 'isoFit';                    % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
 P.beamMat = 'diamond';                  % beam material name
 P.celltype = 'hole';                   % specify the cell type
 P.unitcell = 'rectrangular';                  % specify the shape of the unit cell
@@ -11,18 +11,18 @@ P.maxdef = 0.15;                     % defect percentage
 P.oblong = 0.7265;                      % oblong parameter (zero if holes are not changed)
 % unit cell params 
 % for the mirror region 
-P.a = 650e-9;              % lattice constant 
-P.hx = 343e-9;              % the diameter of the hole in x 
-P.hy = 617e-9;              % the diameter of the hole in y
+P.a = 528e-9;              % lattice constant 
+P.hx = 197e-9;              % the diameter of the hole in x 
+P.hy = 578e-9;              % the diameter of the hole in y
 % % for the defect region 
 % P.a = (1-P.maxdef)*650e-9;              % lattice constant 
 % P.hx = ((1-P.maxdef)^(1-P.oblong))*343e-9;              % the diameter of the hole in x 
 % P.hy = ((1-P.maxdef)^(1+P.oblong))*617e-9;              % the diameter of the hole in y
-P.beam_width = 800e-9; % the width of the unit cell
+P.beam_width = 750e-9; % the width of the unit cell
 P.d_in = 0; % the sidewall angle for the inside
 P.d_out = 0; % the sidewall angle for the outside
 
-P.th = 250e-9;             % height (along x) of cross (for celltype = 'hollow')
+P.th = 500e-9;             % height (along x) of cross (for celltype = 'hollow')
                             % or of inner block (for celltype = 'solid')
 
 P.nperiod = 1;  % no. of periods to simulate for
@@ -55,7 +55,7 @@ P.nbeam = 2.386; % the refractive index of diamond at telecom
 P.mbeveny = 0;                          % 1 to find even mechanical mode about y
 P.mbevenz = 0;                          % 1 to find even mechanical mode about z
 P.freq = 3e9;                             % target frequency - set to 0 for bandstructure simulations
-P.meshSize = 3;                         % mesh quality for mechanical simulations
+P.meshSize = 4;                         % mesh quality for mechanical simulations
 P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
 
 P.anisoMat = 1;
