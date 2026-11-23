@@ -43,5 +43,23 @@ speculative extra geometry feature can silently misassign materials.
   documented in a `test_*.m`), edit them — but keep new behaviour opt-in with a
   default that reproduces the old path exactly, since many sweep/optimize
   scripts call the same solver.
+- Proposal-only mode (since 2026-11-22): headless `matlab.exe -batch "<multi-line
+  script>"` from WSL can check numerics inline without writing files, but
+  function files can't be exercised that way. State clearly which parts were
+  executed and which weren't.
+- Inline `matlab -batch` can also run real repo functions (`findGaps`,
+  `validateRibParams`, `surrogateCrossBands`) and a headless `bayesopt` with
+  `PlotFcn = []`, `Verbose = 0`, without writing files.
+- Update 2026-11-23: when the user has a COMSOL 6.3 server running, headless
+  `matlab.exe -batch` CAN reach it via `addpath('C:\Program Files\COMSOL\COMSOL63\Multiphysics\mli'); mphstart(2036)`.
+  The 2026-11-21 "no LiveLink" note only means the mli path isn't added by default.
+  That server is the user's own live session (their `model` is on it), so create
+  temp models with `ModelUtil.uniquetag`, remove them afterwards, never touch
+  `model`, avoid `mphopen` on repo files (it leaves .lock files), and report
+  any solves you ran.
+- Inline checks of classifier/matcher logic with synthetic inputs catch real flaws
+  (2026-11-23: a 0.45/0.55 hybrid was classified 'lost' instead of 'ambiguous'). In
+  proposal mode, run those bodies inline before delivering, and say which final
+  version was or wasn't re-run.
 
 Related: [[user-role]], [[feedback-preserve-legacy-geometry-behavior]].
