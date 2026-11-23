@@ -16,6 +16,7 @@ except Exception:
 _client = None
 _model = None
 _model_path = None
+_released = False
 
 
 def have_mph() -> bool:
@@ -27,8 +28,18 @@ def get_client():
     if not _HAVE_MPH:
         raise RuntimeError("MPh not installed. Run: pip install MPh")
     if _client is None:
+        if _released:
+            raise RuntimeError(
+                "the COMSOL session of this process was released "
+                "(comsol_client.release_client); start a new Python process "
+                "for more COMSOL work")
         _client = mph.start()
     return _client
+
+
+def session_active() -> bool:
+    """True while this process holds a COMSOL session (and so licences)."""
+    return _client is not None
 
 
 def get_model(template: str):
@@ -56,6 +67,47 @@ def release_model():
             pass
     _model = None
     _model_path = None
+
+
+def release_client() -> bool:
+    """End the COMSOL session of this process so its licences are returned.
+
+    Unloads every model, disconnects the client and stops the local COMSOL
+    server that mph.start() launched. Call it when no more COMSOL work is
+    queued (scripts/run_batch_rib.py does, in a finally block): MPh would
+    otherwise keep the session, and the seats, until the interpreter exits.
+
+    Returns True if a session was open. Never raises, and calling it without
+    a session (or twice) does nothing. A released session is not restarted:
+    get_client() raises afterwards.
+
+    With MPh's stand-alone client (mph.option('session', 'stand-alone')) there
+    is no server to stop; the module seats go back when the models are
+    cleared, the COMSOL seat when the process exits.
+    """
+    global _client, _released
+    release_model()
+    if _client is None:
+        return False
+    client, _client = _client, None
+    _released = True
+    try:
+        client.clear()
+    except Exception:
+        pass
+    try:
+        if getattr(client, "port", None):
+            client.disconnect()
+    except Exception:
+        pass
+    try:
+        import mph.session as _session
+        server = getattr(_session, "server", None)
+        if server is not None and server.running():
+            server.stop()
+    except Exception:
+        pass
+    return True
 
 
 # One template per cell type (see geometry.CELLTYPES).

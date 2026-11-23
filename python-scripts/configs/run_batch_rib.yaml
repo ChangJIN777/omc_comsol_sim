@@ -1,0 +1,43 @@
+# scripts/run_batch_rib.py config: a QUEUE of designs evaluated in ONE COMSOL
+# session (the seat is kept only while queued work remains, then released).
+#   python scripts/run_batch_rib.py --config configs/run_batch_rib.yaml
+#   python scripts/run_batch_rib.py --config configs/run_batch_rib.yaml --dry-run
+# To wait for a free seat first (nothing is held while waiting):
+#   scripts/wait_for_comsol_seat.sh -r 3 -- python scripts/run_batch_rib.py --config ...
+# Results go to results/runs_rib.sqlite3 (override: env OMC_DB_PATH_RIB), one
+# record per item, exactly as scripts/run_one.py saves them.
+
+# Defaults of every queue item (same keys as configs/run_one_rib.yaml).
+celltype: rib
+optical: none            # none | comsol (after the optical validation solve)
+mech: comsol             # comsol | surrogate_stub
+
+rib:
+  mech_gap_mode: complete   # complete | sym | antisym
+  n_k: 15
+  n_bands_mech: 20
+  optical_study: "opt TE"   # "opt TE" | "opt TM"
+  n_k_opt: 13
+  n_bands_opt: 10
+  optical_rel_tol: 0.30
+
+# The designs. An entry is one of
+#   [ua, uw, ut, us]                      a u vector with the defaults above
+#   {u: [...], optical: comsol, rib: {n_k: 9}, label: note}
+#                                         a u vector with its own overrides
+#   {config: configs/run_one_rib.yaml}    a run_one-style config (own u etc.)
+# u order for the rib: a, w, t, s (configs/bounds.yaml rib.variables).
+queue:
+  - [0.385714, 0.575254, 0.358947, 0.214737]     # a/w/t/s = 570/1747/391/254 nm
+  - {u: [0.40, 0.55, 0.36, 0.22], label: neighbour}
+  - {config: configs/run_one_rib.yaml}
+
+# More designs from a CSV, one u vector per row ('#' comments and one header
+# row allowed), evaluated with the defaults above:
+# queue_csv: results/my_designs.csv
+
+# A solve that fails with a licence error stops the queue (the rest is listed
+# as not run) instead of failing every remaining item.
+stop_on_license_error: true
+
+quiet: false

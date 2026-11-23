@@ -12,6 +12,7 @@
 #   scripts/check_comsol_license.sh -a              # every feature on the server
 #   scripts/check_comsol_license.sh -f WAVEOPTICS   # one feature (repeatable)
 #   scripts/check_comsol_license.sh -q              # table only, no seat holders
+#   scripts/check_comsol_license.sh -p              # machine-readable (see below)
 #   scripts/check_comsol_license.sh -s 27005@host   # another licence server
 #
 # Environment overrides:
@@ -23,6 +24,12 @@
 #   user  host  client-version  start-time  [xN if one checkout holds N seats]
 # -q hides them (for scripting). -u, which used to turn the list on, is still
 # accepted and does nothing.
+#
+# -p prints one line per listed feature and nothing else (no header, no
+# holders, no note), for scripts such as wait_for_comsol_seat.sh:
+#   FEATURE TOTAL USED FREE STATUS
+# STATUS is ok, FULL, uncounted or missing (not on the server); the three
+# numbers are "-" for uncounted and missing. Exit status as below.
 #
 # The server is on the Harvard network: off campus, connect to the VPN first.
 #
@@ -40,6 +47,7 @@ DEFAULT_FEATURES=(COMSOL COMSOLGUI LLMATLAB STRUCTURALMECHANICS MEMS ACOUSTICS W
 FEATURES=()
 SHOW_ALL=0
 SHOW_USERS=1
+PARSEABLE=0
 
 # Print the header comment: every '#' line after the shebang, up to the first
 # line that is not a comment (so the header can change length freely).
@@ -48,12 +56,13 @@ usage() {
     exit "${1:-0}"
 }
 
-while getopts ":af:s:quh" opt; do
+while getopts ":af:s:qpuh" opt; do
     case "$opt" in
         a) SHOW_ALL=1 ;;
         f) FEATURES+=("$(printf '%s' "$OPTARG" | tr '[:lower:]' '[:upper:]')") ;;
         s) SERVER="$OPTARG" ;;
         q) SHOW_USERS=0 ;;
+        p) PARSEABLE=1; SHOW_USERS=0 ;;
         u) ;;   # holders are shown by default now; kept for old command lines
         h) usage 0 ;;
         :) echo "option -$OPTARG needs a value" >&2; usage 1 ;;
@@ -94,9 +103,11 @@ if ! printf '%s\n' "$OUT" | grep -q "license server UP"; then
     exit 1
 fi
 
-printf 'Server: %s  (%s)\n' "$SERVER" \
-    "$(printf '%s\n' "$OUT" | grep -m1 "license server UP" | sed 's/^ *//')"
-printf 'Time:   %s\n\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+if [ "$PARSEABLE" -ne 1 ]; then
+    printf 'Server: %s  (%s)\n' "$SERVER" \
+        "$(printf '%s\n' "$OUT" | grep -m1 "license server UP" | sed 's/^ *//')"
+    printf 'Time:   %s\n\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+fi
 
 # ---- table, with the seat holders under each feature -----------------------
 # lmstat prints one block per feature:
@@ -112,8 +123,13 @@ printf 'Time:   %s\n\n' "$(date '+%Y-%m-%d %H:%M:%S')"
 # so the quoted / vendor / "floating license" lines are never taken for one.
 # Holders belong to the most recent "Users of" line. Plain POSIX awk (macOS).
 printf '%s\n' "$OUT" | awk -v all="$SHOW_ALL" -v users="$SHOW_USERS" \
-                           -v want="${FEATURES[*]}" '
+                           -v want="${FEATURES[*]}" -v parse="$PARSEABLE" '
     function row(f, t, u, fr, st) {
+        if (parse) {                    # -p: FEATURE TOTAL USED FREE STATUS
+            if (st == "not on server") st = "missing"
+            print f, t, u, fr, st
+            return
+        }
         printf "%-24s %6s %6s %6s  %s\n", f, t, u, fr, st
     }
     # Left-justify s in w columns (printf "%-*s" is not portable awk).
@@ -200,14 +216,16 @@ printf '%s\n' "$OUT" | awk -v all="$SHOW_ALL" -v users="$SHOW_USERS" \
                 if (length(hv[k]) > wv) wv = length(hv[k])
             }
         }
-        row("FEATURE", "TOTAL", "USED", "FREE", "STATUS")
-        row("-------", "-----", "----", "----", "------")
+        if (!parse) {
+            row("FEATURE", "TOTAL", "USED", "FREE", "STATUS")
+            row("-------", "-----", "----", "----", "------")
+        }
         for (j = 1; j <= nw; j++) show(all ? order[j] : wanted[j])
         exit (any_full ? 2 : 0)
     }'
 rc=$?
 
-if [ "$SHOW_ALL" -ne 1 ]; then
+if [ "$SHOW_ALL" -ne 1 ] && [ "$PARSEABLE" -ne 1 ]; then
     echo
     echo "Note: the optical studies (ewfd) can use a WAVEOPTICS or an RF seat."
 fi

@@ -129,10 +129,17 @@ About 40 % of the box passes both checks with the defaults. For `a` > ~775 nm,
   only guided modes, using the light-line tracking and pseudo-mode filter in
   `src/comsol_optics.py`. `optical: none` scores the mechanical gap only.
   `surrogate` and `mpb` are not available for the rib.
-- **Validate optics first.** `opt TE`/`opt TM` have not yet been validated on the
-  rib template. Before any optimization with `optical: comsol`, solve both once
-  at k = pi/a on the default cell and check that the modes near 193 THz are
-  guided and confined to the rib.
+- **Validate optics first.** Before any optimization with `optical: comsol`,
+  solve `opt TE` and `opt TM` once at k = pi/a on the default cell and check
+  that the modes near 193 THz are guided and confined to the rib:
+  `scripts/run_comsol_batch.sh --study std2 --study std4` (see "Getting a
+  COMSOL seat"). The run of 2026-11-23 is in `results/rib_optical_validation/`:
+  both studies return modes below the light line (c/2a = 263 THz) on either
+  side of 193 THz (TE 163.6, 185.2, 218.3 THz; TM 183.4, 206.3 THz) with 76-79 %
+  of the electric energy in the beam, but with Q of only 200-340. A guided
+  mode at X should not radiate, so that loss is probably the scattering
+  boundary sitting inside the evanescent tail (air box 2.5*th in x); look at
+  the fields in `solved_std2.mph` / `solved_std4.mph` before trusting the gap.
 
 **Running.**
 ```bash
@@ -150,20 +157,106 @@ Rib records carry `celltype: "rib"`, plus `mech_gaps`, `mech_gap_mode`,
 `fab_failures` and the other rib fields. Rib and hole results are not directly
 comparable, because one uses an anisotropic material and the other an isotropic one.
 
+## Getting a COMSOL seat
+The licence server (`27005@license.seas.harvard.edu`) has 3 `WAVEOPTICS` seats
+and they are often all taken. Rule for every tool here: **a seat is never held
+while idle.** Nothing is checked out while waiting, and a seat is given back as
+soon as the work that needed it ends.
+
+`scripts/check_comsol_license.sh` asks the server what is free without checking
+anything out. `-p` prints `FEATURE TOTAL USED FREE STATUS` lines for scripts.
+
+**1. Batch solve on the batch licence pool:** `scripts/run_comsol_batch.sh`
+```bash
+scripts/run_comsol_batch.sh                              # rib template, opt TE at X
+scripts/run_comsol_batch.sh --study std2 --study std4    # opt TE + opt TM (the validation solve)
+scripts/run_comsol_batch.sh --study "opt TM" -p a=600[nm] -p t=400[nm] --outdir results/my_run
+scripts/run_comsol_batch.sh --check-license              # licences the template needs; solves nothing
+scripts/run_comsol_batch.sh --help
+```
+It runs one study of an `.mph` with `comsolbatch` (no GUI, no MPh, no LiveLink),
+saves the solved model and writes `eig_<study>.csv` and `summary.json`
+(Re/Im of every eigenfrequency, Q, below/above the light line, share of the
+electric energy in the beam) to a new `results/batch_<time stamp>/` folder.
+Defaults: `comsol/omc_unitcell_rib.mph`, study `std2` (`opt TE`), `kF = pi/a`.
+Study tags of the rib template: `std1` mech sym, `std3` mech antisym, `std2`
+opt TE, `std4` opt TM. Paths come from `COMSOL_ROOT` (or `--comsol-root`), so
+the same command works on a machine with another install location.
+
+Which licences it takes (measured 2026-11-23, COMSOL 6.3, with `--watch-license`):
+
+| Step | Time | Features checked out |
+|---|---|---|
+| solve (`-usebatchlic`, the default) | ~3 min | `COMSOLBATCH`, `WAVEOPTICSBATCH`, `MEMSBATCH`, `CADIMPORTBATCH`, `CLUSTERNODE` (+ `COMSOLUSER`, `CADIMPORTUSER`) |
+| extract the eigenfrequencies | ~45 s, seats for ~30 s | `COMSOL`, `WAVEOPTICS`, `MEMS`, `CADIMPORT` (+ `COMSOLUSER`, `CADIMPORTUSER`) |
+
+- The solve uses **no interactive seat**, so it runs while `WAVEOPTICS` is 3/3.
+  It is COMSOL's `-usebatchlic` option that selects the batch pool, not batch
+  mode itself (`--license interactive` leaves it out).
+- The extract step **does need an interactive `WAVEOPTICS` and `MEMS` seat**,
+  for a few seconds: it runs a small Java class, and COMSOL does not allow batch
+  licences for class files. If no seat is free, the solved `.mph` is kept and
+  the numbers can be fetched later with `--extract-only --outdir <folder>`.
+- `MEMS[BATCH]` (2 seats) and `CADIMPORT[BATCH]` are taken even for an optical
+  study, because the template lists them as its licences.
+- All seats were back within 3 s of each process ending.
+
+**2. Wait for a seat, then run:** `scripts/wait_for_comsol_seat.sh`
+```bash
+scripts/wait_for_comsol_seat.sh -r 3 -- python scripts/run_one.py --config configs/run_one_rib.yaml
+scripts/wait_for_comsol_seat.sh --batch -r 2 -- scripts/run_comsol_batch.sh --study std2
+scripts/wait_for_comsol_seat.sh -f WAVEOPTICS -f MEMS --all -r 3 -- \
+    scripts/run_comsol_batch.sh --extract-only --outdir results/my_run --study std2
+```
+It polls `check_comsol_license.sh -p` (query only) until a watched feature has
+a free seat, then runs the command and returns its exit status.
+- `-f FEATURE` (repeatable; default `WAVEOPTICS` and `RF`, either of which can
+  run ewfd), `--batch` (`WAVEOPTICSBATCH`, `RFBATCH`), `--any` (default) or
+  `--all`.
+- `-i` poll interval (60 s, minimum 30 s), `-t` timeout (exit 124).
+- `-r N`: if the command fails with a licence error (someone took the seat
+  between the check and the checkout), wait again and retry, at most N times.
+- Ctrl-C stops the wait at once (exit 130).
+
+**3. Several designs on one seat:** `scripts/run_batch_rib.py`
+```bash
+python scripts/run_batch_rib.py --config configs/run_batch_rib.yaml --dry-run   # list the queue
+python scripts/run_batch_rib.py --config configs/run_batch_rib.yaml
+scripts/wait_for_comsol_seat.sh -r 3 -- python scripts/run_batch_rib.py --config configs/run_batch_rib.yaml
+```
+Separate `run_one.py` calls each start COMSOL and give the seat back at exit, so
+someone else can take it in between. `run_batch_rib.py` evaluates a queue (u
+vectors in the YAML, a CSV of u vectors, and/or `run_one`-style configs) in one
+process and one MPh session. `run_loop.py` already shares one session over its
+iterations (`src/comsol_client.py` caches it); this is its counterpart for an
+explicit list of designs.
+- Every item is saved with `save_result(rec, db_path(celltype))`, exactly as
+  `run_one.py` does, failed and infeasible ones included.
+- COMSOL starts at the first item that needs a solver and is released
+  (`comsol_client.release_client()`) when no queued item needs it any more, on
+  an error, and on Ctrl-C. There is no keep-alive between or after items.
+- A licence error stops the queue (exit 3) instead of failing every remaining
+  item; `stop_on_license_error: false` carries on.
+
 ## Layout
 ```
 configs/   bounds.yaml (hole + rib sections)  targets.yaml  materials.yaml
            run_one.yaml  run_loop.yaml  run_opt_comsol.yaml  (per-script --config)
            run_one_rib.yaml  run_loop_rib.yaml  run_opt_comsol_rib.yaml
+           run_batch_rib.yaml  (queue of designs for run_batch_rib.py)
            plot_bands.yaml  plot_geometry.yaml  plot_mode.yaml
 src/       geometry (hole + rib, fabricability)  bandgap  comsol_client
            optical_{surrogate,mpb,comsol}  comsol_optics  acoustic_comsol
            objective  objective_rib  optimizer  database
 scripts/   run_one.py  run_loop.py  run_opt_comsol.py  run_opt_comsol_rib.py
+           run_batch_rib.py  (queue in one COMSOL session)
+           check_comsol_license.sh  wait_for_comsol_seat.sh
+           run_comsol_batch.sh + comsol_batch.py  (comsol batch, batch licences)
            plot_bands.py  plot_geometry.py  plot_mode.py
 comsol/    hole template recipe + MATLAB LiveLink driver;
            build_omc_unitcell_rib.m + omc_mechanical_livelink_rib.m (rib)
 tests/     test_pipeline.py  (numpy-only, hole + rib)
+           test_batch_queue.py  (run_batch_rib.py + session release, no COMSOL)
 results/   runs.sqlite3 (hole; + .jsonl fallback)  runs_rib.sqlite3 (rib)
 docs/      strategy.md
 ```
