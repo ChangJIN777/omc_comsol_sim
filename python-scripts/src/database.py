@@ -11,6 +11,21 @@ _DB = os.environ.get(
     "OMC_DB_PATH",
     os.path.join(os.path.dirname(__file__), "..", "results", "runs.sqlite3"))
 
+# Rib-cell results go to their own file (same schema), so the hole DB above is
+# never written by a rib run. Rib records also carry celltype="rib".
+_DB_RIB = os.environ.get(
+    "OMC_DB_PATH_RIB",
+    os.path.join(os.path.dirname(__file__), "..", "results", "runs_rib.sqlite3"))
+
+
+def db_path(celltype: str = "hole") -> str:
+    """SQLite file of a cell type; pass it to save_result / load_* / best_result."""
+    if celltype == "hole":
+        return _DB
+    if celltype == "rib":
+        return _DB_RIB
+    raise ValueError(f"unknown celltype {celltype!r}")
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS candidates (
     id TEXT PRIMARY KEY,

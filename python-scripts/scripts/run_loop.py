@@ -19,7 +19,9 @@ import yaml
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from objective import evaluate_candidate          # noqa: E402
-from database import save_result, load_completed_results, best_result  # noqa: E402
+from geometry import n_dim                        # noqa: E402
+from database import (save_result, load_completed_results, best_result,  # noqa: E402
+                      db_path)
 from optimizer import initialize_optimizer, ask, tell  # noqa: E402
 
 
@@ -41,17 +43,23 @@ def main():
     optical = cfg["optical"]
     mech = cfg["mech"]
     backend = cfg["backend"]
+    # Optional keys, absent from hole configs (see configs/run_loop_rib.yaml).
+    celltype = cfg.get("celltype", "hole")
+    rib_options = cfg.get("rib") or None
+    db = db_path(celltype)       # rib results have their own sqlite file
 
-    data = load_completed_results()
-    opt = initialize_optimizer(data, backend=backend, n_init=n_init)
+    data = load_completed_results(db)
+    opt = initialize_optimizer(data, backend=backend, n_init=n_init,
+                               n_dim=n_dim(celltype))
     print(f"resuming with {len(data)} prior results; backend={type(opt).__name__}")
 
     total = n_init + n_iter
     for it in range(total):
         u = ask(opt)
         rec = evaluate_candidate(u, optical_backend=optical,
-                                 mech_backend=mech)
-        save_result(rec)
+                                 mech_backend=mech, celltype=celltype,
+                                 rib_options=rib_options)
+        save_result(rec, db)
         tell(opt, u, rec["score"],
              constraints={"optical_gap": rec.get("optical_gap"),
                           "mechanical_gap": rec.get("mechanical_gap")})
@@ -59,7 +67,7 @@ def main():
               f"Go={rec.get('optical_gap')} Gm={rec.get('mechanical_gap')} "
               f"status={rec['status']}")
 
-    b = best_result()
+    b = best_result(db)
     if b:
         print("\nBEST:", {k: b[k] for k in
                           ("id", "score", "optical_gap", "mechanical_gap")})

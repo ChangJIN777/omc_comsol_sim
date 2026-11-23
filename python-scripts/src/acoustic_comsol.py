@@ -21,11 +21,14 @@ import os
 import numpy as np
 
 try:
-    from comsol_client import have_mph as _have_mph_fn, get_model as _get_model
+    from comsol_client import (have_mph as _have_mph_fn, get_model as _get_model,
+                               set_geometry as _set_geometry)
     _HAVE_MPH = _have_mph_fn()
 except Exception:  # pragma: no cover
     _HAVE_MPH = False
     def _get_model(t):
+        raise RuntimeError("comsol_client not available")
+    def _set_geometry(model, g):
         raise RuntimeError("comsol_client not available")
 
 _TEMPLATE = os.path.join(os.path.dirname(__file__), "..", "comsol",
@@ -79,9 +82,10 @@ def run_mechanical_comsol(g, *, n_k=15, n_bands=12, shift_GHz=8.0,
 
     model = _get_model(template)
 
-    # set geometry parameters (model parameters must be named a,w,t,hx,hy in m)
-    for name, val in g.as_dict().items():
-        model.parameter(name, f"{val}[m]")
+    # set geometry parameters, in m. The names in g.as_dict() are the template's
+    # global parameters (hole: a,w,t,hx,hy; rib: a,w,t,s,th,r1,r2); a geometry
+    # that does not belong to this template is refused.
+    _set_geometry(model, g)
 
     # Sweep Gamma->X. k_frac = k_z * a / pi in [0,1]; X (zone edge) at 1.
     k_frac = np.linspace(1e-3, 1.0, n_k)

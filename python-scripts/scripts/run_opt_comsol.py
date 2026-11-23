@@ -37,6 +37,10 @@ from geometry import u_to_geometry, check_feasibility, load_bounds, Geometry
 from bandgap import largest_gap, all_gaps, Gap
 from comsol_client import get_model
 from database import save_result
+# Optical search + gap helpers now live in src/comsol_optics.py (shared with
+# the rib cell); imported under their old names, so nothing below changes.
+from comsol_optics import (_study_tag, _guided_shift_hz, _set_eig_search,  # noqa: F401
+                           _opt_sweep, _full_opt_sweep, optical_gap_tracked)
 
 C0 = 299_792_458.0
 _TEMPLATE    = os.path.join(os.path.dirname(__file__), "..", "comsol",
@@ -133,94 +137,6 @@ def _mech_sweep(model, g, study, n_k, n_bands, compute_fy=True):
     return k_frac, freqs, fy_arr
 
 
-def _study_tag(model, name):
-    """Resolve a study's display name (e.g. 'opt TE') to its node tag ('std2')."""
-    for tag in model.java.study().tags():
-        if model.java.study(tag).label() == name:
-            return tag
-    raise ValueError(f"study {name!r} not found in model")
-
-
-def _guided_shift_hz(kz, f_target=OPT_F_TARGET, margin=0.92):
-    """Eigenvalue-search shift for one k-point: at/below the light line.
-
-    The .mph template's "opt TE"/"opt TM" studies have a FIXED eigenfrequency
-    search shift (c/1.55um, i.e. exactly the 1550 nm target) at every k. A
-    shift-and-invert eigensolver returns the N eigenvalues closest to that
-    shift — so whenever the fundamental (lowest-order) guided TE band's true
-    frequency at a given k is far from the fixed target, it's simply never
-    returned, and a higher-order band near the target gets scored instead
-    (this is what produced the earlier "second-order gap" / "above light
-    line" symptoms). Tracking the shift along the light line instead keeps
-    the search anchored where genuinely guided modes actually live at each k,
-    with a small margin below light line and never above the 1550 nm target.
-    """
-    f_lc = C0 * kz / (2.0 * np.pi)
-    return min(f_target, f_lc * margin)
-
-
-def _set_eig_search(model, study, f_shift_hz, neigs=None):
-    """Point a study's Eigenfrequency feature at a new search shift (Hz),
-    optionally widening how many eigenvalues it searches for. Best-effort:
-    swallows exceptions so callers fall back to the model's baked-in
-    shift/neigs if the Java property API is unavailable.
-
-    Two COMSOL gotchas here (found by live introspection, not documented):
-    - "neigs" is silently ignored unless "neigsactive" is explicitly "on"
-      (it defaults to "off" in this template, so it was NEVER actually
-      taking effect before this fix — always solving with the .mph's
-      baked-in neigs=6, no matter what was passed here).
-    - .set(name, <python int>) raises a Java overload-ambiguity TypeError
-      (int vs bool overloads collide); must pass neigs as a string.
-    """
-    try:
-        eig = model.java.study(_study_tag(model, study)).feature("eig")
-        eig.set("shift", f"{f_shift_hz}[Hz]")
-        if neigs is not None:
-            eig.set("neigsactive", "on")
-            eig.set("neigs", str(int(neigs)))
-    except Exception:
-        pass
-
-
-def _opt_sweep(model, g, study, n_k, n_bands, min_THz=10.0):
-    """Sweep zone-edge half of BZ for optical. Returns (k_frac, freqs) in Hz.
-
-    Samples k ∈ [0.5, 1.0]×π/a only — the half nearest the zone edge.
-    This is the range that matters for OMC Bragg reflection; modes near k=0
-    are irrelevant.  With n_k points the same number of COMSOL solves is used
-    but all in the relevant half — effectively giving 2× denser zone-edge
-    sampling compared to a full-BZ sweep with the same n_k.
-
-    At each k, the eigenvalue search shift tracks the light line (see
-    `_guided_shift_hz`) rather than a fixed 1550 nm target, and `neigs` is
-    widened so the fundamental guided band is included alongside whatever
-    band actually forms the target-frequency gap.
-
-    neigs floor is 6, not the wider margin used for plotting (`_full_opt_sweep`):
-    during optimization we only need the lowest ~2 real bands near the gap
-    plus room for the 1-3 near-zero scattering-boundary pseudo-modes (which
-    get filtered out below by `min_THz`) — asking for more just costs solve
-    time without changing the score.
-    """
-    k_frac = np.linspace(0.5, 1.0, n_k)   # zone-edge half only
-    freqs  = np.full((n_k, n_bands), np.nan)
-    neigs_req = max(n_bands, 6)
-    for i, s in enumerate(k_frac):
-        kz = np.pi * s / g.a
-        model.parameter("kF", f"{kz}[1/m]")
-        _set_eig_search(model, study, _guided_shift_hz(kz), neigs=neigs_req)
-        model.solve(study)
-        dset = _study_dataset(model, study)
-        ev = (model.evaluate("freq", dataset=dset) if dset
-              else model.evaluate("freq"))
-        fs = np.sort(np.real(np.asarray(ev)))
-        fs = fs[fs > min_THz * 1e12]
-        n_av = min(n_bands, len(fs))
-        freqs[i, :n_av] = fs[:n_av]
-    return k_frac, freqs
-
-
 # ── Gap detection for breathing family ───────────────────────────────────────
 
 def breathing_gap(freqs_all, fy_arr, fy_thresh=FY_THRESH,
@@ -252,66 +168,6 @@ def breathing_gap(freqs_all, fy_arr, fy_thresh=FY_THRESH,
         if max(fy_mean[i], fy_mean[i + 1]) >= fy_thresh:
             return gp
     return Gap.empty()
-
-
-# ── Optical gap detection: zone-edge gap (OMC-relevant metric) ───────────────
-
-def optical_gap_tracked(freqs_o, f_target=OPT_F_TARGET, rel_tol=0.30):
-    """Find the OMC-relevant optical bandgap from a zone-edge-half BZ sweep.
-
-    Assumes freqs_o rows span k ∈ [0.5, 1.0]×π/a (from _opt_sweep).
-
-    1. At zone edge (last row): evaluate SPECIFICALLY the fundamental
-       (lowest-order) gap — between the two lowest surviving bands (the
-       dielectric band and the first air band). This is a deliberate choice,
-       not "whichever gap happens to be closest to f_target": a design only
-       counts if its FUNDAMENTAL gap sits near 1550 nm. A higher-order gap
-       that happens to land near the target is rejected (empty), even if
-       nothing else qualifies — otherwise the optimizer can "win" by finding
-       geometries whose 2nd/3rd-order gap coincidentally sits at 1550 nm
-       while the true (lowest-order) guided gap is elsewhere, which isn't a
-       real OMC mirror-cell design. Requires _opt_sweep/_full_opt_sweep to
-       actually resolve the fundamental band (see `_guided_shift_hz`) —
-       without that, this band may not even be present in freqs_o.
-    2. Use gap center f_c as a tracer; track the gap width at every k-point
-       provided.  All provided k-points are in the zone-edge half, so mode
-       mixing near k=0 (which would falsely close the gap) is excluded.
-    3. Return the minimum width across all tracked k-points.
-    """
-    freqs_o = np.asarray(freqs_o, dtype=float)
-    n_k = freqs_o.shape[0]
-
-    # ── Step 1: fundamental (lowest-order) gap at zone edge ────────────────────
-    edge = freqs_o[-1, :]
-    valid = np.sort(edge[np.isfinite(edge) & (edge > 10e12)])
-    if len(valid) < 2:
-        return Gap.empty()
-
-    f_c    = 0.5 * (valid[0] + valid[1])
-    g_edge = float(valid[1] - valid[0])
-    if g_edge <= 0.0 or abs(f_c - f_target) >= f_target * rel_tol:
-        return Gap.empty()
-    f_c = float(f_c)
-
-    # ── Step 2: track across all provided k-points ────────────────────────────
-    gap_at_k = [g_edge]   # always include zone-edge value
-    for i in range(n_k - 1):   # skip last row (already included above)
-        row      = freqs_o[i, :]
-        valid_row = np.sort(row[np.isfinite(row) & (row > 10e12)])
-        if len(valid_row) < 2:
-            continue
-        below = valid_row[valid_row < f_c]
-        above = valid_row[valid_row >= f_c]
-        if len(below) > 0 and len(above) > 0:
-            gap_at_k.append(above[0] - below[-1])
-
-    min_gap = float(np.min(gap_at_k))
-    if min_gap <= 0.0:
-        return Gap.empty()
-
-    ng = min_gap / f_c
-    return Gap(f_c - min_gap / 2, f_c + min_gap / 2, f_c,
-               min_gap, ng, -1, True)
 
 
 # ── Score ─────────────────────────────────────────────────────────────────────
@@ -606,33 +462,6 @@ def _n2e(arr):
 def _e2n(arr):
     """Empty array → None (inverse of _n2e)."""
     return None if len(arr) == 0 else arr
-
-
-def _full_opt_sweep(model, g, study, n_k=15, n_bands=6, min_THz=10.0):
-    """Sweep the full Brillouin zone (k: 0→1×π/a) for optical bands.
-
-    Distinct from _opt_sweep which covers only the zone-edge half; this version
-    is used for visualization so the full dispersion is shown. Same
-    light-line-tracking shift + widened neigs as `_opt_sweep` (see
-    `_guided_shift_hz`) so the fundamental guided band isn't skipped here
-    either — this is the sweep that feeds the characterization figure.
-    """
-    k_frac = np.linspace(1e-3, 1.0, n_k)
-    freqs  = np.full((n_k, n_bands), np.nan)
-    neigs_req = max(n_bands, 10)
-    for i, s in enumerate(k_frac):
-        kz = np.pi * s / g.a
-        model.parameter("kF", f"{kz}[1/m]")
-        _set_eig_search(model, study, _guided_shift_hz(kz), neigs=neigs_req)
-        model.solve(study)
-        dset = next((d for d in model.datasets() if d.startswith(study + '//')), None)
-        ev = (model.evaluate("freq", dataset=dset) if dset
-              else model.evaluate("freq"))
-        fs = np.sort(np.real(np.asarray(ev)))
-        fs = fs[fs > min_THz * 1e12]
-        n_av = min(n_bands, len(fs))
-        freqs[i, :n_av] = fs[:n_av]
-    return k_frac, freqs
 
 
 def _draw_geometry(ax, g, n_periods=3, fontsize=8):
@@ -2518,6 +2347,12 @@ def main():
 
     with open(cli.config) as fh:
         cfg = yaml.safe_load(fh)
+
+    # Rib cell: its own loop (scripts/run_opt_comsol_rib.py). Hole configs have
+    # no `celltype` key and continue below unchanged.
+    if cfg.get("celltype", "hole") == "rib":
+        from run_opt_comsol_rib import main_rib
+        return main_rib(cfg, cli.config)
 
     # Populate a Namespace so the rest of main() keeps referring to args.<key>.
     # `resume` is intentionally not read: it was already a legacy no-op (prior

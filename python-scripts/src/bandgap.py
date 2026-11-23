@@ -124,6 +124,56 @@ def all_gaps(freqs: np.ndarray, f_window: Optional[tuple] = None,
     return gaps
 
 
+def trusted_window(band_sets) -> tuple:
+    """Frequency window (f_lo, f_hi) covered by EVERY set at EVERY k-point.
+
+    band_sets: sequence of [n_k, n_bands] arrays (NaN = mode not returned), one
+    per symmetry sector. A shift-and-invert eigensolver returns the modes
+    nearest its shift, so below the highest "lowest returned mode" and above
+    the lowest "highest returned mode" some sector at some k was not computed.
+    Returns (nan, nan) if a set has a k-point without any finite frequency.
+    """
+    f_lo, f_hi = -np.inf, np.inf
+    for b in band_sets:
+        b = np.asarray(b, dtype=float)
+        if b.ndim != 2:
+            raise ValueError("each band set must be [n_k, n_bands]")
+        if b.size == 0 or not np.all(np.any(np.isfinite(b), axis=1)):
+            return (float("nan"), float("nan"))
+        f_lo = max(f_lo, float(np.max(np.nanmin(b, axis=1))))
+        f_hi = min(f_hi, float(np.min(np.nanmax(b, axis=1))))
+    return (f_lo, f_hi)
+
+
+def interval_gap(band_sets, f_target: float, rel_tol: float = 0.5) -> Gap:
+    """Largest gap near f_target by FREQUENCY INTERVAL, over one or more sectors.
+
+    The widest interval, inside trusted_window(band_sets), that holds no
+    eigenfrequency of ANY set at ANY k-point, with its center within
+    +/- rel_tol of f_target. Pass one set for a symmetry-restricted gap, all
+    sectors for a complete gap. Band indices are not used (lower_band = -1),
+    because column j of a nearest-to-shift solve need not be the same band at
+    every k or in every sector. Python port of gapReportUnion in
+    comsol/omc_mechanical_livelink_rib.m.
+    """
+    f_lo, f_hi = trusted_window(band_sets)
+    if not (np.isfinite(f_lo) and np.isfinite(f_hi) and f_hi > f_lo):
+        return Gap.empty()
+    f = np.concatenate([np.asarray(b, dtype=float).ravel() for b in band_sets])
+    f = np.unique(f[np.isfinite(f) & (f >= f_lo) & (f <= f_hi)])
+    if f.size < 2:
+        return Gap.empty()
+    lo, hi = f[:-1], f[1:]
+    center = 0.5 * (lo + hi)
+    ng = (hi - lo) / center
+    ok = np.abs(center - f_target) < rel_tol * f_target
+    if not np.any(ok):
+        return Gap.empty()
+    i = int(np.argmax(np.where(ok, ng, -np.inf)))
+    return Gap(float(lo[i]), float(hi[i]), float(center[i]),
+               float(hi[i] - lo[i]), float(ng[i]), -1, True)
+
+
 if __name__ == "__main__":
     # toy demo: two bands with a clean gap
     k = np.linspace(0, np.pi, 11)

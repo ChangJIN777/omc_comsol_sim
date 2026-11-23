@@ -1,0 +1,29 @@
+# scripts/run_opt_comsol.py config for the RIB cell.
+#   python scripts/run_opt_comsol.py --config configs/run_opt_comsol_rib.yaml
+# `celltype: rib` sends the run to scripts/run_opt_comsol_rib.py. The hole
+# config (configs/run_opt_comsol.yaml) has no such key and is unaffected.
+celltype: rib
+
+n_init: 10               # space-filling trials before TPE
+n_iter: 40               # total iterations (including n_init)
+backend: auto            # auto | random | optuna
+
+optical: comsol          # comsol | none. REQUIRES the optical validation solve
+                         # first: 'opt TE'/'opt TM' were never run on this template.
+mech: comsol             # comsol | surrogate_stub
+
+rib:
+  mech_gap_mode: complete   # complete | sym | antisym
+  n_k: 9
+  n_bands_mech: 20
+  optical_study: "opt TE"
+  n_k_opt: 13
+  n_bands_opt: 10
+  optical_rel_tol: 0.30
+
+out_fig: "results/figures_rib/opt_progress_rib.png"
+out_json: "results/opt_results_rib.json"
+# db_path: "results/runs_rib.sqlite3"   # default; env OMC_DB_PATH_RIB also works
+
+fresh_start: false           # true: back up out_json to .bak and ignore it
+skip_characterization: false

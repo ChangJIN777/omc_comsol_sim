@@ -1,0 +1,24 @@
+# scripts/run_one.py config for the RIB cell.
+#   python scripts/run_one.py --config configs/run_one_rib.yaml
+# Result goes to results/runs_rib.sqlite3 (override: env OMC_DB_PATH_RIB).
+celltype: rib
+
+# One value per searched rib variable (bounds.yaml rib.variables), order a, w, t, s.
+# These give a/w/t/s = 570/1747/391/254 nm; th, r1, r2 come from rib.fixed
+# (250/40/40 nm), so this is NOT the cell of the MATLAB reference run (283/20/20).
+u: [0.385714, 0.575254, 0.358947, 0.214737]
+
+optical: none            # none | comsol. Use comsol only after the optical
+                         # validation solve (see the proposal, step B2).
+mech: comsol             # comsol | surrogate_stub
+
+rib:
+  mech_gap_mode: complete   # complete (sym + antisym studies) | sym | antisym
+  n_k: 15                   # mechanical k-points, Gamma -> X
+  n_bands_mech: 20          # = eigenfrequencies per mechanical study in the template
+  optical_study: "opt TE"   # "opt TE" (PEC at y=0, Ey even) | "opt TM"
+  n_k_opt: 13               # optical k-points, light-line start -> X
+  n_bands_opt: 10           # optical eigenvalues per k
+  optical_rel_tol: 0.30     # gap centre within +/-30 % of the target frequency
+
+quiet: false

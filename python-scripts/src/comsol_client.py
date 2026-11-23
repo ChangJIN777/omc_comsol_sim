@@ -5,6 +5,8 @@ process shares ONE COMSOL instance and ONE loaded model.
 """
 from __future__ import annotations
 
+import os
+
 try:
     import mph
     _HAVE_MPH = True
@@ -54,3 +56,39 @@ def release_model():
             pass
     _model = None
     _model_path = None
+
+
+# One template per cell type (see geometry.CELLTYPES).
+_COMSOL_DIR = os.path.join(os.path.dirname(__file__), "..", "comsol")
+TEMPLATES = {
+    "hole": "omc_unitcell_iso.mph",   # isotropic diamond, elliptical hole
+    "rib": "omc_unitcell_rib.mph",    # cubic diamond, build_omc_unitcell_rib.m
+}
+
+
+def template_path(celltype: str = "hole") -> str:
+    """Path of the .mph template for a cell type."""
+    if celltype not in TEMPLATES:
+        raise ValueError(f"unknown celltype {celltype!r}; expected one of "
+                         f"{sorted(TEMPLATES)}")
+    return os.path.join(_COMSOL_DIR, TEMPLATES[celltype])
+
+
+def set_geometry(model, g) -> None:
+    """Set the geometry parameters of `g` (meters) on a loaded template.
+
+    The names in g.as_dict() must all be global parameters of the model
+    already. COMSOL would otherwise create the missing ones silently, and a
+    hole geometry sent to the rib template (or the reverse) would solve with
+    the wrong meaning of `t` (hole: thickness, rib: rib width).
+    """
+    params = g.as_dict()
+    have = set(model.parameters())
+    missing = sorted(name for name in params if name not in have)
+    if missing:
+        raise RuntimeError(
+            f"template has no parameter(s) {missing}: "
+            f"{getattr(g, 'celltype', '?')!r} geometry sent to the wrong "
+            f"template? Template parameters: {sorted(have)}")
+    for name, val in params.items():
+        model.parameter(name, f"{val}[m]")

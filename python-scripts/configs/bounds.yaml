@@ -39,3 +39,51 @@ feasibility:
   # percentage of a shrinking w or a isn't a fixed nm value, which made it
   # hard to reason about what the real minimum feature was for a given design.
   min_feature: 0.04e-6   # [m]
+
+# Rib cell (celltype: rib) -----------------------------------------------------
+# Spine + centred rib, template comsol/omc_unitcell_rib.mph
+# (comsol/build_omc_unitcell_rib.m). Names are the template's parameters:
+#   a   : period along the beam axis z
+#   w   : rib tip-to-tip width along y (= 2L)
+#   t   : RIB WIDTH along z   <-- not the thickness (hole cell above: t = thickness)
+#   s   : spine width along y (full width)
+#   th  : slab thickness along x
+#   r1  : concave rib/spine (root) fillet radius, must be > 0
+#   r2  : convex rib-tip fillet radius, must be > 0
+# Each parameter is listed exactly once: under `variables` (searched, one entry
+# of u each, in the order a, w, t, s, th, r1, r2) or under `fixed`.
+# Write values with a decimal point (0.04e-6, not 40e-9: YAML reads the latter
+# as a string).
+rib:
+  variables:
+    # User-set search box (2026-11-23). About 40 % of it is buildable and
+    # fabricable with the values below; the rest is saved as infeasible /
+    # unfabricable without a solve.
+    a:  { min: 0.30e-6, max: 1.00e-6 }   # period [m]
+    w:  { min: 0.05e-6, max: 3.00e-6 }   # rib tip-to-tip width [m]
+    t:  { min: 0.05e-6, max: 1.00e-6 }   # rib width along the beam [m]
+    s:  { min: 0.05e-6, max: 1.00e-6 }   # spine width [m]
+  fixed:
+    # Sent to the template, overriding its saved defaults (283 / 20 / 20 nm).
+    # r1 = r2 = 40 nm forces t > 80 nm, a - t > 80 nm and (w - s)/2 > 80 nm.
+    th: 0.25e-6                          # slab thickness [m]
+    r1: 0.04e-6                          # root fillet [m]
+    r2: 0.04e-6                          # tip fillet [m]
+  # Fabrication limits, checked BEFORE any solver (geometry.check_fabricability).
+  # Separate from the template's build rules. A failing candidate is saved with
+  # status "unfabricable" and one FAB_* entry per failed rule. null = rule off.
+  fabrication:
+    # 50 nm floors: omc-comsol-chang/unitCellAdapter_rib.m:58 and
+    # rib_optimize_sweep_diamond.m:84 (min(a - t, s, th) >= 50 nm);
+    # nanobeam/isFabricable.m:51-52; bayesopt_cross.m:111.
+    # (The hole cell above uses min_feature 40 nm.)
+    min_feature: 0.05e-6        # t, s and the rib arm (w - s)/2 [m]
+    min_gap: 0.05e-6            # air gap between neighbouring ribs, a - t [m]
+    min_thickness: 0.05e-6      # th [m]
+    # No source in the repo for the four ratios and the release width below:
+    # TODO(confirm) with the actual etch / release process.
+    max_etch_aspect: 5.0        # th / (a - t)
+    max_solid_aspect: 5.0       # th / min(t, s)
+    max_rib_slenderness: 10.0   # ((w - s)/2) / t, free-standing rib, in plane
+    max_rib_overhang: 10.0      # ((w - s)/2) / th, free-standing rib, out of plane
+    max_release_width: null     # max(t, s) that the undercut can release [m]

@@ -26,7 +26,8 @@ import yaml
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from objective import evaluate_candidate          # noqa: E402
-from database import save_result                  # noqa: E402
+from geometry import n_dim                        # noqa: E402
+from database import save_result, db_path         # noqa: E402
 from cli_progress import make_stderr_reporter, _fmt_time  # noqa: E402
 
 
@@ -47,19 +48,28 @@ def main():
     optical = cfg["optical"]
     mech = cfg["mech"]
     quiet = cfg["quiet"]
+    # Optional keys, absent from hole configs: cell type and the rib options
+    # (see configs/run_one_rib.yaml).
+    celltype = cfg.get("celltype", "hole")
+    rib_options = cfg.get("rib") or None
 
-    if len(u) not in (4, 5):
-        ap.error(f"config `u` takes 4 (legacy) or 5 values (ua uw uhx uhy [ut]), got {len(u)}")
+    if celltype == "hole":
+        if len(u) not in (4, 5):
+            ap.error(f"config `u` takes 4 (legacy) or 5 values (ua uw uhx uhy [ut]), got {len(u)}")
+    elif len(u) != n_dim(celltype):
+        ap.error(f"config `u` takes {n_dim(celltype)} values for celltype "
+                 f"{celltype!r}, got {len(u)}")
 
     on_stage = None if quiet else make_stderr_reporter()
 
     rec = evaluate_candidate(u, optical_backend=optical,
-                             mech_backend=mech, on_stage=on_stage)
+                             mech_backend=mech, on_stage=on_stage,
+                             celltype=celltype, rib_options=rib_options)
 
     if not quiet:
         t0 = time.time()
         print("[saving] writing result record ... running", file=sys.stderr)
-    save_result(rec)
+    save_result(rec, db_path(celltype))
     if not quiet:
         print(f"[saving] writing result record ... done ({_fmt_time(time.time()-t0)})",
               file=sys.stderr)

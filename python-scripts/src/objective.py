@@ -41,8 +41,14 @@ def _hash_u(u, backends):
 
 def evaluate_candidate(u, *, optical_backend="surrogate",
                        mech_backend="comsol", cache=None, bounds=None,
-                       targets=None, on_stage=None):
+                       targets=None, on_stage=None, celltype="hole",
+                       rib_options=None):
     """Evaluate one normalized design vector u. Returns a result record dict.
+
+    celltype="rib" evaluates the rib cell instead (objective_rib.py);
+    rib_options is then a dict of its keyword options (mech_gap_mode, n_k,
+    n_bands_mech, optical_study, n_k_opt, n_bands_opt, optical_rel_tol). For
+    the hole cell, whose path below is unchanged, leave both at their defaults.
 
     on_stage, if given, is called as on_stage(name, event, info=None) at each
     stage boundary (name in {"feasibility","optical","mechanical","score"},
@@ -56,6 +62,16 @@ def evaluate_candidate(u, *, optical_backend="surrogate",
 
     bounds = bounds or load_bounds()
     targets = targets or _load("targets.yaml")
+    if celltype == "rib":
+        from objective_rib import evaluate_rib_candidate
+        return evaluate_rib_candidate(
+            u, bounds=bounds, targets=targets,
+            optical_backend=optical_backend, mech_backend=mech_backend,
+            cache=cache, on_stage=on_stage, **(rib_options or {}))
+    if celltype != "hole":
+        raise ValueError(f"unknown celltype {celltype!r}")
+    if rib_options:
+        raise ValueError("rib_options given for celltype 'hole'")
     cid = _hash_u(u, (optical_backend, mech_backend))
 
     if cache is not None and cid in cache:
