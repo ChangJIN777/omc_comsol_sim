@@ -245,7 +245,6 @@ committed, and `.gitignore` does not untrack anything):
 
 - `test/` — 895 tracked files / 84 MB of simulation output. `.git` is 370 MB.
 - `python-scripts/results/` — 115 tracked files including SQLite run stores.
-- 51 tracked `__pycache__` files (mostly `python-scripts/src/__pycache__/`).
 - `.claude/settings.local.json` is tracked, and so is now public on GitHub. It
   holds local permission rules with machine paths (no secrets). It should be
   untracked and ignored.

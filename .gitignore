@@ -41,3 +41,6 @@
 # Committed as gitlinks they are unfetchable (no .gitmodules, no URL) and show
 # as permanently modified as their HEADs move.
 .claude/worktrees/
+# Python bytecode
+__pycache__/
+*.pyc
