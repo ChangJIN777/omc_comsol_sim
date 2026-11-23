@@ -8,8 +8,9 @@ function model = build_omc_unitcell_rib(outFile)
 %
 % Rib counterpart of omc_unitcell.mph. The node structure (tags, labels,
 % physics, boundary conditions, material, mesh approach, studies) is copied
-% from omc_unitcell.mph; only the geometry differs, plus 20 (not 12)
-% eigenfrequencies in the two mechanical studies. The geometry is the
+% from omc_unitcell.mph; the differences are the geometry, 20 (not 12)
+% eigenfrequencies in the two mechanical studies, and ANISOTROPIC (cubic)
+% diamond with C11/C12/C44 as global parameters, beam along <100>. The geometry is the
 % recipe of omc-comsol-chang/buildRibUnitCell.m (work plane -> half-width
 % rectangle -> polygon void -> Compose -> Extrude), with two changes:
 %   * every dimension is a parameter EXPRESSION, so the saved .mph is tunable
@@ -88,7 +89,10 @@ params = { ...
     'hi', '955[nm]',  'tooth (inner) height along y'; ...
     'ho', '975[nm]',  'void (outer) height along y'; ...
     'ai', '150[nm]',  'spine width; the void starts at y = ai/2'; ...
-    'kF', 'pi/a',     'Floquet wavevector along z (swept by driver)'};
+    'kF', 'pi/a',     'Floquet wavevector along z (swept by driver)'; ...
+    'C11', '1076[GPa]', 'diamond cubic stiffness C11 (configs/materials.yaml)'; ...
+    'C12', '125[GPa]',  'diamond cubic stiffness C12 (configs/materials.yaml)'; ...
+    'C44', '577[GPa]',  'diamond cubic stiffness C44 (configs/materials.yaml)'};
 for i = 1:size(params, 1)
     model.param.set(params{i, 1}, params{i, 2}, params{i, 3});
 end
@@ -209,9 +213,13 @@ end
 intop = comp.cpl.create('intop1', 'Integration');
 intop.selection.named('geom1_ucellholes_dom');
 
-%% Materials (values copied from omc_unitcell.mph)
-% Isotropic E / nu, as in BOTH omc_unitcell.mph and omc_unitcell_iso.mph.
-% configs/materials.yaml has the cubic C11/C12/C44; neither template uses it.
+%% Materials (values copied from omc_unitcell.mph, except the elasticity)
+% ANISOTROPIC (cubic) diamond, unlike omc_unitcell.mph / omc_unitcell_iso.mph,
+% which use isotropic E = 1050 GPa, nu = 0.1 (the <100> values). Stiffness
+% C11/C12/C44 are global parameters (configs/materials.yaml). The model axes
+% (thickness x, width y, beam z) are the crystal cube axes, so the tensor is
+% unrotated: beam along <100>. Voigt order and DVo layout as
+% omc-comsol-chang/LoadMaterialParams.m / runBands.m.
 diamond = comp.material.create('mat1', 'Common');
 diamond.label('Diamond (100)');
 diamond.selection.named('geom1_ucellholes_dom');
@@ -221,9 +229,13 @@ def.set('heatcapacity', '520[J/(kg*K)]');
 def.set('relpermittivity', {'5.76'});
 def.set('density', '3515[kg/m^3]');
 def.set('thermalconductivity', {'990[W/(m*K)]'});
-enu = diamond.propertyGroup.create('Enu', 'Young''s modulus and Poisson''s ratio');
-enu.set('E', '105e10[Pa]');
-enu.set('nu', '0.1');
+aniso = diamond.propertyGroup.create('AnisotropicVoGrp', 'Anisotropic, Voigt notation');
+aniso.set('DVo', {'C11', ...
+                  'C12', 'C11', ...
+                  'C12', 'C12', 'C11', ...
+                  '0',   '0',   '0',   'C44', ...
+                  '0',   '0',   '0',   '0',   'C44', ...
+                  '0',   '0',   '0',   '0',   '0',   'C44'});
 
 vacuum = comp.material.create('mat2', 'Common');
 vacuum.label('Perfect vacuum');
@@ -234,9 +246,13 @@ vdef.set('relpermeability', {'1'});
 vdef.set('relpermittivity', {'1'});
 vdef.set('electricconductivity', {'0[S/m]'});
 
-%% Solid Mechanics (beam only; lemm1 keeps its default isotropic E, nu)
+%% Solid Mechanics (beam only; anisotropic linear elastic, D from mat1)
 solid = comp.physics.create('solid', 'SolidMechanics', 'geom1');
 solid.selection.named('geom1_ucellholes_dom');
+lemm = solid.feature('lemm1');
+lemm.set('SolidModel', 'Anisotropic');
+lemm.set('AnisotropicOption', 'AnisotropicVo');
+lemm.set('DVo_mat', 'from_mat');
 
 pc = solid.create('pc1', 'PeriodicCondition', 2);
 pc.selection.named('geom1_selPerSolid');
