@@ -704,6 +704,22 @@ end
 % ds.kx_norm(end+1) = ds.kx_norm(1);
 % ds.k_norm = ds.kx_norm;     % for 1D band structures
 
+%% optional: sample the mode shapes for band tracking (opt-in)
+% Off unless P.exportModes is set, so every existing caller is unaffected.
+% Must run here: the solved model is cleared by the next runBands call.
+%   P.exportModes = true                  fields at X, default grid
+%   P.exportModes = struct('k','all')     'X' | 'GX' | 'all' | row indices of ds.F
+% See exportBandModes.m and trackRibBands.m.
+if isfield(P,'exportModes') && ~isempty(P.exportModes) && ...
+        (isstruct(P.exportModes) || any(P.exportModes))
+    if ~strcmp(P.celltype,'rib')
+        error('runBands:exportModesCelltype', ...
+            ['P.exportModes is implemented for celltype ''rib'' only ' ...
+             '(the sampling grid is ribModeGrid). Got ''%s''.'], P.celltype);
+    end
+    ds.modes = exportBandModes(model, P, ds);
+end
+
 %% saving the mph files for debugging purposes 
 if P.saveMPH
     path_mph = [P.datLoc,P.fileBase,'\bands_',txt_zsym,'.mph'];
