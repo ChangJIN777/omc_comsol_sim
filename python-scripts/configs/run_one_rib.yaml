@@ -8,7 +8,7 @@ celltype: rib
 # (250/40/40 nm), so this is NOT the cell of the MATLAB reference run (283/20/20).
 u: [0.385714, 0.575254, 0.358947, 0.214737]
 
-optical: none            # none | comsol. Use comsol only after the optical
+optical: comsol            # none | comsol. Use comsol only after the optical
                          # validation solve (see the proposal, step B2).
 mech: comsol             # comsol | surrogate_stub
 
