@@ -10,33 +10,39 @@ function model = build_omc_unitcell_rib(outFile)
 % physics, boundary conditions, material, mesh approach, studies) is copied
 % from omc_unitcell.mph; the differences are the geometry, 20 (not 12)
 % eigenfrequencies in the two mechanical studies, and ANISOTROPIC (cubic)
-% diamond with C11/C12/C44 as global parameters, beam along <100>. The geometry is the
-% recipe of omc-comsol-chang/buildRibUnitCell.m (work plane -> half-width
-% rectangle -> polygon void -> Compose -> Extrude), with two changes:
+% diamond with C11/C12/C44 as global parameters, beam along <100>.
+%
+% GEOMETRY: the 'rib' cell of omc-comsol-chang/buildRibUnitCell_LN.m with
+% vertical walls, i.e. the per-cell recipe of addRibCell.m: a continuous
+% spine of width s carrying one rib per cell, centred on the cell, t wide
+% along the beam and reaching |y| = w/2 = L from the beam axis; r2 rounds
+% the two convex rib-tip corners and r1 the two concave rib/spine corners
+% (per half). Two changes from addRibCell.m:
 %   * every dimension is a parameter EXPRESSION, so the saved .mph is tunable
 %   * the frame is the template's: beam axis z, width y, thickness x
-%     (buildRibUnitCell uses x, y, z), so Floquet k = (0,0,kF) is unchanged
+%     (buildRibUnitCell_LN uses x, y, z), so Floquet k = (0,0,kF) is unchanged
+% Names follow the 'rib' P struct (omc-comsol-chang/rib_README.md).
 %
 % Global parameters (all referenced by name in the geometry):
-%   a   period along z                      th  slab thickness (x)
-%   w   full beam width (y); the model      ai  spine width: the void starts
-%       draws the y >= 0 half                   at y = ai/2
-%   wo  void length along z                 ho  void height along y
-%   wi  tooth length along z (wi < wo)      hi  tooth height along y (hi < ho)
+%   a   period along z (cell width)         th  slab thickness (x)
+%   w   rib tip-to-tip width (y), = 2L;     t   rib width along z (beam axis)
+%       the model draws the y >= 0 half     s   spine width (y), full width
+%   r1  concave root fillet (rib/spine)     r2  convex rib-tip fillet
 %   kF  Floquet wavevector along z (swept by the driver)
+% r1 and r2 must be > 0 (COMSOL's Fillet rejects radius 0); use ~1 nm for a
+% near-sharp corner. The geometry needs t < a, s < w, 2*r2 < t,
+% t + 2*r1 < a and r1 + r2 < (w - s)/2 (a straight rib flank).
 %
 % Half cell seen from +x (y up, z right):
 %
-%   y = w/2      +---------------------------+
-%                |        diamond            |
-%   ai/2 + ho    |    +-----------------+    |
-%                |    |      void       |    |
-%   ai/2 + hi    |    |   +---------+   |    |
-%                |    |   |  tooth  |   |    |
-%   ai/2         |    +---+         +---+    |
-%                |          spine            |
-%   y = 0        +---------------------------+   <- y symmetry plane
-%              -a/2  -wo/2 -wi/2  wi/2 wo/2  a/2     (z)
+%   y = w/2              +---t---+          r2: both rib-tip corners
+%                        |       |
+%                        |  rib  |          r1: both rib/spine corners
+%                        |       |
+%   y = s/2      +-------+       +-------+
+%                |        spine          |
+%   y = 0        +-----------------------+   <- y symmetry plane
+%              -a/2    -t/2     t/2     a/2     (z)
 %
 % Studies (as omc_unitcell.mph). The model is the y >= 0 half; the y = 0
 % plane carries a symmetry or an antisymmetry condition, one per study:
@@ -48,11 +54,12 @@ function model = build_omc_unitcell_rib(outFile)
 % study is fixed (omc_unitcell.mph has none and gets dset1 from whichever
 % study runs first).
 %
-% Deliberate differences from buildRibUnitCell.m:
-%   * one period only. P.nperiod / P.holeatedge are dropped: the builder's
-%     hole loop never offsets its polygons, and a Floquet cell is one period.
-%   * no thickness-symmetry cut (P.mbevenz). omc_unitcell.mph has none.
-%   * debug figure / mphgeom / mphplot / disp calls removed.
+% Deliberate differences from buildRibUnitCell_LN.m:
+%   * vertical walls only (its sidewall angle d, addRibPrisms.m, is not
+%     carried over).
+%   * no thickness-symmetry cut (zSymCondition). omc_unitcell.mph has none.
+%   * no fixed-length L(a) rule: w is a plain parameter (the builder's
+%     explicit-P.w path, as test_rib_unitCell_explicitW.m).
 %   * selections are parametric boxes that follow the drawn cell
 %     (z = -a/2..a/2, y = 0..w/2), and the geometry is finalized with run.
 %
@@ -78,17 +85,15 @@ nEigMech = 20;      % eigenfrequencies per mechanical study (template: 12)
 model = ModelUtil.create(char(ModelUtil.uniquetag('Model')));
 model.label('omc_unitcell_rib.mph');
 
-% Defaults: omc-comsol-chang/test_nanobeamRibGeometry.m ('2D_ribs').
-% TODO(confirm) values.
+% Defaults: omc-comsol-chang/test_rib_unitCell_explicitW.m (diamond, d = 0).
 params = { ...
-    'a',  '1500[nm]', 'lattice constant (period along z)'; ...
-    'w',  '3000[nm]', 'full beam width (y); the y >= 0 half is drawn'; ...
-    'th', '160[nm]',  'beam thickness (x)'; ...
-    'wi', '670[nm]',  'tooth (inner) length along z'; ...
-    'wo', '1000[nm]', 'void (outer) length along z'; ...
-    'hi', '955[nm]',  'tooth (inner) height along y'; ...
-    'ho', '975[nm]',  'void (outer) height along y'; ...
-    'ai', '150[nm]',  'spine width; the void starts at y = ai/2'; ...
+    'a',  '570[nm]',  'lattice constant = cell width (period along z)'; ...
+    'w',  '1747[nm]', 'rib tip-to-tip width (y), = 2L; the y >= 0 half is drawn'; ...
+    'th', '283[nm]',  'slab thickness (x)'; ...
+    't',  '391[nm]',  'rib width along the beam (z)'; ...
+    's',  '254[nm]',  'spine width (y), full width'; ...
+    'r1', '20[nm]',   'concave rib/spine (root) fillet radius, > 0'; ...
+    'r2', '20[nm]',   'convex rib-tip fillet radius, > 0'; ...
     'kF', 'pi/a',     'Floquet wavevector along z (swept by driver)'; ...
     'C11', '1076[GPa]', 'diamond cubic stiffness C11 (configs/materials.yaml)'; ...
     'C12', '125[GPa]',  'diamond cubic stiffness C12 (configs/materials.yaml)'; ...
@@ -97,7 +102,7 @@ for i = 1:size(params, 1)
     model.param.set(params{i, 1}, params{i, 2}, params{i, 3});
 end
 
-%% Geometry (buildRibUnitCell recipe, template frame)
+%% Geometry (buildRibUnitCell_LN / addRibCell recipe, template frame)
 comp = model.component.create('comp1', true);
 geom = comp.geom.create('geom1', 3);
 geom.lengthUnit('m');
@@ -109,36 +114,49 @@ wp.set('planetype', 'quick');
 wp.set('quickplane', 'yz');
 wp.set('quickx', '-th/2');
 
-% y-symmetric half of the slab: y = 0..w/2, z = -a/2..a/2
-slab = wp.geom.create('ucellplane', 'Rectangle');
-slab.set('type', 'solid');
-slab.set('base', 'corner');
-slab.set('pos',  {'0', '-a/2'});
-slab.set('size', {'w/2', 'a'});
+% addRibCell.m feature chain, y >= 0 half, centred on z = 0:
+%   r1_u  rib [w/2 x t]   (y = 0..w/2,  z = -t/2..t/2)
+%   r3_u  half-spine      (y = 0..s/2,  z = -a/2..a/2)
+rib = wp.geom.create('r1_u', 'Rectangle');
+rib.set('base', 'corner');
+rib.set('pos',  {'0', '-t/2'});
+rib.set('size', {'w/2', 't'});
+spine = wp.geom.create('r3_u', 'Rectangle');
+spine.set('base', 'corner');
+spine.set('pos',  {'0', '-a/2'});
+spine.set('size', {'s/2', 'a'});
 
-% Void polygon. Same vertices and order as buildRibUnitCell.m, written as
-% (y, z) expressions. Its repeated closing vertex is left out.
-void = wp.geom.create('hole_1_upper', 'Polygon');
-void.set('source', 'table');
-void.set('table', { ...
-    'ai/2',    '-wo/2'; ...
-    'ai/2',    '-wi/2'; ...
-    'ai/2+hi', '-wi/2'; ...
-    'ai/2+hi', 'wi/2'; ...
-    'ai/2',    'wi/2'; ...
-    'ai/2',    'wo/2'; ...
-    'ai/2+ho', 'wo/2'; ...
-    'ai/2+ho', '-wo/2'});
+uni = wp.geom.create('union_u', 'Union');
+uni.set('intbnd', false);
+uni.selection('input').set({'r1_u', 'r3_u'});
 
-cut = wp.geom.create('ucellComp', 'Compose');
-cut.selection('input').set({'ucellplane', 'hole_1_upper'});
-cut.set('formula', 'ucellplane-hole_1_upper');
+% Fillets, selected by parametric boxes around the corners (addRibCell.m
+% does the same). Tip corners at (w/2, +-t/2), root corners at (s/2, +-t/2).
+% NOTE addRibCell's tags: fil2 = TIP (r2), fil1 = ROOT (r1).
+selTol = '1[nm]';
+boxTip = wp.geom.create('fil2_u_box', 'BoxSelection');
+boxTip.set('entitydim', 0);
+boxTip.set('condition', 'inside');
+boxTip.set('xmin', ['w/2-' selTol]);   boxTip.set('xmax', ['w/2+' selTol]);
+boxTip.set('ymin', ['-t/2-' selTol]);  boxTip.set('ymax', ['t/2+' selTol]);
+filTip = wp.geom.create('fil2_u', 'Fillet');
+filTip.set('radius', 'r2');
+filTip.selection('point').named('fil2_u_box');
 
-beam = geom.create('ucellholes', 'Extrude');
+boxRoot = wp.geom.create('fil1_u_box', 'BoxSelection');
+boxRoot.set('entitydim', 0);
+boxRoot.set('condition', 'inside');
+boxRoot.set('xmin', ['s/2-' selTol]);  boxRoot.set('xmax', ['s/2+' selTol]);
+boxRoot.set('ymin', ['-t/2-' selTol]); boxRoot.set('ymax', ['t/2+' selTol]);
+filRoot = wp.geom.create('fil1_u', 'Fillet');
+filRoot.set('radius', 'r1');
+filRoot.selection('point').named('fil1_u_box');
+
+beam = geom.create('ribcell', 'Extrude');
 beam.label('Rib unit cell (diamond)');
 beam.selection('input').set({'wp1'});
 beam.setIndex('distance', 'th', 0);
-beam.set('selresult', true);                 % -> geom1_ucellholes_dom
+beam.set('selresult', true);                 % -> geom1_ribcell_dom
 
 % Air box with the template's extents (5*th in x, 1.5*w in y after the
 % y < 0 half is removed), minus the beam, so air is its own object.
@@ -150,7 +168,7 @@ airBox.set('size', {'5*th', '1.5*w', 'a'});
 air = geom.create('airdif', 'Difference');
 air.label('Air');
 air.selection('input').set({'airblk'});
-air.selection('input2').set({'ucellholes'});
+air.selection('input2').set({'ribcell'});
 air.set('keepsubtract', true);
 air.set('selresult', true);                  % -> geom1_airdif_dom
 
@@ -195,7 +213,7 @@ geom.run;                                    % run (not runAll) finalizes
 
 % An empty selection would give a model that solves but has a missing
 % boundary condition, so stop here instead.
-needed = {'geom1_ucellholes_dom', 'geom1_airdif_dom', 'geom1_selPerSolid', ...
+needed = {'geom1_ribcell_dom', 'geom1_airdif_dom', 'geom1_selPerSolid', ...
           'geom1_selPerAll', 'geom1_selYsymSolid', 'geom1_selYsymAll', ...
           'geom1_selScat'};
 for i = 1:numel(needed)
@@ -211,7 +229,7 @@ end
 
 %% Definitions: integration over the beam (mode classification)
 intop = comp.cpl.create('intop1', 'Integration');
-intop.selection.named('geom1_ucellholes_dom');
+intop.selection.named('geom1_ribcell_dom');
 
 %% Materials (values copied from omc_unitcell.mph, except the elasticity)
 % ANISOTROPIC (cubic) diamond, unlike omc_unitcell.mph / omc_unitcell_iso.mph,
@@ -222,7 +240,7 @@ intop.selection.named('geom1_ucellholes_dom');
 % omc-comsol-chang/LoadMaterialParams.m / runBands.m.
 diamond = comp.material.create('mat1', 'Common');
 diamond.label('Diamond (100)');
-diamond.selection.named('geom1_ucellholes_dom');
+diamond.selection.named('geom1_ribcell_dom');
 def = diamond.propertyGroup('def');
 def.set('thermalexpansioncoefficient', {'0.8e-6[1/K]'});
 def.set('heatcapacity', '520[J/(kg*K)]');
@@ -248,7 +266,7 @@ vdef.set('electricconductivity', {'0[S/m]'});
 
 %% Solid Mechanics (beam only; anisotropic linear elastic, D from mat1)
 solid = comp.physics.create('solid', 'SolidMechanics', 'geom1');
-solid.selection.named('geom1_ucellholes_dom');
+solid.selection.named('geom1_ribcell_dom');
 lemm = solid.feature('lemm1');
 lemm.set('SolidModel', 'Anisotropic');
 lemm.set('AnisotropicOption', 'AnisotropicVo');

@@ -1,18 +1,19 @@
-function [bands, bandsAsym] = omc_mechanical_livelink_rib(a, w, th, wi, wo, hi, ho, ai, nk, nbands)
+function [bands, bandsAsym] = omc_mechanical_livelink_rib(a, w, th, t, s, r1, r2, nk, nbands)
 % OMC_MECHANICAL_LIVELINK_RIB  Mechanical band structure of the 1D diamond rib
-% OMC cell via COMSOL LiveLink for MATLAB. Rib counterpart of
-% omc_mechanical_livelink.m. Run with a COMSOL server + MATLAB connected:
+% OMC cell (spine + centred rib, the 'rib' cell of buildRibUnitCell_LN.m) via
+% COMSOL LiveLink for MATLAB. Rib counterpart of omc_mechanical_livelink.m.
+% Run with a COMSOL server + MATLAB connected:
 %   comsol mphserver matlab            % (or "COMSOL with MATLAB" desktop)
-% then in MATLAB:
-%   [bands, bandsAsym] = omc_mechanical_livelink_rib(1500e-9,3000e-9,160e-9, ...
-%                            670e-9,1000e-9,955e-9,975e-9,150e-9,15,20);
+% then in MATLAB (dimensions of test_rib_unitCell_explicitW.m):
+%   [bands, bandsAsym] = omc_mechanical_livelink_rib(570e-9,1747e-9,283e-9, ...
+%                            391e-9,254e-9,20e-9,20e-9,15,20);
 %
 % Inputs (SI metres), same names as the template parameters:
-%   a   period along z                 wi  tooth length along z (wi < wo)
-%   w   full beam width (y)            wo  void length along z  (wo < a)
-%   th  beam thickness (x)             hi  tooth height along y (hi < ho)
-%   ai  spine width (void starts       ho  void height along y
-%       at y = ai/2)                       (ai/2 + ho < w/2)
+%   a   period along z (cell width)     t   rib width along z (t < a)
+%   w   rib tip-to-tip width (y), = 2L  s   spine width (y), full (s < w)
+%   th  slab thickness (x)              r1  root fillet, > 0 (t + 2*r1 < a)
+%                                       r2  tip fillet, > 0  (2*r2 < t)
+%       and r1 + r2 < (w - s)/2 (straight rib flank)
 %   nk      number of k-points, default 15
 %   nbands  number of bands kept per symmetry, default 20 (the template
 %           solves 20 per mechanical study)
@@ -25,17 +26,17 @@ function [bands, bandsAsym] = omc_mechanical_livelink_rib(a, w, th, wi, wo, hi, 
 % its 8 GHz shift.
 %
 % Assumes the template built by build_omc_unitcell_rib.m, with parameters
-% a,w,th,wi,wo,hi,ho,ai,kF and Eigenfrequency studies 'std1' and 'std3'.
+% a,w,th,t,s,r1,r2,kF and Eigenfrequency studies 'std1' and 'std3'.
 %
 % See also BUILD_OMC_UNITCELL_RIB, OMC_MECHANICAL_LIVELINK.
 
 import com.comsol.model.*
 import com.comsol.model.util.*
 
-if nargin < 9,  nk = 15; end
-if nargin < 10, nbands = 20; end
+if nargin < 8, nk = 15; end
+if nargin < 9, nbands = 20; end
 
-checkRibGeometry(a, w, th, wi, wo, hi, ho, ai);
+checkRibGeometry(a, w, th, t, s, r1, r2);
 
 model = mphopen('omc_unitcell_rib.mph');     % template in current dir
 
@@ -47,11 +48,10 @@ dsetAsym = datasetOfStudy(model, 'std3');
 model.param.set('a',  sprintf('%g[m]', a));
 model.param.set('w',  sprintf('%g[m]', w));
 model.param.set('th', sprintf('%g[m]', th));
-model.param.set('wi', sprintf('%g[m]', wi));
-model.param.set('wo', sprintf('%g[m]', wo));
-model.param.set('hi', sprintf('%g[m]', hi));
-model.param.set('ho', sprintf('%g[m]', ho));
-model.param.set('ai', sprintf('%g[m]', ai));
+model.param.set('t',  sprintf('%g[m]', t));
+model.param.set('s',  sprintf('%g[m]', s));
+model.param.set('r1', sprintf('%g[m]', r1));
+model.param.set('r2', sprintf('%g[m]', r2));
 
 svals = linspace(1e-3, 1.0, nk);         % Gamma -> X, s = k_z*a/pi in (0,1]
 bands     = nan(nk, nbands);
@@ -104,28 +104,36 @@ error('omc_mechanical_livelink_rib:dataset', ...
     'No dataset belongs to study %s in omc_unitcell_rib.mph.', studyTag);
 end
 
-function checkRibGeometry(a, w, th, wi, wo, hi, ho, ai)
-% Reject geometries the template cannot build, before any solve.
-dims = [a w th wi wo hi ho ai];
-if ~isnumeric(dims) || numel(dims) ~= 8 || any(~isfinite(dims)) || any(dims <= 0)
+function checkRibGeometry(a, w, th, t, s, r1, r2)
+% Reject geometries the template cannot build, before any solve. The same
+% rules as omc-comsol-chang/validateRibParams.m for d = 0, except that
+% r1, r2 = 0 is rejected (COMSOL's Fillet errors on radius 0) and the
+% straight-flank rule (a warning there) is enforced.
+dims = [a w th t s r1 r2];
+if ~isnumeric(dims) || numel(dims) ~= 7 || any(~isfinite(dims)) || any(dims <= 0)
     error('omc_mechanical_livelink_rib:badInput', ...
-        'a, w, th, wi, wo, hi, ho, ai must be positive finite scalars in metres.');
+        'a, w, th, t, s, r1, r2 must be positive finite scalars in metres.');
 end
-if wi >= wo || hi >= ho
-    error('omc_mechanical_livelink_rib:badVoid', ...
-        ['Need wi < wo and hi < ho (got wi=%g, wo=%g, hi=%g, ho=%g); ' ...
-         'otherwise the void polygon is degenerate or self-intersecting.'], ...
-        wi, wo, hi, ho);
+if t >= a
+    error('omc_mechanical_livelink_rib:ribTooWide', ...
+        'Need t < a (got t=%g, a=%g); otherwise the ribs merge.', t, a);
 end
-if wo >= a
-    error('omc_mechanical_livelink_rib:voidTooLong', ...
-        'Need wo < a (got wo=%g, a=%g); otherwise the void cuts the whole period.', ...
-        wo, a);
+if s >= w
+    error('omc_mechanical_livelink_rib:spineTooWide', ...
+        'Need s < w (got s=%g, w=%g); otherwise there is no rib.', s, w);
 end
-if ai/2 + ho >= w/2
-    error('omc_mechanical_livelink_rib:voidTooHigh', ...
-        ['Need ai/2 + ho < w/2 (got %g >= %g); otherwise the void breaks ' ...
-         'through the beam edge.'], ai/2 + ho, w/2);
+if 2*r2 >= t
+    error('omc_mechanical_livelink_rib:tipFilletTooLarge', ...
+        'Need 2*r2 < t (got r2=%g, t=%g).', r2, t);
+end
+if t + 2*r1 >= a
+    error('omc_mechanical_livelink_rib:rootFilletTooLarge', ...
+        'Need t + 2*r1 < a (got %g >= %g).', t + 2*r1, a);
+end
+if r1 + r2 >= (w - s)/2
+    error('omc_mechanical_livelink_rib:filletsMeet', ...
+        ['Need r1 + r2 < (w - s)/2 (got %g >= %g); otherwise the tip and ' ...
+         'root fillets meet on the rib flank.'], r1 + r2, (w - s)/2);
 end
 end
 
