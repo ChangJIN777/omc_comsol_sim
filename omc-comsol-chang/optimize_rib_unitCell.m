@@ -125,7 +125,7 @@ end
 % only the solver / IO fields are set here, following test_rib_unitCell.m.
 P = ribDefaultParams();
 P.celltype = 'rib';
-% TODO(confirm): crystal orientation. 0 = beam along <100> (template and
+% Crystal orientation (user decision 2026-11-23: 0). 0 = beam along <100> (template and
 % cavity); 45 = beam along <110>. The gap shifts by several percent between
 % the two (in-plane shear velocity -9 %, longitudinal +5 %), so match this to
 % the fabricated devices and to the cavity runs.

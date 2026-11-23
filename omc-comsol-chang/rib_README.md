@@ -117,7 +117,7 @@ Sources: the defaults reproduce the template's cell positions (T1); `taperConven
 |---|---|---|---|---|
 | `beamMat` | `'diamond'`, `'LN'`, … (`LoadMaterialParams`) | `'diamond'` | U+C | in |
 | `anisoMat` | 1 = anisotropic stiffness tensor `P.D` | 1 | U+C | in |
-| `rxtal` | In-plane crystal rotation in degrees. The LN scripts set 45 | 0 | U+C | in |
+| `rxtal` | In-plane crystal rotation in degrees. All rib scripts use 0 (beam along ⟨100⟩), decided 2026-11-23 | 0 | U+C | in |
 | `nbeam` | Refractive index (cavity optics; set by `LoadMaterialParams` if absent) | 2.4028 | C | in |
 
 ### 2.7 Symmetry and boundary conditions
@@ -383,5 +383,5 @@ Overrides are merged over the defaults. Nested structs (`OPT.init`, `OPT.lb`, `O
 `OPT.dryRun = true` replaces `solveBands` with an analytic surrogate: a smooth bump with its optimum at t = 130, s = 80, L = 400 nm and a 2 GHz gap. **This is not physics.** It exercises normalization, clamping, the feasibility penalty, the CSV log and the BEST path without COMSOL. `RibUnitCellTest` runs it under the `PureMATLAB` tag.
 
 ### Caveats
-- **`P.rxtal` defaults to 0** (beam along ⟨100⟩, as in the template and the cavity) and is a `TODO(confirm)` knob. At 45° (⟨110⟩) the in-plane shear velocity drops about 9 % and the longitudinal velocity rises about 5 %, so the optimized gap moves by several percent. Use the same value as the cavity runs.
+- **`P.rxtal` defaults to 0** (beam along ⟨100⟩, as in the template and the cavity), confirmed by the user on 2026-11-23. At 45° (⟨110⟩) the in-plane shear velocity drops about 9 % and the longitudinal velocity rises about 5 %, so the optimized gap moves by several percent. Use the same value as the cavity runs.
 - Each evaluation is a full `solveBands` run (one symmetry sector at the defaults). Budget accordingly with `MaxFunEvals`.

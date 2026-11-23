@@ -59,7 +59,7 @@ P.meshSize = 4;                         % mesh quality
 P.fixed_bc = 0;                         % no flat outer y face exists to clamp
 
 P.anisoMat = 1;
-P.rxtal = 45;                           % ccw rotation of elasticity matrix in deg
+P.rxtal = 0;                            % ccw rotation of elasticity matrix in deg
                                         % from <100> inplane direction about <100> surface normal
 
 %% define the maximum number of degree of freedom to limit the simulation time

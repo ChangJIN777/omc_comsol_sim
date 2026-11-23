@@ -75,7 +75,7 @@ function fitness = rib_optimize(params)
     P.fixed_bc = 0;                       % 1 to fixed the boundaries for xz planes at y = +/- w/2
     
     P.anisoMat = 1;
-    P.rxtal = 45;                           % ccw rotation of elasticity matrix in deg 
+    P.rxtal = 0;                            % ccw rotation of elasticity matrix in deg 
                                             % from <100> inplane direction about <100> surface normal
     
     %% define the maximum number of degree of freedom to limit the simulation time
