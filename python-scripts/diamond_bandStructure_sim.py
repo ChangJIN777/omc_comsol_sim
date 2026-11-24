@@ -761,7 +761,8 @@ def load_run(run_dir: str) -> Dict[str, td.SimulationData]:
 # --------------------------------------------------------------------------------------------------
 @dataclass
 class BandResult:
-    bands: List[dict]  # per k point: {"k": float, "freq": Hz array (sorted), "Q": array}
+    # per k point: {"k": float, "freq": Hz array (sorted), "Q": array, "amplitude": array, "error": array}
+    bands: List[dict]
     f_light_X: float  # Hz
     has_X: bool  # False if no simulation at k = 0.5 was available
     f_lower: float = float("nan")  # THz, dielectric band edge at X
@@ -780,14 +781,20 @@ def filter_resonances(resonance_data, minQ, minamp, maxerr):
     return resonance_data
 
 
-def find_resonances(signals, p: BandParams) -> Tuple[np.ndarray, np.ndarray]:
-    """(freq in Hz sorted ascending, Q) of the filtered resonances of a tuple of FieldTimeData"""
+def find_resonances_full(signals, p: BandParams) -> Dict[str, np.ndarray]:
+    """{"freq" (Hz, ascending), "Q", "amplitude", "error"} of the filtered resonances of FieldTimeData"""
     rd = ResonanceFinder(freq_window=tuple(p.freq_range)).run(signals=signals)
     rd = filter_resonances(rd, p.minQ, p.minamp, p.maxerr)
-    f = np.atleast_1d(rd.freq.to_numpy()).astype(float)
-    q = np.atleast_1d(rd.Q.to_numpy()).astype(float)
-    order = np.argsort(f)
-    return f[order], q[order]
+    cols = {name: np.atleast_1d(getattr(rd, name).to_numpy()).astype(float)
+            for name in ("freq", "Q", "amplitude", "error")}
+    order = np.argsort(cols["freq"])
+    return {name: values[order] for name, values in cols.items()}
+
+
+def find_resonances(signals, p: BandParams) -> Tuple[np.ndarray, np.ndarray]:
+    """(freq in Hz sorted ascending, Q) of the filtered resonances of a tuple of FieldTimeData"""
+    res = find_resonances_full(signals, p)
+    return res["freq"], res["Q"]
 
 
 def band_edges(freqs_X, p: BandParams) -> Tuple[float, float, float, float, float]:
@@ -811,8 +818,9 @@ def analyze_bands(sim_datas: Dict[str, td.SimulationData], p: BandParams) -> Ban
     """resonances of every k point plus the band gap at X. sim_datas: any dict of SimulationData."""
     bands = []
     for sim_data in sim_datas.values():
-        f, q = find_resonances(sim_data.data, p)
-        bands.append({"k": bloch_k(sim_data.simulation), "freq": f, "Q": q})
+        res = find_resonances_full(sim_data.data, p)
+        bands.append({"k": bloch_k(sim_data.simulation), "freq": res["freq"], "Q": res["Q"],
+                      "amplitude": res["amplitude"], "error": res["error"]})
     bands.sort(key=lambda d: d["k"])
     result = BandResult(bands=bands, f_light_X=p.f_light_X, has_X=False)
     at_X = [d for d in bands if abs(d["k"] - 0.5) < 1e-9]
@@ -898,13 +906,18 @@ def save_bandgap_row(csv_path: str, p: BandParams, fill_factor: float, result: B
 
 
 def save_bands_csv(path: str, result: BandResult, p: BandParams):
-    """every resonance of every k point: k, frequency, Q, and whether it is below the light line"""
+    """every resonance of every k point: k, frequency, Q, whether it is below the light line, and the
+    amplitude and fit error of the harmonic inversion (the last two columns were added later: files without
+    them, and bands without these arrays, are still valid)"""
     with open(path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["k_2pi_over_a", "freq_THz", "Q", "below_light_line"])
+        writer.writerow(["k_2pi_over_a", "freq_THz", "Q", "below_light_line", "amplitude", "error"])
         for d in result.bands:
-            for freq, q in zip(d["freq"], d["Q"]):
-                writer.writerow([d["k"], freq * 1e-12, q, int(freq < d["k"] * C_0 / p.a)])
+            n = len(d["freq"])
+            amp = d.get("amplitude", [""] * n)
+            err = d.get("error", [""] * n)
+            for i, (freq, q) in enumerate(zip(d["freq"], d["Q"])):
+                writer.writerow([d["k"], freq * 1e-12, q, int(freq < d["k"] * C_0 / p.a), amp[i], err[i]])
 
 
 # --------------------------------------------------------------------------------------------------

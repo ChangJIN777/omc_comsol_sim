@@ -15,8 +15,32 @@ mechanical:
   # Bloch sweep band count to resolve the relevant family:
   n_bands: 12
 
+# Rib cell only (celltype: rib; src/objective_rib.rib_score, score version 4).
+# The hole cell does not read this block.
+#   S = G_o + G_m
+#       - lambda_optical      * max(0, optical.min_gap - G_o)^2
+#       - lambda_optical_freq * [1 - 1/(1 + (|f_o - f_o,target| / f_tol)^8)]   detuning
+#       - lambda_light_cone   * max(0, (f_o - c/2a) / (c/2a))^2          light cone
+#       - lambda_mech         * max(0, mechanical.min_gap - G_m)^2
+#       - lambda_mech_window  * (max(0, (f_lo - f_m)/f_lo)^2 + max(0, (f_m - f_hi)/f_hi)^2)
+# G = (f_upper - f_lower)/f_centre; f_o, f_m = gap centres; a = period;
+# f_tol = optical_freq_tol_THz; [f_lo, f_hi] = mech_window_GHz.
+# lambda_optical and lambda_mech are the `scoring` values below (shared with
+# the hole cell). The rib score has no 8 GHz centre term: scoring.
+# lambda_mech_freq and mechanical.target_frequency_GHz do not enter it.
+# The detuning penalty is flat-topped: ~0 inside +/- f_tol of the target,
+# lambda_optical_freq/2 at f_tol, lambda_optical_freq beyond about 1.5 f_tol.
+# It is SUBTRACTED in full whatever the gap size, so lambda_optical_freq is
+# the price of an off-target gap in units of the score (gaps are ~0.1-0.3).
+scoring_rib:
+  lambda_optical_freq: 0.4         # height of the detuning penalty of the optical gap centre
+  optical_freq_tol_THz: 5.0        # half-width f_tol of its flat top about the target
+  lambda_light_cone: 2000.0        # optical gap centre above the zone-edge light line (LAMBDA_LIGHTCONE)
+  mech_window_GHz: [5.0, 10.0]     # allowed range of the mechanical gap centre
+  lambda_mech_window: 2000.0       # mechanical gap centre outside that range
+
 scoring:
-  # S = min(G_o, G_m) - penalties (see src/objective.py)
+  # hole cell: S = min(G_o, G_m) - penalties (see src/objective.py)
   lambda_optical: 10.0
   lambda_mech: 10.0
   # target-frequency penalties (keep gaps in the right spectral range)

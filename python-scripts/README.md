@@ -146,24 +146,69 @@ About 40 % of the box passes both checks with the defaults. For `a` > ~775 nm,
 - **Optical:** `optical: comsol` solves `opt TE` on the rib template and keeps
   only guided modes, using the light-line tracking and pseudo-mode filter in
   `src/comsol_optics.py`. `optical: none` scores the mechanical gap only.
-  There is no window on the gap centre (the old `rib.optical_rel_tol` is
-  deprecated: accepted with a warning and ignored). Every guided gap that lies
-  below the zone-edge light line, in the trusted range, and is wider than the
-  resolvable step is a candidate (`optical_gap_candidates`), and the gap centre
-  `f_c` enters through a Gaussian weight of width `rib.optical_tol_thz`
-  (default 2 THz) about the target `f_t` = 193.4 THz (1550 nm):
-  `optical_freq_penalty = exp(-((f_c - f_t)/optical_tol)^2)`,
-  `optical_gap_effective = optical_gap * optical_freq_penalty`.
-  The candidate with the largest effective gap is taken.
-- **Score (version 2, with optics):**
-  `S = min(G_o_eff, G_m) - lo*max(0, gmin_o - G_o_eff)^2
-       - lm*max(0, gmin_m - G_m)^2 - lmf*((f_m - f_m,t)/f_m,t)^2`,
-  with `G_o_eff = optical_gap_effective`. The weight is 1 on target, 1/e at
-  2 THz and 0.02 at 4 THz from it, so an off-target optical gap scores like no
-  gap. `optical_gap` in the record stays the physical gap. Records carry
-  `score_version` (2 with optics, 1 without, where nothing changed) and
-  `optical_tol_thz`; both are in the id, and `run_opt_comsol.py` seeds the
-  optimizer only with prior results of the same version and tolerance.
+  There is no window on the gap centre. Every guided gap that lies below the
+  zone-edge light line, in the trusted range, and is wider than the
+  resolvable step is a candidate (`optical_gap_candidates`). The candidate
+  with the largest optical contribution to the score (`G_o` minus the three
+  optical penalties below) is taken; ties go to the centre nearest the target.
+- **Score (version 4, `objective_rib.rib_score`):** the sum of the two gaps
+  minus penalties:
+  ```
+  S = G_o + G_m
+      - lo  * max(0, gmin_o - G_o)^2                    pen_size_o
+      - lof * [1 - 1/(1 + (|f_o - f_t|/f_tol)^8)]       pen_detune_o
+      - llc * max(0, (f_o - c/2a)/(c/2a))^2             pen_lightcone_o
+      - lm  * max(0, gmin_m - G_m)^2                    pen_size_m
+      - lmw * ( max(0, (f_lo - f_m)/f_lo)^2
+              + max(0, (f_m - f_hi)/f_hi)^2 )           pen_window_m
+  ```
+  `G` are gap-to-midgap ratios, `f_o` / `f_m` the gap centres, `f_t` = 193.4 THz
+  (1550 nm), `c/2a` the zone-edge light line, `[f_lo, f_hi]` the mechanical
+  window. The weights are in `configs/targets.yaml`:
+
+  | symbol | key | default |
+  |---|---|---|
+  | `gmin_o`, `gmin_m` | `optical.min_gap`, `mechanical.min_gap` | 0.2, 0.2 |
+  | `lo`, `lm` | `scoring.lambda_optical`, `scoring.lambda_mech` (shared with the hole cell) | 10, 10 |
+  | `lof` | `scoring_rib.lambda_optical_freq` | 9 |
+  | `f_tol` | `scoring_rib.optical_freq_tol_THz` | 5 |
+  | `llc` | `scoring_rib.lambda_light_cone` | 2000 |
+  | `f_lo`, `f_hi` | `scoring_rib.mech_window_GHz` | 5, 10 |
+  | `lmw` | `scoring_rib.lambda_mech_window` | 2000 |
+
+  Notes:
+  - The detuning penalty is flat-topped and subtracted in full, whatever the
+    gap size: about 0 inside +/- `f_tol` of the target (0.0007 `lof` at 2 THz),
+    `lof`/2 at `f_tol`, and `lof` beyond about 1.5 `f_tol` (0.996 `lof` at
+    10 THz). `lof` is therefore the price of an off-target gap in units of the
+    score, where gaps are 0.1 to 0.3. A cell with no optical gap pays only the
+    size penalty (0.4), so with `lof` much above ~0.5 it outscores a cell
+    with a real gap that is off target.
+  - There is no penalty on the distance of the mechanical gap centre from
+    8 GHz (`scoring.lambda_mech_freq` and `mechanical.target_frequency_GHz`
+    are not used by the rib score); the 5-10 GHz window is the only rule on
+    it. `pen_center_m` stays in the record as 0.
+  - A guided gap found by the pipeline has both edges below `c/2a`, so its
+    centre is below it too and `pen_lightcone_o` is 0. The term only acts when
+    no optical gap is found and the target itself is above the light line
+    (`a` > ~775 nm).
+  - No optical gap: `G_o` = 0 and the centre is taken at the target, so only
+    the size penalty (and the light-cone term above) applies. No mechanical
+    gap: `G_m` = 0 and no window penalty. A physics that was not solved
+    (`optical: none`) contributes nothing.
+  - Records carry `score_version` = 4, the weights used (`score_weights`,
+    with `optical_freq_tol_THz` and the exponent `optical_freq_power` = 8) and
+    the `pen_*` terms; `optical_freq_penalty` holds `pen_detune_o` and
+    `optical_gap_effective` equals `optical_gap`. The version is in the id
+    (`score=v4`), so earlier records are kept but not reused, and
+    `run_opt_comsol_rib.py` seeds the optimizer only with prior results of the
+    same version and weights.
+  - Earlier versions: 3 had a quadratic detuning penalty
+    `lof*((f_o - f_t)/f_t)^2` and an 8 GHz centre term
+    `lmf*((f_m - 8 GHz)/8 GHz)^2`; 2 a Gaussian weight on `G_o` inside a `min`
+    (`rib.optical_tol_thz`); 1 a centre window (`rib.optical_rel_tol`). Both
+    `rib` keys are deprecated: accepted with a warning and ignored.
+  - The hole cell (`src/objective.py`) is unchanged.
   `optical: tidy3d` scores the same gap from Tidy3D FDTD (see "Optical engine:
   COMSOL vs Tidy3D"). `surrogate` and `mpb` are not available for the rib.
   With the default `xsect: rect` only thickness-even modes are scored.
@@ -427,7 +472,7 @@ mirror plane at mid-thickness, a wedge cell has not:
   (common on resume) is re-scored from the saved `evaluation.json`, so it is
   not uploaded or charged again (`result_source: cached_analysis` in the
   record). What is lost without the files: the resonance filters cannot be
-  re-applied and `plot_tidy3d_bands.py` plots the saved resonances only.
+  re-applied; `plot_tidy3d_bands.py` plots such a cell from `bands.csv`.
 - `k_mode: x_only` = 1 simulation per cell (gap at X; default for the hole);
   `k_mode: sweep` = `n_k` simulations (default for the rib, `n_k = rib.n_k_opt`).
 
@@ -447,23 +492,39 @@ in `optical_tidy3d_detail.x_point`. Records carry `optical_engine`,
 index and cross-section, so such results never overwrite each other (nor the
 records made before 2026-11-23 with n = 2.40).
 
-**Looking at downloaded Tidy3D results.** `scripts/plot_tidy3d_bands.py`
-re-analyzes the `.hdf5` files of a record offline (no cloud call; it blocks the
-network while it runs) and plots the band diagram with the gap as the pipeline
-scores it. It needs tidy3d, so run it with the `tidy` conda env:
+**Looking at Tidy3D results.** `scripts/plot_tidy3d_bands.py` plots the band
+diagram of a record with the gap as the pipeline scores it. Its normal input
+is the analysis the run saves next to the data, which stays when the `.hdf5`
+files are pruned (`keep_hdf5: best | none`): `bands.csv` (k, frequency, Q and,
+for runs since 2026-11-24, amplitude and fit error of every resonance) plus
+`params.json` / `evaluation.json`. That path needs no tidy3d, so any Python of
+the repo works, and it makes no cloud call (the script blocks the network).
 ```bash
-python scripts/plot_tidy3d_bands.py cand_f85eb9955630       # a record id
+python scripts/plot_tidy3d_bands.py cand_6551b0da7ff6       # a record id
+python scripts/plot_tidy3d_bands.py results/tidy3d/rib/cand_6551b0da7ff6/bands.csv
 python scripts/plot_tidy3d_bands.py --all                   # every record + index CSV
-python scripts/plot_tidy3d_bands.py cand_f85eb9955630 --min-guided-q 1000 --light-line-margin 0.03
+python scripts/plot_tidy3d_bands.py cand_6551b0da7ff6 --min-guided-q 1000 --light-line-margin 0.03
+python scripts/plot_tidy3d_bands.py cand_3e6531b03ecc --reanalyze   # .hdf5 again: `tidy` env
 ```
-Inputs: record ids, `<celltype>/<record id>`, run folders or `.hdf5` files.
-Output goes to `<record folder>/analysis/` (or `--outdir`):
-`band_diagram.png`, `resonances.csv` (k, f, Q, amplitude, error, guided) and
-`summary.json` (scored gap, weight, gap at X, counts, and whether it matches
-the run's `evaluation.json`). `--minQ`, `--minamp`, `--maxerr` and the
-frequency window can be overridden; `--min-guided-q` / `--light-line-margin`
-additionally report the gap without low-Q or light-line "guided" peaks, which
-harmonic inversion produces and which can bound or split a gap.
+Inputs: record ids, `<celltype>/<record id>`, run folders, a `bands.csv`, or
+`.hdf5` files. Output goes to `<record folder>/analysis/` (or `--outdir`):
+`band_diagram.png`, `resonances.csv` and `summary.json` (scored gap and its
+penalty terms, gap at X, counts, data source, and whether it matches the
+run's `evaluation.json`). A rib record is scored as its run scored it: the
+score version, weights and (version 2) `optical_tol_thz` are taken from
+`evaluation.json`, else its sqlite record (read-only), else the current
+version 4 with `configs/targets.yaml`. `--score-version 2|3|4` overrides.
+For version 4 the band target +/- `optical_freq_tol_THz` is drawn.
+- `--min-guided-q` / `--light-line-margin` work on the CSV: they also report
+  the gap without low-Q or light-line "guided" peaks, which harmonic inversion
+  produces and which can bound or split a gap.
+- `--reanalyze`, `--minQ`, `--minamp`, `--maxerr` and the frequency window
+  re-run ResonanceFinder on the `.hdf5` time traces: they need tidy3d (the
+  `tidy` conda env) and the files, and are ignored with a note for a record
+  whose files were pruned.
+- Without `params.json` the period and geometry come from `evaluation.json` or
+  `plan.json`; for a bare `bands.csv` give `--a-um` and `--celltype`. Without
+  tidy3d the unit-cell panel is drawn with sharp corners.
 
 **How comparable are the two engines?**
 - `rect`: same cell, same index, same thickness-even family. Left: fillets are

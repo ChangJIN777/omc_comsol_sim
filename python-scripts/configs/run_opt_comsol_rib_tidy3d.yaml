@@ -6,8 +6,8 @@
 # not seeded with gaps of the other).
 celltype: rib
 
-n_init: 10
-n_iter: 20
+n_init: 20
+n_iter: 100
 backend: optuna            # auto | random | optuna
 
 optical: tidy3d          # comsol | tidy3d | none
@@ -32,10 +32,9 @@ rib:
   optical_study: "opt TE"
   n_k_opt: 10
   n_bands_opt: 10
-  optical_tol_thz: 5.0      # Gaussian width [THz] of the optical gap weight
-                            # w = exp(-((f_c - f_t)/optical_tol_thz)^2), f_c = gap
-                            # centre, f_t = 193.4 THz (1550 nm); score uses G_o * w.
-                            # w = 1 on target, 1/e at f_c = f_t +/- optical_tol_thz
+  # (optical_tol_thz and optical_rel_tol are no longer used: score version 3
+  #  penalizes the detuning of the gap centre quadratically, with the weight
+  #  scoring_rib.lambda_optical_freq of configs/targets.yaml)
   rxtal_deg: 0              # crystal rotation about the slab normal [deg]:
                             # 0 = beam along <100>, 45 = <110> (P.rxtal of
                             # omc-comsol-chang). Mechanics only; multiples
@@ -56,9 +55,9 @@ tidy3d:
                            # estimate upload drafts, record the maximum cost,
                            #          delete them; nothing is started
                            #          (needs allow_cloud: true; costs nothing)
-  max_credits: 1.0         # FlexCredit budget of this process (a whole loop):
+  max_credits: 2.0         # FlexCredit budget of this process (a whole loop):
                            # a batch whose estimate does not fit is not started
-  max_credits_total: 5.0  # optional budget over ALL runs (credit_ledger.jsonl)
+  max_credits_total: 25.0  # optional budget over ALL runs (credit_ledger.jsonl)
   k_mode: sweep            # sweep   n_k simulations per cell from the light
                            #         line to X; scored with the same guided
                            #         interval gap as optical: comsol
@@ -91,5 +90,5 @@ tidy3d:
 out_fig: "results/figures_rib_tidy3d/opt_progress_rib_tidy3d.png"
 out_json: "results/opt_results_rib_tidy3d.json"
 
-fresh_start: true   # true = delete the results_dir and start from scratch
+fresh_start: false   # true = delete the results_dir and start from scratch
 skip_characterization: true   # the end-of-run characterization is COMSOL optics

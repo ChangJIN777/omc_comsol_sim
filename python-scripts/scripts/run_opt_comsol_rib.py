@@ -32,7 +32,8 @@ from geometry import (load_bounds, n_dim, phys_to_u, rib_search_vars,  # noqa: E
                       RibGeometry, resolve_rxtal)
 from objective import check_xsect_backend                             # noqa: E402
 from objective_rib import (evaluate_rib_candidate, score_version,     # noqa: E402
-                           DEFAULT_OPTICAL_TOL_THZ, RIB_K_GRID_REL)
+                           RIB_K_GRID_REL, optical_terms,
+                           rib_score_weights)
 from optimizer import initialize_optimizer                            # noqa: E402
 from database import save_result, db_path                             # noqa: E402
 
@@ -40,10 +41,10 @@ C0 = 299_792_458.0
 _CFG_DIR = os.path.join(_HERE, "..", "configs")
 _DEFAULT_CONFIG = os.path.join(_CFG_DIR, "run_opt_comsol_rib.yaml")
 _RIB_OPTION_KEYS = ("mech_gap_mode", "n_k", "n_bands_mech", "optical_study",
-                    "n_k_opt", "n_bands_opt", "optical_tol_thz", "rxtal_deg",
+                    "n_k_opt", "n_bands_opt", "rxtal_deg",
                     # deprecated, ignored with a FutureWarning by
                     # objective_rib.evaluate_rib_candidate:
-                    "optical_rel_tol")
+                    "optical_rel_tol", "optical_tol_thz")
 
 
 def _load_targets():
@@ -170,28 +171,33 @@ def _plot_progress(results, out_path):
 
 # ---- optimization loop --------------------------------------------------------
 
-def _same_scoring(rec, version, tol_thz):
+def _same_scoring(rec, version, weights):
     """Was this record scored the way the current run scores?
 
-    Records without score_version are version 1 (the +/- optical_rel_tol
-    window with quadratic penalties). For version 2 the Gaussian width must
-    match too: another optical_tol_thz is another objective.
+    Same score version (records without one are version 1) and, from version
+    3 on, the same weights (score_weights of the record against
+    objective_rib.rib_score_weights of this run): other weights in
+    targets.yaml are another objective. Records of another version never
+    match (version 3 weights also differ from version 4's in their keys).
     """
     if int(rec.get("score_version") or 1) != int(version):
         return False
-    if version == 1:
+    if version < 3:
         return True
-    old = rec.get("optical_tol_thz")
-    return old is not None and abs(float(old) - float(tol_thz)) < 1e-12
+    old = rec.get("score_weights")
+    if not isinstance(old, dict) or set(old) != set(weights):
+        return False
+    return all(np.allclose(np.asarray(old[k], dtype=float),
+                           np.asarray(weights[k], dtype=float), rtol=1e-12, atol=0)
+               for k in weights)
 
 
-def _warm_start(opt, prior, bounds, nd, rxtal=0.0, version=1,
-                tol_thz=DEFAULT_OPTICAL_TOL_THZ):
+def _warm_start(opt, prior, bounds, nd, rxtal=0.0, version=1, weights=None):
     """Seed an Optuna study with prior successful records (u recomputed from
     the stored physical params with the CURRENT bounds). Only records of the
     same crystal rotation `rxtal` (deg; records without rxtal_deg count as 0)
-    and of the same scoring (_same_scoring: score version and, for version 2,
-    optical_tol_thz) are used, since scores of another definition would
+    and of the same scoring (_same_scoring: score version and weights) are
+    used, since scores of another definition would
     mislead the optimizer. Returns the count."""
     study = getattr(opt, "study", None)
     if study is None or not prior:
@@ -205,7 +211,7 @@ def _warm_start(opt, prior, bounds, nd, rxtal=0.0, version=1,
             continue
         if float(r.get("rxtal_deg") or 0.0) != rxtal:
             continue
-        if not _same_scoring(r, version, tol_thz):
+        if not _same_scoring(r, version, weights or {}):
             continue
         u = phys_to_u(r["params"], bounds, celltype="rib")
         study.add_trial(optuna.trial.create_trial(
@@ -258,19 +264,19 @@ def main_rib(cfg, cfg_path):
 
     opt = initialize_optimizer(None, backend=cfg.get("backend", "auto"),
                                n_init=cfg["n_init"], n_dim=nd)
-    # scoring of this run: version (2 as soon as optics is scored) and the
-    # Gaussian width; prior records scored otherwise are not used as seeds
+    # scoring of this run: version and weights; prior records scored
+    # otherwise are not used as seeds
     version = score_version(optical)
-    tol_thz = float(opts.get("optical_tol_thz", DEFAULT_OPTICAL_TOL_THZ))
+    weights = rib_score_weights(targets)
     n_seed = _warm_start(opt, prior, bounds, nd, rxtal=rxtal, version=version,
-                         tol_thz=tol_thz)
+                         weights=weights)
     n_other = sum(1 for r in prior if r.get("status") == "success"
-                  and not _same_scoring(r, version, tol_thz))
+                  and not _same_scoring(r, version, weights))
     print(f"Rib cell | variables {names} | optimizer {type(opt).__name__} "
           f"(seeded with {n_seed}) | optical={optical} mech={mech} "
           f"xsect={xsect} {opts}")
     print(f"Scoring: version {version}"
-          + (f", optical_tol_thz = {tol_thz:g}" if version != 1 else "")
+          + f" (G_o + G_m - penalties; weights {weights})"
           + (f" | {n_other} prior result(s) with another scoring are kept in "
              f"{out_json} but not used as seeds" if n_other else ""))
     print(f"Results: {out_json}  |  sqlite: {db}  |  figure: {out_fig}")
@@ -284,7 +290,7 @@ def main_rib(cfg, cfg_path):
         keeper = Hdf5Keeper(tidy3d_options)
         keeper.seed([r for r in prior
                      if float(r.get("rxtal_deg") or 0.0) == rxtal
-                     and _same_scoring(r, version, tol_thz)])
+                     and _same_scoring(r, version, weights)])
         if keeper.policy != "all":
             print(f"Tidy3D keep_hdf5: {keeper.policy} (params.json, plan.json, "
                   "bands.csv, evaluation.json are kept for every cell)")
@@ -379,7 +385,7 @@ def characterize_rib(cfg):
     from comsol_client import THICKNESS_PARAM, require_rib_air_disk
     from comsol_optics import (_full_opt_sweep, guided_interval_gaps,
                                opt_sweep_at, rib_k_grid, study_z_family,
-                               select_gap_by_penalized_size)
+                               select_gap_by_value)
 
     with open(cfg["out_json"]) as fh:
         results = json.load(fh)
@@ -388,10 +394,10 @@ def characterize_rib(cfg):
     rxtal = resolve_rxtal(opts.get("rxtal_deg"))
     # ... and its scoring: scores of another definition are not comparable
     version = score_version(cfg.get("optical", "comsol"))
-    tol_thz = float(opts.get("optical_tol_thz", DEFAULT_OPTICAL_TOL_THZ))
+    weights = rib_score_weights(_load_targets())
     succ = [r for r in results if r.get("status") == "success"
             and float(r.get("rxtal_deg") or 0.0) == rxtal
-            and _same_scoring(r, version, tol_thz)]
+            and _same_scoring(r, version, weights)]
     if not succ:
         print("No successful rib result to characterize.")
         return None
@@ -400,7 +406,6 @@ def characterize_rib(cfg):
     targets = _load_targets()
     f_o_t = C0 / (targets["optical"]["target_wavelength_nm"] * 1e-9)
     f_m_t = targets["mechanical"]["target_frequency_GHz"] * 1e9
-    tol_hz = float(opts.get("optical_tol_thz", DEFAULT_OPTICAL_TOL_THZ)) * 1e12
     study_o = opts.get("optical_study", "opt TE")
     out_dir = os.path.dirname(cfg["out_fig"]) or "."
     os.makedirs(out_dir, exist_ok=True)
@@ -437,9 +442,14 @@ def characterize_rib(cfg):
     k_det, f_det = opt_sweep_at(model, g, study_o, k_det,
                                 int(opts.get("n_bands_opt", 10)), f_target=f_o_t,
                                 **zkw(study_o))
-    # as the optimization: every guided gap, the best gap * Gaussian weight
-    gap_o, pen_o, _ = select_gap_by_penalized_size(
-        guided_interval_gaps(k_det, f_det, g.a), f_o_t, tol_hz)
+    # as the optimization: every guided gap, the best score contribution
+    gap_o, _ = select_gap_by_value(
+        guided_interval_gaps(k_det, f_det, g.a),
+        lambda gp: optical_terms(gp.normalized_gap, gp.f_center, f_o_t, g.a,
+                                 weights)["value"], f_o_t)
+    o_terms = optical_terms(gap_o.normalized_gap,
+                            gap_o.f_center if gap_o.found else f_o_t, f_o_t,
+                            g.a, weights)
 
     np.savez(os.path.join(out_dir, "best_rib_char_data.npz"),
              params_names=np.array(sorted(best["params"])),
@@ -455,7 +465,7 @@ def characterize_rib(cfg):
     ax.axis("off")
     o_txt = (f"{100*gap_o.normalized_gap:.1f} %  ({gap_o.f_lower*1e-12:.1f}-"
              f"{gap_o.f_upper*1e-12:.1f} THz, {C0/gap_o.f_center*1e9:.0f} nm), "
-             f"weight {pen_o:.3f}"
+             f"detuning penalty {o_terms['pen_detune_o']:.4f}"
              if gap_o.found else "none")
     m_txt = (f"{100*gap_m.normalized_gap:.1f} %  ({gap_m.f_lower*1e-9:.2f}-"
              f"{gap_m.f_upper*1e-9:.2f} GHz)" if gap_m.found else "none")

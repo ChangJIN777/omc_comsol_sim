@@ -264,15 +264,18 @@ def test_rib_objective_with_fake_comsol():
     assert abs(rec["mechanical_gap"] - 0.24) < 1e-9           # complete gap
     assert sorted(rec["mech_gaps"]) == ["antisym", "complete", "sym"]
     assert abs(rec["optical_gap"] - 35.0 / 192.5) < 1e-6
-    # score version 2: the optical gap (175-210 THz, centre 192.5 THz, 0.914 THz
-    # below the 193.414 THz target) is weighted by exp(-(0.914/2)^2) = 0.811
-    pen = np.exp(-((192.5e12 - 299_792_458.0 / 1550e-9) / 2e12) ** 2)
-    g_eff = 35.0 / 192.5 * pen
-    assert abs(rec["optical_freq_penalty"] - pen) < 1e-12
-    assert abs(rec["optical_gap_effective"] - g_eff) < 1e-12
-    assert abs(rec["score"] - (g_eff - 10.0 * (0.20 - g_eff) ** 2
-                               - ((6.25 - 8.0) / 8.0) ** 2)) < 1e-9
-    assert rec["score_version"] == 2 and rec_sym["score_version"] == 1
+    # score version 4: G_o + G_m - penalties. Optical gap 175-210 THz (18.2 %,
+    # centre 192.5 THz): size penalty 10*(0.2 - 0.1818)^2, flat-top detuning
+    # 9*r/(1 + r), r = (0.914/5)^8 (~1e-5). Mechanical gap 24 % centred at
+    # 6.25 GHz: inside the 5-10 GHz window, and no 8 GHz centre term.
+    g_o, f_t = 35.0 / 192.5, 299_792_458.0 / 1550e-9
+    r = (abs(192.5e12 - f_t) / 5e12) ** 8
+    lof = __import__("yaml").safe_load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "configs", "targets.yaml")))["scoring_rib"]["lambda_optical_freq"]   # shipped weight
+    pens = 10.0 * (0.20 - g_o) ** 2 + lof * r / (1 + r)
+    assert abs(rec["score"] - (g_o + 0.24 - pens)) < 1e-9
+    assert rec["pen_window_m"] == 0.0 and rec["pen_lightcone_o"] == 0.0
+    assert rec["pen_center_m"] == 0.0
+    assert rec["score_version"] == 4 and rec_sym["score_version"] == 4
     assert rec_sym["optical_gap"] is None
     assert abs(rec_sym["mechanical_gap"] - 3.0 / 7.0) < 1e-9
     assert rec["id"] != rec_sym["id"]
@@ -389,105 +392,251 @@ def _rib_with_fakes(optical_bands, **kw):
         lambda g, study, k_frac, n_bands, f_target, **o: optical_bands(k_frac))
     comsol_client.template_path = lambda *a, **o: "omc_unitcell_rib.mph"
     try:
-        return evaluate_candidate(_rib_u0(), celltype="rib", optical_backend="comsol",
-                                  **{"mech_backend": "comsol", **kw})
+        return evaluate_candidate(_rib_u0(), celltype="rib",
+                                  **{"optical_backend": "comsol",
+                                     "mech_backend": "comsol", **kw})
     finally:
         (acoustic_comsol.run_mechanical_comsol, objective_rib._solve_optical_bands,
          comsol_client.template_path) = real
 
 
-def test_rib_score_uses_the_weighted_optical_gap():
-    import inspect
+def test_rib_score_v4_terms_and_sum():
+    """Score version 4: G_o + G_m minus five separate penalties (flat-top
+    detuning, no 8 GHz centre term); version-3 weights still score as v3."""
     import objective_rib
     targets = dict(optical=dict(min_gap=0.20), mechanical=dict(min_gap=0.20),
                    scoring=dict(lambda_optical=10.0, lambda_mech=10.0,
                                 lambda_optical_freq=1.0, lambda_mech_freq=1.0))
-    score = objective_rib._score_rib
-    # both gaps: min(G_o_eff, G_m) - size penalties - mechanical centre penalty
-    assert abs(score(0.30, 0.25, 8e9, 8e9, targets) - 0.25) < 1e-15
-    assert abs(score(0.10, 0.25, 8e9, 8e9, targets) - (0.10 - 10 * 0.10 ** 2)) < 1e-15
-    assert abs(score(0.30, 0.25, 7.2e9, 8e9, targets) - (0.25 - 0.1 ** 2)) < 1e-15
-    # the optical centre penalty of version 1 (lambda_optical_freq) is gone:
-    # the function does not even take the optical centre any more
-    assert list(inspect.signature(score).parameters) == [
-        "G_o_eff", "G_m", "f_m_c", "f_m_t", "targets"]
-    nan = float("nan")                                   # one gap only / none
-    assert abs(score(0.30, nan, nan, 8e9, targets) - 0.30) < 1e-15
-    assert abs(score(nan, 0.25, 8e9, 8e9, targets) - 0.25) < 1e-15
-    assert score(nan, nan, nan, 8e9, targets) == 0.0
-    assert abs(score(0.0, nan, nan, 8e9, targets) + 10 * 0.2 ** 2) < 1e-15
+    w = objective_rib.rib_score_weights(targets)
+    assert w == dict(gmin_o=0.2, gmin_m=0.2, lambda_optical=10.0, lambda_mech=10.0,
+                     lambda_optical_freq=9.0, optical_freq_tol_THz=5.0,
+                     optical_freq_power=8.0,
+                     lambda_light_cone=2000.0, lambda_mech_window=2000.0,
+                     mech_window_GHz=[5.0, 10.0])          # rib defaults; hole's lof = 1 unused
+    assert "lambda_mech_freq" not in w                     # no 8 GHz centre term
+    assert objective_rib.SCORE_VERSION == 4
+    w3 = objective_rib.rib_score_weights(targets, version=3)   # an older record's set
+    assert w3 == dict(gmin_o=0.2, gmin_m=0.2, lambda_optical=10.0, lambda_mech=10.0,
+                      lambda_mech_freq=1.0, lambda_optical_freq=9.0,
+                      lambda_light_cone=2000.0, lambda_mech_window=2000.0,
+                      mech_window_GHz=[5.0, 10.0])
+    a = 570e-9                                             # light line at X: 263 THz
+    kw = dict(a=a, f_o_target=F_T, f_m_target=8e9, weights=w)
+    score = lambda *args: objective_rib.rib_score(*args, **kw)   # noqa: E731
 
-    # end to end: an off-target gap is found, recorded, and weighted to ~ 0
-    rec = _rib_with_fakes(lambda k: _two_gap_bands(k, upper=(186.0, 187.0)))
-    assert rec["status"] == "success", rec.get("error")
-    assert abs(rec["optical_gap"] - 35.0 / 167.5) < 1e-9         # physical gap
-    assert rec["optical_gap"] == rec["optical_gap_unpenalized"]
-    assert abs(rec["optical_center_frequency"] - 167.5e12) < 1.0
-    assert rec["optical_freq_penalty"] < 1e-30 and rec["optical_gap_effective"] < 1e-30
-    assert abs(rec["score"] - (0.0 - 10 * 0.2 ** 2 - ((6.25 - 8) / 8) ** 2)) < 1e-9
-    assert rec["optical_gap_detail"]["found"] and len(rec["optical_gap_candidates"]) == 2
-    assert rec["optical_tol_thz"] == 2.0 and rec["score_version"] == 2
-    assert rec["optical_rel_tol"] is None                        # deprecated key kept
-    json.dumps(rec, allow_nan=False)
-    # two gaps near and far: the one near the target is scored, all are listed
-    near = lambda k: _two_gap_bands(k, upper=(188.0, 200.0))     # noqa: E731
-    rec2 = _rib_with_fakes(near)
-    pen = np.exp(-((194e12 - F_T) / 2e12) ** 2)
-    assert abs(rec2["optical_center_frequency"] - 194e12) < 1.0
-    assert abs(rec2["optical_freq_penalty"] - pen) < 1e-12
-    assert abs(rec2["optical_gap_effective"] - 12.0 / 194.0 * pen) < 1e-12
-    assert abs(rec2["optical_gap"] - 12.0 / 194.0) < 1e-12
-    g_eff = 12.0 / 194.0 * pen
-    assert abs(rec2["score"] - (g_eff - 10 * (0.2 - g_eff) ** 2
-                                - ((6.25 - 8) / 8) ** 2)) < 1e-9
-    assert sum(c["chosen"] for c in rec2["optical_gap_candidates"]) == 1
-    assert len(rec2["optical_gap_candidates"]) == 3
-    # a wider tolerance: another objective, another id, and the wide gap wins
-    rec3 = _rib_with_fakes(near, rib_options=dict(optical_tol_thz=1000.0))
-    assert rec3["id"] != rec2["id"] and rec3["optical_tol_thz"] == 1000.0
-    assert abs(rec3["optical_center_frequency"] - 167.5e12) < 1.0
-    for bad in (0.0, -2.0):
+    # the two gaps ADD (versions 1 and 2 took the smaller one)
+    s, terms = score(0.30, F_T, True, 0.25, 8e9, True)
+    assert abs(s - 0.55) < 1e-15 and all(v == 0.0 for v in terms.values())
+    assert s > min(0.30, 0.25)
+    # size penalties, each on its own gap
+    s, terms = score(0.10, F_T, True, 0.15, 8e9, True)
+    assert abs(terms["pen_size_o"] - 10 * 0.10 ** 2) < 1e-15
+    assert abs(terms["pen_size_m"] - 10 * 0.05 ** 2) < 1e-15
+    assert abs(s - (0.25 - 0.1 - 0.025)) < 1e-15
+    # detuning: flat-top, subtracted outside the gap term
+    #   lof * [1 - 1/(1 + (|df|/f_tol)^8)], lof = 9, f_tol = 5 THz
+    det = lambda df: score(0.30, F_T + df, True, 0.25, 8e9, True)[1]["pen_detune_o"]  # noqa: E731
+    assert det(0.0) == 0.0
+    assert det(1e12) < 3e-5 and det(2.5e12) < 0.04         # flat inside the tolerance
+    assert abs(det(5e12) - 4.5) < 1e-9                     # lof/2 at f_tol
+    assert abs(det(10e12) - 9.0 * (1 - 1 / 257.0)) < 1e-9  # saturated: 8.965
+    assert abs(det(4e12) - 9.0 * (1 - 1 / (1 + 0.8 ** 8))) < 1e-9
+    assert abs(det(100e12) - 9.0) < 1e-8 and det(100e12) <= 9.0
+    for df in (0.5e12, 3e12, 5e12, 7e12, 20e12):           # symmetric in +/- df
+        assert abs(det(df) - det(-df)) < 1e-9
+    xs = [det(i * 0.25e12) for i in range(120)]
+    assert all(b >= a_ for a_, b in zip(xs, xs[1:]))       # monotonic in |df|
+    s, terms = score(0.30, F_T + 10e12, True, 0.25, 8e9, True)
+    assert abs(s - (0.55 - terms["pen_detune_o"])) < 1e-12
+    w2thz = dict(w, optical_freq_tol_THz=2.0)              # the tolerance is a weight
+    assert abs(objective_rib.optical_terms(0.3, F_T - 2e12, F_T, a, w2thz)["pen_detune_o"]
+               - 4.5) < 1e-9
+    # version-3 weights: the quadratic of that version
+    assert abs(objective_rib.optical_terms(0.3, F_T + 10e12, F_T, a, w3)["pen_detune_o"]
+               - 9.0 * (10e12 / F_T) ** 2) < 1e-15
+    # light cone: centre above c/2a
+    ll = 299_792_458.0 / (2 * a)
+    _, terms = score(0.30, 1.05 * ll, True, 0.25, 8e9, True)
+    assert abs(terms["pen_lightcone_o"] - 2000 * 0.05 ** 2) < 1e-9          # = 5
+    assert score(0.30, ll, True, 0.25, 8e9, True)[1]["pen_lightcone_o"] == 0.0
+    assert score(0.30, 0.9 * ll, True, 0.25, 8e9, True)[1]["pen_lightcone_o"] == 0.0
+    # mechanical window [5, 10] GHz: quadratic in the fractional excess
+    win = lambda f: score(0.30, F_T, True, 0.25, f, True)[1]["pen_window_m"]   # noqa: E731
+    assert win(5e9) == 0.0 and win(7.3e9) == 0.0 and win(10e9) == 0.0
+    assert abs(win(4e9) - 2000 * 0.2 ** 2) < 1e-9          # (5-4)/5  -> 80
+    assert abs(win(12e9) - 2000 * 0.2 ** 2) < 1e-9         # (12-10)/10 -> 80
+    assert abs(win(4.5e9) - 2000 * 0.1 ** 2) < 1e-9 and abs(win(11e9) - 2000 * 0.01) < 1e-9
+    # no 8 GHz centre term: anywhere in the window scores the same,
+    # whatever mechanical.target_frequency_GHz says
+    for f_m in (5e9, 6e9, 8e9, 10e9):
+        for f_m_t in (8e9, 6e9):
+            s, terms = objective_rib.rib_score(0.30, F_T, True, 0.25, f_m, True, a=a,
+                                               f_o_target=F_T, f_m_target=f_m_t, weights=w)
+            assert terms["pen_center_m"] == 0.0 and abs(s - 0.55) < 1e-15
+    # ... while a version-3 record's weights still give that term
+    s3, t3 = objective_rib.rib_score(0.30, F_T, True, 0.25, 6e9, True, a=a,
+                                     f_o_target=F_T, f_m_target=8e9, weights=w3)
+    assert abs(t3["pen_center_m"] - 0.25 ** 2) < 1e-15 and abs(s3 - (0.55 - 0.0625)) < 1e-15
+    # a gap that was searched for but not found
+    s, terms = score(0.0, 0.0, False, 0.25, 8e9, True)     # optical
+    assert abs(terms["pen_size_o"] - 0.4) < 1e-15 and terms["pen_detune_o"] == 0.0
+    assert terms["pen_lightcone_o"] == 0.0 and abs(s - (0.25 - 0.4)) < 1e-15
+    big = dict(kw, a=1000e-9)                              # target above c/2a = 150 THz
+    t2 = objective_rib.rib_score(0.0, 0.0, False, 0.25, 8e9, True, **big)[1]
+    assert abs(t2["pen_lightcone_o"] - 2000 * ((F_T - 149.896229e12) / 149.896229e12) ** 2) < 1e-3
+    s, terms = score(0.30, F_T, True, 0.0, 0.0, False)     # mechanical
+    assert abs(terms["pen_size_m"] - 0.4) < 1e-15 and terms["pen_window_m"] == 0.0
+    assert terms["pen_center_m"] == 0.0 and abs(s - (0.30 - 0.4)) < 1e-15
+    # physics that was not solved: only the other gap's terms
+    nan = float("nan")
+    s, terms = score(0.30, F_T, True, nan, nan, False)
+    assert abs(s - 0.30) < 1e-15 and terms["pen_size_m"] is None and terms["pen_window_m"] is None
+    s, terms = score(nan, nan, False, 0.25, 4e9, True)
+    assert abs(s - (0.25 - 80)) < 1e-9 and terms["pen_detune_o"] is None
+    assert score(nan, nan, False, nan, nan, False) == (0.0, dict.fromkeys(terms))
+
+    # the same light-cone and window numbers as scripts/run_opt_comsol.py
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+    import matplotlib
+    matplotlib.use("Agg")
+    import run_opt_comsol as hole
+    assert hole.LAMBDA_LIGHTCONE == 2000.0
+    assert (hole.MECH_F_MIN, hole.MECH_F_MAX) == (5e9, 10e9)
+    for f_c, aa in ((F_T + 10e12, 570e-9), (F_T - 25e12, 700e-9), (240e12, 700e-9),
+                    (200e12, 900e-9)):
+        o = objective_rib.optical_terms(0.30, f_c, F_T, aa, w)
+        ref_lc = hole.LAMBDA_LIGHTCONE * max(
+            0.0, (f_c - 299_792_458.0 / (2 * aa)) / (299_792_458.0 / (2 * aa))) ** 2
+        assert abs(o["pen_lightcone_o"] - ref_lc) < 1e-12
+    # on target the whole score is the hole loop's (its detuning term is the
+    # quadratic of version 3; its size penalties are not triggered here)
+    for f_m in (5.5e9, 8e9, 9.5e9):           # in the window (its weight there is 0)
+        ref = hole.score_result(0.30, 0.25, hole.OPT_F_TARGET, f_m, a=570e-9)
+        mine = objective_rib.rib_score(0.30, F_T, True, 0.25, f_m, True, a=570e-9,
+                                       f_o_target=F_T, f_m_target=8e9, weights=w)[0]
+        assert abs(mine - ref) < 1e-9, f_m
+    # weights: the rib block of targets.yaml, validated
+    t2 = dict(targets, scoring_rib=dict(lambda_optical_freq=3.0, mech_window_GHz=[6, 9]))
+    w2 = objective_rib.rib_score_weights(t2)
+    assert w2["lambda_optical_freq"] == 3.0 and w2["mech_window_GHz"] == [6.0, 9.0]
+    assert w2["lambda_light_cone"] == 2000.0 and w2["optical_freq_tol_THz"] == 5.0
+    t3 = dict(targets, scoring_rib=dict(optical_freq_tol_THz=3.0))
+    assert objective_rib.rib_score_weights(t3)["optical_freq_tol_THz"] == 3.0
+    for bad in (dict(lambda_optcal_freq=1.0), dict(mech_window_GHz=[10, 5]),
+                dict(lambda_light_cone=-1.0), dict(optical_freq_tol_THz=0.0)):
         try:
-            _rib_with_fakes(near, rib_options=dict(optical_tol_thz=bad))
+            objective_rib.rib_score_weights(dict(targets, scoring_rib=bad))
         except ValueError:
             pass
         else:
-            raise AssertionError(f"optical_tol_thz {bad} accepted")
+            raise AssertionError(f"scoring_rib {bad} accepted")
+    import yaml
+    with open(os.path.join(os.path.dirname(__file__), "..", "configs", "targets.yaml")) as fh:
+        shipped = yaml.safe_load(fh)
+    # every rib key is spelled out there (the values are the user's to tune)
+    assert set(shipped["scoring_rib"]) == set(objective_rib.RIB_SCORING_DEFAULTS)
+    objective_rib.rib_score_weights(shipped)
+    assert shipped["scoring"]["lambda_optical_freq"] == 1.0          # hole: untouched
 
 
-def test_deprecated_optical_rel_tol_warns_and_is_ignored():
+def test_rib_gap_choice_and_record_under_v4():
+    """The candidate with the largest optical score contribution is scored;
+    the record carries the terms."""
+    import objective_rib
+    from comsol_optics import guided_interval_gaps, rib_k_grid, select_gap_by_value
+    a = 570e-9
+    k = rib_k_grid(a, 13)
+    import objective as obj
+    w = objective_rib.rib_score_weights(obj._load("targets.yaml"))
+    value = lambda gp: objective_rib.optical_terms(   # noqa: E731
+        gp.normalized_gap, gp.f_center, F_T, a, w)["value"]
+    # 150-185 THz (20.9 %, 26 THz below target) against 188-200 THz (6.2 %, on target)
+    gaps = guided_interval_gaps(k, _two_gap_bands(k, upper=(188.0, 200.0)), a)
+    gp, cands = select_gap_by_value(gaps, value, F_T)
+    lof = w["lambda_optical_freq"]                                   # shipped weight
+    flat = lambda df, lof=lof: lof * (1 - 1 / (1 + (abs(df) / 5e12) ** 8))   # noqa: E731
+    v_wide = 35 / 167.5 - flat(167.5e12 - F_T)                         # 0.209 - lof
+    v_near = 12 / 194.0 - 10 * (0.2 - 12 / 194.0) ** 2 - flat(194e12 - F_T)
+    assert abs(cands[0]["value"] - max(v_wide, v_near)) < 1e-12
+    assert v_near > v_wide                # the on-target gap wins: flat-top penalty
+    assert abs(flat(167.5e12 - F_T) - lof) < 1e-4 and flat(194e12 - F_T) < 1e-6
+    assert round(gp.f_center / 1e12, 1) == 194.0 and cands[0]["chosen"]
+    assert [c["chosen"] for c in cands] == [True, False, False]
+    assert all("value" in c and "freq_penalty" not in c for c in cands)
+    # with a weak detuning weight the wide off-target gap is chosen instead
+    w_weak = dict(w, lambda_optical_freq=0.05)
+    gp9, _ = select_gap_by_value(gaps, lambda g_: objective_rib.optical_terms(
+        g_.normalized_gap, g_.f_center, F_T, a, w_weak)["value"], F_T)
+    assert round(gp9.f_center / 1e12, 1) == 167.5
+    # ... as with the weights of a version-3 record (quadratic detuning)
+    w3 = objective_rib.rib_score_weights(obj._load("targets.yaml"), version=3)
+    gp3, _ = select_gap_by_value(gaps, lambda g_: objective_rib.optical_terms(
+        g_.normalized_gap, g_.f_center, F_T, a, w3)["value"], F_T)
+    assert round(gp3.f_center / 1e12, 1) == 167.5
+    assert select_gap_by_value([], value, F_T)[1] == []
+
+    rec = _rib_with_fakes(lambda kk: _two_gap_bands(kk, upper=(188.0, 200.0)))
+    assert rec["status"] == "success", rec.get("error")
+    assert rec["score_version"] == 4 and rec["score_weights"] == w
+    assert abs(rec["optical_center_frequency"] - 194e12) < 1.0
+    assert abs(rec["optical_gap"] - 12 / 194.0) < 1e-12
+    assert rec["optical_gap_effective"] == rec["optical_gap"] == rec["optical_gap_unpenalized"]
+    det = flat(194e12 - F_T)
+    assert abs(rec["pen_detune_o"] - det) < 1e-12 and rec["optical_freq_penalty"] == rec["pen_detune_o"]
+    size = 10 * (0.2 - 12 / 194.0) ** 2
+    assert abs(rec["pen_size_o"] - size) < 1e-12 and rec["pen_lightcone_o"] == 0.0
+    # mechanics of the fake: complete gap 5.5-7.0 GHz (24 %), centre 6.25 GHz:
+    # in the window, and no penalty for being 1.75 GHz from 8 GHz
+    assert rec["pen_size_m"] == 0.0 and rec["pen_window_m"] == 0.0
+    assert rec["pen_center_m"] == 0.0
+    assert abs(rec["score"] - (12 / 194.0 + 0.24 - size - det)) < 1e-9
+    assert rec["optical_tol_thz"] is None and rec["optical_rel_tol"] is None
+    assert len(rec["optical_gap_candidates"]) == 3
+    json.dumps(rec, allow_nan=False)
+    # no optical gap at all: size penalty only (centre taken as the target)
+    none = _rib_with_fakes(lambda kk: _two_gap_bands(kk)[:, :1])   # one band only
+    assert none["optical_gap"] == 0.0 and abs(none["pen_size_o"] - 0.4) < 1e-12
+    assert none["pen_detune_o"] == 0.0 and none["pen_lightcone_o"] == 0.0
+    # mechanics only: the window term applies there too
+    mech = _rib_with_fakes(lambda kk: None, optical_backend="none")
+    assert mech["optical_gap"] is None and mech["pen_size_o"] is None
+    assert mech["score_version"] == 4
+    assert abs(mech["score"] - 0.24) < 1e-9
+
+
+def test_deprecated_rib_options_warn_and_are_ignored():
     import warnings
     near = lambda k: _two_gap_bands(k, upper=(188.0, 200.0))     # noqa: E731
-    ref = _rib_with_fakes(near)
     with warnings.catch_warnings(record=True) as seen:
         warnings.simplefilter("always")
-        old = _rib_with_fakes(near, rib_options=dict(optical_rel_tol=0.001))
-    assert any(issubclass(w.category, FutureWarning)
-               and "optical_rel_tol" in str(w.message) for w in seen)
-    # ignored: a +/- 0.1 % window would have rejected every gap here
-    assert old["id"] == ref["id"] and old["score"] == ref["score"]
-    assert old["optical_gap"] == ref["optical_gap"] > 0
-    with warnings.catch_warnings(record=True) as seen:           # no key: no warning
-        warnings.simplefilter("always")
-        _rib_with_fakes(near)
-    assert not [w for w in seen if "optical_rel_tol" in str(w.message)]
-    # the loop script still accepts the old key in a config
+        ref = _rib_with_fakes(near)
+    assert not [w for w in seen if "deprecated" in str(w.message)]
+    for name, val in (("optical_tol_thz", 2.0), ("optical_tol_thz", 500.0),
+                      ("optical_rel_tol", 0.001)):
+        with warnings.catch_warnings(record=True) as seen:
+            warnings.simplefilter("always")
+            old = _rib_with_fakes(near, rib_options={name: val})
+        assert any(issubclass(w.category, FutureWarning) and name in str(w.message)
+                   and "ignored" in str(w.message) for w in seen), name
+        # ignored: same id, same gap, same score
+        assert old["id"] == ref["id"] and old["score"] == ref["score"], name
+        assert old["optical_center_frequency"] == ref["optical_center_frequency"]
+        assert old["optical_tol_thz"] is None
+    # the loop script still accepts both keys in a config
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
     import matplotlib
     matplotlib.use("Agg")
     import run_opt_comsol_rib as loop
-    assert loop._rib_options(dict(rib=dict(optical_rel_tol=0.3, n_k=9))) == dict(
-        optical_rel_tol=0.3, n_k=9)
-    assert "optical_tol_thz" in loop._RIB_OPTION_KEYS
-    # every shipped rib config has the new key and not the old one
+    assert loop._rib_options(dict(rib=dict(optical_rel_tol=0.3, optical_tol_thz=5.0,
+                                           n_k=9)))["n_k"] == 9
+    # the shipped rib configs carry neither key any more
     import yaml
     cfg_dir = os.path.join(os.path.dirname(__file__), "..", "configs")
     for name in ("run_one_rib", "run_loop_rib", "run_opt_comsol_rib", "run_batch_rib",
                  "run_one_rib_tidy3d", "run_opt_comsol_rib_tidy3d"):
         with open(os.path.join(cfg_dir, name + ".yaml")) as fh:
             rib = yaml.safe_load(fh)["rib"]
-        # (the value is the user's to tune; it only has to be there and valid)
-        assert rib["optical_tol_thz"] > 0 and "optical_rel_tol" not in rib, name
+        assert "optical_tol_thz" not in rib and "optical_rel_tol" not in rib, name
 
 
 def test_score_version_keeps_ids_and_warm_starts_apart():
@@ -496,29 +645,41 @@ def test_score_version_keeps_ids_and_warm_starts_apart():
     import matplotlib
     matplotlib.use("Agg")
     import run_opt_comsol_rib as loop
-    assert objective_rib.SCORE_VERSION == 2
-    assert objective_rib.score_version("none") == 1
-    assert objective_rib.score_version("comsol") == objective_rib.score_version("tidy3d") == 2
+    assert objective_rib.score_version("none") == objective_rib.score_version("comsol") == 4
     rec = _rib_with_fakes(lambda k: _two_gap_bands(k, upper=(188.0, 200.0)))
-    # the id of a version-1 record of the same cell and settings (the old
-    # tuple ended with optical_rel_tol = 0.30 and had no score tag)
     base = ("comsol", "comsol", "complete", 15, 20, "opt TE", 13, 10, 0.30,
             "n=2.3860|xsect=rect|z=even")
-    assert rec["id"] != objective_rib._rib_id(_rib_u0(), base)
-    assert rec["id"] == objective_rib._rib_id(_rib_u0(), base + ("score=v2|otol=2THz",))
-    # without optics the score did not change: version 1, the old id
+    v1, v2 = objective_rib._rib_id(_rib_u0(), base), objective_rib._rib_id(
+        _rib_u0(), base + ("score=v2|otol=2THz",))
+    v3 = objective_rib._rib_id(_rib_u0(), base + ("score=v3",))
+    assert rec["id"] not in (v1, v2, v3)                   # never replaces v1 / v2 / v3
+    assert rec["id"] == objective_rib._rib_id(_rib_u0(), base + ("score=v4",))
+    # mechanics-only records changed score too (window term): new id as well
     none = evaluate_candidate(_rib_u0(), celltype="rib", optical_backend="none",
                               mech_backend="surrogate_stub")
-    assert none["score_version"] == 1 and none["id"] == objective_rib._rib_id(
-        _rib_u0(), ("none", "surrogate_stub", "complete", 15, 20, "opt TE",
-                    13, 10, 0.30))
-    # warm start filter
+    legacy = ("none", "surrogate_stub", "complete", 15, 20, "opt TE", 13, 10, 0.30)
+    assert none["score_version"] == 4
+    assert none["id"] == objective_rib._rib_id(_rib_u0(), legacy + ("score=v4",))
+    assert none["id"] != objective_rib._rib_id(_rib_u0(), legacy)
+    assert none["id"] != objective_rib._rib_id(_rib_u0(), legacy + ("score=v3",))
+    # warm start filter: version and weights
+    w = rec["score_weights"]
     same = loop._same_scoring
-    old_rec = dict(status="success", score=0.5, params=rec["params"])   # no marker: v1
-    assert same(old_rec, 1, 2.0) and not same(old_rec, 2, 2.0)
-    assert same(rec, 2, 2.0) and not same(rec, 1, 2.0)
-    assert not same(rec, 2, 5.0)                                  # other tolerance
-    assert not same(dict(score_version=2), 2, 2.0)                # tolerance unknown
+    v1_rec = dict(status="success", score=0.5, params=rec["params"])        # no marker
+    v2_rec = dict(v1_rec, score_version=2, optical_tol_thz=5.0, score=0.4)
+    import objective as obj
+    w3 = objective_rib.rib_score_weights(obj._load("targets.yaml"), version=3)
+    v3_rec = dict(rec, score_version=3, score_weights=w3, score=0.3)
+    assert same(rec, 4, w) and not same(v1_rec, 4, w) and not same(v2_rec, 4, w)
+    assert not same(v3_rec, 4, w) and not same(rec, 3, w3) and same(v3_rec, 3, w3)
+    assert not same(dict(v3_rec, score_version=4), 4, w)   # v3 weights are not v4's
+    assert same(v1_rec, 1, w) and same(v2_rec, 2, w)
+    other = dict(rec, score_weights=dict(w, lambda_optical_freq=1.0))
+    assert not same(other, 4, w)                           # other weights: other objective
+    assert not same(dict(rec, score_weights=dict(w, optical_freq_tol_THz=2.0)), 4, w)
+    assert not same(dict(rec, score_weights=dict(w, optical_freq_power=4.0)), 4, w)
+    assert not same(dict(rec, score_weights=None), 4, w)
+    assert same(json.loads(json.dumps(rec)), 4, w)         # survives the JSON round trip
     try:
         import optuna  # noqa: F401
     except ImportError:
@@ -533,29 +694,55 @@ def test_score_version_keeps_ids_and_warm_starts_apart():
         def add_trial(self, trial):
             self.trials.append(trial)
 
-    prior = [dict(rec, score=0.11), dict(rec, score=0.12, optical_tol_thz=5.0),
-             old_rec, dict(rec, score=0.13, status="infeasible")]
+    prior = [dict(rec, score=0.11), dict(other, score=0.12), v1_rec, v2_rec, v3_rec,
+             dict(rec, score=0.13, status="infeasible")]
     opt = type("O", (), {})()
     opt.study = FakeStudy()
-    n = loop._warm_start(opt, prior, load_bounds(), len(rec["u"]), version=2, tol_thz=2.0)
+    n = loop._warm_start(opt, prior, load_bounds(), len(rec["u"]), version=4, weights=w)
     assert n == 1 and [t.value for t in opt.study.trials] == [0.11]
-    opt.study = FakeStudy()
-    n = loop._warm_start(opt, prior, load_bounds(), len(rec["u"]), version=1, tol_thz=2.0)
-    assert n == 1 and [t.value for t in opt.study.trials] == [0.5]
 
 
 def test_hole_scoring_is_unchanged_by_the_rib_score_change():
+    """objective._score and run_opt_comsol.score_result against independent
+    re-statements of their formulas, and no rib key in a hole record."""
     import objective
     targets = objective._load("targets.yaml")
     f_t = 299_792_458.0 / (targets["optical"]["target_wavelength_nm"] * 1e-9)
-    # objective._score still has the quadratic optical centre penalty
-    s = objective._score(0.25, 0.25, 0.9 * f_t, 8e9, f_t, 8e9, targets)
-    assert abs(s - (0.25 - targets["scoring"]["lambda_optical_freq"] * 0.1 ** 2)) < 1e-12
+    s = targets["scoring"]
+    assert (s["lambda_optical"], s["lambda_mech"], s["lambda_optical_freq"],
+            s["lambda_mech_freq"]) == (10.0, 10.0, 1.0, 1.0)
+    rng = np.random.default_rng(7)
+    for _ in range(200):
+        G_o, G_m = rng.uniform(0, 0.4, 2)
+        f_o, f_m = f_t * rng.uniform(0.6, 1.4), 8e9 * rng.uniform(0.3, 2.0)
+        ref = (min(G_o, G_m) - 10 * max(0, 0.2 - G_o) ** 2 - 10 * max(0, 0.2 - G_m) ** 2
+               - ((f_o - f_t) / f_t) ** 2 - ((f_m - 8e9) / 8e9) ** 2)
+        assert abs(objective._score(G_o, G_m, f_o, f_m, f_t, 8e9, targets) - ref) < 1e-12
+        ref1 = G_o - 10 * max(0, 0.2 - G_o) ** 2 - ((f_o - f_t) / f_t) ** 2
+        assert abs(objective._score(G_o, float("nan"), f_o, f_m, f_t, 8e9, targets) - ref1) < 1e-12
     rec = evaluate_candidate([0.5, 0.6, 0.5, 0.6], optical_backend="surrogate",
                              mech_backend="surrogate_stub")
-    for key in ("score_version", "optical_tol_thz", "optical_freq_penalty",
-                "optical_gap_effective", "optical_gap_candidates"):
+    for key in ("score_version", "score_weights", "optical_tol_thz", "optical_freq_penalty",
+                "optical_gap_effective", "optical_gap_candidates", "pen_size_o",
+                "pen_detune_o", "pen_lightcone_o", "pen_size_m", "pen_window_m",
+                "pen_center_m"):
         assert key not in rec, key
+    # the hole loop: constants and formula as they were
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+    import matplotlib
+    matplotlib.use("Agg")
+    import run_opt_comsol as hole
+    assert (hole.G_MIN_OPT, hole.G_MIN_MECH, hole.LAMBDA_OPT, hole.LAMBDA_MECH,
+            hole.LAMBDA_OPT_F, hole.LAMBDA_MECH_F, hole.LAMBDA_LIGHTCONE) == (
+        0.15, 0.20, 20.0, 5.0, 9.0, 0.0, 2000.0)
+    for _ in range(200):
+        G_o, G_m = rng.uniform(0, 0.4, 2)
+        f_o, a = f_t * rng.uniform(0.6, 1.4), rng.uniform(500e-9, 900e-9)
+        ll = 299_792_458.0 / (2 * a)
+        ref = (G_o + G_m - 20 * max(0, 0.15 - G_o) ** 2 - 5 * max(0, 0.20 - G_m) ** 2
+               - 9 * ((f_o - f_t) / f_t) ** 2 - 2000 * max(0, (f_o - ll) / ll) ** 2)
+        assert abs(hole.score_result(G_o, G_m, f_o, 3e9, a=a) - ref) < 1e-10
+    assert hole.score_result(float("nan"), 0.2, f_t, 8e9) == -5.0
     # the hole gap function keeps its centre window
     from comsol_optics import optical_gap_tracked
     assert not optical_gap_tracked(np.array([[100e12, 120e12]])).found
@@ -580,8 +767,9 @@ if __name__ == "__main__":
     test_rib_results_use_their_own_database()
     test_freq_penalty_numbers()
     test_gap_centre_window_is_gone_and_best_weighted_gap_is_chosen()
-    test_rib_score_uses_the_weighted_optical_gap()
-    test_deprecated_optical_rel_tol_warns_and_is_ignored()
+    test_rib_score_v4_terms_and_sum()
+    test_rib_gap_choice_and_record_under_v4()
+    test_deprecated_rib_options_warn_and_are_ignored()
     test_score_version_keeps_ids_and_warm_starts_apart()
     test_hole_scoring_is_unchanged_by_the_rib_score_change()
     print("all tests passed")

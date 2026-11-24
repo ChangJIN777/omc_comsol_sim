@@ -181,7 +181,8 @@ def _template_mentions(path: str, word: str) -> bool:
     never blocks a run.
     """
     try:
-        stamp = (path, os.path.getmtime(path), word)
+        st = os.stat(path)       # size too: a rewrite within one mtime tick
+        stamp = (path, st.st_mtime_ns, st.st_size, word)
     except OSError:
         return True
     if stamp not in _mentions_checked:

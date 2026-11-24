@@ -324,7 +324,7 @@ def test_module_x_point_gap_is_recorded_next_to_the_score():
 def _fake_run(calls):
     def run(g, *, celltype, eval_id, f_target, options, rel_tol=0.30,
             optical_study="opt TE", n_k_default=None, xsect=None,
-            verbose=True, on_progress=None, optical_tol_hz=None):
+            verbose=True, on_progress=None, optical_tol_hz=None, **kw):
         opts = ot.Tidy3DOptions.from_config(options)
         k_mode, n_k = opts.k_sampling(celltype, n_k_default)
         calls.append((celltype, type(g).__name__, eval_id, k_mode, n_k))
@@ -393,7 +393,7 @@ def test_engine_switch_and_distinct_ids():
         HOLE_U, ("surrogate", "surrogate_stub", "n=2.3860|xsect=rect"))
     old = ("comsol", "surrogate_stub", "complete", 15, 20, "opt TE", 13, 10, 0.30)
     assert r_com["id"] == objective_rib._rib_id(
-        _rib_u0(), old + ("n=2.3860|xsect=rect|z=even", "score=v2|otol=2THz"))
+        _rib_u0(), old + ("n=2.3860|xsect=rect|z=even", "score=v4"))
     assert h_com["id"] != objective._hash_u(HOLE_U, ("comsol", "surrogate_stub"))
     assert r_com["id"] != objective_rib._rib_id(_rib_u0(), old)
     # defaults per cell type: hole x_only, rib sweep with n_k_opt points
@@ -705,26 +705,49 @@ def test_rib_tidy3d_gap_choice_has_no_centre_window():
                                    k_mode="x_only")[0].found       # windowed
     assert not ot.score_resonances("hole", [1.0], row, 600e-9, f_target=F_T,
                                    k_mode="x_only")[0].found       # hole: unchanged
-    # end to end (mocked tidy3d): the record carries choice, weight, version
+    # score versions 3 and 4: the choice by a value function (gap minus penalties)
+    value = lambda g: g.normalized_gap - 9.0 * ((g.f_center - F_T) / F_T) ** 2   # noqa: E731
+    out = {}
+    gp, method = ot.score_resonances("rib", k, freqs, a, f_target=F_T, k_mode="sweep",
+                                     window_hz=window, gap_value=value, out=out)
+    # 150-185 THz: 0.209 - 0.162 = 0.047; 188-200 THz: 0.062 - 0.0001 = 0.062
+    assert method == "guided_interval_gap" and round(gp.f_center / 1e12, 1) == 194.0
+    assert [c["chosen"] for c in out["candidates"]] == [True, False, False]
+    assert abs(out["candidates"][0]["value"] - value(gp)) < 1e-15
+    assert "freq_penalty" not in out                      # no Gaussian weight
+    out = {}
+    gx, method = ot.score_resonances("rib", [1.0], row, a, f_target=F_T,
+                                     k_mode="x_only", gap_value=value, out=out)
+    assert method == "optical_gap_tracked_x" and gx.found and len(out["candidates"]) == 1
+    # end to end (mocked tidy3d): the record carries choice, terms, version
     with fake_tidy3d(cost=0.1) as (td, bs), tempfile.TemporaryDirectory() as tmp:
         _install_fake_analysis(bs, a)
         rec = _eval(_rib_u0(), tmp, celltype="rib", allow_cloud=True, max_credits=2.0)
         assert rec["status"] == "success", rec.get("error")
-        pen = np.exp(-((192.5e12 - F_T) / 2e12) ** 2)              # 175-210 THz
-        assert abs(rec["optical_freq_penalty"] - pen) < 1e-9
-        assert abs(rec["optical_gap_effective"] - 35.0 / 192.5 * pen) < 1e-9
-        assert rec["optical_gap"] == rec["optical_gap_unpenalized"]
-        assert rec["score_version"] == 2 and rec["optical_tol_thz"] == 2.0
-        assert any(c["chosen"] for c in rec["optical_gap_candidates"])
-        g_eff = rec["optical_gap_effective"]
-        assert abs(rec["score"] - (g_eff - 10 * (0.2 - g_eff) ** 2)) < 1e-9
+        g_o = 35.0 / 192.5                                         # 175-210 THz
+        r8 = (abs(192.5e12 - F_T) / 5e12) ** 8                     # flat-top detuning
+        lof = __import__("yaml").safe_load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "configs", "targets.yaml")))["scoring_rib"]["lambda_optical_freq"]   # shipped weight
+        det = lof * r8 / (1 + r8)
+        assert abs(rec["optical_gap"] - g_o) < 1e-9
+        assert abs(rec["pen_detune_o"] - det) < 1e-9 and rec["optical_freq_penalty"] == rec["pen_detune_o"]
+        assert rec["pen_lightcone_o"] == 0.0 and rec["pen_size_m"] is None
+        assert rec["optical_gap_effective"] == rec["optical_gap"] == rec["optical_gap_unpenalized"]
+        assert rec["score_version"] == 4 and rec["optical_tol_thz"] is None
+        d = rec["optical_tidy3d_detail"]
+        assert d["score_version"] == 4 and d["optical_tol_thz"] is None
+        assert any(c["chosen"] and "value" in c for c in rec["optical_gap_candidates"])
+        assert abs(rec["score"] - (g_o - 10 * (0.2 - g_o) ** 2 - det)) < 1e-9
         json.dumps(rec, allow_nan=False)
         rx = _eval(_rib_u0(), tmp, celltype="rib", allow_cloud=True,
                    max_credits=2.0, k_mode="x_only")
         assert rx["status"] == "success" and rx["id"] != rec["id"]
-        # two lowest guided at X: 140 / 175 THz, centre 157.5 THz: found, weight ~ 0
+        # two lowest guided at X: 140 / 175 THz, centre 157.5 THz: found, and
+        # penalized quadratically for its detuning (not weighted to zero)
         assert abs(rx["optical_center_frequency"] - 157.5e12) < 1e6
-        assert rx["optical_freq_penalty"] < 1e-30 and len(rx["optical_gap_candidates"]) == 1
+        rx8 = (abs(157.5e12 - F_T) / 5e12) ** 8                    # far off: ~ lof
+        assert abs(rx["pen_detune_o"] - lof * rx8 / (1 + rx8)) < 1e-9
+        assert lof * (1 - 1e-6) < rx["pen_detune_o"] <= lof
+        assert len(rx["optical_gap_candidates"]) == 1
 
 
 # ---- tidy3d.keep_hdf5: pruning of downloaded files, reuse of the saved analysis ----

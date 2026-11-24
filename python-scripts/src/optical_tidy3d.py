@@ -115,7 +115,7 @@ import numpy as np
 from bandgap import Gap
 from comsol_optics import (guided_interval_gap, guided_interval_gaps,
                            optical_gap_tracked, resolvable_step_hz, rib_k_grid,
-                           select_gap_by_penalized_size)
+                           select_gap_by_penalized_size, select_gap_by_value)
 from geometry import (WEDGE_ANGLE_DEG, diamond_index, resolve_xsect,
                       wedge_depths, z_mirror_symmetric)
 
@@ -375,8 +375,15 @@ def guided_only(k_frac, freqs, a):
 
 def score_resonances(celltype, k_frac, freqs, a, *, f_target, rel_tol=0.30,
                      k_mode="sweep", window_hz=None, optical_tol_hz=None,
-                     out=None):
+                     out=None, gap_value=None):
     """Gap of Tidy3D resonances with the gap logic used for COMSOL.
+
+    gap_value (rib scoring, score version 3): a callable Gap -> float, the
+    gap's contribution to the score. When given, the +/- rel_tol centre rule
+    is NOT applied: a sweep takes every guided interval gap and returns the
+    one with the largest value (comsol_optics.select_gap_by_value), x_only
+    returns the fundamental gap at X wherever it is centred. `out` (a dict)
+    then receives "candidates". It takes precedence over optical_tol_hz.
 
     optical_tol_hz (rib scoring, score version 2): when given, the +/- rel_tol
     centre rule is NOT applied. A sweep takes every guided interval gap
@@ -407,6 +414,13 @@ def score_resonances(celltype, k_frac, freqs, a, *, f_target, rel_tol=0.30,
     if celltype == "rib" and k_mode == "sweep":
         if window_hz is None:
             raise ValueError("the rib interval gap needs the FDTD window")
+        if gap_value is not None:
+            gp, cands = select_gap_by_value(
+                guided_interval_gaps(k_frac, freqs, a, coverage=tuple(window_hz)),
+                gap_value, f_target)
+            if out is not None:
+                out.update(candidates=cands)
+            return gp, "guided_interval_gap"
         if optical_tol_hz is None:
             gp = guided_interval_gap(k_frac, freqs, a, f_target=f_target,
                                      rel_tol=rel_tol, coverage=tuple(window_hz))
@@ -421,8 +435,12 @@ def score_resonances(celltype, k_frac, freqs, a, *, f_target, rel_tol=0.30,
     gp = optical_gap_tracked(guided_only(k_frac, freqs, a)[keep],
                              f_target=f_target,
                              rel_tol=(rel_tol if optical_tol_hz is None
-                                      else float("inf")))
-    if optical_tol_hz is not None and out is not None:
+                                      and gap_value is None else float("inf")))
+    if gap_value is not None:
+        if out is not None:
+            out.update(candidates=select_gap_by_value(
+                [gp] if gp.found else [], gap_value, f_target)[1])
+    elif optical_tol_hz is not None and out is not None:
         gp, pen, cands = select_gap_by_penalized_size(
             [gp] if gp.found else [], f_target, optical_tol_hz)
         out.update(freq_penalty=pen, candidates=cands)
@@ -833,7 +851,7 @@ def expected_symmetry(optical_study="opt TE", xsect=None):
 def run_optical_tidy3d(g, *, celltype, eval_id, f_target, options,
                        rel_tol=0.30, optical_study="opt TE", n_k_default=None,
                        xsect=None, verbose=True, on_progress=None,
-                       optical_tol_hz=None):
+                       optical_tol_hz=None, gap_value=None, score_version=None):
     """Optical gap of one cell with Tidy3D. Enforce feasibility BEFORE calling.
 
     optical_tol_hz: rib scoring (see score_resonances). rel_tol then only
@@ -860,12 +878,13 @@ def run_optical_tidy3d(g, *, celltype, eval_id, f_target, options,
             g, celltype=celltype, eval_id=eval_id, f_target=f_target,
             options=options, rel_tol=rel_tol, optical_study=optical_study,
             n_k_default=n_k_default, xsect=xsect, verbose=bool(verbose),
-            say=say, optical_tol_hz=optical_tol_hz)
+            say=say, optical_tol_hz=optical_tol_hz, gap_value=gap_value,
+            score_version=score_version)
 
 
 def _run_optical_tidy3d(g, *, celltype, eval_id, f_target, options, rel_tol,
                         optical_study, n_k_default, xsect, verbose, say,
-                        optical_tol_hz=None):
+                        optical_tol_hz=None, gap_value=None, score_version=None):
     """The evaluation behind run_optical_tidy3d (same arguments).
 
     g: geometry.Geometry or RibGeometry (meters). eval_id: record id, used as
@@ -1030,13 +1049,20 @@ def _run_optical_tidy3d(g, *, celltype, eval_id, f_target, options, rel_tol,
     gp, method = score_resonances(celltype, k_frac, freqs, g.a,
                                   f_target=f_target, rel_tol=rel_tol,
                                   k_mode=k_mode, window_hz=window,
-                                  optical_tol_hz=optical_tol_hz, out=picked)
+                                  optical_tol_hz=optical_tol_hz, out=picked,
+                                  gap_value=gap_value)
     detail.update(
         reused_download=bool(reused), gap_method=method,
         # where the resonances came from: a cloud run of this call, .hdf5
         # files already on disk, or the saved analysis of a pruned cell
         result_source=("cached_analysis" if cached is not None
                        else "hdf5" if reused else "cloud"),
+        # rib scoring, version 2 only: the Gaussian width used (else None)
+        optical_tol_thz=(None if optical_tol_hz is None or gap_value is not None
+                         else float(optical_tol_hz) * 1e-12),
+        # scoring version of the caller (rib: 3 = sum of gaps with detuning,
+        # light-cone and mechanical-window penalties; None for the hole cell)
+        score_version=score_version,
         keep_hdf5=opts.keep_hdf5,
         session_credits=session_credits(),
         min_resolvable_Hz=_num(resolvable_step_hz(k_frac, g.a)),
@@ -1053,7 +1079,9 @@ def _run_optical_tidy3d(g, *, celltype, eval_id, f_target, options, rel_tol,
     record = dict(optical_tidy3d_detail=detail,
                   optical_gap_detail=_gap_to_dict(gp),
                   _k_o=[float(x) for x in k_frac], _freqs_o=freqs_list)
-    if optical_tol_hz is not None:      # rib: Gaussian-weighted gap choice
+    if gap_value is not None:           # rib, score version 3
+        record.update(optical_gap_candidates=picked.get("candidates", []))
+    elif optical_tol_hz is not None:    # rib, version 2: Gaussian-weighted choice
         record.update(optical_freq_penalty=float(picked.get("freq_penalty", 0.0)),
                       optical_gap_candidates=picked.get("candidates", []))
     if cached is None:

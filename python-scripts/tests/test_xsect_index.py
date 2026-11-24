@@ -256,9 +256,11 @@ def test_xsect_in_record_and_id():
     assert recs["rib", "comsol", "rect"]["optical_comsol_detail"]["z_family"] == "even"
     assert recs["rib", "comsol", "wedge"]["optical_comsol_detail"]["z_family"] is None
     assert recs["rib", "comsol", "wedge"]["wedge_depths"]["rib"] > 0
-    # a rectangular rib cell without optics keeps the id it always had
+    # a rectangular rib cell without optics: the old tuple plus the score
+    # version (version 3 changed the mechanical scoring too)
     legacy = objective_rib._rib_id(_rib_u0(), (
-        "none", "surrogate_stub", "complete", 15, 20, "opt TE", 13, 10, 0.30))
+        "none", "surrogate_stub", "complete", 15, 20, "opt TE", 13, 10, 0.30,
+        "score=v4"))
     assert recs["rib", "none", "rect"]["id"] == legacy
     assert recs["rib", "none", "wedge"]["id"] != legacy
     assert recs["rib", "none", "rect"]["optical_index"] is None
@@ -1346,9 +1348,9 @@ def test_rib_objective_rxtal_in_record_id_and_mechanics():
     assert base["rxtal_deg"] == r0["rxtal_deg"] == r90["rxtal_deg"] == 0.0
     assert r45["rxtal_deg"] == 45.0
     assert base["id"] == r0["id"] == r90["id"] != r45["id"]
-    # unrotated ids are those of before the option
+    # unrotated ids carry no rotation tag (only the score version)
     legacy = objective_rib._rib_id(_rib_u0(), (
-        "none", "comsol", "complete", 15, 20, "opt TE", 13, 10, 0.30))
+        "none", "comsol", "complete", 15, 20, "opt TE", 13, 10, 0.30, "score=v4"))
     assert base["id"] == legacy
     assert checked == [("rect", 45.0)]                 # before the solves, once
     assert [kw["rxtal_deg"] for kw in mech_kw] == [0.0] * 6 + [45.0] * 2

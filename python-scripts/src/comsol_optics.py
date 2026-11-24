@@ -412,6 +412,29 @@ def select_gap_by_penalized_size(gaps, f_target, tol_hz):
     return cands[0][2], float(cands[0][1]), listed
 
 
+def select_gap_by_value(gaps, value_fn, f_target=None):
+    """The gap with the largest value_fn(gap) (rib scoring, score version 3).
+
+    value_fn: Gap -> float, the gap's contribution to the score (for the rib:
+    gap size minus its size, detuning and light-cone penalties, see
+    objective_rib.optical_terms). Returns (gap, candidates): the chosen Gap
+    (Gap.empty() for an empty list) and every candidate as a dict (f_lower,
+    f_upper, f_center, normalized_gap, value, chosen), best first. Ties go to
+    the gap nearest f_target when it is given.
+    """
+    cands = [(float(value_fn(gp)), gp) for gp in gaps]
+    if not cands:
+        return Gap.empty(), []
+    cands.sort(key=lambda c: (-c[0], abs(c[1].f_center - f_target)
+                              if f_target is not None else 0.0))
+    listed = [dict(f_lower=float(gp.f_lower), f_upper=float(gp.f_upper),
+                   f_center=float(gp.f_center),
+                   normalized_gap=float(gp.normalized_gap),
+                   value=float(val), chosen=(i == 0))
+              for i, (val, gp) in enumerate(cands)]
+    return cands[0][1], listed
+
+
 def guided_interval_gaps(k_frac, freqs, a, min_THz=10.0, vg_max_over_c=1.0,
                          coverage=None) -> list:
     """EVERY guided-mode gap of one symmetry sector (no centre-frequency rule).
