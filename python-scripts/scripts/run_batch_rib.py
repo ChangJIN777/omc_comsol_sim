@@ -237,6 +237,13 @@ def main(argv=None):
     _log(f"queue: {n} item(s), {sum(map(_needs_comsol, items))} need COMSOL")
     done, stopped, rc = [], None, 0
     t_start = time.time()
+    # tidy3d.keep_hdf5 (top-level tidy3d section): `best` keeps the .hdf5 files
+    # of the best-scoring Tidy3D item of this queue only; `none` is applied per
+    # item by the adapter. See optical_tidy3d.Hdf5Keeper.
+    keeper = None
+    if any(it["optical"] == "tidy3d" for it in items):
+        from optical_tidy3d import Hdf5Keeper
+        keeper = Hdf5Keeper(cfg.get("tidy3d"))
     try:
         for i, it in enumerate(items):
             _log(f"[{i + 1}/{n}] {it['where']}: celltype={it['celltype']} "
@@ -249,6 +256,8 @@ def main(argv=None):
                                      tidy3d_options=it["tidy3d"] or None,
                                      xsect=it["xsect"], verbose=not quiet)
             save_result(rec, db_path(it["celltype"]))      # every item, as run_one.py
+            if keeper is not None:
+                keeper.update(rec)                         # after it is saved
             done.append(dict(where=it["where"], id=rec["id"],
                              status=rec["status"], score=rec.get("score"),
                              optical_gap=rec.get("optical_gap"),

@@ -131,6 +131,15 @@ DEFAULT_RESULTS_DIR = os.path.join("results", "tidy3d")
 STUDY_TO_MODE = {"opt TE": "TE", "opt TM": "TM"}
 MODES = ("run", "dry_run", "estimate")
 K_MODES = ("x_only", "sweep")
+# tidy3d.keep_hdf5: what happens to the downloaded SimulationData files
+#   all   keep them for every cell (default)
+#   best  loops keep them for the best-scoring cell only (Hdf5Keeper)
+#   none  delete them as soon as a cell is analyzed
+# The small files of a cell (params.json, plan.json, bands.csv,
+# evaluation.json) always stay, and a repeated cell is re-scored from them
+# instead of being paid again (_load_cached_analysis).
+KEEP_HDF5 = ("all", "best", "none")
+NOTE_NAME = "hdf5_note.json"
 # default k sampling per cell type: (k_mode, n_k for a sweep)
 #   hole: the scored gap is the fundamental gap at X -> 1 simulation.
 #   rib : guided_interval_gap needs guided modes at several k (None = the rib
@@ -174,6 +183,7 @@ class Tidy3DOptions:
     results_dir: str = DEFAULT_RESULTS_DIR  # relative to python-scripts/
     folder_name: str = "omc_unitcell"       # Tidy3D web folder of the tasks
     reuse_results: bool = True      # re-analyze downloaded results, no cloud
+    keep_hdf5: str = "all"          # all | best | none (see KEEP_HDF5)
     index: float | None = None      # None = configs/materials.yaml
     params: dict = field(default_factory=dict)   # PARAM_OVERRIDES only
 
@@ -194,6 +204,9 @@ class Tidy3DOptions:
                                  f"{getattr(opts, name)!r}")
         if opts.mode not in MODES:
             raise ValueError(f"tidy3d.mode {opts.mode!r}: use one of {MODES}")
+        if opts.keep_hdf5 not in KEEP_HDF5:
+            raise ValueError(f"tidy3d.keep_hdf5 {opts.keep_hdf5!r}: use one of "
+                             f"{KEEP_HDF5}")
         if opts.k_mode is not None and opts.k_mode not in K_MODES:
             raise ValueError(f"tidy3d.k_mode {opts.k_mode!r}: use one of {K_MODES}")
         for name in ("max_credits", "max_credits_total", "index"):
@@ -613,6 +626,189 @@ def _load_downloaded(bs, run_dir, params, plan):
     return {key: found[key] for key in wanted}
 
 
+def _load_cached_analysis(run_dir, params, plan, window, eval_id):
+    """Resonances of this exact cell saved by an earlier analysis, or None.
+
+    For a cell whose .hdf5 files are gone (tidy3d.keep_hdf5 best / none).
+    evaluation.json holds what the scoring needs: the k points and every
+    resonance frequency per k; the frequency window is in its detail. It is
+    used only if params.json matches the current parameters (geometry, index,
+    numerics, resonance filters), the id, the k points and the window agree.
+    Returns (k_frac array, freqs [n_k, n] Hz with NaN padding).
+    """
+    try:
+        with open(os.path.join(run_dir, "params.json")) as fh:
+            if not _same_params(json.load(fh), params):
+                return None
+        with open(os.path.join(run_dir, "evaluation.json")) as fh:
+            ev = json.load(fh)
+        if str(ev.get("id")) != str(eval_id):
+            return None
+        k_frac = np.asarray(ev["k_frac"], dtype=float)
+        rows = ev["freqs_hz"]
+        win = (ev.get("detail") or {}).get("window_THz")
+        if (k_frac.shape != (len(plan.k_frac),) or len(rows) != k_frac.size
+                or np.max(np.abs(k_frac - np.asarray(plan.k_frac))) > 1e-6
+                or win is None
+                or abs(win[0] * 1e12 - window[0]) > 1e6
+                or abs(win[1] * 1e12 - window[1]) > 1e6):
+            return None
+        n = max([len(r) for r in rows] + [1])
+        freqs = np.full((k_frac.size, n), np.nan)
+        for i, row in enumerate(rows):
+            vals = [np.nan if x is None else float(x) for x in row]
+            freqs[i, :len(vals)] = vals
+        return k_frac, freqs
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+# ---- tidy3d.keep_hdf5: pruning of downloaded .hdf5 files -------------------------
+
+def hdf5_files(run_dir):
+    """Names of the .hdf5 files directly in run_dir (batch.hdf5 included)."""
+    try:
+        return sorted(n for n in os.listdir(run_dir)
+                      if n.endswith(".hdf5")
+                      and os.path.isfile(os.path.join(run_dir, n)))
+    except OSError:
+        return []
+
+
+def _read_note(run_dir):
+    try:
+        with open(os.path.join(run_dir, NOTE_NAME)) as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return {}
+
+
+def mark_managed(run_dir, policy):
+    """Note in the record folder: its .hdf5 files were downloaded under a
+    keep_hdf5 policy and may be pruned. Folders without it are never pruned."""
+    note = _read_note(run_dir)
+    note.update(managed=True, policy=policy)
+    note.setdefault("events", [])
+    _write_json(os.path.join(run_dir, NOTE_NAME), note)
+
+
+def is_managed(run_dir) -> bool:
+    return _read_note(run_dir).get("managed") is True
+
+
+def prune_hdf5(run_dir, results_root, reason, log=None):
+    """Delete the .hdf5 files of ONE record folder. Returns (count, bytes).
+
+    Refuses, and deletes nothing, unless ALL of these hold:
+      * run_dir is <results_root>/<hole|rib>/<record id> (exactly that depth);
+      * the folder has the note of mark_managed (so records downloaded
+        without a keep_hdf5 policy, or by anything else, are never touched);
+      * evaluation.json and params.json are there (the analysis is cached, so
+        the cell can be re-scored and plotted without the files).
+    Only regular files ending in .hdf5 directly in the folder are removed.
+    Every deletion is logged (stderr by default) and added to the note.
+    """
+    log = log or (lambda m: print(m, file=sys.stderr, flush=True))
+    root = os.path.realpath(results_root)
+    folder = os.path.realpath(run_dir)
+    parent = os.path.dirname(folder)
+    if (os.path.dirname(parent) != root
+            or os.path.basename(parent) not in K_DEFAULTS
+            or not os.path.isdir(folder)):
+        log(f"[keep_hdf5] not pruned (outside {root}/<celltype>/<id>): {run_dir}")
+        return 0, 0
+    if not is_managed(folder):
+        log(f"[keep_hdf5] not pruned (not downloaded under keep_hdf5): {folder}")
+        return 0, 0
+    if not all(os.path.isfile(os.path.join(folder, n))
+               for n in ("evaluation.json", "params.json")):
+        log(f"[keep_hdf5] not pruned (analysis not saved yet): {folder}")
+        return 0, 0
+    count, freed, names = 0, 0, []
+    for name in hdf5_files(folder):
+        path = os.path.join(folder, name)
+        size = os.path.getsize(path)
+        os.remove(path)
+        count, freed = count + 1, freed + size
+        names.append(name)
+        log(f"[keep_hdf5] deleted {path} ({size / 1e6:.2f} MB)")
+    if count:
+        note = _read_note(folder)
+        note.setdefault("events", []).append(dict(
+            ts=time.time(), reason=reason, deleted=names, freed_bytes=freed))
+        note.update(hdf5_deleted=True)
+        _write_json(os.path.join(folder, NOTE_NAME), note)
+        log(f"[keep_hdf5] {os.path.basename(folder)}: {count} file(s), "
+            f"{freed / 1e6:.2f} MB freed ({reason}); params.json, plan.json, "
+            "bands.csv and evaluation.json are kept")
+    return count, freed
+
+
+class Hdf5Keeper:
+    """`keep_hdf5: best` for a loop: keep the .hdf5 of the best cell only.
+
+    Give it every record after it has been SAVED (update). A successful
+    Tidy3D record that beats the best so far becomes the best and the files
+    of the previous best are deleted; any other Tidy3D record has its files
+    deleted. Records that are not Tidy3D results, and folders that were not
+    downloaded under a keep_hdf5 policy (prune_hdf5), are left alone. For
+    `all` and `none` it does nothing (`none` is handled per cell by
+    run_optical_tidy3d). Nothing is deleted before update is called, so an
+    interrupted run only ever lacks files that were already superseded.
+    seed() tells it the best of earlier sessions without deleting anything.
+    """
+
+    def __init__(self, options, log=None):
+        opts = Tidy3DOptions.from_config(options)
+        self.policy = opts.keep_hdf5
+        self.root = opts.results_root()
+        self.log = log
+        self.best = None                # (score, run_dir, id)
+        self.freed_bytes = 0
+
+    @property
+    def active(self):
+        return self.policy == "best"
+
+    @staticmethod
+    def _entry(rec):
+        """(score, run_dir, id) of a successful Tidy3D record, else None."""
+        detail = rec.get("optical_tidy3d_detail") or {}
+        if (rec.get("optical_engine") != ENGINE or rec.get("status") != "success"
+                or not detail.get("run_dir") or rec.get("score") is None):
+            return None
+        return float(rec["score"]), detail["run_dir"], rec.get("id")
+
+    def seed(self, records):
+        for rec in records or []:
+            entry = self._entry(rec)
+            if entry and (self.best is None or entry[0] > self.best[0]):
+                self.best = entry
+
+    def _prune(self, run_dir, reason):
+        self.freed_bytes += prune_hdf5(run_dir, self.root, reason, self.log)[1]
+
+    def update(self, rec):
+        if not self.active or rec.get("optical_engine") != ENGINE:
+            return
+        run_dir = (rec.get("optical_tidy3d_detail") or {}).get("run_dir")
+        if not run_dir or rec.get("optical_tidy3d_stop"):
+            return                      # nothing was run for this record
+        entry = self._entry(rec)
+        same = lambda a, b: os.path.realpath(a) == os.path.realpath(b)  # noqa: E731
+        if entry and (self.best is None or entry[0] > self.best[0]):
+            old, self.best = self.best, entry
+            if old and not same(old[1], run_dir):
+                if hdf5_files(run_dir):
+                    self._prune(old[1], f"superseded as best by {entry[2]}")
+                # else: the new best was re-scored from its cached analysis
+                # and has no files; the previous best keeps its own
+        elif self.best and same(self.best[1], run_dir):
+            return                      # the best cell again: keep
+        else:
+            self._prune(run_dir, "not the best cell (keep_hdf5: best)")
+
+
 def _job_size(sims):
     """Grid cells and time steps of one simulation (local, no cloud)."""
     try:
@@ -750,10 +946,17 @@ def _run_optical_tidy3d(g, *, celltype, eval_id, f_target, options, rel_tol,
     sim_datas = (_load_downloaded(bs, run_dir, params, plan)    # gate 4
                  if opts.reuse_results else None)
     reused = sim_datas is not None
+    cached = None
     if reused:
         say("re-using %d downloaded result(s) in %s (no cloud)"
             % (len(sim_datas), run_dir))
-    else:
+    elif opts.reuse_results:
+        # the .hdf5 files are gone (keep_hdf5) but the analysis was saved:
+        # score again from the saved resonances instead of paying again
+        cached = _load_cached_analysis(run_dir, params, plan, window, eval_id)
+        if cached is not None:
+            say("re-using the saved analysis in %s (no .hdf5, no cloud)" % run_dir)
+    if not reused and cached is None:
         if opts.allow_cloud is not True:                        # gate 5
             raise stop("cloud_not_allowed",
                        f"Tidy3D cloud not allowed: {len(sims)} simulation(s) "
@@ -805,14 +1008,24 @@ def _run_optical_tidy3d(g, *, celltype, eval_id, f_target, options, rel_tol,
         _ledger_append(opts, dict(entry, estimated_credits=cost, status="run"))
         detail.update(estimated_credits=float(cost))
         _write_json(os.path.join(run_dir, "params.json"), params)
+        if opts.keep_hdf5 != "all":     # these files may be pruned later
+            mark_managed(run_dir, opts.keep_hdf5)
 
-    say("analyzing resonances of %d simulation(s)" % len(sim_datas))
-    result = bs.analyze_bands(sim_datas, p)
-    k_frac, freqs = bands_to_arrays(result.bands)
-    if len(k_frac) != len(plan.k_frac) or np.max(
-            np.abs(k_frac - np.asarray(plan.k_frac))) > 1e-6:
-        raise RuntimeError(f"Tidy3D returned k_frac {k_frac.tolist()}, "
-                           f"expected {plan.k_frac}")
+    if cached is not None:
+        k_frac, freqs = cached
+        result = None
+        at_x = freqs[-1][np.isfinite(freqs[-1])]
+        edges = bs.band_edges(at_x, p)  # (f_lower, f_upper, gap, mid, fitness)
+    else:
+        say("analyzing resonances of %d simulation(s)" % len(sim_datas))
+        result = bs.analyze_bands(sim_datas, p)
+        k_frac, freqs = bands_to_arrays(result.bands)
+        if len(k_frac) != len(plan.k_frac) or np.max(
+                np.abs(k_frac - np.asarray(plan.k_frac))) > 1e-6:
+            raise RuntimeError(f"Tidy3D returned k_frac {k_frac.tolist()}, "
+                               f"expected {plan.k_frac}")
+        edges = (result.f_lower, result.f_upper, result.bandGap, result.midGap,
+                 result.fitness)
     picked = {}
     gp, method = score_resonances(celltype, k_frac, freqs, g.a,
                                   f_target=f_target, rel_tol=rel_tol,
@@ -820,17 +1033,22 @@ def _run_optical_tidy3d(g, *, celltype, eval_id, f_target, options, rel_tol,
                                   optical_tol_hz=optical_tol_hz, out=picked)
     detail.update(
         reused_download=bool(reused), gap_method=method,
+        # where the resonances came from: a cloud run of this call, .hdf5
+        # files already on disk, or the saved analysis of a pruned cell
+        result_source=("cached_analysis" if cached is not None
+                       else "hdf5" if reused else "cloud"),
+        keep_hdf5=opts.keep_hdf5,
         session_credits=session_credits(),
         min_resolvable_Hz=_num(resolvable_step_hz(k_frac, g.a)),
         light_line_edge_Hz=float(C0 / (2.0 * g.a)),
         # the module's own figure of merit: two lowest guided resonances at X
-        x_point=dict(f_lower_THz=_num(result.f_lower),
-                     f_upper_THz=_num(result.f_upper),
-                     bandGap_THz=_num(result.bandGap),
-                     midGap_THz=_num(result.midGap),
-                     normalized_gap=(_num(result.bandGap / result.midGap)
-                                     if np.isfinite(result.midGap) else None),
-                     fitness=_num(result.fitness)))
+        x_point=dict(f_lower_THz=_num(edges[0]),
+                     f_upper_THz=_num(edges[1]),
+                     bandGap_THz=_num(edges[2]),
+                     midGap_THz=_num(edges[3]),
+                     normalized_gap=(_num(edges[2] / edges[3])
+                                     if np.isfinite(edges[3]) else None),
+                     fitness=_num(edges[4])))
     freqs_list = [[_num(x) for x in row] for row in freqs]
     record = dict(optical_tidy3d_detail=detail,
                   optical_gap_detail=_gap_to_dict(gp),
@@ -838,14 +1056,18 @@ def _run_optical_tidy3d(g, *, celltype, eval_id, f_target, options, rel_tol,
     if optical_tol_hz is not None:      # rib: Gaussian-weighted gap choice
         record.update(optical_freq_penalty=float(picked.get("freq_penalty", 0.0)),
                       optical_gap_candidates=picked.get("candidates", []))
-    try:
-        bs.save_bands_csv(os.path.join(run_dir, "bands.csv"), result, p)
-    except Exception:
-        pass
-    _write_json(os.path.join(run_dir, "evaluation.json"),
-                dict(id=str(eval_id), celltype=celltype, params_m=g.as_dict(),
-                     gap=_gap_to_dict(gp), k_frac=record["_k_o"],
-                     freqs_hz=freqs_list, detail=detail))
+    if cached is None:
+        # (a cell re-scored from its saved analysis keeps the files it has)
+        try:
+            bs.save_bands_csv(os.path.join(run_dir, "bands.csv"), result, p)
+        except Exception:
+            pass
+        _write_json(os.path.join(run_dir, "evaluation.json"),
+                    dict(id=str(eval_id), celltype=celltype, params_m=g.as_dict(),
+                         gap=_gap_to_dict(gp), k_frac=record["_k_o"],
+                         freqs_hz=freqs_list, detail=detail))
+        if opts.keep_hdf5 == "none":    # analysis saved: the files can go
+            prune_hdf5(run_dir, opts.results_root(), "keep_hdf5: none")
     return dict(gap=gp, k_frac=k_frac, freqs_hz=freqs, record=record)
 
 

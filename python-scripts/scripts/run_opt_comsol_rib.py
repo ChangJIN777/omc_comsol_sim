@@ -275,6 +275,20 @@ def main_rib(cfg, cfg_path):
              f"{out_json} but not used as seeds" if n_other else ""))
     print(f"Results: {out_json}  |  sqlite: {db}  |  figure: {out_fig}")
 
+    # tidy3d.keep_hdf5: best -> only the best cell keeps its .hdf5 files.
+    # Seeded with the best of earlier sessions (same scoring), which keeps its
+    # files until a better cell with files appears. See optical_tidy3d.Hdf5Keeper.
+    keeper = None
+    if optical == "tidy3d":
+        from optical_tidy3d import Hdf5Keeper
+        keeper = Hdf5Keeper(tidy3d_options)
+        keeper.seed([r for r in prior
+                     if float(r.get("rxtal_deg") or 0.0) == rxtal
+                     and _same_scoring(r, version, tol_thz)])
+        if keeper.policy != "all":
+            print(f"Tidy3D keep_hdf5: {keeper.policy} (params.json, plan.json, "
+                  "bands.csv, evaluation.json are kept for every cell)")
+
     results = list(prior)
     best = None
     t_start = time.time()
@@ -317,12 +331,20 @@ def main_rib(cfg, cfg_path):
 
         _save_json(results, out_json)
         _plot_progress(results, out_fig)
+        if keeper is not None:
+            # only now, with the record in sqlite and out_json: an interrupted
+            # run never lacks files of a cell that was not yet superseded
+            keeper.update(rec)
 
     print("\n" + "=" * 60 + "\nRIB OPTIMIZATION COMPLETE\n" + "=" * 60)
     print(f"Wall time: {_fmt_time(time.time() - t_start)}")
     if optical == "tidy3d":
         from optical_tidy3d import session_credits
         print(f"Tidy3D cost estimates of this run: {session_credits():.3f} FlexCredits")
+        if keeper is not None and keeper.active:
+            kept = keeper.best[1] if keeper.best else "none"
+            print(f"Tidy3D keep_hdf5: best -> {keeper.freed_bytes / 1e6:.1f} MB "
+                  f"deleted; .hdf5 kept for: {kept}")
     if best is not None:
         print(f"Best this run: score={best['score']:+.4f}  "
               f"G_o={100*_f(best['optical_gap']):.1f}%  "

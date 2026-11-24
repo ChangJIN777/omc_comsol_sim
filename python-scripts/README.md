@@ -416,6 +416,18 @@ mirror plane at mid-thickness, a wedge cell has not:
   (`results/tidy3d/credit_ledger.jsonl`). Both count Tidy3D's maximum estimates.
 - Downloads go to `results/tidy3d/<celltype>/<record id>/` and are re-analyzed
   instead of paid again.
+- `keep_hdf5: all | best | none` (default `all`) controls the downloaded `.hdf5`
+  files, a few MB per cell. `best`: the loops (`run_opt_comsol.py` rib loop,
+  `run_loop.py`, `run_batch_rib.py`) keep them for the best-scoring cell only
+  and delete the others once their record is saved; `run_one.py` keeps its one
+  cell. `none`: deleted as soon as a cell is analyzed. `params.json`,
+  `plan.json`, `bands.csv` and `evaluation.json` stay for every cell, each
+  deletion is logged (stderr and `hdf5_note.json` in the record folder), and
+  only folders downloaded under `best`/`none` are ever pruned. A repeated cell
+  (common on resume) is re-scored from the saved `evaluation.json`, so it is
+  not uploaded or charged again (`result_source: cached_analysis` in the
+  record). What is lost without the files: the resonance filters cannot be
+  re-applied and `plot_tidy3d_bands.py` plots the saved resonances only.
 - `k_mode: x_only` = 1 simulation per cell (gap at X; default for the hole);
   `k_mode: sweep` = `n_k` simulations (default for the rib, `n_k = rib.n_k_opt`).
 
@@ -434,6 +446,24 @@ in `optical_tidy3d_detail.x_point`. Records carry `optical_engine`,
 `optical_index`, `xsect` and `optical_z_symmetry`; the id depends on engine,
 index and cross-section, so such results never overwrite each other (nor the
 records made before 2026-11-23 with n = 2.40).
+
+**Looking at downloaded Tidy3D results.** `scripts/plot_tidy3d_bands.py`
+re-analyzes the `.hdf5` files of a record offline (no cloud call; it blocks the
+network while it runs) and plots the band diagram with the gap as the pipeline
+scores it. It needs tidy3d, so run it with the `tidy` conda env:
+```bash
+python scripts/plot_tidy3d_bands.py cand_f85eb9955630       # a record id
+python scripts/plot_tidy3d_bands.py --all                   # every record + index CSV
+python scripts/plot_tidy3d_bands.py cand_f85eb9955630 --min-guided-q 1000 --light-line-margin 0.03
+```
+Inputs: record ids, `<celltype>/<record id>`, run folders or `.hdf5` files.
+Output goes to `<record folder>/analysis/` (or `--outdir`):
+`band_diagram.png`, `resonances.csv` (k, f, Q, amplitude, error, guided) and
+`summary.json` (scored gap, weight, gap at X, counts, and whether it matches
+the run's `evaluation.json`). `--minQ`, `--minamp`, `--maxerr` and the
+frequency window can be overridden; `--min-guided-q` / `--light-line-margin`
+additionally report the gap without low-Q or light-line "guided" peaks, which
+harmonic inversion produces and which can bound or split a gap.
 
 **How comparable are the two engines?**
 - `rect`: same cell, same index, same thickness-even family. Left: fillets are
@@ -461,6 +491,7 @@ scripts/   run_one.py  run_loop.py  run_opt_comsol.py  run_opt_comsol_rib.py
            check_comsol_license.sh  wait_for_comsol_seat.sh
            run_comsol_batch.sh + comsol_batch.py  (comsol batch, batch licences)
            plot_bands.py  plot_geometry.py  plot_mode.py
+           plot_tidy3d_bands.py  (offline band diagrams from Tidy3D .hdf5)
 comsol/    hole template recipe + MATLAB LiveLink driver;
            patch_hole_templates_index.m (index parameter for the hole templates)
            build_omc_unitcell_rib.m + omc_mechanical_livelink_rib.m (rib)

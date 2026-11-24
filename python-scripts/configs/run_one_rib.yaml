@@ -31,9 +31,10 @@ rib:
   optical_study: "opt TE"   # "opt TE" (PEC at y=0, Ey even) | "opt TM"
   n_k_opt: 13               # optical k-points, light-line start -> X
   n_bands_opt: 10           # optical eigenvalues per k
-  optical_tol_thz: 2.0      # optical gap weight: G_o * exp(-((f_c - f_t)/optical_tol)^2),
-                            # f_c = gap centre, f_t = 193.4 THz (1550 nm). No window on
-                            # f_c: 1 on target, 1/e at 2 THz, ~0.02 at 4 THz off
+  optical_tol_thz: 2.0      # Gaussian width [THz] of the optical gap weight
+                            # w = exp(-((f_c - f_t)/optical_tol_thz)^2), f_c = gap
+                            # centre, f_t = 193.4 THz (1550 nm); score uses G_o * w.
+                            # w = 1 on target, 1/e at f_c = f_t +/- optical_tol_thz
   rxtal_deg: 0              # crystal rotation about the slab normal [deg]:
                             # 0 = beam along <100>, 45 = <110> (P.rxtal of
                             # omc-comsol-chang). Mechanics only; multiples

@@ -10,6 +10,7 @@ is not installed.
 Run:  python tests/test_optical_tidy3d.py
 """
 import contextlib
+import io
 import json
 import os
 import sys
@@ -726,6 +727,307 @@ def test_rib_tidy3d_gap_choice_has_no_centre_window():
         assert rx["optical_freq_penalty"] < 1e-30 and len(rx["optical_gap_candidates"]) == 1
 
 
+# ---- tidy3d.keep_hdf5: pruning of downloaded files, reuse of the saved analysis ----
+
+def _fake_download(td, size=2048):
+    """Make the mocked Batch.run leave files as the real one does: one
+    fdve-*.hdf5 per task plus batch.hdf5, in path_dir."""
+    def run(path_dir="."):
+        os.makedirs(path_dir, exist_ok=True)
+        tasks = td.WEB.Batch.call_args.kwargs["simulations"]
+        for i, name in enumerate(tasks):
+            with open(os.path.join(path_dir, "fdve-%s-%d.hdf5" % (name[-6:], i)), "wb") as fh:
+                fh.write(b"x" * size)
+        with open(os.path.join(path_dir, "batch.hdf5"), "wb") as fh:
+            fh.write(b"b" * 64)
+        return mock.MagicMock()
+    td.WEB.Batch.return_value.run.side_effect = run
+
+
+def _install_gap_analysis(bs, state):
+    """bs.analyze_bands -> two guided resonances at X, state["edges"] (THz)."""
+    def analyze(sim_datas, p):
+        lo, hi = state["edges"]
+        bands = [dict(k=0.5, freq=np.array([lo * 1e12, hi * 1e12]), Q=np.full(2, 1e5))]
+        res = bs.BandResult(bands=bands, f_light_X=p.f_light_X, has_X=True)
+        (res.f_lower, res.f_upper, res.bandGap, res.midGap,
+         res.fitness) = bs.band_edges(bands[0]["freq"], p)
+        return res
+    bs.analyze_bands = analyze
+
+
+def _files(folder):
+    return sorted(os.listdir(folder))
+
+
+_SMALL = ["bands.csv", "evaluation.json", "params.json", "plan.json"]
+# four hole cells; gap widths chosen so that the best changes: 1, 2, (3 worse), 4
+# (same period a = 700 nm, light line at X 214.1 THz; the beam width differs)
+_KEEP_CELLS = [([0.5, 0.60, 0.5, 0.6, 0.5], (182.5, 202.5)),
+               ([0.5, 0.62, 0.5, 0.6, 0.5], (175.0, 210.0)),
+               ([0.5, 0.64, 0.5, 0.6, 0.5], (180.0, 205.0)),
+               ([0.5, 0.66, 0.5, 0.6, 0.5], (173.0, 212.0))]
+
+
+def _run_keep_sequence(td, bs, tmp, policy, keeper=True):
+    state = {}
+    _install_gap_analysis(bs, state)
+    _fake_download(td)
+    k = ot.Hdf5Keeper(dict(results_dir=tmp, keep_hdf5=policy)) if keeper else None
+    recs, snapshots = [], []
+    for u, edges in _KEEP_CELLS:
+        state["edges"] = edges
+        rec = _eval(u, tmp, allow_cloud=True, max_credits=50.0, keep_hdf5=policy)
+        assert rec["status"] == "success", rec.get("error")
+        if k is not None:
+            k.update(rec)
+        recs.append(rec)
+        snapshots.append([bool(ot.hdf5_files(r["optical_tidy3d_detail"]["run_dir"]))
+                          for r in recs])
+    return recs, snapshots, k
+
+
+def test_keep_hdf5_option_is_validated_and_not_in_the_id():
+    assert ot.Tidy3DOptions.from_config(None).keep_hdf5 == "all"
+    assert ot.KEEP_HDF5 == ("all", "best", "none")
+    for bad in ("last", "", True, None):
+        try:
+            ot.Tidy3DOptions.from_config(dict(keep_hdf5=bad))
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"keep_hdf5 {bad!r} accepted")
+    base = ot.id_settings(None, "rib", 13)
+    for policy in ot.KEEP_HDF5:                       # storage only: same id
+        assert ot.id_settings(dict(keep_hdf5=policy), "rib", 13) == base
+    assert ot.Hdf5Keeper(dict(keep_hdf5="best")).active
+    assert not ot.Hdf5Keeper(dict(keep_hdf5="none")).active
+    assert not ot.Hdf5Keeper(None).active
+
+
+def test_keep_hdf5_best_keeps_only_the_best_cell():
+    with fake_tidy3d(cost=0.1) as (td, bs), tempfile.TemporaryDirectory() as tmp:
+        recs, snaps, keeper = _run_keep_sequence(td, bs, tmp, "best")
+        scores = [r["score"] for r in recs]
+        assert scores[1] > scores[0] and scores[2] < scores[1] and scores[3] > scores[1]
+        # which cells hold .hdf5 after each evaluation: always only the best so far
+        assert snaps == [[True], [False, True], [False, True, False],
+                         [False, False, False, True]]
+        dirs = [r["optical_tidy3d_detail"]["run_dir"] for r in recs]
+        for i, d in enumerate(dirs):
+            names = _files(d)
+            assert [n for n in names if n in _SMALL] == _SMALL       # always kept
+            note = json.load(open(os.path.join(d, ot.NOTE_NAME)))
+            assert note["managed"] is True and note["policy"] == "best"
+            if i < 3:
+                assert not [n for n in names if n.endswith(".hdf5")]
+                ev = note["events"][-1]
+                assert sorted(ev["deleted"])[0] == "batch.hdf5" and len(ev["deleted"]) == 2
+                assert ev["freed_bytes"] == 2048 + 64 and note["hdf5_deleted"] is True
+            else:
+                assert len([n for n in names if n.endswith(".hdf5")]) == 2
+                assert note["events"] == []
+        assert "superseded" in json.load(open(os.path.join(dirs[1], ot.NOTE_NAME)))[
+            "events"][-1]["reason"]
+        assert keeper.best[2] == recs[3]["id"] and keeper.freed_bytes == 3 * (2048 + 64)
+        assert all(r["optical_tidy3d_detail"]["result_source"] == "cloud" for r in recs)
+        assert all(r["optical_tidy3d_detail"]["keep_hdf5"] == "best" for r in recs)
+        with open(os.path.join(tmp, "credit_ledger.jsonl")) as fh:
+            assert len(fh.readlines()) == 4                   # the ledger is untouched
+
+
+def test_keep_hdf5_none_and_all():
+    with fake_tidy3d(cost=0.1) as (td, bs), tempfile.TemporaryDirectory() as tmp:
+        recs, snaps, _ = _run_keep_sequence(td, bs, tmp, "none", keeper=False)
+        assert snaps[-1] == [False] * 4                       # deleted per cell
+        for r in recs:
+            d = r["optical_tidy3d_detail"]["run_dir"]
+            assert [n for n in _files(d) if n in _SMALL] == _SMALL
+            assert json.load(open(os.path.join(d, ot.NOTE_NAME)))["events"][0][
+                "reason"] == "keep_hdf5: none"
+    with fake_tidy3d(cost=0.1) as (td, bs), tempfile.TemporaryDirectory() as tmp:
+        recs, snaps, keeper = _run_keep_sequence(td, bs, tmp, "all")
+        assert snaps[-1] == [True] * 4 and keeper.freed_bytes == 0
+        for r in recs:                                        # no note, nothing managed
+            d = r["optical_tidy3d_detail"]["run_dir"]
+            assert not os.path.exists(os.path.join(d, ot.NOTE_NAME))
+            assert len(ot.hdf5_files(d)) == 2
+        # switching to `best` later never deletes files downloaded under `all`
+        late = ot.Hdf5Keeper(dict(results_dir=tmp, keep_hdf5="best"))
+        for r in recs:
+            late.update(r)
+        assert [len(ot.hdf5_files(r["optical_tidy3d_detail"]["run_dir"]))
+                for r in recs] == [2] * 4 and late.freed_bytes == 0
+
+
+def test_pruned_cell_is_rescored_from_the_saved_analysis_not_paid_again():
+    with fake_tidy3d(cost=0.1) as (td, bs), tempfile.TemporaryDirectory() as tmp:
+        recs, _, _ = _run_keep_sequence(td, bs, tmp, "best")
+        first, d = recs[0], recs[0]["optical_tidy3d_detail"]["run_dir"]
+        assert not ot.hdf5_files(d)
+        n_batches = td.WEB.Batch.call_count
+        stamp = os.path.getmtime(os.path.join(d, "evaluation.json"))
+        bs.analyze_bands = mock.MagicMock(side_effect=AssertionError("re-analyzed"))
+        # the same cell again, cloud switched OFF: scored from evaluation.json
+        again = _eval(_KEEP_CELLS[0][0], tmp, allow_cloud=False, keep_hdf5="best")
+        assert again["status"] == "success", again.get("error")
+        da = again["optical_tidy3d_detail"]
+        assert da["result_source"] == "cached_analysis" and da["estimated_credits"] == 0.0
+        assert da["reused_download"] is False
+        assert again["id"] == first["id"] and again["score"] == first["score"]
+        assert again["optical_gap"] == first["optical_gap"]
+        assert again["optical_gap_detail"] == first["optical_gap_detail"]
+        assert again["_freqs_o"] == first["_freqs_o"] and again["_k_o"] == first["_k_o"]
+        assert da["x_point"] == first["optical_tidy3d_detail"]["x_point"]
+        assert td.WEB.Batch.call_count == n_batches            # no cloud call
+        assert os.path.getmtime(os.path.join(d, "evaluation.json")) == stamp
+        json.dumps(again, allow_nan=False)
+        # the keeper leaves a file-less best alone and keeps the old best's files
+        keeper = ot.Hdf5Keeper(dict(results_dir=tmp, keep_hdf5="best"))
+        keeper.seed(recs)
+        best_dir = recs[3]["optical_tidy3d_detail"]["run_dir"]
+        keeper.update(dict(again, score=99.0))
+        assert len(ot.hdf5_files(best_dir)) == 2
+        # not reused when the cache does not belong to this exact evaluation:
+        # other parameters, other id, other k points, reuse switched off
+        for change in ("params", "id", "k", "off"):
+            ev_path, p_path = os.path.join(d, "evaluation.json"), os.path.join(d, "params.json")
+            ev, par = json.load(open(ev_path)), json.load(open(p_path))
+            if change == "params":
+                json.dump(dict(par, beam_width=par["beam_width"] + 0.01), open(p_path, "w"))
+            elif change == "id":
+                json.dump(dict(ev, id="cand_other"), open(ev_path, "w"))
+            elif change == "k":
+                json.dump(dict(ev, k_frac=[0.9]), open(ev_path, "w"))
+            rec = _eval(_KEEP_CELLS[0][0], tmp, allow_cloud=False, keep_hdf5="best",
+                        **({"reuse_results": False} if change == "off" else {}))
+            assert rec["optical_tidy3d_stop"] == "cloud_not_allowed", change
+            json.dump(ev, open(ev_path, "w"))
+            json.dump(par, open(p_path, "w"))
+        assert td.WEB.Batch.call_count == n_batches
+
+
+def test_pruning_never_touches_anything_else():
+    with fake_tidy3d(cost=0.1) as (td, bs), tempfile.TemporaryDirectory() as tmp:
+        logged = []
+        log = logged.append
+        # a record as the three paid ones: files, analysis, but NO keep_hdf5 note
+        paid = os.path.join(tmp, "rib", "cand_paid")
+        os.makedirs(paid)
+        for name in ("fdve-1.hdf5", "batch.hdf5", "evaluation.json", "params.json",
+                     "plan.json", "bands.csv"):
+            open(os.path.join(paid, name), "w").write("data")
+        assert ot.prune_hdf5(paid, tmp, "test", log) == (0, 0)
+        assert len(ot.hdf5_files(paid)) == 2 and "not downloaded under keep_hdf5" in logged[-1]
+        keeper = ot.Hdf5Keeper(dict(results_dir=tmp, keep_hdf5="best"), log=log)
+        keeper.seed([dict(optical_engine="tidy3d", status="success", score=1.0, id="b",
+                          optical_tidy3d_detail=dict(run_dir=os.path.join(tmp, "rib", "x")))])
+        keeper.update(dict(optical_engine="tidy3d", status="success", score=0.5, id="p",
+                           optical_tidy3d_detail=dict(run_dir=paid)))
+        assert len(ot.hdf5_files(paid)) == 2                   # still there
+
+        # a managed record: only *.hdf5 directly in it are removed
+        mine = os.path.join(tmp, "rib", "cand_mine")
+        os.makedirs(os.path.join(mine, "analysis"))
+        for name in ("fdve-1.hdf5", "batch.hdf5", "evaluation.json", "params.json",
+                     "plan.json", "bands.csv", "notes.txt", "data.hdf5.bak"):
+            open(os.path.join(mine, name), "w").write("data")
+        open(os.path.join(mine, "analysis", "inner.hdf5"), "w").write("data")
+        os.makedirs(os.path.join(mine, "folder.hdf5"))          # a directory, not a file
+        ot.mark_managed(mine, "best")
+        # ... but not before its analysis is saved
+        os.rename(os.path.join(mine, "evaluation.json"), os.path.join(mine, "ev.tmp"))
+        assert ot.prune_hdf5(mine, tmp, "test", log) == (0, 0)
+        assert "analysis not saved" in logged[-1]
+        os.rename(os.path.join(mine, "ev.tmp"), os.path.join(mine, "evaluation.json"))
+        assert ot.prune_hdf5(mine, tmp, "test", log) == (2, 8)
+        assert _files(mine) == sorted(["analysis", "bands.csv", "data.hdf5.bak",
+                                       "evaluation.json", "folder.hdf5", ot.NOTE_NAME,
+                                       "notes.txt", "params.json", "plan.json"])
+        assert os.path.exists(os.path.join(mine, "analysis", "inner.hdf5"))
+        assert any("deleted" in m and "fdve-1.hdf5" in m for m in logged)
+        assert any("MB freed" in m for m in logged)
+        assert ot.prune_hdf5(mine, tmp, "again", log) == (0, 0)     # idempotent
+
+        # wrong places: the root, a celltype folder, a deeper folder, another root,
+        # an unknown celltype -- all refused even with a note and files in them
+        deep = os.path.join(tmp, "rib", "cand_mine", "analysis")
+        other_root = os.path.join(tmp, "elsewhere", "rib", "cand_z")
+        odd = os.path.join(tmp, "disk", "cand_y")
+        for folder in (tmp, os.path.join(tmp, "rib"), deep, other_root, odd):
+            os.makedirs(folder, exist_ok=True)
+            for name in ("keep.hdf5", "evaluation.json", "params.json"):
+                open(os.path.join(folder, name), "w").write("data")
+            ot.mark_managed(folder, "best")
+            assert ot.prune_hdf5(folder, tmp, "test", log) == (0, 0), folder
+            assert os.path.exists(os.path.join(folder, "keep.hdf5")), folder
+        assert td.WEB.Batch.call_count == 0
+        # records that are not Tidy3D results, or were stopped, are ignored
+        keeper.update(dict(optical_engine="comsol", status="success", score=9.0,
+                           optical_tidy3d_detail=dict(run_dir=mine)))
+        keeper.update(dict(optical_engine="tidy3d", status="optical_not_run", score=-5.0,
+                           optical_tidy3d_stop="budget_exceeded",
+                           optical_tidy3d_detail=dict(run_dir=paid)))
+        assert len(ot.hdf5_files(paid)) == 2
+
+
+def test_rib_loop_keep_hdf5_best_end_to_end():
+    """scripts/run_opt_comsol_rib.main_rib with keep_hdf5: best (mocked cloud):
+    every cell is recorded, one cell keeps its files, a foreign record in the
+    same results folder is not touched, and a resumed run pays for nothing."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import run_opt_comsol_rib as loop
+    with fake_tidy3d(cost=0.01) as (td, bs), tempfile.TemporaryDirectory() as tmp:
+        _install_fake_analysis(bs, RIB_CELL["a"])
+        _fake_download(td)
+        root = os.path.join(tmp, "t3d")
+        paid = os.path.join(root, "rib", "cand_paid_before")
+        os.makedirs(paid)
+        for name in ("fdve-1.hdf5", "batch.hdf5", "evaluation.json", "params.json"):
+            open(os.path.join(paid, name), "w").write("paid data")
+        cfg = dict(celltype="rib", n_init=5, n_iter=40, backend="random",
+                   optical="tidy3d", mech="surrogate_stub",
+                   rib=dict(n_k_opt=4, optical_tol_thz=5.0),
+                   tidy3d=dict(allow_cloud=True, max_credits=50.0, results_dir=root,
+                               keep_hdf5="best"),
+                   out_json=os.path.join(tmp, "res.json"),
+                   out_fig=os.path.join(tmp, "fig.png"),
+                   db_path=os.path.join(tmp, "runs.sqlite3"),
+                   skip_characterization=True)
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            loop.main_rib(cfg, "unused")
+        results = json.load(open(cfg["out_json"]))
+        ok = [r for r in results if r["status"] == "success"]
+        assert len(results) == 40 and len(ok) >= 3
+        with_files = [r for r in ok if ot.hdf5_files(r["optical_tidy3d_detail"]["run_dir"])]
+        assert len(with_files) == 1                              # the best cell only
+        assert with_files[0]["score"] == max(r["score"] for r in ok)
+        for r in ok:
+            names = _files(r["optical_tidy3d_detail"]["run_dir"])
+            assert [n for n in names if n in _SMALL] == _SMALL
+        assert _files(paid) == ["batch.hdf5", "evaluation.json", "fdve-1.hdf5", "params.json"]
+        assert "[keep_hdf5] deleted" in err.getvalue() and "MB freed" in err.getvalue()
+        n_paid = td.WEB.Batch.return_value.run.call_count
+        assert n_paid == len(ok)
+        # resume: the random sampler proposes the same cells again; they are
+        # re-scored from the saved analysis (or the kept files), nothing is run
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            loop.main_rib(cfg, "unused")
+        assert td.WEB.Batch.return_value.run.call_count == n_paid
+        again = json.load(open(cfg["out_json"]))[40:]
+        sources = [r["optical_tidy3d_detail"]["result_source"] for r in again
+                   if r["status"] == "success"]
+        # (the mocked files of the kept cell are not loadable, so it is
+        # re-scored from its saved analysis as well)
+        assert len(sources) == len(ok) and set(sources) <= {"cached_analysis", "hdf5"}
+        assert sources.count("cached_analysis") >= len(ok) - 1
+        assert [r["score"] for r in again if r["status"] == "success"] == [
+            r["score"] for r in ok]
+
+
 def test_rib_loop_saves_everything_and_stops():
     """scripts/run_opt_comsol_rib.main_rib with optical: tidy3d and no opt-in."""
     import matplotlib
@@ -1045,8 +1347,27 @@ def test_real_tidy3d_run_and_analysis_with_a_fake_batch():
                 again = _eval(HOLE_U, tmp, allow_cloud=False)
                 assert again["status"] == "success", again.get("error")
                 assert again["optical_tidy3d_detail"]["reused_download"] is True
+                assert again["optical_tidy3d_detail"]["result_source"] == "hdf5"
                 assert abs(again["optical_gap"] - rec["optical_gap"]) < 1e-12
                 assert len(made) == 1
+                # keep_hdf5: none on another cell: real files are written,
+                # analyzed, deleted; the cell is then re-scored from its saved
+                # analysis with the same numbers and no further batch
+                u2 = [0.5, 0.62, 0.5, 0.6, 0.5]
+                r2 = _eval(u2, tmp, allow_cloud=True, max_credits=1.0, keep_hdf5="none")
+                assert r2["status"] == "success", r2.get("error")
+                d2 = r2["optical_tidy3d_detail"]
+                assert d2["result_source"] == "cloud" and not ot.hdf5_files(d2["run_dir"])
+                assert {"bands.csv", "evaluation.json", "params.json", "plan.json",
+                        ot.NOTE_NAME} <= set(os.listdir(d2["run_dir"]))
+                r3 = _eval(u2, tmp, allow_cloud=False, keep_hdf5="none")
+                assert r3["status"] == "success", r3.get("error")
+                assert r3["optical_tidy3d_detail"]["result_source"] == "cached_analysis"
+                assert r3["score"] == r2["score"] and r3["_freqs_o"] == r2["_freqs_o"]
+                assert r3["optical_tidy3d_detail"]["x_point"] == d2["x_point"]
+                assert len(made) == 2
+                # the first record, downloaded without a policy, kept its files
+                assert len(ot.hdf5_files(d["run_dir"])) == 1
         finally:
             bs.web.Batch = real_batch
             ot.reset_session()

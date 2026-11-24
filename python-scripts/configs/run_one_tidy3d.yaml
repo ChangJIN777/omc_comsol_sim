@@ -49,6 +49,16 @@ tidy3d:
   folder_name: omc_unitcell     # task folder in the Tidy3D web interface
   reuse_results: true      # results already downloaded for the same cell and
                            # k points are re-analyzed instead of paid again
+  # keep_hdf5: all         # what to do with the downloaded .hdf5 files (MBs per cell):
+                           #   all   keep them for every cell (default)
+                           #   best  loops keep them for the best-scoring cell
+                           #         only (run_one: the one cell is kept)
+                           #   none  delete them once a cell is analyzed
+                           # params.json, plan.json, bands.csv and evaluation.json
+                           # stay for every cell, and a repeated cell is re-scored
+                           # from them (no upload, no charge) as long as
+                           # reuse_results is true. Without the .hdf5 files the
+                           # resonance filters (minQ, ...) cannot be re-applied.
   # index: 2.386           # default: configs/materials.yaml (2.386, every engine)
   # params:                # FDTD numerics of diamond_bandStructure_sim.BandParams
   #   min_steps_per_wvl: 20

@@ -7,8 +7,8 @@
 celltype: rib
 
 n_init: 10
-n_iter: 40
-backend: auto            # auto | random | optuna
+n_iter: 20
+backend: optuna            # auto | random | optuna
 
 optical: tidy3d          # comsol | tidy3d | none
 mech: comsol             # comsol | surrogate_stub (mechanics is never Tidy3D)
@@ -27,14 +27,15 @@ xsect: rect
 
 rib:
   mech_gap_mode: complete
-  n_k: 9
+  n_k: 10
   n_bands_mech: 20
   optical_study: "opt TE"
-  n_k_opt: 13
+  n_k_opt: 10
   n_bands_opt: 10
-  optical_tol_thz: 2.0      # optical gap weight: G_o * exp(-((f_c - f_t)/optical_tol)^2),
-                            # f_c = gap centre, f_t = 193.4 THz (1550 nm). No window on
-                            # f_c: 1 on target, 1/e at 2 THz, ~0.02 at 4 THz off
+  optical_tol_thz: 5.0      # Gaussian width [THz] of the optical gap weight
+                            # w = exp(-((f_c - f_t)/optical_tol_thz)^2), f_c = gap
+                            # centre, f_t = 193.4 THz (1550 nm); score uses G_o * w.
+                            # w = 1 on target, 1/e at f_c = f_t +/- optical_tol_thz
   rxtal_deg: 0              # crystal rotation about the slab normal [deg]:
                             # 0 = beam along <100>, 45 = <110> (P.rxtal of
                             # omc-comsol-chang). Mechanics only; multiples
@@ -48,7 +49,7 @@ rib:
 # uploaded while allow_cloud is false. To spend credits you must set BOTH
 # allow_cloud: true and max_credits.
 tidy3d:
-  allow_cloud: false       # true = simulations may be uploaded and charged
+  allow_cloud: true       # true = simulations may be uploaded and charged
   mode: run                # run      submit, download, score
                            # dry_run  build + validate the simulations locally,
                            #          write plan.json / grid_report.txt, no upload
@@ -57,7 +58,7 @@ tidy3d:
                            #          (needs allow_cloud: true; costs nothing)
   max_credits: 1.0         # FlexCredit budget of this process (a whole loop):
                            # a batch whose estimate does not fit is not started
-  # max_credits_total: 20.0  # optional budget over ALL runs (credit_ledger.jsonl)
+  max_credits_total: 5.0  # optional budget over ALL runs (credit_ledger.jsonl)
   k_mode: sweep            # sweep   n_k simulations per cell from the light
                            #         line to X; scored with the same guided
                            #         interval gap as optical: comsol
@@ -65,12 +66,22 @@ tidy3d:
                            #         guided resonances at X only. Cheap, but NOT
                            #         the interval gap (bands crossing the gap
                            #         away from X are not seen)
-  # n_k: 13                # k points of a sweep; default = rib.n_k_opt. Fewer k
+  n_k: 9                # k points of a sweep; default = rib.n_k_opt. Fewer k
                            # cost less but raise the smallest resolvable gap
   results_dir: results/tidy3d   # downloads: <results_dir>/rib/<record id>/
   folder_name: omc_unitcell     # task folder in the Tidy3D web interface
   reuse_results: true      # results already downloaded for the same cell and
                            # k points are re-analyzed instead of paid again
+  keep_hdf5: best         # what to do with the downloaded .hdf5 files (MBs per cell):
+                           #   all   keep them for every cell (default)
+                           #   best  loops keep them for the best-scoring cell
+                           #         only (run_one: the one cell is kept)
+                           #   none  delete them once a cell is analyzed
+                           # params.json, plan.json, bands.csv and evaluation.json
+                           # stay for every cell, and a repeated cell is re-scored
+                           # from them (no upload, no charge) as long as
+                           # reuse_results is true. Without the .hdf5 files the
+                           # resonance filters (minQ, ...) cannot be re-applied.
   # index: 2.386           # default: configs/materials.yaml (2.386, every engine)
   # params:                # FDTD numerics of diamond_bandStructure_sim.BandParams
   #   min_steps_per_wvl: 20
@@ -80,5 +91,5 @@ tidy3d:
 out_fig: "results/figures_rib_tidy3d/opt_progress_rib_tidy3d.png"
 out_json: "results/opt_results_rib_tidy3d.json"
 
-fresh_start: false
+fresh_start: true   # true = delete the results_dir and start from scratch
 skip_characterization: true   # the end-of-run characterization is COMSOL optics

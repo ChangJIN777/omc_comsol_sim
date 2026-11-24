@@ -57,6 +57,14 @@ def main():
                                n_dim=n_dim(celltype))
     print(f"resuming with {len(data)} prior results; backend={type(opt).__name__}")
 
+    # tidy3d.keep_hdf5: best -> only the best cell of THIS run keeps its .hdf5
+    # files (optical_tidy3d.Hdf5Keeper; the best of an earlier run is not
+    # known here and keeps its files).
+    keeper = None
+    if optical == "tidy3d":
+        from optical_tidy3d import Hdf5Keeper
+        keeper = Hdf5Keeper(tidy3d_options)
+
     total = n_init + n_iter
     for it in range(total):
         u = ask(opt)
@@ -77,6 +85,8 @@ def main():
         print(f"[{it:3d}] score={rec['score']:+.4f} "
               f"Go={rec.get('optical_gap')} Gm={rec.get('mechanical_gap')} "
               f"status={rec['status']}")
+        if keeper is not None:
+            keeper.update(rec)           # after the record is saved
 
     b = best_result(db)
     if b:

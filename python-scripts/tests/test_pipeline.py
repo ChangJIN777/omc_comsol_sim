@@ -486,7 +486,8 @@ def test_deprecated_optical_rel_tol_warns_and_is_ignored():
                  "run_one_rib_tidy3d", "run_opt_comsol_rib_tidy3d"):
         with open(os.path.join(cfg_dir, name + ".yaml")) as fh:
             rib = yaml.safe_load(fh)["rib"]
-        assert rib["optical_tol_thz"] == 2.0 and "optical_rel_tol" not in rib, name
+        # (the value is the user's to tune; it only has to be there and valid)
+        assert rib["optical_tol_thz"] > 0 and "optical_rel_tol" not in rib, name
 
 
 def test_score_version_keeps_ids_and_warm_starts_apart():

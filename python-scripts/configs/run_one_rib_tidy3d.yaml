@@ -33,9 +33,10 @@ rib:
   optical_study: "opt TE"   # "opt TE" -> Tidy3D TE (Ey dipoles, symmetry (0,-1,1))
   n_k_opt: 13               # with tidy3d: default number of k points of a sweep
   n_bands_opt: 10           # COMSOL only
-  optical_tol_thz: 2.0      # optical gap weight: G_o * exp(-((f_c - f_t)/optical_tol)^2),
-                            # f_c = gap centre, f_t = 193.4 THz (1550 nm). No window on
-                            # f_c: 1 on target, 1/e at 2 THz, ~0.02 at 4 THz off
+  optical_tol_thz: 2.0      # Gaussian width [THz] of the optical gap weight
+                            # w = exp(-((f_c - f_t)/optical_tol_thz)^2), f_c = gap
+                            # centre, f_t = 193.4 THz (1550 nm); score uses G_o * w.
+                            # w = 1 on target, 1/e at f_c = f_t +/- optical_tol_thz
   rxtal_deg: 0              # crystal rotation about the slab normal [deg]:
                             # 0 = beam along <100>, 45 = <110> (P.rxtal of
                             # omc-comsol-chang). Mechanics only; multiples
@@ -70,6 +71,16 @@ tidy3d:
   folder_name: omc_unitcell     # task folder in the Tidy3D web interface
   reuse_results: true      # results already downloaded for the same cell and
                            # k points are re-analyzed instead of paid again
+  # keep_hdf5: all         # what to do with the downloaded .hdf5 files (MBs per cell):
+                           #   all   keep them for every cell (default)
+                           #   best  loops keep them for the best-scoring cell
+                           #         only (run_one: the one cell is kept)
+                           #   none  delete them once a cell is analyzed
+                           # params.json, plan.json, bands.csv and evaluation.json
+                           # stay for every cell, and a repeated cell is re-scored
+                           # from them (no upload, no charge) as long as
+                           # reuse_results is true. Without the .hdf5 files the
+                           # resonance filters (minQ, ...) cannot be re-applied.
   # index: 2.386           # default: configs/materials.yaml (2.386, every engine)
   # params:                # FDTD numerics of diamond_bandStructure_sim.BandParams
   #   min_steps_per_wvl: 20
