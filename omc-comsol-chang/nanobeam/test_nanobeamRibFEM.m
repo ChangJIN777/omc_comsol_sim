@@ -48,7 +48,7 @@ P.taperConvention = 'centerspacing';    % 'centerspacing' (default, CreateNanobe
 
 P.lambda = 750e-9;                      % target optical wavelength (template optical
                                         % eigen-shift 400 THz)
-P.nbeam = 2.4028;                       % diamond refractive index, visible
+P.nbeam = 2.386;                        % diamond refractive index (telecom value, used everywhere)
 
 % symmetric cavity only
 P.asymCav = 0;

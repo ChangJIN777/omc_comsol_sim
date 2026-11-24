@@ -68,7 +68,7 @@ function minFitness = runNanobeamFEM(params)
     end
     
     P.lambda = 737e-9;                     % target optical wavelength
-    P.nbeam = 2.403;                        % the refractive index of diamond at telecom
+    P.nbeam = 2.386;                        % the refractive index of diamond at telecom
     
     % Disorder
     P.stdDev = [0,0];                       % standard deviation of hole dimensions (hh,hw)

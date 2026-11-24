@@ -135,7 +135,7 @@ end
 
 model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
 model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', {'1e-12[S/m]' '0' '0' '0' '1e-12[S/m]' '0' '0' '0' '1e-12[S/m]'});
-model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'2.406' '0' '0' '0' '2.406' '0' '0' '0' '2.406'});
+model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'2.386' '0' '0' '0' '2.386' '0' '0' '0' '2.386'});
 model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
 % Air: zero conductivity, for the reason spelled out at the second (winning)
 % assignment to this same property below.
@@ -143,7 +143,7 @@ model.component('comp1').material('mat1').propertyGroup('def').set('electriccond
 model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
 
 if strcmp(P.beamMat,'diamond')
-    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.406' '0' '0' '0' '2.406' '0' '0' '0' '2.406'});
+    model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.386' '0' '0' '0' '2.386' '0' '0' '0' '2.386'});
     model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
     model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'1e-12[S/m]' '0' '0' '0' '1e-12[S/m]' '0' '0' '0' '1e-12[S/m]'});
 elseif strcmp(P.beamMat,'diamond_telecom')

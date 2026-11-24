@@ -156,7 +156,7 @@ if strcmp(P.celltype,'rib')
     elseif strcmp(P.beamMat,'diamond')
         model.component('comp1').material('mat2').label('diamond');
     model.component('comp1').material('mat2').propertyGroup.create('RefractiveIndex', 'Refractive index');
-        model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'2.4028' '0' '0' '0' '2.4022' '0' '0' '0' '2.4028'});
+        model.component('comp1').material('mat2').propertyGroup('RefractiveIndex').set('n', {'2.386' '0' '0' '0' '2.386' '0' '0' '0' '2.386'});
         model.component('comp1').material('mat2').propertyGroup('def').set('electricconductivity', {'0.001' '0' '0' '0' '0.001' '0' '0' '0' '0.001'});
         model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'5.7734' '0' '0' '0' '5.7734' '0' '0' '0' '5.7734'});
     end
@@ -168,7 +168,7 @@ else
     model.component('comp1').material('mat2').propertyGroup('def').set('relpermeability', {'1' '0' '0' '0' '1' '0' '0' '0' '1'});
     model.component('comp1').material('mat1').propertyGroup.create('RefractiveIndex', 'Refractive index');
     if strcmp(P.beamMat,'diamond')
-        model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.4028' '0' '0' '0' '2.4022' '0' '0' '0' '2.4028'});
+        model.component('comp1').material('mat1').propertyGroup('RefractiveIndex').set('n', {'2.386' '0' '0' '0' '2.386' '0' '0' '0' '2.386'});
         model.component('comp1').material('mat1').propertyGroup('def').set('electricconductivity', {'0.001' '0' '0' '0' '0.001' '0' '0' '0' '0.001'});
         model.component('comp1').material('mat1').propertyGroup('def').set('relpermeability', {'5.7734' '0' '0' '0' '5.7734' '0' '0' '0' '5.7734'});
     elseif strcmp(P.beamMat,'SiC')

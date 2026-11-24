@@ -96,7 +96,7 @@ P.asym = 0; %0.02*P.w;                       % cross-section asymmetry (target y
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
 P.solveOpt = 1;                         % 1 to solve for optics
-P.nbeam = 2.4064;        % refractive index of the dielectric material
+P.nbeam = 2.386;         % refractive index of the dielectric material
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
 P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 0;                     % 1 to solve for mechanical Q (future implementation)

@@ -27,7 +27,7 @@ if strcmp(P.beamMat,'diamond') || strcmp(P.beamMat,'dia') || strcmp(P.beamMat,'d
     
     % index of refraction in material
     if ~isfield(P,'nbeam') || (isfield(P,'nbeam') && P.nbeam ~= 2.386)
-        P.nbeam = 2.4028;
+        P.nbeam = 2.386;   % diamond at telecom (was 2.4028, visible)
     end
     
     % photoelastic constants
