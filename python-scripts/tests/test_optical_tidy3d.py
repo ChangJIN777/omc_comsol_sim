@@ -323,7 +323,7 @@ def test_module_x_point_gap_is_recorded_next_to_the_score():
 def _fake_run(calls):
     def run(g, *, celltype, eval_id, f_target, options, rel_tol=0.30,
             optical_study="opt TE", n_k_default=None, xsect=None,
-            verbose=True, on_progress=None):
+            verbose=True, on_progress=None, optical_tol_hz=None):
         opts = ot.Tidy3DOptions.from_config(options)
         k_mode, n_k = opts.k_sampling(celltype, n_k_default)
         calls.append((celltype, type(g).__name__, eval_id, k_mode, n_k))
@@ -392,7 +392,7 @@ def test_engine_switch_and_distinct_ids():
         HOLE_U, ("surrogate", "surrogate_stub", "n=2.3860|xsect=rect"))
     old = ("comsol", "surrogate_stub", "complete", 15, 20, "opt TE", 13, 10, 0.30)
     assert r_com["id"] == objective_rib._rib_id(
-        _rib_u0(), old + ("n=2.3860|xsect=rect|z=even",))
+        _rib_u0(), old + ("n=2.3860|xsect=rect|z=even", "score=v2|otol=2THz"))
     assert h_com["id"] != objective._hash_u(HOLE_U, ("comsol", "surrogate_stub"))
     assert r_com["id"] != objective_rib._rib_id(_rib_u0(), old)
     # defaults per cell type: hole x_only, rib sweep with n_k_opt points
@@ -663,6 +663,67 @@ def test_rib_sweep_end_to_end_offline():
         assert rec["optical_min_resolvable_Hz"] > 0 and len(rec["_k_o"]) == 13
         assert rec["celltype"] == "rib" and rec["optical_engine"] == "tidy3d"
         json.dumps(rec, allow_nan=False)
+
+
+def test_rib_tidy3d_gap_choice_has_no_centre_window():
+    """Rib, score version 2: Gaussian-weighted choice instead of the window,
+    for a sweep and for x_only; the hole path keeps its window."""
+    a = RIB_CELL["a"]
+    plan = ot.k_plan("rib", a, k_mode="sweep", n_k=13, f_target=F_T)
+    k = np.array(plan.k_frac)
+    flat = lambda cols: np.column_stack(                       # noqa: E731
+        [np.full_like(k, f * 1e12) for f in cols])
+    window = (93.4e12, 293.4e12)
+    # two gaps: 150-185 THz (20.9 %, far) and 188-200 THz (6.2 %, on target)
+    freqs = flat([130.0, 150.0, 185.0, 188.0, 200.0])
+    out = {}
+    gp, method = ot.score_resonances("rib", k, freqs, a, f_target=F_T,
+                                     k_mode="sweep", window_hz=window,
+                                     optical_tol_hz=2e12, out=out)
+    assert method == "guided_interval_gap" and gp.found
+    assert (round(gp.f_lower / 1e12), round(gp.f_upper / 1e12)) == (188, 200)
+    assert abs(out["freq_penalty"] - np.exp(-((194e12 - F_T) / 2e12) ** 2)) < 1e-12
+    assert len(out["candidates"]) == 3 and out["candidates"][0]["chosen"]
+    # the old windowed call picks the widest gap inside +/- 30 %
+    old, _ = ot.score_resonances("rib", k, freqs, a, f_target=F_T,
+                                 k_mode="sweep", window_hz=window)
+    assert round(old.f_center / 1e12, 1) == 167.5
+    # the FDTD window is still the trusted range
+    cut, _ = ot.score_resonances("rib", k, freqs, a, f_target=F_T, k_mode="sweep",
+                                 window_hz=(93.4e12, 190e12), optical_tol_hz=2e12)
+    assert cut.f_upper <= 190e12
+    # x_only: the fundamental gap at X wherever it is centred (100-120 THz)
+    row = np.array([[100e12, 120e12]])
+    out = {}
+    gx, method = ot.score_resonances("rib", [1.0], row, a, f_target=F_T,
+                                     k_mode="x_only", optical_tol_hz=2e12, out=out)
+    assert method == "optical_gap_tracked_x" and gx.found
+    assert abs(gx.f_center - 110e12) < 1.0 and out["freq_penalty"] < 1e-30
+    assert len(out["candidates"]) == 1
+    assert not ot.score_resonances("rib", [1.0], row, a, f_target=F_T,
+                                   k_mode="x_only")[0].found       # windowed
+    assert not ot.score_resonances("hole", [1.0], row, 600e-9, f_target=F_T,
+                                   k_mode="x_only")[0].found       # hole: unchanged
+    # end to end (mocked tidy3d): the record carries choice, weight, version
+    with fake_tidy3d(cost=0.1) as (td, bs), tempfile.TemporaryDirectory() as tmp:
+        _install_fake_analysis(bs, a)
+        rec = _eval(_rib_u0(), tmp, celltype="rib", allow_cloud=True, max_credits=2.0)
+        assert rec["status"] == "success", rec.get("error")
+        pen = np.exp(-((192.5e12 - F_T) / 2e12) ** 2)              # 175-210 THz
+        assert abs(rec["optical_freq_penalty"] - pen) < 1e-9
+        assert abs(rec["optical_gap_effective"] - 35.0 / 192.5 * pen) < 1e-9
+        assert rec["optical_gap"] == rec["optical_gap_unpenalized"]
+        assert rec["score_version"] == 2 and rec["optical_tol_thz"] == 2.0
+        assert any(c["chosen"] for c in rec["optical_gap_candidates"])
+        g_eff = rec["optical_gap_effective"]
+        assert abs(rec["score"] - (g_eff - 10 * (0.2 - g_eff) ** 2)) < 1e-9
+        json.dumps(rec, allow_nan=False)
+        rx = _eval(_rib_u0(), tmp, celltype="rib", allow_cloud=True,
+                   max_credits=2.0, k_mode="x_only")
+        assert rx["status"] == "success" and rx["id"] != rec["id"]
+        # two lowest guided at X: 140 / 175 THz, centre 157.5 THz: found, weight ~ 0
+        assert abs(rx["optical_center_frequency"] - 157.5e12) < 1e6
+        assert rx["optical_freq_penalty"] < 1e-30 and len(rx["optical_gap_candidates"]) == 1
 
 
 def test_rib_loop_saves_everything_and_stops():

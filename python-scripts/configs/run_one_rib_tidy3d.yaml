@@ -9,7 +9,7 @@
 celltype: rib
 
 # One value per searched rib variable (bounds.yaml rib.variables), order a, w, t, s.
-u: [0.385714, 0.575254, 0.358947, 0.214737]
+u: [0.5, 0.575254, 0.358947, 0.214737]
 
 optical: tidy3d          # none | comsol | tidy3d
 mech: comsol     # comsol | surrogate_stub (mechanics is never Tidy3D)
@@ -28,12 +28,14 @@ xsect: rect
 
 rib:
   mech_gap_mode: complete
-  n_k: 15
+  n_k: 10
   n_bands_mech: 20
   optical_study: "opt TE"   # "opt TE" -> Tidy3D TE (Ey dipoles, symmetry (0,-1,1))
   n_k_opt: 13               # with tidy3d: default number of k points of a sweep
   n_bands_opt: 10           # COMSOL only
-  optical_rel_tol: 0.30     # gap centre within +/-30 % of the target frequency
+  optical_tol_thz: 2.0      # optical gap weight: G_o * exp(-((f_c - f_t)/optical_tol)^2),
+                            # f_c = gap centre, f_t = 193.4 THz (1550 nm). No window on
+                            # f_c: 1 on target, 1/e at 2 THz, ~0.02 at 4 THz off
   rxtal_deg: 0              # crystal rotation about the slab normal [deg]:
                             # 0 = beam along <100>, 45 = <110> (P.rxtal of
                             # omc-comsol-chang). Mechanics only; multiples
@@ -62,8 +64,8 @@ tidy3d:
                            #         guided resonances at X only. Cheap, but NOT
                            #         the interval gap (bands crossing the gap
                            #         away from X are not seen)
-  # n_k: 13                # k points of a sweep; default = rib.n_k_opt. Fewer k
-                           # cost less but raise the smallest resolvable gap
+  n_k: 10                # k points of a sweep; default = rib.n_k_opt. Fewer k
+                          #  cost less but raise the smallest resolvable gap
   results_dir: results/tidy3d   # downloads: <results_dir>/rib/<record id>/
   folder_name: omc_unitcell     # task folder in the Tidy3D web interface
   reuse_results: true      # results already downloaded for the same cell and

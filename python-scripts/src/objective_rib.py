@@ -27,9 +27,11 @@ each study returns the n_bands modes nearest its 8 GHz shift.
 Optical: MPB and the TMM surrogate model the hole cell only and are refused.
   "none"    skip optics; the score uses the mechanical gap alone
   "comsol"  guided-mode gap of study optical_study (default 'opt TE': PEC on
-            the y = 0 plane, i.e. Ey even in y) near the target wavelength;
-            see comsol_optics.guided_interval_gap
-  "tidy3d"  the same gap function on Tidy3D FDTD resonances (cloud, COSTS
+            the y = 0 plane, i.e. Ey even in y). Every guided gap is a
+            candidate (comsol_optics.guided_interval_gaps); the one with the
+            largest gap * exp(-((f_c - f_target)/optical_tol)^2) is scored
+            (score version 2; there is no window on the gap centre)
+  "tidy3d"  the same gap choice on Tidy3D FDTD resonances (cloud, COSTS
             FlexCredits; needs the `tidy3d:` config section). The k sweep
             takes n_k_opt simulations per cell unless tidy3d.n_k says
             otherwise; n_bands_opt is not used. See optical_tidy3d.py for the
@@ -54,6 +56,28 @@ MECH_STUDIES = {"sym": "mech sym", "antisym": "mech antisym"}
 MECH_GAP_MODES = {"sym": ("sym",), "antisym": ("antisym",),
                   "complete": ("sym", "antisym")}
 OPTICAL_BACKENDS = ("none", "comsol", "tidy3d")
+
+# Scoring version of a rib record (key `score_version`).
+#   1  optical gap centred within +/- optical_rel_tol of the target; score
+#      min(G_o, G_m) minus quadratic size and centre-frequency penalties.
+#      Also every record without optics (their score never changed).
+#   2  no centre window; the optical gap enters as
+#      G_o * exp(-((f_c - f_target)/optical_tol)^2)   (see _score_rib).
+# Results of different versions (or tolerances) are not comparable: the
+# version and the tolerance are in the id, and warm starts filter on them.
+SCORE_VERSION = 2
+DEFAULT_OPTICAL_TOL_THZ = 2.0
+# Where the optical k sweep starts: at the light line of
+# f_target*(1 - RIB_K_GRID_REL) (comsol_optics.rib_k_grid). This only sets the
+# sampled range (and through it the trusted range of the gap search); it is
+# not a rule on the gap centre. It was the default of the old optical_rel_tol
+# and stays in the id tuple so that records without optics keep their ids.
+RIB_K_GRID_REL = 0.30
+
+
+def score_version(optical_backend) -> int:
+    """Scoring version of a rib evaluation with this optical backend."""
+    return 1 if optical_backend in (None, "none") else SCORE_VERSION
 OPTICAL_STUDIES = ("opt TE", "opt TM")
 MECH_BACKENDS = ("comsol", "surrogate_stub")
 
@@ -111,8 +135,9 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
                            mech_backend="comsol", cache=None, on_stage=None,
                            mech_gap_mode="complete", n_k=15, n_bands_mech=20,
                            optical_study="opt TE", n_k_opt=13, n_bands_opt=10,
-                           optical_rel_tol=0.30, tidy3d_options=None,
-                           xsect=None, rxtal_deg=0.0, verbose=True):
+                           optical_tol_thz=DEFAULT_OPTICAL_TOL_THZ,
+                           tidy3d_options=None, xsect=None, rxtal_deg=0.0,
+                           verbose=True, optical_rel_tol=None):
     """Evaluate one normalized rib design vector u. Returns a result record.
 
     The record has every key of the hole record plus: celltype, the options
@@ -120,6 +145,19 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
     mech_gaps / mech_trusted_window_Hz / _k_m / _freqs_m and
     optical_gap_detail / optical_min_resolvable_Hz / _k_o / _freqs_o.
     optical_gap is None when optics is skipped.
+
+    optical_tol_thz: width [THz] of the Gaussian that weights the optical gap
+    by its distance from the target frequency (1550 nm, targets.yaml):
+        optical_freq_penalty = exp(-((f_c - f_target) / optical_tol)^2)
+        optical_gap_effective = optical_gap * optical_freq_penalty
+    There is no window on the gap centre any more: every guided gap in the
+    trusted range that is wider than the resolvable step is a candidate
+    (optical_gap_candidates), and the one with the largest effective gap is
+    taken (comsol_optics.select_gap_by_penalized_size). The score uses the
+    effective gap (see _score_rib). `optical_gap` stays the physical
+    normalized gap of the chosen interval (= optical_gap_unpenalized).
+    optical_rel_tol is DEPRECATED and ignored (a FutureWarning is issued), so
+    older configs keep running.
 
     tidy3d_options: the `tidy3d:` config section (optical_backend="tidy3d").
     Such records add optical_engine and optical_tidy3d_detail; a solve that
@@ -160,7 +198,19 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
                          f"use one of {sorted(MECH_GAP_MODES)}")
     n_k, n_bands_mech = int(n_k), int(n_bands_mech)
     n_k_opt, n_bands_opt = int(n_k_opt), int(n_bands_opt)
-    optical_rel_tol = float(optical_rel_tol)
+    if optical_rel_tol is not None:
+        import warnings
+        warnings.warn(
+            "rib option `optical_rel_tol` is deprecated and ignored: the gap "
+            "centre is no longer restricted to a window. Use `optical_tol_thz` "
+            "(Gaussian weight exp(-((f_c - f_target)/optical_tol)^2), default "
+            f"{DEFAULT_OPTICAL_TOL_THZ} THz) and remove optical_rel_tol from "
+            "the config.", FutureWarning, stacklevel=2)
+    optical_tol_thz = float(optical_tol_thz)
+    if not optical_tol_thz > 0:
+        raise ValueError(f"optical_tol_thz must be > 0, got {optical_tol_thz}")
+    optical_tol_hz = optical_tol_thz * 1e12
+    version = score_version(optical_backend)
 
     xsect = resolve_xsect(xsect)
     rxtal = resolve_rxtal(rxtal_deg)
@@ -172,7 +222,7 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
         z_family = study_z_family(optical_study, xsect)
     id_key = (optical_backend, mech_backend, mech_gap_mode, n_k,
               n_bands_mech, optical_study, n_k_opt, n_bands_opt,
-              optical_rel_tol)
+              RIB_K_GRID_REL)
     tidy3d_tag = None
     if optical_backend == "tidy3d":
         # a Tidy3D record never replaces a COMSOL one, nor an x_only one a
@@ -187,6 +237,8 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
         id_key += (tag,)
     if rxtal != 0.0:     # unrotated cells keep the id they always had
         id_key += (f"rxtal={rxtal:g}",)
+    if version != 1:     # optics scored: version and tolerance define the score
+        id_key += (f"score=v{version}|otol={optical_tol_thz:g}THz",)
     cid = _rib_id(u, id_key)
     if cache is not None and cid in cache:
         return cache[cid]
@@ -208,7 +260,9 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
                status="pending", reasons=[],
                mech_gap_mode=mech_gap_mode, n_k=n_k, n_bands_mech=n_bands_mech,
                optical_study=optical_study, n_k_opt=n_k_opt,
-               n_bands_opt=n_bands_opt, optical_rel_tol=optical_rel_tol,
+               n_bands_opt=n_bands_opt,
+               optical_rel_tol=None,    # deprecated key, kept in the schema
+               optical_tol_thz=optical_tol_thz, score_version=version,
                rxtal_deg=rxtal)
     no_solve = dict(optical_gap=0.0, mechanical_gap=0.0, score=-10.0,
                     optical_center_frequency=0.0,
@@ -236,7 +290,7 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
     nan = float("nan")
 
     # ---- optical ----
-    G_o, f_o_c = nan, nan
+    G_o, f_o_c, pen_o = nan, nan, nan
     if optical_backend == "none":
         _stage("optical", "skip", optical_backend)
     elif optical_backend == "tidy3d":
@@ -246,12 +300,18 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
             from optical_tidy3d import run_optical_tidy3d
             o = run_optical_tidy3d(
                 g, celltype="rib", eval_id=cid, f_target=f_o_target,
-                options=tidy3d_options, rel_tol=optical_rel_tol,
+                options=tidy3d_options, rel_tol=RIB_K_GRID_REL,
                 optical_study=optical_study, n_k_default=n_k_opt,
                 xsect=xsect, verbose=verbose,
-                on_progress=lambda m: _stage("optical", "info", m))
+                on_progress=lambda m: _stage("optical", "info", m),
+                optical_tol_hz=optical_tol_hz)
             G_o, f_o_c = o["gap"].normalized_gap, o["gap"].f_center
             rec.update(o["record"])
+            pen_o = o["record"].get("optical_freq_penalty")
+            if pen_o is None:           # a runner without the gap choice
+                from comsol_optics import freq_penalty
+                pen_o = freq_penalty(f_o_c, f_o_target, optical_tol_hz)
+                rec.update(optical_freq_penalty=pen_o)
             rec.update(
                 optical_min_resolvable_Hz=o["record"]["optical_tidy3d_detail"]
                 ["min_resolvable_Hz"],
@@ -271,9 +331,9 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
     else:
         _stage("optical", "start", f"{optical_backend}, {optical_study}")
         try:
-            from comsol_optics import (guided_interval_gap, resolvable_step_hz,
-                                       rib_k_grid)
-            k_o = rib_k_grid(g.a, n_k_opt, f_o_target, optical_rel_tol)
+            from comsol_optics import (guided_interval_gaps, resolvable_step_hz,
+                                       rib_k_grid, select_gap_by_penalized_size)
+            k_o = rib_k_grid(g.a, n_k_opt, f_o_target, RIB_K_GRID_REL)
             info = {}
             freqs_o = np.asarray(
                 _solve_optical_bands(g, optical_study, k_o, n_bands_opt,
@@ -283,11 +343,15 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
             rec.update(optical_comsol_detail=dict(
                 z_family=z_family, freqs_all_hz=info.get("freqs_all_hz"),
                 z_even_fraction=info.get("z_even_fraction")))
-            gp = guided_interval_gap(k_o, freqs_o, g.a, f_target=f_o_target,
-                                     rel_tol=optical_rel_tol)
+            # every guided gap, then the one with the largest gap * Gaussian
+            gp, pen_o, candidates = select_gap_by_penalized_size(
+                guided_interval_gaps(k_o, freqs_o, g.a), f_o_target,
+                optical_tol_hz)
             G_o, f_o_c = gp.normalized_gap, gp.f_center
             rec.update(
                 optical_gap_detail=_gap_to_dict(gp),
+                optical_freq_penalty=float(pen_o),
+                optical_gap_candidates=candidates,
                 optical_min_resolvable_Hz=float(resolvable_step_hz(k_o, g.a)),
                 optical_light_line_edge_Hz=float(C0 / (2.0 * g.a)),
                 _k_o=[float(x) for x in k_o],
@@ -344,9 +408,14 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
 
     _stage("score", "start")
     solved = (G_o == G_o) or (G_m == G_m)
-    score = _score_rib(G_o, G_m, f_o_c, f_m_c, f_o_target, f_m_target, targets)
+    # the optical gap enters the score weighted by its distance from the target
+    G_o_eff = G_o * float(pen_o) if G_o == G_o else nan
+    score = _score_rib(G_o_eff, G_m, f_m_c, f_m_target, targets)
     rec.update(status="success" if solved else "no_solver",
                optical_gap=_num(G_o), mechanical_gap=_num(G_m),
+               optical_gap_unpenalized=_num(G_o),
+               optical_gap_effective=_num(G_o_eff),
+               optical_freq_penalty=(None if G_o != G_o else float(pen_o)),
                optical_center_frequency=_num(f_o_c),
                mechanical_center_frequency=_num(f_m_c),
                score=float(score))
@@ -354,21 +423,32 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
     return _finish(rec)
 
 
-def _score_rib(G_o, G_m, f_o_c, f_m_c, f_o_t, f_m_t, targets):
-    """objective._score, with either gap allowed to be absent (NaN).
+def _score_rib(G_o_eff, G_m, f_m_c, f_m_t, targets):
+    """Rib score (score version 2), with either gap allowed to be absent (NaN).
 
-    Both present: min(G_o, G_m) - penalties, identical to objective._score.
-    One present: that gap minus its own penalties. None: 0.0.
-    A gap that was searched for but not found has gap 0 and centre 0, so it
-    takes the full size and frequency penalties (as in objective.py).
+    G_o_eff = G_o * exp(-((f_o,c - f_o,target) / optical_tol)^2) is the
+    optical gap already weighted by its distance from the target. It replaces
+    G_o everywhere, and the separate optical centre-frequency penalty
+    (lambda_optical_freq) is gone:
+
+      S = min(G_o_eff, G_m)
+          - lo  * max(0, gmin_o - G_o_eff)^2
+          - lm  * max(0, gmin_m - G_m)^2
+          - lmf * ((f_m,c - f_m,target) / f_m,target)^2
+
+    The mechanical terms are those of objective._score. One gap present: that
+    gap minus its own penalties. None: 0.0. An optical gap that was searched
+    for but not found has G_o_eff = 0 and takes the full size penalty; so
+    does, nearly, a gap several tolerances away from the target. Since
+    S <= min(G_o_eff, G_m), a mechanical gap cannot make up for an off-target
+    optical one.
     """
     s = targets["scoring"]
     gaps, pen = [], 0.0
-    if G_o == G_o:
-        gaps.append(G_o)
+    if G_o_eff == G_o_eff:
+        gaps.append(G_o_eff)
         pen += (s["lambda_optical"]
-                * max(0.0, targets["optical"]["min_gap"] - G_o) ** 2
-                + s["lambda_optical_freq"] * ((f_o_c - f_o_t) / f_o_t) ** 2)
+                * max(0.0, targets["optical"]["min_gap"] - G_o_eff) ** 2)
     if G_m == G_m:
         gaps.append(G_m)
         pen += (s["lambda_mech"]

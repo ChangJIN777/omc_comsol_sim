@@ -146,6 +146,24 @@ About 40 % of the box passes both checks with the defaults. For `a` > ~775 nm,
 - **Optical:** `optical: comsol` solves `opt TE` on the rib template and keeps
   only guided modes, using the light-line tracking and pseudo-mode filter in
   `src/comsol_optics.py`. `optical: none` scores the mechanical gap only.
+  There is no window on the gap centre (the old `rib.optical_rel_tol` is
+  deprecated: accepted with a warning and ignored). Every guided gap that lies
+  below the zone-edge light line, in the trusted range, and is wider than the
+  resolvable step is a candidate (`optical_gap_candidates`), and the gap centre
+  `f_c` enters through a Gaussian weight of width `rib.optical_tol_thz`
+  (default 2 THz) about the target `f_t` = 193.4 THz (1550 nm):
+  `optical_freq_penalty = exp(-((f_c - f_t)/optical_tol)^2)`,
+  `optical_gap_effective = optical_gap * optical_freq_penalty`.
+  The candidate with the largest effective gap is taken.
+- **Score (version 2, with optics):**
+  `S = min(G_o_eff, G_m) - lo*max(0, gmin_o - G_o_eff)^2
+       - lm*max(0, gmin_m - G_m)^2 - lmf*((f_m - f_m,t)/f_m,t)^2`,
+  with `G_o_eff = optical_gap_effective`. The weight is 1 on target, 1/e at
+  2 THz and 0.02 at 4 THz from it, so an off-target optical gap scores like no
+  gap. `optical_gap` in the record stays the physical gap. Records carry
+  `score_version` (2 with optics, 1 without, where nothing changed) and
+  `optical_tol_thz`; both are in the id, and `run_opt_comsol.py` seeds the
+  optimizer only with prior results of the same version and tolerance.
   `optical: tidy3d` scores the same gap from Tidy3D FDTD (see "Optical engine:
   COMSOL vs Tidy3D"). `surrogate` and `mpb` are not available for the rib.
   With the default `xsect: rect` only thickness-even modes are scored.

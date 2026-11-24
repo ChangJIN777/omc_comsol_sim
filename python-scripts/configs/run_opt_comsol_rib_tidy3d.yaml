@@ -32,7 +32,9 @@ rib:
   optical_study: "opt TE"
   n_k_opt: 13
   n_bands_opt: 10
-  optical_rel_tol: 0.30
+  optical_tol_thz: 2.0      # optical gap weight: G_o * exp(-((f_c - f_t)/optical_tol)^2),
+                            # f_c = gap centre, f_t = 193.4 THz (1550 nm). No window on
+                            # f_c: 1 on target, 1/e at 2 THz, ~0.02 at 4 THz off
   rxtal_deg: 0              # crystal rotation about the slab normal [deg]:
                             # 0 = beam along <100>, 45 = <110> (P.rxtal of
                             # omc-comsol-chang). Mechanics only; multiples

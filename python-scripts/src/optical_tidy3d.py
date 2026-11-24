@@ -113,8 +113,9 @@ from dataclasses import dataclass, field, asdict
 import numpy as np
 
 from bandgap import Gap
-from comsol_optics import (guided_interval_gap, optical_gap_tracked,
-                           resolvable_step_hz, rib_k_grid)
+from comsol_optics import (guided_interval_gap, guided_interval_gaps,
+                           optical_gap_tracked, resolvable_step_hz, rib_k_grid,
+                           select_gap_by_penalized_size)
 from geometry import (WEDGE_ANGLE_DEG, diamond_index, resolve_xsect,
                       wedge_depths, z_mirror_symmetric)
 
@@ -360,8 +361,18 @@ def guided_only(k_frac, freqs, a):
 
 
 def score_resonances(celltype, k_frac, freqs, a, *, f_target, rel_tol=0.30,
-                     k_mode="sweep", window_hz=None):
+                     k_mode="sweep", window_hz=None, optical_tol_hz=None,
+                     out=None):
     """Gap of Tidy3D resonances with the gap logic used for COMSOL.
+
+    optical_tol_hz (rib scoring, score version 2): when given, the +/- rel_tol
+    centre rule is NOT applied. A sweep takes every guided interval gap
+    (guided_interval_gaps) and returns the one that maximizes
+    gap * exp(-((f_c - f_target)/optical_tol_hz)^2); x_only returns the
+    fundamental gap at X wherever it is centred. `out` (a dict) then receives
+    "freq_penalty" of the returned gap and "candidates" (every gap, as
+    comsol_optics.select_gap_by_penalized_size lists them). Without
+    optical_tol_hz (hole cell) nothing changes.
 
     Returns (Gap, method):
       "guided_interval_gap"   rib sweep. Same function as the COMSOL rib path,
@@ -383,12 +394,25 @@ def score_resonances(celltype, k_frac, freqs, a, *, f_target, rel_tol=0.30,
     if celltype == "rib" and k_mode == "sweep":
         if window_hz is None:
             raise ValueError("the rib interval gap needs the FDTD window")
-        gp = guided_interval_gap(k_frac, freqs, a, f_target=f_target,
-                                 rel_tol=rel_tol, coverage=tuple(window_hz))
+        if optical_tol_hz is None:
+            gp = guided_interval_gap(k_frac, freqs, a, f_target=f_target,
+                                     rel_tol=rel_tol, coverage=tuple(window_hz))
+            return gp, "guided_interval_gap"
+        gaps = guided_interval_gaps(k_frac, freqs, a, coverage=tuple(window_hz))
+        gp, pen, cands = select_gap_by_penalized_size(gaps, f_target,
+                                                      optical_tol_hz)
+        if out is not None:
+            out.update(freq_penalty=pen, candidates=cands)
         return gp, "guided_interval_gap"
     keep = k_frac >= 0.5 - 1e-9
     gp = optical_gap_tracked(guided_only(k_frac, freqs, a)[keep],
-                             f_target=f_target, rel_tol=rel_tol)
+                             f_target=f_target,
+                             rel_tol=(rel_tol if optical_tol_hz is None
+                                      else float("inf")))
+    if optical_tol_hz is not None and out is not None:
+        gp, pen, cands = select_gap_by_penalized_size(
+            [gp] if gp.found else [], f_target, optical_tol_hz)
+        out.update(freq_penalty=pen, candidates=cands)
     return gp, ("optical_gap_tracked_x" if k_frac[keep].size == 1
                 else "optical_gap_tracked")
 
@@ -612,8 +636,14 @@ def expected_symmetry(optical_study="opt TE", xsect=None):
 
 def run_optical_tidy3d(g, *, celltype, eval_id, f_target, options,
                        rel_tol=0.30, optical_study="opt TE", n_k_default=None,
-                       xsect=None, verbose=True, on_progress=None):
+                       xsect=None, verbose=True, on_progress=None,
+                       optical_tol_hz=None):
     """Optical gap of one cell with Tidy3D. Enforce feasibility BEFORE calling.
+
+    optical_tol_hz: rib scoring (see score_resonances). rel_tol then only
+    places the first k of a rib sweep (k_plan); it is no centre rule. The
+    record additions then include optical_freq_penalty and
+    optical_gap_candidates.
 
     verbose: show Tidy3D's web progress and our step lines; False = errors
     only. on_progress: optional callable(message) for the step lines
@@ -634,11 +664,12 @@ def run_optical_tidy3d(g, *, celltype, eval_id, f_target, options,
             g, celltype=celltype, eval_id=eval_id, f_target=f_target,
             options=options, rel_tol=rel_tol, optical_study=optical_study,
             n_k_default=n_k_default, xsect=xsect, verbose=bool(verbose),
-            say=say)
+            say=say, optical_tol_hz=optical_tol_hz)
 
 
 def _run_optical_tidy3d(g, *, celltype, eval_id, f_target, options, rel_tol,
-                        optical_study, n_k_default, xsect, verbose, say):
+                        optical_study, n_k_default, xsect, verbose, say,
+                        optical_tol_hz=None):
     """The evaluation behind run_optical_tidy3d (same arguments).
 
     g: geometry.Geometry or RibGeometry (meters). eval_id: record id, used as
@@ -782,9 +813,11 @@ def _run_optical_tidy3d(g, *, celltype, eval_id, f_target, options, rel_tol,
             np.abs(k_frac - np.asarray(plan.k_frac))) > 1e-6:
         raise RuntimeError(f"Tidy3D returned k_frac {k_frac.tolist()}, "
                            f"expected {plan.k_frac}")
+    picked = {}
     gp, method = score_resonances(celltype, k_frac, freqs, g.a,
                                   f_target=f_target, rel_tol=rel_tol,
-                                  k_mode=k_mode, window_hz=window)
+                                  k_mode=k_mode, window_hz=window,
+                                  optical_tol_hz=optical_tol_hz, out=picked)
     detail.update(
         reused_download=bool(reused), gap_method=method,
         session_credits=session_credits(),
@@ -802,6 +835,9 @@ def _run_optical_tidy3d(g, *, celltype, eval_id, f_target, options, rel_tol,
     record = dict(optical_tidy3d_detail=detail,
                   optical_gap_detail=_gap_to_dict(gp),
                   _k_o=[float(x) for x in k_frac], _freqs_o=freqs_list)
+    if optical_tol_hz is not None:      # rib: Gaussian-weighted gap choice
+        record.update(optical_freq_penalty=float(picked.get("freq_penalty", 0.0)),
+                      optical_gap_candidates=picked.get("candidates", []))
     try:
         bs.save_bands_csv(os.path.join(run_dir, "bands.csv"), result, p)
     except Exception:

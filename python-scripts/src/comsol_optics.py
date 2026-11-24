@@ -376,9 +376,102 @@ def resolvable_step_hz(k_frac, a, vg_max_over_c=1.0):
     return vg_max_over_c * C0 * float(np.max(np.abs(np.diff(k_frac)))) / (2.0 * a)
 
 
+def freq_penalty(f_center, f_target, tol_hz):
+    """Gaussian weight of a gap centred at f_center: exp(-((f_c - f_t)/tol)^2).
+
+    1 on target, 1/e one tolerance away, ~0.018 two tolerances away.
+    """
+    if not tol_hz > 0:
+        raise ValueError(f"the frequency tolerance must be > 0, got {tol_hz}")
+    return float(np.exp(-((float(f_center) - float(f_target)) / float(tol_hz)) ** 2))
+
+
+def select_gap_by_penalized_size(gaps, f_target, tol_hz):
+    """The gap that maximizes normalized_gap * freq_penalty (rib scoring).
+
+    gaps: Gap objects, e.g. from guided_interval_gaps (no centre rule).
+    Returns (gap, penalty, candidates): the chosen Gap (Gap.empty() when the
+    list is empty), its penalty factor (0.0 for no gap), and every candidate
+    as a dict (f_lower, f_upper, f_center, normalized_gap, freq_penalty,
+    penalized_gap, chosen), widest penalized gap first.
+    """
+    cands = []
+    for gp in gaps:
+        pen = freq_penalty(gp.f_center, f_target, tol_hz)
+        cands.append((gp.normalized_gap * pen, pen, gp))
+    if not cands:
+        return Gap.empty(), 0.0, []
+    # ties (all penalties ~ 0 far from the target): the one nearest the target
+    cands.sort(key=lambda c: (-c[0], abs(c[2].f_center - f_target)))
+    listed = [dict(f_lower=float(gp.f_lower), f_upper=float(gp.f_upper),
+                   f_center=float(gp.f_center),
+                   normalized_gap=float(gp.normalized_gap),
+                   freq_penalty=float(pen), penalized_gap=float(val),
+                   chosen=(i == 0))
+              for i, (val, pen, gp) in enumerate(cands)]
+    return cands[0][2], float(cands[0][1]), listed
+
+
+def guided_interval_gaps(k_frac, freqs, a, min_THz=10.0, vg_max_over_c=1.0,
+                         coverage=None) -> list:
+    """EVERY guided-mode gap of one symmetry sector (no centre-frequency rule).
+
+    All the rules of guided_interval_gap except the centre window: guided
+    edges, no guided mode at any sampled k, inside the trusted range (below
+    the zone-edge light line), wider than the resolvable step. Sorted by
+    frequency. The rib cell picks one with select_gap_by_penalized_size.
+    """
+    lo, hi, _ = _guided_intervals(k_frac, freqs, a, min_THz, vg_max_over_c,
+                                  coverage)
+    return [Gap(float(x), float(y), float(0.5 * (x + y)), float(y - x),
+                float((y - x) / (0.5 * (x + y))), -1, True)
+            for x, y in zip(lo, hi)]
+
+
+def _guided_intervals(k_frac, freqs, a, min_THz, vg_max_over_c, coverage):
+    """(lower edges, upper edges, step) of the resolvable guided intervals."""
+    empty = (np.empty(0), np.empty(0), float("inf"))
+    k_frac = np.asarray(k_frac, dtype=float).ravel()
+    freqs = np.asarray(freqs, dtype=float)
+    if freqs.ndim != 2 or freqs.shape[0] != k_frac.size:
+        raise ValueError("freqs must be [n_k, n_bands], one row per k_frac")
+    if k_frac.size < 2:
+        return empty
+    f_ll = C0 * k_frac / (2.0 * a)            # light line at each k
+    f_lo, f_hi = float(np.min(f_ll)), float(np.max(f_ll))
+    guided = []
+    for row, ll in zip(freqs, f_ll):
+        row = row[np.isfinite(row) & (row > min_THz * 1e12)]
+        if coverage is None:
+            if row.size == 0:
+                return empty
+            f_lo = max(f_lo, float(row.min()))
+            if row.max() < ll:                # solver stopped below the light line
+                f_hi = min(f_hi, float(row.max()))
+        guided.append(row[row < ll])
+    if coverage is not None:
+        f_lo, f_hi = max(f_lo, float(coverage[0])), min(f_hi, float(coverage[1]))
+    if not f_hi > f_lo:
+        return empty
+    f = np.concatenate(guided)
+    f = np.unique(f[(f >= f_lo) & (f <= f_hi)])
+    step = resolvable_step_hz(k_frac, a, vg_max_over_c)
+    if f.size < 2:
+        return np.empty(0), np.empty(0), step
+    lo, hi = f[:-1], f[1:]
+    ok = (hi - lo) > step
+    return lo[ok], hi[ok], step
+
+
 def guided_interval_gap(k_frac, freqs, a, f_target=OPT_F_TARGET, rel_tol=0.30,
                         min_THz=10.0, vg_max_over_c=1.0, coverage=None) -> Gap:
     """Guided-mode optical gap of one symmetry sector, by frequency interval.
+
+    NOTE: the rib cell no longer scores with this centre window. Since score
+    version 2 it takes ALL gaps (guided_interval_gaps) and picks the one that
+    maximizes gap * exp(-((f_c - f_target)/tol)^2)
+    (select_gap_by_penalized_size). This function is kept, unchanged in
+    behaviour, for the windowed definition.
 
     freqs: [n_k, n_bands] Hz from one optical study (NaN = not returned),
     rows matching k_frac. A mode is GUIDED at k if f < c*k_z/(2*pi). The gap
@@ -403,36 +496,10 @@ def guided_interval_gap(k_frac, freqs, a, f_target=OPT_F_TARGET, rel_tol=0.30,
     same two light-line limits, and a k with no mode in it is allowed. All
     other rules are identical, so gaps of both engines are comparable.
     """
-    k_frac = np.asarray(k_frac, dtype=float).ravel()
-    freqs = np.asarray(freqs, dtype=float)
-    if freqs.ndim != 2 or freqs.shape[0] != k_frac.size:
-        raise ValueError("freqs must be [n_k, n_bands], one row per k_frac")
-    if k_frac.size < 2:
-        return Gap.empty()
-    f_ll = C0 * k_frac / (2.0 * a)            # light line at each k
-    f_lo, f_hi = float(np.min(f_ll)), float(np.max(f_ll))
-    guided = []
-    for row, ll in zip(freqs, f_ll):
-        row = row[np.isfinite(row) & (row > min_THz * 1e12)]
-        if coverage is None:
-            if row.size == 0:
-                return Gap.empty()
-            f_lo = max(f_lo, float(row.min()))
-            if row.max() < ll:                # solver stopped below the light line
-                f_hi = min(f_hi, float(row.max()))
-        guided.append(row[row < ll])
-    if coverage is not None:
-        f_lo, f_hi = max(f_lo, float(coverage[0])), min(f_hi, float(coverage[1]))
-    if not f_hi > f_lo:
-        return Gap.empty()
-    f = np.concatenate(guided)
-    f = np.unique(f[(f >= f_lo) & (f <= f_hi)])
-    if f.size < 2:
-        return Gap.empty()
-    lo, hi = f[:-1], f[1:]
+    lo, hi, _ = _guided_intervals(k_frac, freqs, a, min_THz, vg_max_over_c,
+                                  coverage)
     width, center = hi - lo, 0.5 * (lo + hi)
-    step = resolvable_step_hz(k_frac, a, vg_max_over_c)
-    ok = (np.abs(center - f_target) < rel_tol * f_target) & (width > step)
+    ok = np.abs(center - f_target) < rel_tol * f_target
     if not np.any(ok):
         return Gap.empty()
     ng = width / center
