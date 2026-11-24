@@ -128,14 +128,19 @@ section of `configs/bounds.yaml`. Each parameter sits under `variables`
 2. **Fabricability** (status `unfabricable`, `FAB_*` codes in `fab_failures`):
    - minimum rib width, spine width, rib arm `(w - s)/2`, air gap `a - t` and
      thickness, with a 50 nm default;
-   - etch and solid aspect ratios;
-   - rib slenderness and overhang;
-   - an optional maximum release width.
+   - etch and solid aspect ratios, rib slenderness and overhang: available
+     but disabled for now (`null` in `bounds.yaml`; previous limits 5, 5, 10
+     and 10);
+   - an optional maximum release width (off).
 
-   The thresholds live in `bounds.yaml` (`rib.fabrication`). The ratio limits
-   have no repo source yet; set them from the real process.
+   The thresholds live in `bounds.yaml` (`rib.fabrication`); `null` switches
+   a rule off. The ratio limits have no repo source yet; set them from the
+   real process before turning them back on.
 
-About 40 % of the box passes both checks with the defaults. For `a` > ~775 nm,
+About 40 % of the box passes both checks (40.3 %; 39.6 % with the four ratio
+limits on, which mostly removed slender ribs). With `r1` = `r2` = 40 nm the
+validity rules already force `t`, `a - t` and the rib arm above 80 nm, so the
+50 nm minimum sizes do not remove anything more. For `a` > ~775 nm,
 1550 nm lies above the zone-edge light line, so no guided optical gap is possible.
 
 **Scoring.**

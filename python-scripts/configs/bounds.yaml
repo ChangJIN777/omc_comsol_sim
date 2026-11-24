@@ -57,7 +57,8 @@ feasibility:
 rib:
   variables:
     # User-set search box (2026-11-23). About 40 % of it is buildable and
-    # fabricable with the values below; the rest is saved as infeasible /
+    # fabricable with the values below (40.3 %; 39.6 % with the four ratio
+    # limits at 5 / 5 / 10 / 10); the rest is saved as infeasible /
     # unfabricable without a solve.
     a:  { min: 0.30e-6, max: 1.00e-6 }   # period [m]
     w:  { min: 0.05e-6, max: 3.00e-6 }   # rib tip-to-tip width [m]
@@ -80,10 +81,12 @@ rib:
     min_feature: 0.05e-6        # t, s and the rib arm (w - s)/2 [m]
     min_gap: 0.05e-6            # air gap between neighbouring ribs, a - t [m]
     min_thickness: 0.05e-6      # th [m]
-    # No source in the repo for the four ratios and the release width below:
-    # TODO(confirm) with the actual etch / release process.
-    max_etch_aspect: 5.0        # th / (a - t)
-    max_solid_aspect: 5.0       # th / min(t, s)
-    max_rib_slenderness: 10.0   # ((w - s)/2) / t, free-standing rib, in plane
-    max_rib_overhang: 10.0      # ((w - s)/2) / th, free-standing rib, out of plane
+    # The four ratio limits below are DISABLED FOR NOW (null = rule off;
+    # user request, 2026-11-24). To restore, put the previous value back:
+    # 5.0, 5.0, 10.0, 10.0. No source in the repo for them or for the release
+    # width: TODO(confirm) with the actual etch / release process.
+    max_etch_aspect: null       # th / (a - t)                          [was 5.0]
+    max_solid_aspect: null      # th / min(t, s)                        [was 5.0]
+    max_rib_slenderness: null   # ((w - s)/2) / t, free-standing rib, in plane      [was 10.0]
+    max_rib_overhang: null      # ((w - s)/2) / th, free-standing rib, out of plane [was 10.0]
     max_release_width: null     # max(t, s) that the undercut can release [m]
