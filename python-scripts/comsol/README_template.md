@@ -28,7 +28,10 @@ COMSOL too rather than only MPB.
 Diamond: density 3515[kg/m^3]; for accuracy use the anisotropic elasticity
 matrix (cubic): C11=1076[GPa], C12=125[GPa], C44=577[GPa]. Set the material
 coordinate system so the beam axis z maps to your chosen crystal axis
-(<100> to start). For optics set n = 2.40 (or relative permittivity 5.76).
+(<100> to start). For optics set n = 2.386 (relative permittivity 5.693). The
+shipped templates still store 5.76 (n = 2.40); the Python drivers overwrite it
+with the value of `configs/materials.yaml` before every optical solve
+(`comsol_client.set_diamond_index`), so they need no rebuild.
 
 ## 4. Mechanical study  ("Study 1")
 - Physics: **Solid Mechanics**.

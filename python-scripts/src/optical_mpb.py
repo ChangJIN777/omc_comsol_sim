@@ -13,7 +13,7 @@ high-throughput pre-screen; COMSOL is the fabrication-faithful check.
 
 Model: a 3D supercell with the nanobeam along the z (periodic) axis, finite
 extent in x (thickness) and y (width), surrounded by air + enough padding so the
-guided modes decay. Diamond eps = n^2 ~ 5.76. We compute the lowest bands along
+guided modes decay. Diamond eps = n^2 (configs/materials.yaml). We compute the lowest bands along
 the irreducible BZ edge (Gamma -> X = pi/a) and report the TE-like (y-even)
 photonic gap. Light-line filtering removes radiative (leaky) bands.
 """
@@ -29,7 +29,11 @@ except Exception:  # pragma: no cover - only importable where MPB is installed
     _HAVE_MPB = False
 
 
-N_DIAMOND = 2.40
+from geometry import diamond_index
+
+# Index of configs/materials.yaml (2.386), as every other optical engine.
+# Rectangular cross-section only (xsect "rect"); objective.py refuses "wedge".
+N_DIAMOND = diamond_index()
 EPS_DIAMOND = N_DIAMOND ** 2
 
 

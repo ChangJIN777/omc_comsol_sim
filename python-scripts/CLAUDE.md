@@ -8,8 +8,8 @@ cross-section nanobeam + one elliptical hole) to obtain simultaneously:
   - A *symmetry-restricted* (quasi) gap for one mode family (even-even
     breathing-like) is acceptable -- a complete phononic gap is NOT required.
 
-Material: single-crystal diamond (n ~ 2.40; cubic elastic constants in
-`configs/materials.yaml`). For now: unit cells only (no cavity taper, no Q,
+Material: single-crystal diamond (n = 2.386, telecom, for every optical
+engine; cubic elastic constants in `configs/materials.yaml`). For now: unit cells only (no cavity taper, no Q,
 no g0). Find cells with both gaps first; seed cavity design later.
 
 ## Backends

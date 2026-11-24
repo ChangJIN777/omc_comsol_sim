@@ -69,7 +69,142 @@ def _set_eig_search(model, study, f_shift_hz, neigs=None):
         pass
 
 
-def _opt_sweep(model, g, study, n_k, n_bands, min_THz=10.0):
+# ---- thickness (z-mirror) parity of a solved optical mode ---------------------
+#
+# The templates model the FULL thickness and have no mid-thickness symmetry
+# plane, so an optical study returns modes of both thickness parities. For a
+# cross-section that has that mirror (xsect "rect") only one family is scored,
+# the same one Tidy3D selects with its symmetry plane:
+#   "even"  in-plane E even across the thickness (TE-like; mid-plane = PMC)
+#   "odd"   in-plane E odd  across the thickness (TM-like; mid-plane = PEC)
+# The family is read from the solved field, which needs no template change (the
+# hole templates are binary files): thickness is along x and the slab is
+# centred on x = 0, so on the mid-plane an even mode has E_x = 0 and an odd
+# mode has E_y = E_z = 0. Criterion, per mode:
+#   F = int_V m (|E_y|^2 + |E_z|^2) dV / int_V m |E|^2 dV,
+#   m = 1 for |x| < Z_PARITY_LAYER * thickness, else 0,
+# with the template's integration operator intop1. F -> 1 for an even mode and
+# F -> 0 for an odd one (the leading correction is ~ (Z_PARITY_LAYER*k_x*th)^2,
+# a few percent); modes are "even" for F >= Z_PARITY_THRESHOLD. A mode with F
+# near 0.5 would mean the mirror is broken (mesh, or a wedge template) and is
+# visible in the recorded fractions. For xsect "wedge" there is no mirror and
+# no filter: all modes are kept.
+Z_PARITY_LAYER = 0.125
+Z_PARITY_THRESHOLD = 0.5
+Z_FAMILIES = ("even", "odd")
+STUDY_Z_FAMILY = {"opt TE": "even", "opt TM": "odd"}
+
+
+def study_z_family(study, xsect="rect"):
+    """Thickness-parity family scored for an optical study, or None (all)."""
+    from geometry import z_mirror_symmetric
+    if not z_mirror_symmetric(xsect):
+        return None
+    if study not in STUDY_Z_FAMILY:
+        raise ValueError(f"no thickness-parity family known for study {study!r}; "
+                         f"expected one of {sorted(STUDY_Z_FAMILY)}")
+    return STUDY_Z_FAMILY[study]
+
+
+def z_parity_exprs(thickness, layer=Z_PARITY_LAYER):
+    """(numerator, denominator) COMSOL expressions of the fraction F above.
+
+    thickness: name of the template's slab-thickness parameter ('t' for the
+    hole templates, 'th' for the rib ones).
+    """
+    mid = f"(abs(x)<{layer}*{thickness})"
+    return (f"intop1({mid}*(abs(ewfd.Ey)^2+abs(ewfd.Ez)^2))",
+            f"intop1({mid}*(abs(ewfd.Ex)^2+abs(ewfd.Ey)^2+abs(ewfd.Ez)^2))")
+
+
+def z_even_fraction_from_fields(x, Ex, Ey, Ez, thickness, weights=None,
+                                layer=Z_PARITY_LAYER):
+    """The fraction F above from sampled fields (numpy twin of z_parity_exprs).
+
+    x: thickness coordinate of each sample (slab centred on 0); Ex is the
+    field component ALONG the thickness, Ey and Ez the in-plane ones; weights:
+    integration weights (default 1). Returns NaN if the layer holds no field.
+    """
+    x = np.asarray(x, dtype=float)
+    w = np.ones_like(x) if weights is None else np.asarray(weights, dtype=float)
+    m = w * (np.abs(x) < layer * thickness)
+    inplane = np.sum(m * (np.abs(Ey) ** 2 + np.abs(Ez) ** 2))
+    total = inplane + np.sum(m * np.abs(Ex) ** 2)
+    return float(inplane / total) if total > 0 else float("nan")
+
+
+def select_z_family(fraction, z_family, threshold=Z_PARITY_THRESHOLD):
+    """Boolean mask of the modes that belong to z_family ('even' | 'odd').
+
+    A mode whose fraction is NaN (no field in the layer) belongs to neither.
+    """
+    if z_family not in Z_FAMILIES:
+        raise ValueError(f"z_family {z_family!r}: use one of {Z_FAMILIES}")
+    fraction = np.asarray(fraction, dtype=float)
+    with np.errstate(invalid="ignore"):
+        return fraction >= threshold if z_family == "even" else fraction < threshold
+
+
+def mode_z_even_fraction(model, thickness, dset=None):
+    """F of every mode of the last solve, in solution order (see above)."""
+    num, den = z_parity_exprs(thickness)
+    kw = dict(dataset=dset) if dset else {}
+    num = np.real(np.asarray(model.evaluate(num, **kw), dtype=complex)).ravel()
+    den = np.real(np.asarray(model.evaluate(den, **kw), dtype=complex)).ravel()
+    if num.shape != den.shape:
+        raise RuntimeError(f"thickness parity: {num.size} numerators for "
+                           f"{den.size} denominators")
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return np.where(den > 0, num / den, np.nan)
+
+
+def _modes_at_k(model, study, min_THz, z_family=None, thickness=None,
+                info=None):
+    """Sorted frequencies [Hz] of the last solve of `study`.
+
+    Drops everything below min_THz (scattering-boundary pseudo-modes) and,
+    when z_family is given, every mode of the other thickness parity. If
+    `info` is a dict, the frequencies and fractions of ALL returned modes of
+    this k are appended to info["freqs_all_hz"] / info["z_even_fraction"].
+    """
+    dset = _study_dataset(model, study)
+    ev = (model.evaluate("freq", dataset=dset) if dset
+          else model.evaluate("freq"))
+    f = np.real(np.asarray(ev)).ravel()
+    keep = f > min_THz * 1e12
+    frac = None
+    if z_family is not None:
+        if not thickness:
+            raise ValueError("the thickness-parity filter needs the name of "
+                             "the template's thickness parameter")
+        frac = mode_z_even_fraction(model, thickness, dset)
+        if frac.shape != f.shape:
+            raise RuntimeError(f"thickness parity: got {frac.size} values for "
+                               f"{f.size} modes")
+        keep &= select_z_family(frac, z_family)
+    if info is not None:
+        order = np.argsort(f)
+        info.setdefault("freqs_all_hz", []).append(
+            [float(x) for x in f[order]])
+        info.setdefault("z_even_fraction", []).append(
+            None if frac is None else
+            [float(x) if np.isfinite(x) else None for x in frac[order]])
+    return np.sort(f[keep])
+
+
+def _prepare_optics(model, n_bands, floor, z_family):
+    """Diamond index of materials.yaml on the model; eigenvalues to ask for.
+
+    With the parity filter about half of the returned modes are dropped, so
+    twice as many are requested to keep n_bands of the scored family.
+    """
+    from comsol_client import set_diamond_index
+    set_diamond_index(model)
+    return max(n_bands, floor) * (2 if z_family else 1)
+
+
+def _opt_sweep(model, g, study, n_k, n_bands, min_THz=10.0, z_family=None,
+               thickness=None, info=None):
     """Sweep zone-edge half of BZ for optical. Returns (k_frac, freqs) in Hz.
 
     Samples k ∈ [0.5, 1.0]×π/a only — the half nearest the zone edge.
@@ -88,20 +223,19 @@ def _opt_sweep(model, g, study, n_k, n_bands, min_THz=10.0):
     plus room for the 1-3 near-zero scattering-boundary pseudo-modes (which
     get filtered out below by `min_THz`) — asking for more just costs solve
     time without changing the score.
+
+    z_family / thickness / info: thickness-parity filter, see _modes_at_k.
+    The diamond index of configs/materials.yaml is set on the model first.
     """
     k_frac = np.linspace(0.5, 1.0, n_k)   # zone-edge half only
     freqs  = np.full((n_k, n_bands), np.nan)
-    neigs_req = max(n_bands, 6)
+    neigs_req = _prepare_optics(model, n_bands, 6, z_family)
     for i, s in enumerate(k_frac):
         kz = np.pi * s / g.a
         model.parameter("kF", f"{kz}[1/m]")
         _set_eig_search(model, study, _guided_shift_hz(kz), neigs=neigs_req)
         model.solve(study)
-        dset = _study_dataset(model, study)
-        ev = (model.evaluate("freq", dataset=dset) if dset
-              else model.evaluate("freq"))
-        fs = np.sort(np.real(np.asarray(ev)))
-        fs = fs[fs > min_THz * 1e12]
+        fs = _modes_at_k(model, study, min_THz, z_family, thickness, info)
         n_av = min(n_bands, len(fs))
         freqs[i, :n_av] = fs[:n_av]
     return k_frac, freqs
@@ -167,7 +301,8 @@ def optical_gap_tracked(freqs_o, f_target=OPT_F_TARGET, rel_tol=0.30):
                min_gap, ng, -1, True)
 
 
-def _full_opt_sweep(model, g, study, n_k=15, n_bands=6, min_THz=10.0):
+def _full_opt_sweep(model, g, study, n_k=15, n_bands=6, min_THz=10.0,
+                    z_family=None, thickness=None, info=None):
     """Sweep the full Brillouin zone (k: 0→1×π/a) for optical bands.
 
     Distinct from _opt_sweep which covers only the zone-edge half; this version
@@ -178,17 +313,13 @@ def _full_opt_sweep(model, g, study, n_k=15, n_bands=6, min_THz=10.0):
     """
     k_frac = np.linspace(1e-3, 1.0, n_k)
     freqs  = np.full((n_k, n_bands), np.nan)
-    neigs_req = max(n_bands, 10)
+    neigs_req = _prepare_optics(model, n_bands, 10, z_family)
     for i, s in enumerate(k_frac):
         kz = np.pi * s / g.a
         model.parameter("kF", f"{kz}[1/m]")
         _set_eig_search(model, study, _guided_shift_hz(kz), neigs=neigs_req)
         model.solve(study)
-        dset = next((d for d in model.datasets() if d.startswith(study + '//')), None)
-        ev = (model.evaluate("freq", dataset=dset) if dset
-              else model.evaluate("freq"))
-        fs = np.sort(np.real(np.asarray(ev)))
-        fs = fs[fs > min_THz * 1e12]
+        fs = _modes_at_k(model, study, min_THz, z_family, thickness, info)
         n_av = min(n_bands, len(fs))
         freqs[i, :n_av] = fs[:n_av]
     return k_frac, freqs
@@ -197,7 +328,8 @@ def _full_opt_sweep(model, g, study, n_k=15, n_bands=6, min_THz=10.0):
 # ---- rib cell (multimode): arbitrary k grid + guided-mode interval gap ------
 
 def opt_sweep_at(model, g, study, k_frac, n_bands, min_THz=10.0,
-                 f_target=OPT_F_TARGET):
+                 f_target=OPT_F_TARGET, z_family=None, thickness=None,
+                 info=None):
     """_opt_sweep on a caller-supplied k grid. Returns (k_frac, freqs [Hz]).
 
     k_frac = k_z*a/pi. Same per-k search as _opt_sweep: shift on the light
@@ -206,18 +338,14 @@ def opt_sweep_at(model, g, study, k_frac, n_bands, min_THz=10.0,
     """
     k_frac = np.asarray(k_frac, dtype=float).ravel()
     freqs = np.full((k_frac.size, n_bands), np.nan)
-    neigs_req = max(n_bands, 6)
+    neigs_req = _prepare_optics(model, n_bands, 6, z_family)
     for i, s in enumerate(k_frac):
         kz = np.pi * s / g.a
         model.parameter("kF", f"{kz}[1/m]")
         _set_eig_search(model, study, _guided_shift_hz(kz, f_target=f_target),
                         neigs=neigs_req)
         model.solve(study)
-        dset = _study_dataset(model, study)
-        ev = (model.evaluate("freq", dataset=dset) if dset
-              else model.evaluate("freq"))
-        fs = np.sort(np.real(np.asarray(ev)).ravel())
-        fs = fs[fs > min_THz * 1e12]
+        fs = _modes_at_k(model, study, min_THz, z_family, thickness, info)
         n_av = min(n_bands, len(fs))
         freqs[i, :n_av] = fs[:n_av]
     return k_frac, freqs
@@ -249,7 +377,7 @@ def resolvable_step_hz(k_frac, a, vg_max_over_c=1.0):
 
 
 def guided_interval_gap(k_frac, freqs, a, f_target=OPT_F_TARGET, rel_tol=0.30,
-                        min_THz=10.0, vg_max_over_c=1.0) -> Gap:
+                        min_THz=10.0, vg_max_over_c=1.0, coverage=None) -> Gap:
     """Guided-mode optical gap of one symmetry sector, by frequency interval.
 
     freqs: [n_k, n_bands] Hz from one optical study (NaN = not returned),
@@ -266,6 +394,14 @@ def guided_interval_gap(k_frac, freqs, a, f_target=OPT_F_TARGET, rel_tol=0.30,
         band crossing between two k samples. A returned gap can still be
         narrower than reported by up to that step.
     Band indices are not used (lower_band = -1).
+
+    coverage: None (default, COMSOL: each row holds the n modes nearest a
+    shift, so the trusted range is derived from the rows as described above),
+    or (f_min, f_max) in Hz for a solver that reports EVERY mode inside a
+    fixed frequency window at every k (Tidy3D FDTD + harmonic inversion, see
+    optical_tidy3d.py). The trusted range is then that window, cut by the
+    same two light-line limits, and a k with no mode in it is allowed. All
+    other rules are identical, so gaps of both engines are comparable.
     """
     k_frac = np.asarray(k_frac, dtype=float).ravel()
     freqs = np.asarray(freqs, dtype=float)
@@ -278,12 +414,15 @@ def guided_interval_gap(k_frac, freqs, a, f_target=OPT_F_TARGET, rel_tol=0.30,
     guided = []
     for row, ll in zip(freqs, f_ll):
         row = row[np.isfinite(row) & (row > min_THz * 1e12)]
-        if row.size == 0:
-            return Gap.empty()
-        f_lo = max(f_lo, float(row.min()))
-        if row.max() < ll:                    # solver stopped below the light line
-            f_hi = min(f_hi, float(row.max()))
+        if coverage is None:
+            if row.size == 0:
+                return Gap.empty()
+            f_lo = max(f_lo, float(row.min()))
+            if row.max() < ll:                # solver stopped below the light line
+                f_hi = min(f_hi, float(row.max()))
         guided.append(row[row < ll])
+    if coverage is not None:
+        f_lo, f_hi = max(f_lo, float(coverage[0])), min(f_hi, float(coverage[1]))
     if not f_hi > f_lo:
         return Gap.empty()
     f = np.concatenate(guided)

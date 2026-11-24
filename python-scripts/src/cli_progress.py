@@ -18,6 +18,8 @@ def _fmt_time(seconds):
 def make_stderr_reporter(prefix="", stages=None):
     """Build an on_stage(name, event, info) callback that prints
     "[i/n] stage ... running/done/skipped (elapsed)" lines to stderr.
+    The event "info" prints a sub-step line "[i/n] stage: <info>" (used by
+    the Tidy3D engine: building, uploading, estimated cost, ...).
 
     stages: optional ordered stage-name list (defaults to _STAGES). Pass a
     custom order when the caller's pipeline runs stages in a different sequence
@@ -32,6 +34,8 @@ def make_stderr_reporter(prefix="", stages=None):
         if event == "start":
             t_start[name] = time.time()
             print(f"{prefix}[{idx}/{n}] {label} ... running", file=sys.stderr)
+        elif event == "info":
+            print(f"{prefix}[{idx}/{n}] {name}: {info}", file=sys.stderr)
         elif event == "skip":
             print(f"{prefix}[{idx}/{n}] {label} ... skipped", file=sys.stderr)
         elif event == "done":

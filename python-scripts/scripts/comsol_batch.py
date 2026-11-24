@@ -201,6 +201,108 @@ def template_parameters(mph):
     return out
 
 
+def repo_diamond_index():
+    """refractive_index_1550nm of configs/materials.yaml (standard library only)."""
+    path = os.path.join(ROOT, "configs", "materials.yaml")
+    with open(path) as fh:
+        m = re.search(r"^\s*refractive_index_1550nm:\s*([0-9.eE+-]+)", fh.read(), re.M)
+    if not m:
+        raise BatchError(f"refractive_index_1550nm not found in {path}")
+    return float(m.group(1))
+
+
+def template_diamond_eps(mph):
+    """Largest relpermittivity stored in the template's materials (the
+    diamond one; vacuum is 1), or None if it cannot be read."""
+    try:
+        with zipfile.ZipFile(mph) as z:
+            text = z.read("smodel.json").decode("utf-8", "replace")
+        vals = [float(v) for v in re.findall(
+            r"\"name\":\"relpermittivity\"[^{}]*?\"scalarReal\":\"([^\"]+)\"", text)]
+        vals += [float(v) for v in re.findall(
+            r"\"scalarReal\":\"([^\"]+)\"[^{}]*?\"name\":\"relpermittivity\"", text)]
+        return max(vals) if vals else None
+    except Exception:
+        return None
+
+
+def diamond_index_override(template, tp, studies, overrides, n, keep):
+    """Make the optical studies solve with diamond index n (materials.yaml).
+
+    A batch run can only change GLOBAL PARAMETERS (-pname/-plist). Templates
+    built by comsol/build_omc_unitcell_rib.m since 2026-11-23, and hole
+    templates patched with comsol/patch_hole_templates_index.m, have the
+    parameter n_diamond (relpermittivity = n_diamond^2): it is added to the
+    overrides. An older template stores a number; if that is not n^2 the run
+    is refused (exit 2) unless `keep`, because the index cannot be changed
+    from here -- rebuild the template, or use the MPh drivers, which set the
+    material property at run time (comsol_client.set_diamond_index).
+    Returns a note for the log / summary.
+    """
+    if not any(s in OPTICAL_STUDIES for s in studies):
+        return "no optical study: diamond index not used"
+    if "n_diamond" in overrides:
+        return f"n_diamond = {overrides['n_diamond']} (given with -p)"
+    if "n_diamond" in tp:
+        overrides["n_diamond"] = repr(float(n))
+        return f"n_diamond = {n} (configs/materials.yaml, passed with -pname)"
+    eps = template_diamond_eps(template)
+    if eps is not None and abs(eps - n * n) < 1e-6 * n * n:
+        return f"template relpermittivity {eps:g} = {n}^2"
+    have = (f"relpermittivity {eps:g} (n = {math.sqrt(eps):.4f})"
+            if eps else "an unknown permittivity")
+    msg = (f"the template has no parameter n_diamond and stores {have}, but "
+           f"the diamond index is {n} (configs/materials.yaml). comsol batch "
+           "can only set global parameters")
+    if keep:
+        log("WARNING: " + msg + "; solving with the template's value "
+            "(--keep-template-index)")
+        return f"TEMPLATE VALUE KEPT: {have}"
+    raise BatchError(
+        msg + ". Give the template the parameter: rib templates, rebuild "
+        "with build_omc_unitcell_rib (MATLAB); hole templates, run "
+        "comsol/patch_hole_templates_index.m (MATLAB, patches in place). Or "
+        "pass --keep-template-index to solve with the template's value.",
+        code=2)
+
+
+def air_region_note(tp, studies, allow_old=False):
+    """Describe the air region the optical studies solve with.
+
+    Rib templates built by comsol/build_omc_unitcell_rib.m since the air
+    half-disk have the parameter air_r (= farthest beam corner + air_gap,
+    both tunable with -p). An older rib template (parameter th, no air_r)
+    has an air box whose outer faces sit inside the evanescent tail of the
+    guided modes: it is refused for an optical study (exit 2) unless
+    `allow_old` (--allow-old-air, e.g. for a deliberate box-vs-disk Q
+    comparison). Mechanics does not use the air. Returns a note for the
+    log / summary.
+    """
+    if not any(s in OPTICAL_STUDIES for s in studies):
+        return "no optical study: air region not used"
+    if "air_r" in tp:
+        note = f"half-disk, air_r = {tp['air_r'][1] * 1e9:.1f} nm"
+        if "air_gap" in tp:
+            note += f" (air_gap = {tp['air_gap'][1] * 1e9:.1f} nm)"
+        return note
+    if "th" in tp:
+        note = ("OLD AIR BOX (rib template built before the air half-disk, no "
+                "parameter air_r; outer faces at x = +-2.5*th, inside the "
+                "evanescent tail of the guided modes)")
+        if allow_old:
+            log("WARNING: " + note + "; solving it anyway (--allow-old-air)")
+            return note
+        raise BatchError(
+            "the template is a rib template with the old air box (no "
+            "parameter air_r): its outer faces sit inside the evanescent tail "
+            "of the guided modes, so optical Q and frequencies are not to be "
+            "trusted. Delete it and rebuild it in MATLAB with LiveLink "
+            "(build_omc_unitcell_rib, air half-disk), or pass --allow-old-air "
+            "to solve it deliberately (e.g. to compare box and disk).",
+            code=2)
+    return "as stored in the template (not a rib template)"
+
+
 def parse_params(items):
     """['a=600[nm]', ...] -> ordered {name: value}; values are COMSOL expressions."""
     out = {}
@@ -725,6 +827,18 @@ def main(argv=None):
     ap.add_argument("--comsol-arg", action="append", default=[], metavar="ARG",
                     help="extra argument for the solve command (repeatable), "
                          "e.g. --comsol-arg=-np --comsol-arg=4")
+    ap.add_argument("--n-diamond", type=float, default=None,
+                    help="diamond refractive index of the optical studies "
+                         "(default: configs/materials.yaml, 2.386); set through "
+                         "the template parameter n_diamond")
+    ap.add_argument("--keep-template-index", action="store_true",
+                    help="solve an old template (no n_diamond parameter) with "
+                         "the permittivity stored in it instead of refusing")
+    ap.add_argument("--allow-old-air", action="store_true",
+                    help="solve the optical studies of an old rib template "
+                         "(air box, no parameter air_r) instead of refusing, "
+                         "e.g. to compare its Q with the rebuilt half-disk "
+                         "template")
     ap.add_argument("--verbose", action="store_true",
                     help="show COMSOL's own log on the terminal as well")
     args = ap.parse_args(argv)
@@ -758,7 +872,8 @@ def main(argv=None):
     tp = template_parameters(template)
     if tp:
         log("template parameters: " + ", ".join(
-            f"{n}={tp[n][0]}" for n in ("a", "w", "th", "t", "s", "r1", "r2", "kF")
+            f"{n}={tp[n][0]}" for n in ("a", "w", "th", "t", "s", "r1", "r2", "kF",
+                                        "air_gap", "air_r")
             if n in tp))
         if "kF" in tp and "kF" not in overrides and tp["kF"][0].replace(" ", "") != "pi/a":
             log(f"WARNING: the template's kF is {tp['kF'][0]!r}, not pi/a; "
@@ -767,6 +882,17 @@ def main(argv=None):
         if unknown:
             raise BatchError(f"template has no parameter(s) {unknown}; it has "
                              f"{sorted(tp)}", 64)
+    index_note = "not solved here (--extract-only)"
+    if not args.extract_only:
+        n_diamond = (args.n_diamond if args.n_diamond is not None
+                     else repo_diamond_index())
+        index_note = diamond_index_override(template, tp, studies, overrides,
+                                            n_diamond, args.keep_template_index)
+        log(f"diamond index: {index_note}")
+    # refused for an old rib air box only when something is solved here
+    air_note = air_region_note(tp, studies,
+                               allow_old=args.allow_old_air or args.extract_only)
+    log(f"air region: {air_note}")
 
     outdir = local_path(args.outdir) if args.outdir else os.path.join(
         ROOT, "results", f"batch_{_dt.datetime.now():%Y%m%d_%H%M%S}")
@@ -886,6 +1012,7 @@ def main(argv=None):
 
     summary = dict(template=os.path.abspath(template), comsol_root=root,
                    licence_pool=args.license, overrides=overrides,
+                   diamond_index=index_note, air_region=air_note,
                    timings=timings, studies=summaries, licence_watch=licence)
     with open(os.path.join(outdir, "summary.json"), "w") as fh:
         json.dump(summary, fh, indent=2)

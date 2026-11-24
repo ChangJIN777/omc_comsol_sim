@@ -11,14 +11,22 @@ import mph
 # Import characterization internals from the optimizer script
 from scripts.run_opt_comsol import _run_characterization
 
-DEFAULT_MPH  = "comsol/omc_unitcell_iso.mph"
+DEFAULT_MPH  = "comsol/omc_unitcell_iso.mph"     # xsect wedge
+RECT_MPH     = "comsol/omc_unitcell.mph"         # xsect rect
 DEFAULT_JSON = "results/opt_results_t5d_iso.json"
 DEFAULT_OUT  = "results/figures"
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mph",    default=DEFAULT_MPH)
+    ap.add_argument("--mph",    default=None,
+                    help="template; default by --xsect "
+                         f"(wedge: {DEFAULT_MPH}, rect: {RECT_MPH})")
+    ap.add_argument("--xsect",  default="wedge", choices=("rect", "wedge"),
+                    help="cross-section of the optimization (default wedge, "
+                         "what run_opt_comsol.py has always used). rect: only "
+                         "the thickness-parity family of each optical study "
+                         "is plotted and scored")
     ap.add_argument("--json",   default=DEFAULT_JSON)
     ap.add_argument("--out-dir", default=DEFAULT_OUT)
     ap.add_argument("--n-k",    type=int, default=7)
@@ -37,6 +45,8 @@ def main():
                          "solnum is the real physical dielectric-band mode "
                          "vs. a spurious scattering-boundary artifact.")
     args = ap.parse_args()
+    if args.mph is None:
+        args.mph = RECT_MPH if args.xsect == "rect" else DEFAULT_MPH
 
     # Allow relative paths from repo root
     root = os.path.join(os.path.dirname(__file__), "..")

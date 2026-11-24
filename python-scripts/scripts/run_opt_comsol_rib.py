@@ -29,7 +29,8 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_HERE, "..", "src"))
 
 from geometry import (load_bounds, n_dim, phys_to_u, rib_search_vars,  # noqa: E402
-                      RibGeometry)
+                      RibGeometry, resolve_rxtal)
+from objective import check_xsect_backend                             # noqa: E402
 from objective_rib import evaluate_rib_candidate                      # noqa: E402
 from optimizer import initialize_optimizer                            # noqa: E402
 from database import save_result, db_path                             # noqa: E402
@@ -38,7 +39,7 @@ C0 = 299_792_458.0
 _CFG_DIR = os.path.join(_HERE, "..", "configs")
 _DEFAULT_CONFIG = os.path.join(_CFG_DIR, "run_opt_comsol_rib.yaml")
 _RIB_OPTION_KEYS = ("mech_gap_mode", "n_k", "n_bands_mech", "optical_study",
-                    "n_k_opt", "n_bands_opt", "optical_rel_tol")
+                    "n_k_opt", "n_bands_opt", "optical_rel_tol", "rxtal_deg")
 
 
 def _load_targets():
@@ -165,9 +166,11 @@ def _plot_progress(results, out_path):
 
 # ---- optimization loop --------------------------------------------------------
 
-def _warm_start(opt, prior, bounds, nd):
+def _warm_start(opt, prior, bounds, nd, rxtal=0.0):
     """Seed an Optuna study with prior successful records (u recomputed from
-    the stored physical params with the CURRENT bounds). Returns the count."""
+    the stored physical params with the CURRENT bounds). Only records of the
+    same crystal rotation `rxtal` (deg; records without rxtal_deg count as 0)
+    are used. Returns the count."""
     study = getattr(opt, "study", None)
     if study is None or not prior:
         return 0
@@ -177,6 +180,8 @@ def _warm_start(opt, prior, bounds, nd):
     n_added = 0
     for r in prior:
         if r.get("status") != "success" or not r.get("params"):
+            continue
+        if float(r.get("rxtal_deg") or 0.0) != rxtal:
             continue
         u = phys_to_u(r["params"], bounds, celltype="rib")
         study.add_trial(optuna.trial.create_trial(
@@ -193,13 +198,28 @@ def main_rib(cfg, cfg_path):
     nd = n_dim("rib", bounds)
     opts = _rib_options(cfg)
     optical, mech = cfg.get("optical", "comsol"), cfg.get("mech", "comsol")
+    # optical: tidy3d -> the `tidy3d:` section (cloud opt-in; its max_credits
+    # is the credit budget of this whole loop). See src/optical_tidy3d.py.
+    tidy3d_options = cfg.get("tidy3d") if optical == "tidy3d" else None
+    # xsect: rect (default) | wedge. Selects the template (optics + mechanics)
+    # and the Tidy3D geometry; rect scores thickness-even optical modes only.
+    xsect = check_xsect_backend(cfg.get("xsect"), optical)
     out_json, out_fig = cfg["out_json"], cfg["out_fig"]
     db = cfg.get("db_path") or db_path("rib")
+    # crystal rotation about the slab normal (mechanics only): 0 or 45 deg
+    rxtal = resolve_rxtal(opts.get("rxtal_deg"))
 
     if "comsol" in (optical, mech):
-        from comsol_client import template_path
-        if not os.path.exists(template_path("rib")):
-            print(f"[FAIL] COMSOL template not found: {template_path('rib')}")
+        from comsol_client import (require_rib_air_disk,
+                                   require_rxtal_template, template_path)
+        try:
+            path = template_path("rib", xsect, must_exist=True)
+            if optical == "comsol":            # the old air box: optics only
+                require_rib_air_disk(path)
+            if mech == "comsol":
+                require_rxtal_template(path, rxtal)
+        except (FileNotFoundError, RuntimeError) as err:   # missing or outdated
+            print(f"[FAIL] {err}")
             sys.exit(1)
 
     prior = []
@@ -214,9 +234,10 @@ def main_rib(cfg, cfg_path):
 
     opt = initialize_optimizer(None, backend=cfg.get("backend", "auto"),
                                n_init=cfg["n_init"], n_dim=nd)
-    n_seed = _warm_start(opt, prior, bounds, nd)
+    n_seed = _warm_start(opt, prior, bounds, nd, rxtal=rxtal)
     print(f"Rib cell | variables {names} | optimizer {type(opt).__name__} "
-          f"(seeded with {n_seed}) | optical={optical} mech={mech} {opts}")
+          f"(seeded with {n_seed}) | optical={optical} mech={mech} "
+          f"xsect={xsect} {opts}")
     print(f"Results: {out_json}  |  sqlite: {db}  |  figure: {out_fig}")
 
     results = list(prior)
@@ -226,7 +247,19 @@ def main_rib(cfg, cfg_path):
         u = opt.ask()
         rec = evaluate_rib_candidate(u, bounds=bounds, targets=targets,
                                      optical_backend=optical,
-                                     mech_backend=mech, **opts)
+                                     mech_backend=mech,
+                                     tidy3d_options=tidy3d_options,
+                                     xsect=xsect, **opts)
+        if rec.get("optical_tidy3d_stop"):
+            # Tidy3D did not run (cloud not allowed, dry run, credit budget
+            # reached, ...) and would not for the next candidate either: save
+            # everything and stop. Not a result, so the optimizer is not told.
+            save_result(rec, db)
+            results.append(rec)
+            _save_json(results, out_json)
+            _plot_progress(results, out_fig)
+            print(f"[{it:3d}] STOP ({rec['optical_tidy3d_stop']}): {rec['error']}")
+            break
         opt.tell(u, rec["score"])
         save_result(rec, db)
         results.append(rec)
@@ -252,6 +285,9 @@ def main_rib(cfg, cfg_path):
 
     print("\n" + "=" * 60 + "\nRIB OPTIMIZATION COMPLETE\n" + "=" * 60)
     print(f"Wall time: {_fmt_time(time.time() - t_start)}")
+    if optical == "tidy3d":
+        from optical_tidy3d import session_credits
+        print(f"Tidy3D cost estimates of this run: {session_credits():.3f} FlexCredits")
     if best is not None:
         print(f"Best this run: score={best['score']:+.4f}  "
               f"G_o={100*_f(best['optical_gap']):.1f}%  "
@@ -283,18 +319,22 @@ def characterize_rib(cfg):
     from acoustic_comsol import run_mechanical_comsol
     from bandgap import interval_gap
     from comsol_client import get_model, set_geometry, template_path
+    from comsol_client import THICKNESS_PARAM, require_rib_air_disk
     from comsol_optics import (_full_opt_sweep, guided_interval_gap,
-                               opt_sweep_at, rib_k_grid)
+                               opt_sweep_at, rib_k_grid, study_z_family)
 
     with open(cfg["out_json"]) as fh:
         results = json.load(fh)
-    succ = [r for r in results if r.get("status") == "success"]
+    opts = _rib_options(cfg)
+    # the crystal rotation of this config; records without rxtal_deg are 0
+    rxtal = resolve_rxtal(opts.get("rxtal_deg"))
+    succ = [r for r in results if r.get("status") == "success"
+            and float(r.get("rxtal_deg") or 0.0) == rxtal]
     if not succ:
         print("No successful rib result to characterize.")
         return None
     best = max(succ, key=lambda r: r["score"])
     g = RibGeometry(**best["params"])     # stored physical params, not u
-    opts = _rib_options(cfg)
     targets = _load_targets()
     f_o_t = C0 / (targets["optical"]["target_wavelength_nm"] * 1e-9)
     f_m_t = targets["mechanical"]["target_frequency_GHz"] * 1e9
@@ -302,16 +342,21 @@ def characterize_rib(cfg):
     study_o = opts.get("optical_study", "opt TE")
     out_dir = os.path.dirname(cfg["out_fig"]) or "."
     os.makedirs(out_dir, exist_ok=True)
-    template = template_path("rib")
+    # Same cross-section as the optimization: its template, and for "rect"
+    # the thickness-parity family of each optical study (None = all modes).
+    xsect = check_xsect_backend(cfg.get("xsect"), "comsol")
+    template = require_rib_air_disk(template_path("rib", xsect, must_exist=True))
+    zkw = lambda study: dict(z_family=study_z_family(study, xsect),  # noqa: E731
+                             thickness=THICKNESS_PARAM["rib"])
     n_k, n_bo = 15, 12
     n_bm = int(opts.get("n_bands_mech", 20))
 
     print("  [1/5] mech sym ...")
     sym = run_mechanical_comsol(g, n_k=n_k, n_bands=n_bm, template=template,
-                                study="mech sym")
+                                study="mech sym", rxtal_deg=rxtal)
     print("  [2/5] mech antisym ...")
     anti = run_mechanical_comsol(g, n_k=n_k, n_bands=n_bm, template=template,
-                                 study="mech antisym")
+                                 study="mech antisym", rxtal_deg=rxtal)
     k_m = np.asarray(sym["k_frac"], dtype=float)
     f_sym = np.asarray(sym["freqs_hz"], dtype=float)
     f_anti = np.asarray(anti["freqs_hz"], dtype=float)
@@ -320,13 +365,16 @@ def characterize_rib(cfg):
     model = get_model(template)
     set_geometry(model, g)
     print("  [3/5] opt TE (full zone) ...")
-    k_te, f_te = _full_opt_sweep(model, g, "opt TE", n_k=n_k, n_bands=n_bo)
+    k_te, f_te = _full_opt_sweep(model, g, "opt TE", n_k=n_k, n_bands=n_bo,
+                                 **zkw("opt TE"))
     print("  [4/5] opt TM (full zone) ...")
-    k_tm, f_tm = _full_opt_sweep(model, g, "opt TM", n_k=n_k, n_bands=n_bo)
+    k_tm, f_tm = _full_opt_sweep(model, g, "opt TM", n_k=n_k, n_bands=n_bo,
+                                 **zkw("opt TM"))
     print(f"  [5/5] {study_o} gap sweep (as in the optimization) ...")
     k_det = rib_k_grid(g.a, int(opts.get("n_k_opt", 13)), f_o_t, rel)
     k_det, f_det = opt_sweep_at(model, g, study_o, k_det,
-                                int(opts.get("n_bands_opt", 10)), f_target=f_o_t)
+                                int(opts.get("n_bands_opt", 10)), f_target=f_o_t,
+                                **zkw(study_o))
     gap_o = guided_interval_gap(k_det, f_det, g.a, f_target=f_o_t, rel_tol=rel)
 
     np.savez(os.path.join(out_dir, "best_rib_char_data.npz"),

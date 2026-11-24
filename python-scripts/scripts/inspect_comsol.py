@@ -44,7 +44,7 @@ from scipy.interpolate import griddata
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from geometry import u_to_geometry, Geometry
-from comsol_client import get_model
+from comsol_client import get_model, set_diamond_index
 from bandgap import gap_near_frequency
 
 C0 = 299_792_458.0
@@ -513,6 +513,8 @@ def main():
     model = get_model(template)
     for name, val in g.as_dict().items():
         model.parameter(name, f"{val}[m]")
+    # optics with the index of configs/materials.yaml (the template stores 2.40)
+    print(f"Diamond index: {set_diamond_index(model)}")
 
     avail = set(model.studies())
     print(f"Available studies: {sorted(avail)}")

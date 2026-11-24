@@ -36,7 +36,8 @@ To wait for a free seat first (nothing is held while waiting):
 
 Progress goes to stderr; stdout gets one JSON summary of the queue.
 Exit status: 0 queue finished, 1 unexpected error, 3 stopped on a licence
-error, 130 interrupted (Ctrl-C). Records of the items already evaluated are
+error, 4 stopped because optical: tidy3d was not allowed to run (no cloud
+opt-in, dry run, credit budget), 130 interrupted (Ctrl-C). Records of the items already evaluated are
 in the database in every case.
 """
 import argparse
@@ -116,20 +117,27 @@ def _check_u(u, celltype, where):
 def build_queue(cfg, base):
     """Resolve the config into a list of fully specified items.
 
-    Top-level celltype / optical / mech / rib are the defaults of every item.
+    Top-level celltype / optical / mech / rib / xsect / tidy3d are the
+    defaults of every item.
     A queue entry is
       [u...]                           a u vector with the defaults
-      {u: [...], optical: ..., mech: ..., celltype: ..., rib: {...}}
-                                       a u vector with its own overrides
-                                       (rib: is merged over the default rib:)
+      {u: [...], optical: ..., mech: ..., celltype: ..., rib: {...},
+       xsect: ..., tidy3d: {...}}      a u vector with its own overrides
+                                       (rib: and tidy3d: are merged over the
+                                       default sections)
       {config: path}                   a run_one-style config (its own u,
-                                       celltype, optical, mech, rib)
+                                       celltype, optical, mech, rib, xsect,
+                                       tidy3d)
+    As in run_one.py: xsect is rect (default) | wedge, and the tidy3d section
+    is used by optical: tidy3d only (cloud opt-in and credit budget; one
+    budget for the whole queue).
     queue_csv adds one item per row of a CSV, with the defaults.
     Everything is validated here, before any solver or licence is touched.
     """
     defaults = dict(celltype=cfg.get("celltype", "hole"),
                     optical=cfg.get("optical"), mech=cfg.get("mech"),
-                    rib=cfg.get("rib") or {})
+                    rib=cfg.get("rib") or {}, xsect=cfg.get("xsect"),
+                    tidy3d=cfg.get("tidy3d") or {})
     entries = [(f"queue[{i}]", e) for i, e in enumerate(cfg.get("queue") or [])]
     if cfg.get("queue_csv"):
         path = _find(cfg["queue_csv"], base)
@@ -143,17 +151,22 @@ def build_queue(cfg, base):
                 one = yaml.safe_load(fh)
             item = dict(celltype=one.get("celltype", "hole"),
                         optical=one["optical"], mech=one["mech"],
-                        rib=one.get("rib") or {}, u=one["u"])
+                        rib=one.get("rib") or {}, u=one["u"],
+                        xsect=one.get("xsect"),
+                        tidy3d=one.get("tidy3d") or {})
             where = f"{where} ({os.path.basename(path)})"
         elif isinstance(e, dict):
             if "u" not in e:
                 raise ValueError(f"{where}: needs `u` or `config`")
-            unknown = set(e) - {"u", "celltype", "optical", "mech", "rib", "label"}
+            unknown = set(e) - {"u", "celltype", "optical", "mech", "rib",
+                                "label", "xsect", "tidy3d"}
             if unknown:
                 raise ValueError(f"{where}: unknown key(s) {sorted(unknown)}")
-            item = dict(defaults, **{k: e[k] for k in ("celltype", "optical", "mech")
+            item = dict(defaults, **{k: e[k] for k in ("celltype", "optical",
+                                                       "mech", "xsect")
                                      if k in e})
             item["rib"] = dict(defaults["rib"], **(e.get("rib") or {}))
+            item["tidy3d"] = dict(defaults["tidy3d"], **(e.get("tidy3d") or {}))
             item["u"] = e["u"]
             if e.get("label"):
                 where = f"{where} ({e['label']})"
@@ -166,6 +179,21 @@ def build_queue(cfg, base):
         _check_u(item["u"], item["celltype"], where)
         if item["celltype"] != "rib":
             item["rib"] = {}
+        # validated here, before any solver or licence: cross-section (and
+        # that the optical engine can model it) and the tidy3d section
+        from objective import check_xsect_backend
+        try:
+            item["xsect"] = check_xsect_backend(item.get("xsect"), item["optical"])
+            if "rxtal_deg" in item["rib"]:     # 0 or 45 (mod 90) only
+                from geometry import resolve_rxtal
+                resolve_rxtal(item["rib"]["rxtal_deg"])
+            if item["optical"] == "tidy3d":
+                from optical_tidy3d import Tidy3DOptions
+                Tidy3DOptions.from_config(item["tidy3d"])
+            else:
+                item["tidy3d"] = {}
+        except ValueError as err:
+            raise ValueError(f"{where}: {err}")
         item["where"] = where
         items.append(item)
     if not items:
@@ -199,7 +227,8 @@ def main(argv=None):
 
     if args.dry_run:
         print(json.dumps([{k: it[k] for k in
-                           ("where", "celltype", "u", "optical", "mech", "rib")}
+                           ("where", "celltype", "u", "optical", "mech", "rib",
+                            "xsect", "tidy3d")}
                           for it in items], indent=2))
         return 0
 
@@ -216,7 +245,9 @@ def main(argv=None):
             rec = evaluate_candidate(it["u"], optical_backend=it["optical"],
                                      mech_backend=it["mech"], on_stage=on_stage,
                                      celltype=it["celltype"],
-                                     rib_options=it["rib"] or None)
+                                     rib_options=it["rib"] or None,
+                                     tidy3d_options=it["tidy3d"] or None,
+                                     xsect=it["xsect"], verbose=not quiet)
             save_result(rec, db_path(it["celltype"]))      # every item, as run_one.py
             done.append(dict(where=it["where"], id=rec["id"],
                              status=rec["status"], score=rec.get("score"),
@@ -226,6 +257,16 @@ def main(argv=None):
             _log(f"[{i + 1}/{n}] saved {rec['id']}: status={rec['status']} "
                  f"score={rec.get('score')} Go={rec.get('optical_gap')} "
                  f"Gm={rec.get('mechanical_gap')} ({_fmt_time(time.time() - t0)})")
+            if rec.get("optical_tidy3d_stop") not in (None, "dry_run",
+                                                      "estimate_only"):
+                # Tidy3D did not run (cloud not allowed, no or exhausted
+                # credit budget, not installed): the record is saved and the
+                # rest of the queue is listed as not run. A dry run or a cost
+                # estimate is per item, so the queue carries on with those.
+                stopped = (f"Tidy3D stop ({rec['optical_tidy3d_stop']}) at "
+                           f"item {i + 1}: {rec['error']}")
+                rc = 4
+                break
             if (stop_on_licence and rec.get("error")
                     and _LICENCE_ERROR.search(str(rec["error"]))):
                 stopped = f"licence error at item {i + 1}: {rec['error']}"

@@ -10,8 +10,20 @@
 # and pins thickness t to its minimum (t = t_min).
 u: [0.5, 0.6, 0.5, 0.6, 0.5]
 
-optical: surrogate       # optical backend: surrogate | mpb | comsol
-mech: surrogate_stub     # mechanical backend: comsol | surrogate_stub
+optical: tidy3d       # optical backend: surrogate | mpb | comsol | tidy3d
+mech: comsol     # mechanical backend: comsol | surrogate_stub
+
+# Cross-section (both cell types): rect (default) | wedge.
+#   rect   the slab only. Optics scores the modes that are EVEN across the
+#          thickness (TE-like); COMSOL templates omc_unitcell.mph (hole) /
+#          omc_unitcell_rib.mph (rib).
+#   wedge  slab + underside of an angled etch (30 deg): a triangle with its
+#          apex b/(2*sqrt(3)) below a strip of width b; for the rib it follows
+#          the fillets (roof of the filleted outline). No thickness mirror:
+#          optics scores all modes. Templates omc_unitcell_iso.mph (hole) /
+#          omc_unitcell_rib_wedge.mph (rib; build_omc_unitcell_rib('wedge')).
+#          optical: comsol | tidy3d only.
+xsect: rect
 
 # Suppress per-stage progress printed to stderr (feasibility/optical/mechanical/
 # score). stdout stays pure JSON regardless.

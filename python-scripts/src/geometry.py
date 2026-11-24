@@ -33,6 +33,160 @@ CELLTYPES = ("hole", "rib")
 # this order, which is the order of the optimizer's u for celltype "rib".
 RIB_PARAMS: List[str] = ["a", "w", "t", "s", "th", "r1", "r2"]
 
+# Cross-sections (config key `xsect`, both cell types).
+#   "rect"   vertical walls, flat underside: the slab only.
+#   "wedge"  the slab plus a triangular underside, as left by an angled etch.
+# Wedge definition, taken from comsol/omc_unitcell_iso.mph (Polygon 1:
+# (-t/2, +w/2), (-t/2, -w/2), (-t/2 - w/2/sqrt(3), 0), extruded along the beam)
+# and scripts/run_opt_comsol.py:_draw_cross_section: an isosceles triangle
+# whose base is the bottom face of the slab over the full width b of the
+# strip, base angles WEDGE_ANGLE_DEG = 30 deg (apex angle 120 deg), so the
+# apex lies b/2*tan(30 deg) = b/(2*sqrt(3)) below the slab. Holes are cut
+# vertically through slab and wedge.
+#   hole cell: one prism along the beam, b = beam width w (unchanged; the
+#              hole has no fillets and its template is a binary .mph).
+#   rib cell : the angled-etch "roof" of the FILLETED outline. Under a point
+#              p of the cell the wedge is d(p)*tan(30 deg) deep, d(p) = the
+#              in-plane distance from p to the filleted outline (neighbouring
+#              cells included). rib_roof_distance gives d in closed form:
+#                straight strip of width b  -> the triangle above (spine
+#                                              b = s, rib arm b = t)
+#                tip edge                   -> a hip plane, d = w/2 - |y|
+#                tip fillet (convex, r2)    -> a cone, d = r2 - rho, rho from
+#                                              the arc centre (apex below it)
+#                root fillet (concave, r1) and the whole rib/spine junction
+#                                           -> a cone, d = rho - r1, rho from
+#                                              the arc centre, so the wedge is
+#                                              DEEPEST under the junction
+#                                              centre, not under a centreline
+XSECTS = ("rect", "wedge")
+DEFAULT_XSECT = "rect"
+WEDGE_ANGLE_DEG = 30.0
+
+
+def resolve_xsect(xsect=None) -> str:
+    """Validated cross-section name; None means DEFAULT_XSECT ("rect")."""
+    xsect = DEFAULT_XSECT if xsect is None else xsect
+    if xsect not in XSECTS:
+        raise ValueError(f"unknown xsect {xsect!r}; expected one of {XSECTS}")
+    return xsect
+
+
+def wedge_depth(width: float, angle_deg: float = WEDGE_ANGLE_DEG) -> float:
+    """Depth of the wedge apex below the slab for a strip of this width."""
+    import math
+    return 0.5 * width * math.tan(math.radians(angle_deg))
+
+
+def rib_roof_distance(g, z: float, y: float) -> float:
+    """In-plane distance d [m] from a point to the filleted rib outline.
+
+    z: along the beam, from the centre of a rib (any period); y: across.
+    Positive inside the cell, <= 0 on or outside its outline. With
+      u = t/2 - |z|   (signed distance to the rib flank line)
+      v = s/2 - |y|   (signed distance to the spine edge line)
+      f = w/2 - |y|   (signed distance to the tip line)
+    the outline is: spine edge, concave root arc (radius r1, centre at
+    u = v = -r1, in the air), flank, convex tip arc (radius r2, centre at
+    u = f = r2, in the diamond), tip edge. Then
+      g = hypot(max(u + r1, 0), max(v + r1, 0)) - r1   spine / root / flank
+      d = min(g, f)                                    ... and the tip edge
+      d = r2 - hypot(r2 - u, r2 - f)                   in the tip corner
+                                                       (0 <= u < r2, f < r2)
+    Valid for cells that pass _check_rib_feasibility (the root and the tip
+    fillets do not meet).
+    """
+    import math
+    z = (z + g.a / 2.0) % g.a - g.a / 2.0          # periodic: nearest rib
+    u = g.t / 2.0 - abs(z)
+    v = g.s / 2.0 - abs(y)
+    f = g.w / 2.0 - abs(y)
+    if 0.0 <= u < g.r2 and f < g.r2:
+        return g.r2 - math.hypot(g.r2 - u, g.r2 - f)
+    return min(math.hypot(max(u + g.r1, 0.0), max(v + g.r1, 0.0)) - g.r1, f)
+
+
+def rib_wedge_depth(g, z: float, y: float,
+                    angle_deg: float = WEDGE_ANGLE_DEG) -> float:
+    """Depth [m] of the rib wedge below the slab at (z, y); 0 outside."""
+    import math
+    return max(rib_roof_distance(g, z, y), 0.0) * math.tan(math.radians(angle_deg))
+
+
+def wedge_depths(g) -> Dict[str, float]:
+    """Characteristic wedge depths [m] of a cell (see XSECTS above).
+
+    hole: {"beam"}. rib: "spine" and "rib" are the depths under the two
+    centrelines away from the junction and the tip (the apexes of the plain
+    triangles), "junction" the depth under the junction centre, and "max"
+    the deepest point of the cell (the junction, cut by the tip plane if the
+    rib is very short).
+    """
+    if getattr(g, "celltype", "hole") == "rib":
+        junction = rib_wedge_depth(g, 0.0, 0.0)
+        return {"spine": wedge_depth(g.s),
+                "rib": rib_wedge_depth(g, 0.0, (g.s / 2.0 + g.r1 + g.w / 2.0
+                                                - g.r2) / 2.0),
+                "junction": junction, "max": junction}
+    return {"beam": wedge_depth(g.w)}
+
+
+def z_mirror_symmetric(xsect=None) -> bool:
+    """Does the cell have a mid-thickness mirror plane? (rect yes, wedge no).
+
+    OPTICS ONLY: when it does, every optical engine keeps one thickness-parity
+    family (TE-like = in-plane E even); when it does not, all modes are kept.
+    Mechanics always uses the full thickness and all modes.
+    """
+    return resolve_xsect(xsect) == "rect"
+
+
+# Crystal rotation of the rib cell about the slab normal (rib.rxtal_deg;
+# P.rxtal of omc-comsol-chang): 0 = beam along <100>, 45 = beam along <110>.
+# Mechanics only. The templates model the y >= 0 half with a y = 0 mirror,
+# which a cubic crystal keeps only at multiples of 45 deg.
+RXTAL_ALLOWED_DEG = (0.0, 45.0)
+
+
+def resolve_rxtal(rxtal_deg=None) -> float:
+    """Validated crystal rotation in degrees: 0.0 or 45.0; None means 0.
+
+    The angle is reduced modulo 90 (the cubic crystal repeats every 90 deg
+    about a cube axis), so 90, 180 and -90 give 0.0 and -45, 135 give 45.0.
+    Any other angle raises ValueError: it couples normal and shear strain
+    across the y = 0 plane (gCrot != 0), so the y-even / y-odd split of the
+    half model (sym1 / as1) would be wrong.
+    """
+    import math
+    if rxtal_deg is None:
+        return 0.0
+    try:
+        r = float(rxtal_deg)
+    except (TypeError, ValueError):
+        raise ValueError(f"rxtal_deg must be a number, got {rxtal_deg!r}")
+    if not math.isfinite(r):
+        raise ValueError(f"rxtal_deg must be finite, got {rxtal_deg!r}")
+    m = r % 90.0
+    tol = 1e-9
+    if m < tol or 90.0 - m < tol:
+        return 0.0
+    if abs(m - 45.0) < tol:
+        return 45.0
+    raise ValueError(
+        f"rxtal_deg = {rxtal_deg!r} is not a multiple of 45 deg: a cubic "
+        "crystal rotated by any other angle about the slab normal has no "
+        "y = 0 mirror plane, and the rib templates model the y >= 0 half "
+        f"with that mirror. Allowed (mod 90): {RXTAL_ALLOWED_DEG}.")
+
+
+_MATERIALS = os.path.join(_CFG_DIR, "materials.yaml")
+
+
+def diamond_index(path: str | None = None) -> float:
+    """Diamond refractive index of every optical engine (materials.yaml)."""
+    with open(path or _MATERIALS) as fh:
+        return float(yaml.safe_load(fh)["diamond"]["refractive_index_1550nm"])
+
 
 def load_bounds(path: str | None = None) -> dict:
     path = path or os.path.join(_CFG_DIR, "bounds.yaml")
@@ -276,13 +430,26 @@ def u_to_geometry(u, bounds: dict | None = None, celltype: str = "hole"):
     return Geometry(**phys)
 
 
-def check_feasibility(g: Geometry, bounds: dict | None = None):
+def check_feasibility(g: Geometry, bounds: dict | None = None, xsect=None):
     """Return (ok: bool, reasons: list[str]). Cheap pre-simulation gate.
 
     Hole cell (Geometry): the min-feature rules below. Rib cell (RibGeometry):
     template validity only (_check_rib_feasibility); its fabrication limits
     are in check_fabricability.
+
+    xsect="wedge" adds what the wedge needs:
+      hole: WEDGE_HOLE_BLIND. The hole cutter of comsol/omc_unitcell_iso.mph
+            is 3*t long, centred on the slab, so it reaches 1.5*t below the
+            mid-plane; the wedge apex is t/2 + w/(2*sqrt(3)) below it. The
+            hole goes through (as it does in the Tidy3D model) only if
+            t >= w/(2*sqrt(3)).
+      rib : nothing more. The roof (rib_roof_distance) follows from s, t, w,
+            r1, r2 and exists for every cell that passes the rules of the
+            rectangular template; the air half-disk of the wedge template
+            is centred on the mid-depth of the beam (slab + wedge) and its
+            radius grows with the wedge depth.
     """
+    xsect = resolve_xsect(xsect)
     if getattr(g, "celltype", "hole") == "rib":
         return _check_rib_feasibility(g)
     bounds = bounds or load_bounds()
@@ -303,6 +470,11 @@ def check_feasibility(g: Geometry, bounds: dict | None = None):
         reasons.append(f"sidewall {sidewall*1e9:.0f} nm < min {min_feature*1e9:.0f} nm")
     if bridge < min_feature:
         reasons.append(f"bridge {bridge*1e9:.0f} nm < min {min_feature*1e9:.0f} nm")
+    if xsect == "wedge" and g.t < wedge_depth(g.w):
+        reasons.append(
+            f"WEDGE_HOLE_BLIND: thickness t {g.t*1e9:.0f} nm < wedge depth "
+            f"w/(2*sqrt(3)) {wedge_depth(g.w)*1e9:.0f} nm, the hole would not "
+            "go through the wedge")
 
     return (len(reasons) == 0), reasons
 

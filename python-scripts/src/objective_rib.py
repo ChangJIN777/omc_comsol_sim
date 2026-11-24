@@ -4,8 +4,12 @@ Rib counterpart of objective.evaluate_candidate, which dispatches here for
 celltype="rib". Kept in its own module so the hole path is untouched.
 
 Template: comsol/omc_unitcell_rib.mph (comsol/build_omc_unitcell_rib.m).
-ANISOTROPIC cubic diamond, beam along <100> (the hole template is isotropic),
-y >= 0 half model with one study per y parity.
+ANISOTROPIC cubic diamond (the hole template is isotropic), y >= 0 half model
+with one study per y parity. The crystal is rotated by rxtal_deg about the
+slab normal (template parameter rxt; mechanics only): 0 = beam along <100>
+(default), 45 = beam along <110>. Only multiples of 45 deg keep the y mirror
+of the half model (geometry.resolve_rxtal); 45 needs a template built with
+rxt (comsol_client.require_rxtal_template, checked before any solve).
 
 Gates before any solver, each saved as its own status:
   "infeasible"    the template cannot build the cell (geometry.check_feasibility)
@@ -25,6 +29,11 @@ Optical: MPB and the TMM surrogate model the hole cell only and are refused.
   "comsol"  guided-mode gap of study optical_study (default 'opt TE': PEC on
             the y = 0 plane, i.e. Ey even in y) near the target wavelength;
             see comsol_optics.guided_interval_gap
+  "tidy3d"  the same gap function on Tidy3D FDTD resonances (cloud, COSTS
+            FlexCredits; needs the `tidy3d:` config section). The k sweep
+            takes n_k_opt simulations per cell unless tidy3d.n_k says
+            otherwise; n_bands_opt is not used. See optical_tidy3d.py for the
+            geometry / polarization mapping and its limits.
 """
 from __future__ import annotations
 
@@ -35,7 +44,8 @@ import os
 import numpy as np
 
 from geometry import (u_to_geometry, check_feasibility, check_fabricability,
-                      fab_failure_text)
+                      fab_failure_text, resolve_xsect, diamond_index,
+                      z_mirror_symmetric, wedge_depths, resolve_rxtal)
 from bandgap import interval_gap, trusted_window
 
 C0 = 299_792_458.0
@@ -43,7 +53,7 @@ C0 = 299_792_458.0
 MECH_STUDIES = {"sym": "mech sym", "antisym": "mech antisym"}
 MECH_GAP_MODES = {"sym": ("sym",), "antisym": ("antisym",),
                   "complete": ("sym", "antisym")}
-OPTICAL_BACKENDS = ("none", "comsol")
+OPTICAL_BACKENDS = ("none", "comsol", "tidy3d")
 OPTICAL_STUDIES = ("opt TE", "opt TM")
 MECH_BACKENDS = ("comsol", "surrogate_stub")
 
@@ -69,25 +79,40 @@ def _gap_to_dict(gp):
                 f_center=float(gp.f_center))
 
 
-def _solve_optical_bands(g, study, k_frac, n_bands, f_target):
-    """COMSOL sweep of one optical study of the rib template: [n_k, n_bands] Hz."""
-    from comsol_client import get_model, set_geometry, template_path
-    from comsol_optics import opt_sweep_at
-    template = template_path("rib")
-    if not os.path.exists(template):
-        raise FileNotFoundError(
-            f"COMSOL template not found: {template}\n"
-            "Build it with comsol/build_omc_unitcell_rib.m.")
+def _solve_optical_bands(g, study, k_frac, n_bands, f_target, xsect="rect",
+                         info=None):
+    """COMSOL sweep of one optical study of the rib template: [n_k, n_bands] Hz.
+
+    The template follows xsect. For "rect" only the thickness-parity family of
+    the study is returned (comsol_optics.study_z_family: even for 'opt TE');
+    for "wedge" all modes. The diamond index of materials.yaml is set on the
+    model by the sweep. `info` (a dict) receives, per k, every returned mode
+    and its parity fraction.
+    """
+    from comsol_client import (get_model, set_geometry, template_path,
+                               THICKNESS_PARAM)
+    from comsol_optics import opt_sweep_at, study_z_family
+    from comsol_client import require_rib_air_disk
+    template = require_rib_air_disk(template_path("rib", xsect, must_exist=True))
     model = get_model(template)
     set_geometry(model, g)
-    return opt_sweep_at(model, g, study, k_frac, n_bands, f_target=f_target)[1]
+    return opt_sweep_at(model, g, study, k_frac, n_bands, f_target=f_target,
+                        z_family=study_z_family(study, xsect),
+                        thickness=THICKNESS_PARAM["rib"], info=info)[1]
+
+
+def _check_rxtal_template(xsect, rxtal):
+    """Raise if the rib template of `xsect` cannot take the rotation `rxtal`."""
+    from comsol_client import require_rxtal_template, template_path
+    require_rxtal_template(template_path("rib", xsect, must_exist=True), rxtal)
 
 
 def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
                            mech_backend="comsol", cache=None, on_stage=None,
                            mech_gap_mode="complete", n_k=15, n_bands_mech=20,
                            optical_study="opt TE", n_k_opt=13, n_bands_opt=10,
-                           optical_rel_tol=0.30):
+                           optical_rel_tol=0.30, tidy3d_options=None,
+                           xsect=None, rxtal_deg=0.0, verbose=True):
     """Evaluate one normalized rib design vector u. Returns a result record.
 
     The record has every key of the hole record plus: celltype, the options
@@ -95,6 +120,26 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
     mech_gaps / mech_trusted_window_Hz / _k_m / _freqs_m and
     optical_gap_detail / optical_min_resolvable_Hz / _k_o / _freqs_o.
     optical_gap is None when optics is skipped.
+
+    tidy3d_options: the `tidy3d:` config section (optical_backend="tidy3d").
+    Such records add optical_engine and optical_tidy3d_detail; a solve that
+    was not allowed to run has status "optical_not_run" and
+    optical_tidy3d_stop (see optical_tidy3d.Tidy3DNotRun). verbose=False
+    silences Tidy3D's web progress and the "info" sub-steps it sends to
+    on_stage (all of it goes to stderr).
+
+    xsect: "rect" (default) or "wedge", see objective.evaluate_candidate. It
+    selects the template of optics and mechanics (omc_unitcell_rib.mph /
+    omc_unitcell_rib_wedge.mph) and the Tidy3D geometry, sets the optical
+    thickness-parity rule, and is part of the record and of the id.
+
+    rxtal_deg: crystal rotation about the slab normal in degrees, 0 (beam
+    along <100>, default) or 45 (<110>); any multiple of 45 is reduced mod 90
+    (geometry.resolve_rxtal), anything else raises ValueError. Mechanics only
+    (template parameter rxt, set by run_mechanical_comsol). Recorded as
+    rxtal_deg, and part of the id only when nonzero, so the ids of unrotated
+    cells are unchanged. A nonzero rotation with the COMSOL mechanics needs a
+    template built with rxt; that is checked before any solve.
     """
     def _stage(name, event, info=None):
         if on_stage is not None:
@@ -117,9 +162,32 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
     n_k_opt, n_bands_opt = int(n_k_opt), int(n_bands_opt)
     optical_rel_tol = float(optical_rel_tol)
 
-    cid = _rib_id(u, (optical_backend, mech_backend, mech_gap_mode, n_k,
-                      n_bands_mech, optical_study, n_k_opt, n_bands_opt,
-                      optical_rel_tol))
+    xsect = resolve_xsect(xsect)
+    rxtal = resolve_rxtal(rxtal_deg)
+    if rxtal != 0.0 and mech_backend == "comsol":
+        _check_rxtal_template(xsect, rxtal)
+    z_family = None
+    if optical_backend == "comsol":
+        from comsol_optics import study_z_family
+        z_family = study_z_family(optical_study, xsect)
+    id_key = (optical_backend, mech_backend, mech_gap_mode, n_k,
+              n_bands_mech, optical_study, n_k_opt, n_bands_opt,
+              optical_rel_tol)
+    tidy3d_tag = None
+    if optical_backend == "tidy3d":
+        # a Tidy3D record never replaces a COMSOL one, nor an x_only one a
+        # k sweep, nor a wedge one a rectangular one.
+        from optical_tidy3d import id_settings
+        tidy3d_tag = id_settings(tidy3d_options, "rib", n_k_opt, xsect=xsect)
+    # Cross-section, diamond index and parity family (objective.physics_id_tag).
+    # A rectangular cell without optics keeps the id it always had.
+    from objective import physics_id_tag
+    tag = physics_id_tag(optical_backend, xsect, z_family, tidy3d_tag)
+    if tag:
+        id_key += (tag,)
+    if rxtal != 0.0:     # unrotated cells keep the id they always had
+        id_key += (f"rxtal={rxtal:g}",)
+    cid = _rib_id(u, id_key)
     if cache is not None and cid in cache:
         return cache[cid]
 
@@ -133,19 +201,26 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
     rec = dict(id=cid, u=[float(x) for x in u], params=g.as_dict(),
                celltype="rib",
                optical_backend=optical_backend, mech_backend=mech_backend,
+               optical_engine=optical_backend, xsect=xsect,
+               optical_index=(None if optical_backend == "none"
+                              else diamond_index()),
+               optical_z_symmetry=z_mirror_symmetric(xsect),
                status="pending", reasons=[],
                mech_gap_mode=mech_gap_mode, n_k=n_k, n_bands_mech=n_bands_mech,
                optical_study=optical_study, n_k_opt=n_k_opt,
-               n_bands_opt=n_bands_opt, optical_rel_tol=optical_rel_tol)
+               n_bands_opt=n_bands_opt, optical_rel_tol=optical_rel_tol,
+               rxtal_deg=rxtal)
     no_solve = dict(optical_gap=0.0, mechanical_gap=0.0, score=-10.0,
                     optical_center_frequency=0.0,
                     mechanical_center_frequency=0.0)
 
-    ok, reasons = check_feasibility(g, bounds)
+    ok, reasons = check_feasibility(g, bounds, xsect)
     if not ok:
         _stage("feasibility", "fail", reasons)
         rec.update(status="infeasible", reasons=reasons, **no_solve)
         return _finish(rec)
+    if xsect == "wedge":
+        rec.update(wedge_depths=wedge_depths(g))
 
     ok, failures = check_fabricability(g, bounds)
     if not ok:
@@ -164,15 +239,50 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
     G_o, f_o_c = nan, nan
     if optical_backend == "none":
         _stage("optical", "skip", optical_backend)
+    elif optical_backend == "tidy3d":
+        # Both gates above (buildable, fabricable) ran before this solver.
+        _stage("optical", "start", f"{optical_backend}, {optical_study}")
+        try:
+            from optical_tidy3d import run_optical_tidy3d
+            o = run_optical_tidy3d(
+                g, celltype="rib", eval_id=cid, f_target=f_o_target,
+                options=tidy3d_options, rel_tol=optical_rel_tol,
+                optical_study=optical_study, n_k_default=n_k_opt,
+                xsect=xsect, verbose=verbose,
+                on_progress=lambda m: _stage("optical", "info", m))
+            G_o, f_o_c = o["gap"].normalized_gap, o["gap"].f_center
+            rec.update(o["record"])
+            rec.update(
+                optical_min_resolvable_Hz=o["record"]["optical_tidy3d_detail"]
+                ["min_resolvable_Hz"],
+                optical_light_line_edge_Hz=float(C0 / (2.0 * g.a)))
+        except Exception as e:  # solver failed -> record, don't crash loop
+            _stage("optical", "fail", str(e))
+            if getattr(e, "tidy3d_stop", None):
+                # Nothing was run or charged; not cached (see objective.py).
+                from optical_tidy3d import not_run_record
+                return not_run_record(rec, e)
+            rec.update(status="optical_failed", error=str(e),
+                       optical_gap=0.0, mechanical_gap=0.0, score=-5.0,
+                       optical_center_frequency=0.0,
+                       mechanical_center_frequency=0.0)
+            return _finish(rec)
+        _stage("optical", "done")
     else:
         _stage("optical", "start", f"{optical_backend}, {optical_study}")
         try:
             from comsol_optics import (guided_interval_gap, resolvable_step_hz,
                                        rib_k_grid)
             k_o = rib_k_grid(g.a, n_k_opt, f_o_target, optical_rel_tol)
+            info = {}
             freqs_o = np.asarray(
                 _solve_optical_bands(g, optical_study, k_o, n_bands_opt,
-                                     f_o_target), dtype=float)
+                                     f_o_target, xsect=xsect, info=info),
+                dtype=float)
+            # per k: every returned mode and its thickness-parity fraction
+            rec.update(optical_comsol_detail=dict(
+                z_family=z_family, freqs_all_hz=info.get("freqs_all_hz"),
+                z_even_fraction=info.get("z_even_fraction")))
             gp = guided_interval_gap(k_o, freqs_o, g.a, f_target=f_o_target,
                                      rel_tol=optical_rel_tol)
             G_o, f_o_c = gp.normalized_gap, gp.f_center
@@ -203,9 +313,10 @@ def evaluate_rib_candidate(u, *, bounds, targets, optical_backend="none",
             from comsol_client import template_path
             bands, k_frac = {}, None
             for sector in sectors:
-                d = run_mechanical_comsol(g, n_k=n_k, n_bands=n_bands_mech,
-                                          template=template_path("rib"),
-                                          study=MECH_STUDIES[sector])
+                d = run_mechanical_comsol(
+                    g, n_k=n_k, n_bands=n_bands_mech,
+                    template=template_path("rib", xsect, must_exist=True),
+                    study=MECH_STUDIES[sector], rxtal_deg=rxtal)
                 bands[sector] = np.asarray(d["freqs_hz"], dtype=float)
                 k_frac = d["k_frac"]
             gaps = {sector: interval_gap([bands[sector]], f_m_target)

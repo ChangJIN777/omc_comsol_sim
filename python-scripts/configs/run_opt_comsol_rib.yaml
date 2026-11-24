@@ -4,13 +4,15 @@
 # config (configs/run_opt_comsol.yaml) has no such key and is unaffected.
 celltype: rib
 
-n_init: 10               # space-filling trials before TPE
-n_iter: 40               # total iterations (including n_init)
+n_init: 20               # space-filling trials before TPE
+n_iter: 100               # total iterations (including n_init)
 backend: auto            # auto | random | optuna
 
 optical: comsol          # comsol | none. REQUIRES the optical validation solve
                          # first: 'opt TE'/'opt TM' were never run on this template.
 mech: comsol             # comsol | surrogate_stub
+xsect: rect              # rect | wedge (see configs/run_one_rib.yaml); wedge needs
+                         # comsol/omc_unitcell_rib_wedge.mph
 
 rib:
   mech_gap_mode: complete   # complete | sym | antisym
@@ -20,6 +22,11 @@ rib:
   n_k_opt: 13
   n_bands_opt: 10
   optical_rel_tol: 0.30
+  rxtal_deg: 0              # crystal rotation about the slab normal [deg]:
+                            # 0 = beam along <100>, 45 = <110> (P.rxtal of
+                            # omc-comsol-chang). Mechanics only; multiples
+                            # of 45 only (half model). 45 needs a rebuilt
+                            # template.
 
 out_fig: "results/figures_rib/opt_progress_rib.png"
 out_json: "results/opt_results_rib.json"

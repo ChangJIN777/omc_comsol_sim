@@ -238,7 +238,8 @@ def test_rib_objective_with_fake_comsol():
                       type(g).__name__))
         return dict(freqs_hz=bands[study], k_frac=k, a=g.a)
 
-    def fake_opt(g, study, k_frac, n_bands, f_target):
+    def fake_opt(g, study, k_frac, n_bands, f_target, **kw):
+        # kw: xsect / info, added with the cross-section switch
         calls.append((study, len(k_frac), n_bands))
         return _fake_optical_bands(k_frac)
 

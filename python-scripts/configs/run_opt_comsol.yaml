@@ -25,6 +25,19 @@ n_bands_mech: 8
 # independent of this value.
 n_bands_opt: 6
 
+# ── Cross-section ─────────────────────────────────────────────────────────────
+# xsect: rect | wedge. WITHOUT this key the loop does what it has always done:
+# the wedge template comsol/omc_unitcell_iso.mph (slab + triangular underside),
+# all optical modes, no extra feasibility rule.
+#   xsect: wedge  the same template, plus the rule that the hole must go
+#                 through the wedge (t >= w/(2*sqrt(3))).
+#   xsect: rect   comsol/omc_unitcell.mph (plain rectangular beam); the optical
+#                 gap is that of the thickness-even (TE-like) modes only.
+# The record id depends on xsect and on the diamond index (configs/
+# materials.yaml, now 2.386), so use a new out_json when either changes: the
+# warm start would otherwise mix results of different cells.
+# xsect: wedge
+
 # ── COMSOL studies (must exist in the .mph template) ──────────────────────────
 study_mech: "mech sym"
 study_opt: "opt TE"

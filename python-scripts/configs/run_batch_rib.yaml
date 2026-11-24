@@ -11,6 +11,8 @@
 celltype: rib
 optical: none            # none | comsol (after the optical validation solve)
 mech: comsol             # comsol | surrogate_stub
+xsect: rect              # rect | wedge (see configs/run_one_rib.yaml); also per item
+# tidy3d: {...}          # only for optical: tidy3d (see configs/run_one_rib_tidy3d.yaml)
 
 rib:
   mech_gap_mode: complete   # complete | sym | antisym
@@ -20,6 +22,11 @@ rib:
   n_k_opt: 13
   n_bands_opt: 10
   optical_rel_tol: 0.30
+  rxtal_deg: 0              # crystal rotation about the slab normal [deg]:
+                            # 0 = beam along <100>, 45 = <110> (P.rxtal of
+                            # omc-comsol-chang). Mechanics only; multiples
+                            # of 45 only (half model). 45 needs a rebuilt
+                            # template.
 
 # The designs. An entry is one of
 #   [ua, uw, ut, us]                      a u vector with the defaults above

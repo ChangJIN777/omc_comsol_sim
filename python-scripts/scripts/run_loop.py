@@ -46,6 +46,10 @@ def main():
     # Optional keys, absent from hole configs (see configs/run_loop_rib.yaml).
     celltype = cfg.get("celltype", "hole")
     rib_options = cfg.get("rib") or None
+    # `tidy3d:` section, read by optical: tidy3d only. Its max_credits is the
+    # budget of this whole loop (src/optical_tidy3d.py).
+    tidy3d_options = cfg.get("tidy3d") if optical == "tidy3d" else None
+    xsect = cfg.get("xsect")     # rect (default) | wedge, see run_one.py
     db = db_path(celltype)       # rib results have their own sqlite file
 
     data = load_completed_results(db)
@@ -58,8 +62,15 @@ def main():
         u = ask(opt)
         rec = evaluate_candidate(u, optical_backend=optical,
                                  mech_backend=mech, celltype=celltype,
-                                 rib_options=rib_options)
+                                 rib_options=rib_options,
+                                 tidy3d_options=tidy3d_options, xsect=xsect)
         save_result(rec, db)
+        if rec.get("optical_tidy3d_stop"):
+            # Tidy3D did not run (cloud not allowed, dry run, credit budget
+            # reached, ...) and would not for the next candidate either. The
+            # record is saved; it is not a result, so the optimizer is not told.
+            print(f"[{it:3d}] STOP ({rec['optical_tidy3d_stop']}): {rec['error']}")
+            break
         tell(opt, u, rec["score"],
              constraints={"optical_gap": rec.get("optical_gap"),
                           "mechanical_gap": rec.get("mechanical_gap")})

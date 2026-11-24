@@ -22,13 +22,16 @@ import numpy as np
 
 try:
     from comsol_client import (have_mph as _have_mph_fn, get_model as _get_model,
-                               set_geometry as _set_geometry)
+                               set_geometry as _set_geometry,
+                               set_crystal_rotation as _set_crystal_rotation)
     _HAVE_MPH = _have_mph_fn()
 except Exception:  # pragma: no cover
     _HAVE_MPH = False
     def _get_model(t):
         raise RuntimeError("comsol_client not available")
     def _set_geometry(model, g):
+        raise RuntimeError("comsol_client not available")
+    def _set_crystal_rotation(model, rxtal_deg=0.0):
         raise RuntimeError("comsol_client not available")
 
 _TEMPLATE = os.path.join(os.path.dirname(__file__), "..", "comsol",
@@ -70,8 +73,15 @@ def _symmetry_descriptor(model, study, solnum):
 
 def run_mechanical_comsol(g, *, n_k=15, n_bands=12, shift_GHz=8.0,
                           template=_TEMPLATE, classify=False,
-                          study="mech sym"):
-    """Solve the mechanical band structure. Returns dict with freqs [n_k,n_bands] in Hz."""
+                          study="mech sym", rxtal_deg=0.0):
+    """Solve the mechanical band structure. Returns dict with freqs [n_k,n_bands] in Hz.
+
+    rxtal_deg: crystal rotation about the slab normal (rib templates built
+    with the global parameter rxt; 0 = beam along <100>, 45 = <110>; see
+    geometry.resolve_rxtal). It is set on every call, since the loaded model
+    is a shared singleton. A template without rxt (the isotropic hole
+    templates, older rib templates) accepts 0 only.
+    """
     if not _HAVE_MPH:
         raise RuntimeError("MPh not importable. On the Mac: pip install MPh, "
                            "and ensure a COMSOL server is reachable.")
@@ -86,6 +96,9 @@ def run_mechanical_comsol(g, *, n_k=15, n_bands=12, shift_GHz=8.0,
     # global parameters (hole: a,w,t,hx,hy; rib: a,w,t,s,th,r1,r2); a geometry
     # that does not belong to this template is refused.
     _set_geometry(model, g)
+    # crystal rotation, on every call: the model is shared, so a rotation set
+    # for a previous cell must not carry over.
+    _set_crystal_rotation(model, rxtal_deg)
 
     # Sweep Gamma->X. k_frac = k_z * a / pi in [0,1]; X (zone edge) at 1.
     k_frac = np.linspace(1e-3, 1.0, n_k)

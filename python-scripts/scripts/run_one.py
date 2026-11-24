@@ -13,7 +13,10 @@ backward compatibility and pins thickness t to its minimum (t=t_min).
 
 Stage progress (feasibility / optical / mechanical / score) is printed to
 stderr as each stage starts and finishes, so stdout stays pure JSON even when
-redirected to a file. Set `quiet: true` in the config to suppress it.
+redirected to a file. With `optical: tidy3d` the Tidy3D web progress (upload,
+task status and progress bars, estimated cost, download) and the engine's own
+steps (building, uploading, running, analyzing) are shown on stderr as well.
+Set `quiet: true` in the config to suppress all of it (errors remain).
 """
 import argparse
 import json
@@ -52,6 +55,12 @@ def main():
     # (see configs/run_one_rib.yaml).
     celltype = cfg.get("celltype", "hole")
     rib_options = cfg.get("rib") or None
+    # `tidy3d:` section, read by optical: tidy3d only (cloud opt-in and credit
+    # budget; see configs/run_one_tidy3d.yaml and src/optical_tidy3d.py).
+    tidy3d_options = cfg.get("tidy3d") if optical == "tidy3d" else None
+    # Cross-section: rect (default) | wedge. Selects the COMSOL template and
+    # the Tidy3D geometry; rect keeps only thickness-even optical modes.
+    xsect = cfg.get("xsect")
 
     if celltype == "hole":
         if len(u) not in (4, 5):
@@ -64,7 +73,9 @@ def main():
 
     rec = evaluate_candidate(u, optical_backend=optical,
                              mech_backend=mech, on_stage=on_stage,
-                             celltype=celltype, rib_options=rib_options)
+                             celltype=celltype, rib_options=rib_options,
+                             tidy3d_options=tidy3d_options, xsect=xsect,
+                             verbose=not quiet)
 
     if not quiet:
         t0 = time.time()

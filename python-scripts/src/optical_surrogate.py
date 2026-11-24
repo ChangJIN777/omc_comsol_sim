@@ -14,15 +14,20 @@ from __future__ import annotations
 
 import numpy as np
 
+from geometry import diamond_index
+
 C0 = 299_792_458.0  # m/s
+# Rectangular cross-section only (xsect "rect"); objective.py refuses "wedge".
 
 
-def _effective_indices(g, n_core=2.40):
+def _effective_indices(g, n_core=None):
     """Crude effective indices for the solid and holed z-sections.
 
     n_hi: waveguide effective index of the solid beam (geometry-weighted).
     n_lo: index at the hole, reduced by the air fraction across the width.
     """
+    # n_core None: the diamond index of configs/materials.yaml (2.386).
+    n_core = diamond_index() if n_core is None else n_core
     # solid-section effective index: scale core index by transverse confinement.
     # Larger cross-section -> closer to n_core. Simple monotone heuristic.
     area = g.w * g.t
@@ -48,7 +53,7 @@ def _bloch_trace(lam, n_hi, L_hi, n_lo, L_lo):
     return 0.5 * np.real(Mtot[0, 0] + Mtot[1, 1])
 
 
-def optical_gap_surrogate(g, n_core=2.40, n_lam=4000,
+def optical_gap_surrogate(g, n_core=None, n_lam=4000,
                           lam_min=0.9e-6, lam_max=2.6e-6):
     """Compute the first photonic stop-band of the effective 1D Bragg stack.
 
@@ -99,7 +104,7 @@ def optical_gap_surrogate(g, n_core=2.40, n_lam=4000,
                 n_hi=n_hi, n_lo=n_lo, found=True)
 
 
-def surrogate_bands(g, n_core=2.40, n_lam=6000, lam_min=0.9e-6, lam_max=2.6e-6):
+def surrogate_bands(g, n_core=None, n_lam=6000, lam_min=0.9e-6, lam_max=2.6e-6):
     """Return (k_frac, bands_THz_list) for plotting the effective 1D band diagram.
 
     Inverts cos(Ka) = 0.5*Tr(omega) to get the Bloch wavevector for each allowed

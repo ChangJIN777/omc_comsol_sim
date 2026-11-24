@@ -1,0 +1,82 @@
+# scripts/run_opt_comsol.py config: RIB cell loop, optics with Tidy3D,
+# mechanics with COMSOL.
+#   python scripts/run_opt_comsol.py --config configs/run_opt_comsol_rib_tidy3d.yaml
+# Same as configs/run_opt_comsol_rib.yaml except `optical:`, the `tidy3d:`
+# section and the output files (kept apart, so the warm start of one engine is
+# not seeded with gaps of the other).
+celltype: rib
+
+n_init: 10
+n_iter: 40
+backend: auto            # auto | random | optuna
+
+optical: tidy3d          # comsol | tidy3d | none
+mech: comsol             # comsol | surrogate_stub (mechanics is never Tidy3D)
+
+# Cross-section (both cell types): rect (default) | wedge.
+#   rect   the slab only. Optics scores the modes that are EVEN across the
+#          thickness (TE-like); COMSOL templates omc_unitcell.mph (hole) /
+#          omc_unitcell_rib.mph (rib).
+#   wedge  slab + underside of an angled etch (30 deg): a triangle with its
+#          apex b/(2*sqrt(3)) below a strip of width b; for the rib it follows
+#          the fillets (roof of the filleted outline). No thickness mirror:
+#          optics scores all modes. Templates omc_unitcell_iso.mph (hole) /
+#          omc_unitcell_rib_wedge.mph (rib; build_omc_unitcell_rib('wedge')).
+#          optical: comsol | tidy3d only.
+xsect: rect
+
+rib:
+  mech_gap_mode: complete
+  n_k: 9
+  n_bands_mech: 20
+  optical_study: "opt TE"
+  n_k_opt: 13
+  n_bands_opt: 10
+  optical_rel_tol: 0.30
+  rxtal_deg: 0              # crystal rotation about the slab normal [deg]:
+                            # 0 = beam along <100>, 45 = <110> (P.rxtal of
+                            # omc-comsol-chang). Mechanics only; multiples
+                            # of 45 only (half model). 45 needs a rebuilt
+                            # template.
+
+# The loop stops cleanly (everything saved) as soon as the next cell would not
+# fit into max_credits. Up to n_iter * n_k simulations: set the budget first.
+# ---- Tidy3D engine (src/optical_tidy3d.py, diamond_bandStructure_sim.py) -----
+# Tidy3D runs on the Flexcompute CLOUD and CHARGES FlexCredits. Nothing is
+# uploaded while allow_cloud is false. To spend credits you must set BOTH
+# allow_cloud: true and max_credits.
+tidy3d:
+  allow_cloud: false       # true = simulations may be uploaded and charged
+  mode: run                # run      submit, download, score
+                           # dry_run  build + validate the simulations locally,
+                           #          write plan.json / grid_report.txt, no upload
+                           # estimate upload drafts, record the maximum cost,
+                           #          delete them; nothing is started
+                           #          (needs allow_cloud: true; costs nothing)
+  max_credits: 1.0         # FlexCredit budget of this process (a whole loop):
+                           # a batch whose estimate does not fit is not started
+  # max_credits_total: 20.0  # optional budget over ALL runs (credit_ledger.jsonl)
+  k_mode: sweep            # sweep   n_k simulations per cell from the light
+                           #         line to X; scored with the same guided
+                           #         interval gap as optical: comsol
+                           # x_only  1 simulation: gap between the two lowest
+                           #         guided resonances at X only. Cheap, but NOT
+                           #         the interval gap (bands crossing the gap
+                           #         away from X are not seen)
+  # n_k: 13                # k points of a sweep; default = rib.n_k_opt. Fewer k
+                           # cost less but raise the smallest resolvable gap
+  results_dir: results/tidy3d   # downloads: <results_dir>/rib/<record id>/
+  folder_name: omc_unitcell     # task folder in the Tidy3D web interface
+  reuse_results: true      # results already downloaded for the same cell and
+                           # k points are re-analyzed instead of paid again
+  # index: 2.386           # default: configs/materials.yaml (2.386, every engine)
+  # params:                # FDTD numerics of diamond_bandStructure_sim.BandParams
+  #   min_steps_per_wvl: 20
+  #   freq_span_thz: 100
+  #   runtime_fwidth: 100
+
+out_fig: "results/figures_rib_tidy3d/opt_progress_rib_tidy3d.png"
+out_json: "results/opt_results_rib_tidy3d.json"
+
+fresh_start: false
+skip_characterization: true   # the end-of-run characterization is COMSOL optics

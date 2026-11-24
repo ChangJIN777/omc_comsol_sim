@@ -12,6 +12,18 @@ optical: comsol            # none | comsol. Use comsol only after the optical
                          # validation solve (see the proposal, step B2).
 mech: comsol             # comsol | surrogate_stub
 
+# Cross-section (both cell types): rect (default) | wedge.
+#   rect   the slab only. Optics scores the modes that are EVEN across the
+#          thickness (TE-like); COMSOL templates omc_unitcell.mph (hole) /
+#          omc_unitcell_rib.mph (rib).
+#   wedge  slab + underside of an angled etch (30 deg): a triangle with its
+#          apex b/(2*sqrt(3)) below a strip of width b; for the rib it follows
+#          the fillets (roof of the filleted outline). No thickness mirror:
+#          optics scores all modes. Templates omc_unitcell_iso.mph (hole) /
+#          omc_unitcell_rib_wedge.mph (rib; build_omc_unitcell_rib('wedge')).
+#          optical: comsol | tidy3d only.
+xsect: rect
+
 rib:
   mech_gap_mode: complete   # complete (sym + antisym studies) | sym | antisym
   n_k: 15                   # mechanical k-points, Gamma -> X
@@ -20,5 +32,10 @@ rib:
   n_k_opt: 13               # optical k-points, light-line start -> X
   n_bands_opt: 10           # optical eigenvalues per k
   optical_rel_tol: 0.30     # gap centre within +/-30 % of the target frequency
+  rxtal_deg: 0              # crystal rotation about the slab normal [deg]:
+                            # 0 = beam along <100>, 45 = <110> (P.rxtal of
+                            # omc-comsol-chang). Mechanics only; multiples
+                            # of 45 only (half model). 45 needs a rebuilt
+                            # template.
 
 quiet: false

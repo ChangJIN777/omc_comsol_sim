@@ -33,14 +33,17 @@ from matplotlib.patches import Rectangle, Ellipse
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from geometry import u_to_geometry, check_feasibility, load_bounds, Geometry
+from geometry import (u_to_geometry, check_feasibility, load_bounds, Geometry,
+                      resolve_xsect, diamond_index, z_mirror_symmetric)
 from bandgap import largest_gap, all_gaps, Gap
-from comsol_client import get_model
+from comsol_client import (get_model, template_path, LEGACY_XSECT,
+                           THICKNESS_PARAM)
 from database import save_result
 # Optical search + gap helpers now live in src/comsol_optics.py (shared with
 # the rib cell); imported under their old names, so nothing below changes.
 from comsol_optics import (_study_tag, _guided_shift_hz, _set_eig_search,  # noqa: F401
-                           _opt_sweep, _full_opt_sweep, optical_gap_tracked)
+                           _opt_sweep, _full_opt_sweep, optical_gap_tracked,
+                           study_z_family)
 
 C0 = 299_792_458.0
 _TEMPLATE    = os.path.join(os.path.dirname(__file__), "..", "comsol",
@@ -238,20 +241,39 @@ def score_result(G_o, G_m, f_o_c, f_m_c, t=None, w=None, a=None, *, require_opt=
 
 # ── Full single-candidate evaluation ─────────────────────────────────────────
 
-def _make_id(params: dict) -> str:
-    """Hash physical geometry (nm-rounded) — bounds-independent unique ID."""
-    key = json.dumps(
-        {k: round(v * 1e9, 2) for k, v in sorted(params.items())},
-        sort_keys=True,
-    )
+LEGACY_INDEX = 2.40     # n of the templates; ids made with it carry no index
+
+
+def _make_id(params: dict, xsect=None, index=None) -> str:
+    """Hash physical geometry (nm-rounded) — bounds-independent unique ID.
+
+    The cross-section and the diamond index are part of the hash whenever
+    they differ from what this loop always used (the wedge template, n = 2.40),
+    so a rect record never replaces a wedge one for the same geometry, nor an
+    n = 2.386 record one made with n = 2.40. The legacy combination keeps the
+    id it always had.
+    """
+    key = {k: round(v * 1e9, 2) for k, v in sorted(params.items())}
+    if xsect is not None and xsect != LEGACY_XSECT["hole"]:
+        key["xsect"] = xsect
+    if index is not None and abs(index - LEGACY_INDEX) > 1e-9:
+        key["n_diamond"] = round(float(index), 6)
+    key = json.dumps(key, sort_keys=True)
     return "opt_" + hashlib.sha1(key.encode()).hexdigest()[:12]
 
 
 def evaluate(model, u, g, *, n_k, n_bands_mech, n_bands_opt,
              study_mech, study_opt, compute_fy=True,
              require_opt=True, require_mech=True,
-             g_min_opt=G_MIN_OPT, g_min_mech=G_MIN_MECH):
+             g_min_opt=G_MIN_OPT, g_min_mech=G_MIN_MECH, xsect=None):
     """Set geometry, run both sweeps, return result dict.
+
+    xsect: cross-section of the loaded template ("wedge" = legacy default,
+    omc_unitcell_iso.mph; "rect" = omc_unitcell.mph). OPTICS only: for "rect"
+    the sweep keeps the thickness-even (TE-like) modes of 'opt TE' (odd for
+    'opt TM'), read from each solved field; for "wedge" all modes, as before.
+    The mechanical sweep is unchanged. The diamond index of
+    configs/materials.yaml is set on the model by the optical sweep.
 
     compute_fy=False: skip per-mode field queries in mechanical sweep
     (trusting mech sym BCs to have pre-selected breathing modes).
@@ -288,7 +310,13 @@ def evaluate(model, u, g, *, n_k, n_bands_mech, n_bands_opt,
     # ── Optical ───────────────────────────────────────────────────────────────
     # Sweep zone-edge half of BZ (k ∈ [0.5,1.0]×π/a); detect gap nearest to
     # 1550 nm at zone edge then track across provided k-points.
-    k_o, freqs_o = _opt_sweep(model, g, study_opt, n_k, n_bands_opt)
+    xsect = resolve_xsect(LEGACY_XSECT["hole"] if xsect is None else xsect)
+    index = diamond_index()
+    z_family = study_z_family(study_opt, xsect)
+    z_info = {}
+    k_o, freqs_o = _opt_sweep(model, g, study_opt, n_k, n_bands_opt,
+                              z_family=z_family,
+                              thickness=THICKNESS_PARAM["hole"], info=z_info)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
         gp_o = optical_gap_tracked(freqs_o)
@@ -300,10 +328,16 @@ def evaluate(model, u, g, *, n_k, n_bands_mech, n_bands_opt,
                       g_min_mech=g_min_mech)
 
     return dict(
-        id=_make_id(g.as_dict()),
+        id=_make_id(g.as_dict(), xsect, index),
         u=[float(x) for x in u],
         params=g.as_dict(),
         optical_backend="comsol", mech_backend="comsol",
+        optical_engine="comsol", xsect=xsect, optical_index=index,
+        optical_z_symmetry=z_mirror_symmetric(xsect),
+        optical_z_family=z_family,
+        # per k: every returned optical mode and its thickness-parity fraction
+        _freqs_o_all=z_info.get("freqs_all_hz"),
+        _z_even_fraction=z_info.get("z_even_fraction"),
         G_o=G_o, G_m=G_m,
         f_o_THz=f_o_c * 1e-12,
         f_o_nm=C0 / f_o_c * 1e9 if f_o_c > 0 else float("nan"),
@@ -1833,11 +1867,21 @@ def _run_characterization(model, best_rec, args, out_dir=None, no_cache=False):
         N_BO = 12   # bands for visualization (more than optimization for smooth curves)
         N_BM = 10
 
+        # Same cross-section rule as evaluate(): for "rect" each optical
+        # study keeps its thickness-parity family, for "wedge" all modes.
+        xsect = resolve_xsect(getattr(args, "xsect", None) or LEGACY_XSECT["hole"])
+
+        def _zkw(study):
+            return dict(z_family=study_z_family(study, xsect),
+                        thickness=THICKNESS_PARAM["hole"])
+
         print("  [1/4] opt TE  (full BZ, visualization)...")
-        k_TE, freqs_TE = _full_opt_sweep(model, g, args.study_opt, n_k=N_K, n_bands=N_BO)
+        k_TE, freqs_TE = _full_opt_sweep(model, g, args.study_opt, n_k=N_K,
+                                         n_bands=N_BO, **_zkw(args.study_opt))
 
         print("  [2/4] opt TM  (full BZ, visualization)...")
-        k_TM, freqs_TM = _full_opt_sweep(model, g, "opt TM", n_k=N_K, n_bands=N_BO)
+        k_TM, freqs_TM = _full_opt_sweep(model, g, "opt TM", n_k=N_K,
+                                         n_bands=N_BO, **_zkw("opt TM"))
 
         print("  [3/4] mech sym  (full BZ)...")
         k_sym, freqs_sym, fy_sym = _mech_sweep(model, g, args.study_mech,
@@ -1851,7 +1895,8 @@ def _run_characterization(model, best_rec, args, out_dir=None, no_cache=False):
         # parameters as the optimization pass (same n_k, same n_bands_opt).
         print("  [gap] zone-edge sweep for gap detection (matching optimization)...")
         k_TE_det, freqs_TE_det = _opt_sweep(model, g, args.study_opt,
-                                             args.n_k, args.n_bands_opt)
+                                             args.n_k, args.n_bands_opt,
+                                             **_zkw(args.study_opt))
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
@@ -2354,6 +2399,14 @@ def main():
         from run_opt_comsol_rib import main_rib
         return main_rib(cfg, cli.config)
 
+    # The hole loop below solves optics in COMSOL only (the rib loop above also
+    # takes optical: tidy3d). Refuse another engine instead of ignoring the key.
+    if cfg.get("optical", "comsol") != "comsol":
+        print(f"[FAIL] optical: {cfg['optical']!r} is not available in this hole-cell "
+              "loop (COMSOL optics only). For Tidy3D on the hole cell use "
+              "scripts/run_one.py or scripts/run_loop.py with optical: tidy3d.")
+        sys.exit(2)
+
     # Populate a Namespace so the rest of main() keeps referring to args.<key>.
     # `resume` is intentionally not read: it was already a legacy no-op (prior
     # results are auto-loaded whenever out_json exists), so it stays a documented
@@ -2379,12 +2432,25 @@ def main():
     require_opt  = cfg["require_opt"]
     require_mech = cfg["require_mech"]
 
-    if not os.path.exists(_TEMPLATE):
-        print(f"[FAIL] COMSOL template not found: {_TEMPLATE}")
+    # Cross-section: `xsect: rect | wedge`. Without the key this loop keeps
+    # what it has always done: the wedge template (omc_unitcell_iso.mph), all
+    # optical modes, and no extra feasibility rule. With `xsect: wedge` given
+    # explicitly the blind-hole rule of geometry.check_feasibility applies too;
+    # `xsect: rect` uses omc_unitcell.mph and scores thickness-even modes only.
+    xsect_given = cfg.get("xsect") is not None
+    xsect = resolve_xsect(cfg.get("xsect") or LEGACY_XSECT["hole"])
+    index = diamond_index()
+    try:
+        template = template_path("hole", xsect, must_exist=True)
+    except FileNotFoundError as err:
+        print(f"[FAIL] {err}")
         sys.exit(1)
+    print(f"Cross-section: {xsect}  |  template: {os.path.basename(template)}  |  "
+          f"diamond index: {index}  |  optical modes: "
+          + ("thickness-even only" if z_mirror_symmetric(xsect) else "all"))
 
     bounds = load_bounds()
-    model  = get_model(_TEMPLATE)
+    model  = get_model(template)
     avail  = set(model.studies())
     print(f"Available studies: {sorted(avail)}")
     for s in [args.study_mech, args.study_opt]:
@@ -2440,11 +2506,11 @@ def main():
 
         u, trial = opt_ask(optimizer)
         g = u_to_geometry(u, bounds)
-        ok, reasons = check_feasibility(g, bounds)
+        ok, reasons = check_feasibility(g, bounds, xsect if xsect_given else None)
 
         if not ok:
-            rec = dict(id=_make_id(g.as_dict()), u=u, score=-10.0, G_o=0.0, G_m=0.0,
-                       status="infeasible", reasons=reasons,
+            rec = dict(id=_make_id(g.as_dict(), xsect, index), u=u, score=-10.0, G_o=0.0, G_m=0.0,
+                       status="infeasible", reasons=reasons, xsect=xsect,
                        optical_backend="comsol", mech_backend="comsol",
                        optical_gap=0.0, mechanical_gap=0.0,
                        optical_center_frequency=0.0,
@@ -2469,10 +2535,11 @@ def main():
                            study_opt=args.study_opt,
                            compute_fy=compute_fy,
                            require_opt=require_opt, require_mech=require_mech,
-                           g_min_opt=args.g_min_opt, g_min_mech=args.g_min_mech)
+                           g_min_opt=args.g_min_opt, g_min_mech=args.g_min_mech,
+                           xsect=xsect)
         except Exception as e:
-            rec = dict(id=_make_id(g.as_dict()), u=u, score=-5.0, G_o=0.0, G_m=0.0,
-                       status="failed", error=str(e),
+            rec = dict(id=_make_id(g.as_dict(), xsect, index), u=u, score=-5.0, G_o=0.0, G_m=0.0,
+                       status="failed", error=str(e), xsect=xsect,
                        optical_backend="comsol", mech_backend="comsol",
                        optical_gap=0.0, mechanical_gap=0.0,
                        optical_center_frequency=0.0,
@@ -2559,7 +2626,8 @@ def main():
                "--json",       args.out_json,
                "--out-dir",    out_dir,
                "--study-opt",  args.study_opt,
-               "--study-mech", args.study_mech]
+               "--study-mech", args.study_mech,
+               "--xsect",      xsect]
         if not args.compute_fy:
             cmd.append("--no-fy")
         with open(char_log, "w") as char_log_fh:

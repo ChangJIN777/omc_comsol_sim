@@ -5,7 +5,7 @@ celltype: rib
 n_init: 20
 n_iter: 60
 
-optical: none            # none | comsol (after the optical validation solve)
+optical: comsol            # none | comsol (after the optical validation solve)
 mech: comsol             # comsol | surrogate_stub
 
 backend: auto            # auto | random | optuna | botorch
@@ -14,3 +14,8 @@ rib:
   mech_gap_mode: complete
   n_k: 9
   n_bands_mech: 20
+  rxtal_deg: 0              # crystal rotation about the slab normal [deg]:
+                            # 0 = beam along <100>, 45 = <110> (P.rxtal of
+                            # omc-comsol-chang). Mechanics only; multiples
+                            # of 45 only (half model). 45 needs a rebuilt
+                            # template.

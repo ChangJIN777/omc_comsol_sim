@@ -1,0 +1,77 @@
+# scripts/run_one.py config: RIB cell, optics with Tidy3D instead of COMSOL.
+#   python scripts/run_one.py --config configs/run_one_rib_tidy3d.yaml
+# Same cell as configs/run_one_rib.yaml; switch engines with the one key
+# `optical:` (none | comsol | tidy3d). The record id depends on the engine, so
+# a Tidy3D result never replaces a COMSOL one for the same u.
+#
+# Both engines model the same cell for a given `xsect` (below) and the same
+# thickness-parity family. See src/optical_tidy3d.py.
+celltype: rib
+
+# One value per searched rib variable (bounds.yaml rib.variables), order a, w, t, s.
+u: [0.385714, 0.575254, 0.358947, 0.214737]
+
+optical: tidy3d          # none | comsol | tidy3d
+mech: comsol     # comsol | surrogate_stub (mechanics is never Tidy3D)
+
+# Cross-section (both cell types): rect (default) | wedge.
+#   rect   the slab only. Optics scores the modes that are EVEN across the
+#          thickness (TE-like); COMSOL templates omc_unitcell.mph (hole) /
+#          omc_unitcell_rib.mph (rib).
+#   wedge  slab + underside of an angled etch (30 deg): a triangle with its
+#          apex b/(2*sqrt(3)) below a strip of width b; for the rib it follows
+#          the fillets (roof of the filleted outline). No thickness mirror:
+#          optics scores all modes. Templates omc_unitcell_iso.mph (hole) /
+#          omc_unitcell_rib_wedge.mph (rib; build_omc_unitcell_rib('wedge')).
+#          optical: comsol | tidy3d only.
+xsect: rect
+
+rib:
+  mech_gap_mode: complete
+  n_k: 15
+  n_bands_mech: 20
+  optical_study: "opt TE"   # "opt TE" -> Tidy3D TE (Ey dipoles, symmetry (0,-1,1))
+  n_k_opt: 13               # with tidy3d: default number of k points of a sweep
+  n_bands_opt: 10           # COMSOL only
+  optical_rel_tol: 0.30     # gap centre within +/-30 % of the target frequency
+  rxtal_deg: 0              # crystal rotation about the slab normal [deg]:
+                            # 0 = beam along <100>, 45 = <110> (P.rxtal of
+                            # omc-comsol-chang). Mechanics only; multiples
+                            # of 45 only (half model). 45 needs a rebuilt
+                            # template.
+
+# ---- Tidy3D engine (src/optical_tidy3d.py, diamond_bandStructure_sim.py) -----
+# Tidy3D runs on the Flexcompute CLOUD and CHARGES FlexCredits. Nothing is
+# uploaded while allow_cloud is false. To spend credits you must set BOTH
+# allow_cloud: true and max_credits.
+tidy3d:
+  allow_cloud: true       # true = simulations may be uploaded and charged
+  mode: run                # run      submit, download, score
+                           # dry_run  build + validate the simulations locally,
+                           #          write plan.json / grid_report.txt, no upload
+                           # estimate upload drafts, record the maximum cost,
+                           #          delete them; nothing is started
+                           #          (needs allow_cloud: true; costs nothing)
+  max_credits: 1.0         # FlexCredit budget of this process (a whole loop):
+                           # a batch whose estimate does not fit is not started
+  # max_credits_total: 20.0  # optional budget over ALL runs (credit_ledger.jsonl)
+  k_mode: sweep            # sweep   n_k simulations per cell from the light
+                           #         line to X; scored with the same guided
+                           #         interval gap as optical: comsol
+                           # x_only  1 simulation: gap between the two lowest
+                           #         guided resonances at X only. Cheap, but NOT
+                           #         the interval gap (bands crossing the gap
+                           #         away from X are not seen)
+  # n_k: 13                # k points of a sweep; default = rib.n_k_opt. Fewer k
+                           # cost less but raise the smallest resolvable gap
+  results_dir: results/tidy3d   # downloads: <results_dir>/rib/<record id>/
+  folder_name: omc_unitcell     # task folder in the Tidy3D web interface
+  reuse_results: true      # results already downloaded for the same cell and
+                           # k points are re-analyzed instead of paid again
+  # index: 2.386           # default: configs/materials.yaml (2.386, every engine)
+  # params:                # FDTD numerics of diamond_bandStructure_sim.BandParams
+  #   min_steps_per_wvl: 20
+  #   freq_span_thz: 100
+  #   runtime_fwidth: 100
+
+quiet: false

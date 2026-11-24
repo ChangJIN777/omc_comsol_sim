@@ -15,6 +15,8 @@ See `docs/strategy.md` for the full strategy, field review, and physics notes.
 ```bash
 pip install -r requirements.txt           # numpy/pyyaml/pandas/matplotlib (+optuna)
 python tests/test_pipeline.py             # all 15 tests pass with numpy only (hole + rib)
+python tests/test_optical_tidy3d.py       # Tidy3D engine, offline (tidy3d mocked)
+python tests/test_xsect_index.py          # xsect switch, parity filter, n = 2.386
 python scripts/run_one.py  --config configs/run_one.yaml   # surrogate optical + mech by default
 python scripts/run_loop.py --config configs/run_loop.yaml  # surrogate pre-screen by default
 ```
@@ -81,9 +83,25 @@ run config, and the hole cell is unaffected.
 cd python-scripts/comsol
 build_omc_unitcell_rib();      % writes comsol/omc_unitcell_rib.mph
 ```
-- **Frame:** beam along z, thickness along x, modelled as the y >= 0 half with an air box.
-- **Material:** anisotropic cubic diamond (C11/C12/C44), unrotated, so the beam
-  runs along <100>. The hole templates are isotropic.
+- **Frame:** beam along z, thickness along x, modelled as the y >= 0 half.
+- **Air:** a half-disk (half-cylinder along the beam, y >= 0) centred on the
+  mid-depth of the beam, of radius `air_r` = distance to the farthest beam
+  corner + `air_gap`; the curved face carries the scattering condition.
+  `air_gap` (default 1.55 um, one wavelength) is a global parameter of the
+  model: change it in the GUI or with `-p air_gap=2.5[um]` in
+  `scripts/run_comsol_batch.sh`. Templates built before this have an air box
+  (no parameter `air_r`) whose faces sit inside the evanescent tail of the
+  guided modes; the COMSOL optical paths refuse them (delete and rebuild).
+  Mechanics does not use the air and is unaffected.
+- **Material:** anisotropic cubic diamond (C11/C12/C44). `rib.rxtal_deg`
+  rotates the crystal about the slab normal (`P.rxtal` of
+  `../omc-comsol-chang`; template parameter `rxt`): `0` (default) puts the
+  beam along <100>, `45` along <110>. Only multiples of 45 deg are allowed
+  (others break the y mirror of the half model; 90 is the same as 0), and it
+  acts on mechanics only. It is saved in every record as `rxtal_deg` and is
+  part of the candidate id only when nonzero, so existing ids are unchanged.
+  A template built before `rxt` is refused for 45 (delete and rebuild). The
+  hole templates are isotropic.
 - **Studies:** `mech sym`, `mech antisym`, `opt TE` and `opt TM`.
 
 The MATLAB driver `comsol/omc_mechanical_livelink_rib.m` gives a reference band
@@ -128,7 +146,9 @@ About 40 % of the box passes both checks with the defaults. For `a` > ~775 nm,
 - **Optical:** `optical: comsol` solves `opt TE` on the rib template and keeps
   only guided modes, using the light-line tracking and pseudo-mode filter in
   `src/comsol_optics.py`. `optical: none` scores the mechanical gap only.
-  `surrogate` and `mpb` are not available for the rib.
+  `optical: tidy3d` scores the same gap from Tidy3D FDTD (see "Optical engine:
+  COMSOL vs Tidy3D"). `surrogate` and `mpb` are not available for the rib.
+  With the default `xsect: rect` only thickness-even modes are scored.
 - **Validate optics first.** Before any optimization with `optical: comsol`,
   solve `opt TE` and `opt TM` once at k = pi/a on the default cell and check
   that the modes near 193 THz are guided and confined to the rib:
@@ -140,6 +160,10 @@ About 40 % of the box passes both checks with the defaults. For `a` > ~775 nm,
   mode at X should not radiate, so that loss is probably the scattering
   boundary sitting inside the evanescent tail (air box 2.5*th in x); look at
   the fields in `solved_std2.mph` / `solved_std4.mph` before trusting the gap.
+  That run used the OLD air box: repeat it after rebuilding the template with
+  the air half-disk (the old file can be kept, renamed, for the comparison:
+  `--template ... --allow-old-air`). TODO(confirm): Q of the guided modes with
+  the half-disk, and that it grows with `air_gap` (e.g. `-p air_gap=2.5[um]`).
 
 **Running.**
 ```bash
@@ -182,6 +206,10 @@ Defaults: `comsol/omc_unitcell_rib.mph`, study `std2` (`opt TE`), `kF = pi/a`.
 Study tags of the rib template: `std1` mech sym, `std3` mech antisym, `std2`
 opt TE, `std4` opt TM. Paths come from `COMSOL_ROOT` (or `--comsol-root`), so
 the same command works on a machine with another install location.
+For an optical study it refuses (exit 2) a rib template with the old air box
+(no parameter `air_r`; see "Rib cell"), unless `--allow-old-air` is given, e.g.
+to compare the Q of the old box and the half-disk deliberately. The air region
+used is logged and saved as `air_region` in `summary.json`.
 
 Which licences it takes (measured 2026-11-23, COMSOL 6.3, with `--watch-license`):
 
@@ -238,15 +266,177 @@ explicit list of designs.
 - A licence error stops the queue (exit 3) instead of failing every remaining
   item; `stop_on_license_error: false` carries on.
 
+## Optical engine: COMSOL vs Tidy3D
+The optical solver is chosen with the one config key `optical:`; mechanics is
+always `mech: comsol | surrogate_stub`.
+
+| `optical:` | hole | rib | `xsect` | notes |
+|---|---|---|---|---|
+| `surrogate`, `mpb` | yes | no | rect only | pre-screen |
+| `comsol` | yes | yes | rect, wedge | same template as mechanics |
+| `tidy3d` | yes | yes | rect, wedge | FDTD on the Tidy3D cloud, **costs FlexCredits** |
+| `none` | no | yes | rect, wedge | mechanics only |
+
+`optical: tidy3d` (`src/optical_tidy3d.py`) drives `diamond_bandStructure_sim.py`
+(needs `pip install tidy3d` and an API key; that file stays a stand-alone CLI,
+with the new option `--xsect`). Examples: `configs/run_one_tidy3d.yaml`,
+`configs/run_one_rib_tidy3d.yaml`, `configs/run_opt_comsol_rib_tidy3d.yaml`.
+It is available in `run_one.py`, `run_loop.py`, `run_batch_rib.py` and the rib
+loop of `run_opt_comsol.py`; the hole loop of `run_opt_comsol.py` is COMSOL-only.
+
+**Refractive index.** Diamond is n = 2.386 (telecom) for every optical engine,
+from `configs/materials.yaml` (also `diamond_telecom` of the Tidy3D module and
+`P.nbeam` of `../omc-comsol-chang`). The COMSOL templates still store
+relpermittivity 5.76 (n = 2.40): the Python drivers overwrite it before every
+optical solve (`comsol_client.set_diamond_index`), so the binary hole templates
+need no rebuild. Mechanics does not use the index.
+
+What still reads the number stored in the `.mph`: `comsol batch`
+(`scripts/comsol_batch.py` can only set global parameters and refuses a
+template without the parameter `n_diamond` unless `--keep-template-index` is
+given), and any session that opens the template directly (the COMSOL GUI,
+`mphopen` in MATLAB). To make the file itself carry the index:
+- Rib templates: rebuild with `build_omc_unitcell_rib.m` (it defines
+  `n_diamond = 2.386` and `relpermittivity = n_diamond^2`). Delete the old
+  `.mph` first; the builder does not overwrite.
+- Hole templates (`omc_unitcell.mph`, `omc_unitcell_iso.mph`; made by hand,
+  no builder): patch them in place, in MATLAB with LiveLink:
+  ```matlab
+  cd python-scripts/comsol
+  patch_hole_templates_index('-selftest')   % optional, no COMSOL needed
+  report = patch_hole_templates_index();    % both hole templates, n = 2.386
+  ```
+  It adds the same parameter and sets the diamond material's relative
+  permittivity to `n_diamond^2`, nothing else: no solve, and the geometry,
+  mesh, studies, solver sequences and datasets are kept. Each file is backed
+  up to `<name>.bak.mph` first, a file that is already patched is skipped, and
+  the saved file is reopened and checked. A solution stored in the template
+  is not recomputed.
+  By hand in the GUI instead: Global Definitions > Parameters 1: add
+  `n_diamond`, expression `2.386`; Component 1 > Materials > Diamond (100) >
+  Material Contents > Relative permittivity: `n_diamond^2`; File > Save.
+Once a template has `n_diamond`, the Python drivers and `comsol_batch.py` set
+that parameter (from `configs/materials.yaml`) instead of the material
+property.
+
+**Cross-section (`xsect: rect | wedge`, default `rect`).**
+- `rect`: the slab only (vertical walls, flat underside).
+- `wedge`: the slab plus the triangular underside of an angled etch, as in
+  `comsol/omc_unitcell_iso.mph`: under a strip of width b, an isosceles triangle
+  on the bottom face of the slab with base angles 30 deg, apex b/(2*sqrt(3))
+  below the slab.
+  - Hole cell: one prism along the beam (b = w), the hole cut through both.
+  - Rib cell: the "roof" of the FILLETED outline. Under a point p the wedge is
+    `d(p)*tan(30 deg)` deep, with `d(p)` the in-plane distance from p to the
+    filleted outline (neighbouring cells included;
+    `geometry.rib_roof_distance`). Straight parts of the spine (b = s) and of
+    the rib (b = t) keep the triangle above; the tip is hipped; under each tip
+    fillet (r2) the wedge is a cone with its apex below the arc centre; around
+    each root fillet (r1), and over the whole rib/spine junction, it is a cone
+    `d = rho - r1` about the arc centre, so the wedge is deepest under the
+    junction centre (`wedge_depths` in the record: `spine`, `rib`, `junction`,
+    `max`).
+  - COMSOL builds the rib roof exactly from planes and cones. Tidy3D builds it
+    as `wedge_layers` (default 12) stacked slabs of exactly offset outlines:
+    exact in plan view, a staircase in depth with an error of at most
+    (deepest point)/(2*wedge_layers), about 6 nm for the default cell (set
+    `tidy3d: {params: {wedge_layers: N}}` for more).
+
+| cell | `rect` template | `wedge` template |
+|---|---|---|
+| hole | `comsol/omc_unitcell.mph` | `comsol/omc_unitcell_iso.mph` |
+| rib | `comsol/omc_unitcell_rib.mph` | `comsol/omc_unitcell_rib_wedge.mph` |
+
+The same template serves optics and mechanics, so `xsect` changes both. The
+rib wedge template is not shipped; build it once in MATLAB with LiveLink:
+```matlab
+cd python-scripts/comsol
+model = build_omc_unitcell_rib('', 'wedge');   % in memory first: check it
+mphgeom(model)                                 % or mphlaunch(model)
+build_omc_unitcell_rib('wedge');     % writes comsol/omc_unitcell_rib_wedge.mph
+```
+The wedge part of the builder has not been built yet. Check on the first
+build: one beam domain whose footprint is the filleted outline; depth below
+the slab `s/2*tan(30deg)` under the spine centreline between ribs,
+`t/2*tan(30deg)` under the rib centreline mid-arm, the parameter `wd` under
+the junction centre (the deepest point) and zero along the outline; the rib
+prism lies under the rib (not rotated); root cones widen downwards, tip cones
+point downwards; the builder's own checks (periodic faces, selections) and
+the mesh pass. The list is repeated in the builder at the wedge block.
+A missing template is an error that names this step. `surrogate` and `mpb`
+model the rectangle only and refuse `xsect: wedge` before any solve. For the
+hole cell, `wedge` adds the feasibility rule `t >= w/(2*sqrt(3))`
+(`WEDGE_HOLE_BLIND`): the template's hole cutter is 3*t long, so in a thinner
+slab the hole would not go through the wedge. The rib wedge adds no rule.
+`xsect` is saved in every record and is part of the record id.
+`run_opt_comsol.py` (hole loop) keeps its old behaviour when the key is absent:
+the wedge template and all optical modes.
+
+**Mid-thickness mirror symmetry (optics only).** A rectangular cell has a
+mirror plane at mid-thickness, a wedge cell has not:
+- `rect`: only the thickness-even (TE-like) modes are scored for `opt TE`
+  (the odd ones for `opt TM`). Tidy3D uses a symmetry plane, symmetry tuple
+  `(0, -1, +1)` for TE. The COMSOL templates model the full thickness, so the
+  drivers read the parity of each solved mode from its field: the share of the
+  in-plane field `|Ey|^2 + |Ez|^2` in `|E|^2`, integrated over the layer
+  `|x| < thickness/8` around the mid-plane, is near 1 for an even mode and near
+  0 for an odd one (threshold 0.5, `comsol_optics.py`). Twice as many
+  eigenvalues are requested, and the value of every mode is saved in
+  `optical_comsol_detail`.
+- `wedge`: all modes are scored. Tidy3D uses `(0, -1, 0)` and spreads its
+  dipoles over the slab thickness; COMSOL applies no filter.
+- Mechanics always uses the full thickness and all modes.
+
+**Cost safety (Tidy3D).** Nothing is uploaded unless the config has
+`tidy3d: {allow_cloud: true, max_credits: <FlexCredits>}`.
+- `mode: dry_run` builds and validates the simulations locally (plan.json,
+  grid_report.txt), no upload. `mode: estimate` uploads drafts, records the
+  maximum cost and deletes them. `mode: run` submits.
+- `max_credits` is the budget of the whole process (a loop or queue stops
+  cleanly, with everything saved, before the batch that would exceed it);
+  `max_credits_total` is an optional budget over all runs
+  (`results/tidy3d/credit_ledger.jsonl`). Both count Tidy3D's maximum estimates.
+- Downloads go to `results/tidy3d/<celltype>/<record id>/` and are re-analyzed
+  instead of paid again.
+- `k_mode: x_only` = 1 simulation per cell (gap at X; default for the hole);
+  `k_mode: sweep` = `n_k` simulations (default for the rib, `n_k = rib.n_k_opt`).
+
+**Progress (Tidy3D).** Everything the engine prints goes to **stderr**, never
+to stdout (the JSON of `run_one.py` stays clean): Tidy3D's web progress (upload,
+task status and progress bars, cost, download) and the engine's own steps
+(`[2/4] optical: building ...`, `uploading`, `estimated maximum cost`,
+`running`, `loading`, `analyzing resonances`), also in `mode: dry_run` and
+`mode: estimate`. `quiet: true` (`run_one.py`, `run_batch_rib.py`) silences
+both; errors remain. Loops without a `quiet` key show Tidy3D's progress.
+
+**Scoring.** Tidy3D resonances go through the gap functions used with COMSOL:
+`guided_interval_gap` (rib sweep) and `optical_gap_tracked` (hole, and any
+x_only run). The module's own "two lowest guided resonances at X" gap is stored
+in `optical_tidy3d_detail.x_point`. Records carry `optical_engine`,
+`optical_index`, `xsect` and `optical_z_symmetry`; the id depends on engine,
+index and cross-section, so such results never overwrite each other (nor the
+records made before 2026-11-23 with n = 2.40).
+
+**How comparable are the two engines?**
+- `rect`: same cell, same index, same thickness-even family. Left: fillets are
+  8-point polygons in Tidy3D, PML vs scattering boundary, and FDTD resolution.
+- `wedge`: same cell and index, all parities in both. The rib wedge is exact
+  in COMSOL and a 12-layer staircase in Tidy3D. An FDTD run finds only the
+  modes its Ey dipoles excite, so a mode COMSOL returns can be missing and the
+  Tidy3D gap can come out larger. Confirm finalists in COMSOL.
+- Neither the rib wedge template nor any Tidy3D simulation has been run yet.
+
 ## Layout
 ```
 configs/   bounds.yaml (hole + rib sections)  targets.yaml  materials.yaml
            run_one.yaml  run_loop.yaml  run_opt_comsol.yaml  (per-script --config)
            run_one_rib.yaml  run_loop_rib.yaml  run_opt_comsol_rib.yaml
            run_batch_rib.yaml  (queue of designs for run_batch_rib.py)
+           run_one_tidy3d.yaml  run_one_rib_tidy3d.yaml
+           run_opt_comsol_rib_tidy3d.yaml  (optical: tidy3d examples)
            plot_bands.yaml  plot_geometry.yaml  plot_mode.yaml
 src/       geometry (hole + rib, fabricability)  bandgap  comsol_client
-           optical_{surrogate,mpb,comsol}  comsol_optics  acoustic_comsol
+           optical_{surrogate,mpb,comsol,tidy3d}  comsol_optics  acoustic_comsol
            objective  objective_rib  optimizer  database
 scripts/   run_one.py  run_loop.py  run_opt_comsol.py  run_opt_comsol_rib.py
            run_batch_rib.py  (queue in one COMSOL session)
@@ -254,8 +444,11 @@ scripts/   run_one.py  run_loop.py  run_opt_comsol.py  run_opt_comsol_rib.py
            run_comsol_batch.sh + comsol_batch.py  (comsol batch, batch licences)
            plot_bands.py  plot_geometry.py  plot_mode.py
 comsol/    hole template recipe + MATLAB LiveLink driver;
+           patch_hole_templates_index.m (index parameter for the hole templates)
            build_omc_unitcell_rib.m + omc_mechanical_livelink_rib.m (rib)
+diamond_bandStructure_sim.py   stand-alone Tidy3D band-structure tool
 tests/     test_pipeline.py  (numpy-only, hole + rib)
+           test_optical_tidy3d.py  test_xsect_index.py  (no cloud, no COMSOL)
            test_batch_queue.py  (run_batch_rib.py + session release, no COMSOL)
 results/   runs.sqlite3 (hole; + .jsonl fallback)  runs_rib.sqlite3 (rib)
 docs/      strategy.md

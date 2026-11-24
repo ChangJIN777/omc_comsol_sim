@@ -1,0 +1,58 @@
+# scripts/run_one.py config: HOLE cell, optics with Tidy3D instead of COMSOL.
+#   python scripts/run_one.py --config configs/run_one_tidy3d.yaml
+# Switch engines with the one key `optical:` (surrogate | mpb | comsol | tidy3d).
+# The record id depends on the engine, so a Tidy3D result never replaces a
+# COMSOL one for the same u.
+#
+# Both engines model the same cell for a given `xsect` (below) and the same
+# thickness-parity family. See src/optical_tidy3d.py.
+
+# (ua, uw, uhx, uhy, ut) in [0,1] -> (a, w, hx, hy, t), see configs/bounds.yaml
+u: [0.5, 0.6, 0.5, 0.6, 0.5]
+
+optical: tidy3d          # surrogate | mpb | comsol | tidy3d
+mech: comsol     # comsol | surrogate_stub (mechanics is never Tidy3D)
+
+# Cross-section (both cell types): rect (default) | wedge.
+#   rect   the slab only. Optics scores the modes that are EVEN across the
+#          thickness (TE-like); COMSOL templates omc_unitcell.mph (hole) /
+#          omc_unitcell_rib.mph (rib).
+#   wedge  slab + underside of an angled etch (30 deg): a triangle with its
+#          apex b/(2*sqrt(3)) below a strip of width b; for the rib it follows
+#          the fillets (roof of the filleted outline). No thickness mirror:
+#          optics scores all modes. Templates omc_unitcell_iso.mph (hole) /
+#          omc_unitcell_rib_wedge.mph (rib; build_omc_unitcell_rib('wedge')).
+#          optical: comsol | tidy3d only.
+xsect: rect
+
+# ---- Tidy3D engine (src/optical_tidy3d.py, diamond_bandStructure_sim.py) -----
+# Tidy3D runs on the Flexcompute CLOUD and CHARGES FlexCredits. Nothing is
+# uploaded while allow_cloud is false. To spend credits you must set BOTH
+# allow_cloud: true and max_credits.
+tidy3d:
+  allow_cloud: true       # true = simulations may be uploaded and charged
+  mode: run                # run      submit, download, score
+                           # dry_run  build + validate the simulations locally,
+                           #          write plan.json / grid_report.txt, no upload
+                           # estimate upload drafts, record the maximum cost,
+                           #          delete them; nothing is started
+                           #          (needs allow_cloud: true; costs nothing)
+  max_credits: 1.0         # FlexCredit budget of this process (a whole loop):
+                           # a batch whose estimate does not fit is not started
+  # max_credits_total: 20.0  # optional budget over ALL runs (credit_ledger.jsonl)
+  k_mode: x_only           # x_only  1 simulation per cell: the fundamental gap
+                           #         at X (two lowest guided resonances)
+                           # sweep   n_k simulations, k*a/pi = 0.5 .. 1; the gap
+                           #         is tracked over k as in run_opt_comsol.py
+  # n_k: 7                 # k points of a sweep
+  results_dir: results/tidy3d   # downloads: <results_dir>/hole/<record id>/
+  folder_name: omc_unitcell     # task folder in the Tidy3D web interface
+  reuse_results: true      # results already downloaded for the same cell and
+                           # k points are re-analyzed instead of paid again
+  # index: 2.386           # default: configs/materials.yaml (2.386, every engine)
+  # params:                # FDTD numerics of diamond_bandStructure_sim.BandParams
+  #   min_steps_per_wvl: 20
+  #   freq_span_thz: 100
+  #   runtime_fwidth: 100
+
+quiet: false
