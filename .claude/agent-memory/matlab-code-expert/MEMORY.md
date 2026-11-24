@@ -12,3 +12,4 @@
 - [Python rib integration](project_python_rib_integration.md) — 2026-11-23 proposal: celltype rib via objective_rib.py; rib t = rib width, th = thickness.
 - [Python envs](reference_python_envs.md) — WSL python3 lacks numpy; conda env comsol_sim has MPh/optuna, no pytest; mph.start() = separate COMSOL session.
 - [Fab check separate](feedback_fab_check_separate.md) — fabricability = own pre-solver gate with reason codes + YAML thresholds, apart from validity; cite sources.
+- [Rib air half-disk](project_rib_air_halfdisk.md) — 2026-11-23 proposal: air box -> half-disk (air_r) in rib builder; check if implemented / Q improved.
