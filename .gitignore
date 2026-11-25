@@ -44,3 +44,6 @@
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Python pipeline output (databases, Tidy3D downloads, figures): local only
+python-scripts/results/

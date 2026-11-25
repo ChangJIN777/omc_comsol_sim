@@ -157,7 +157,7 @@ if P.oAdjMesh
         pause(2);
         try 
             % solve eigenvalue problem
-           earosolv.runAll;
+            osolv.runAll;
             ok = 1;
         catch lasterror
             % if memory runs out while solving even though dofs < maxdof,
