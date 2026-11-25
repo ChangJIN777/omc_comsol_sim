@@ -21,7 +21,7 @@ P.celltype = 'rib';             % specify what type of unit cells we are simulat
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a  = 600e-9;                          % mirror lattice constant (cell width)
+P.a  = 650e-9;                          % mirror lattice constant (cell width)
 P.t  = 280e-9;                          % rib width along x
 P.s  = 100e-9;                          % spine width along y
 P.th = 250e-9;                          % EFFECTIVE thickness of the template
@@ -48,8 +48,8 @@ P.d = 0;                                % sidewall angle in RADIANS; d ~= 0 need
 % cavity taper
 P.ncellHalf = 14;                       % cells in x >= 0 half, centre counted once
 P.ribatctr = 1;                         % 1/0 for rib/spine gap at the centre
-P.ndef = 5;                             % taper length in cells
-P.maxdef = 0.2;                         % centre a = a*(1 - maxdef)
+P.ndef = 6;                             % taper length in cells
+P.maxdef = 1-550/650;                         % centre a = a*(1 - maxdef)
 P.taperFunc = 'quadratic';              % linear/cubic/quadratic/none
 P.taperConvention = 'centerspacing';    % 'centerspacing' (default, CreateNanobeamGeom:
                                         % x_{n+1} = x_n + a_{n+1}) or 'cellwidth' (the
@@ -65,7 +65,7 @@ P.taperConvention = 'centerspacing';    % 'centerspacing' (default, CreateNanobe
 % Validity: t_k < a_k, t_k > 2*r2, w_k > s + 2*(r1 + r2), checked by
 % validateRibParams (createRibCavityGeom errors before COMSOL starts).
 P.ribTaperScheme = 'hole';              % 'rib' | 'hole'
-P.oblong = -2;                         % hole scheme only (default 2.7)
+P.oblong = 0.5;                         % hole scheme only (default 2.7)
 
 P.lambda = 1550e-9;                      % target optical wavelength (template optical
                                         % eigen-shift 400 THz)
@@ -97,9 +97,9 @@ P.mevenz = 1;                           % +/-1 to find even/odd mode about z; 0 
                                         % slab height (no z cut), as the reference
                                         % optbands1D/test_nanobeamBands.m. The z cut is
                                         % shared: mevenz and oevenz must be 0 together
-P.freq = 7.2e9;                        % target mechanical frequency (template eigen-shift)
+P.freq = 7e9;                        % target mechanical frequency (template eigen-shift)
 P.mneigs = 20;                          % # of eigenvalues to find
-P.mMesh = 1;                            % mesh quality for mechanical simulations
+P.mMesh = 3;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
 P.mEndBC = 'lowreflecting';             % beam-end BC: 'lowreflecting' (template) or 'fixed'
 

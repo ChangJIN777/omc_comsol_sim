@@ -14,23 +14,23 @@ P.xsect = 'rect';
 P.beamMat = 'diamond';                  % material, set explicitly (also the 'rib' default)
 P.celltype = 'rib';                   % merged rib device
 P.unitcell = 'rectrangular';                  % read by the optical runners ('hexagonal' or not)
-P.a = 570e-9;              % lattice constant 
-P.s = 254e-9;              % unit cell spine width 
-P.w = 1747e-9;              % EXPLICIT tip-to-tip width (= 2L): wins over the L(a) rule
-P.th = 283e-9;             % slab thickness
-P.t = 391e-9;       % the rib width 
+P.a = 550e-9;              % lattice constant 
+P.s = 100e-9;              % unit cell spine width 
+P.w = 1300e-9;              % EXPLICIT tip-to-tip width (= 2L): wins over the L(a) rule
+P.th = 250e-9;             % slab thickness
+P.t = 250e-9;       % the rib width 
 P.d = 0*pi/180;            % sidewall angle in RADIANS. d ~= 0 needs P.r1 = P.r2 = 0
                            % and mbevenz = 0 (keep zSymCondition = 0 below)
 
-P.r1 = 20e-9;   % concave rib/spine (root) fillet; allowed only with d = 0
-P.r2 = 20e-9;   % convex rib-tip fillet;            allowed only with d = 0
+P.r1 = 40e-9;   % concave rib/spine (root) fillet; allowed only with d = 0
+P.r2 = 40e-9;   % convex rib-tip fillet;            allowed only with d = 0
 
 P.nperiod = 1;  % no. of periods to simulate for
 P.holeatedge = 0;   % read by runBands, unused by this builder
 P.mbevenz = 0;      % 1 to find even mechanical mode about z
 
 P.kpts = 10;                             % no. of k-points, EXCLUDING gamma point
-P.nbands = 30;                           % no. of bands to solve for
+P.nbands = 10;                           % no. of bands to solve for
 
 P.solveasym = 0;                        % 1 to solve for antisymmetric bands
 P.completeBandGaps = 1;                 % 1 to plot complete bandgaps (across all symmetries)
@@ -51,7 +51,7 @@ P.saveRawData = 1;
 
 %% mechanical simulation parameters 
 % solid mechanics solver parameters
-P.TwoSymPlanes = 0; 
+P.TwoSymPlanes = 1; 
 % TODO(confirm): zSymCondition was missing, so solveBands stopped with
 % 'Unrecognized field'. The original script (HEAD) solved mechanics with
 % solveBands_noSym, i.e. no symmetry plane, and set mbevenz = 0. solveBands
