@@ -93,7 +93,10 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 %% mechanical simulation parameters
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
-P.mevenz = 1;                           % +/-1 to find even/odd mode about z
+P.mevenz = 0;                           % +/-1 to find even/odd mode about z; 0 = full
+                                        % slab height (no z cut), as the reference
+                                        % optbands1D/test_nanobeamBands.m. The z cut is
+                                        % shared: mevenz and oevenz must be 0 together
 P.freq = 11.2e9;                        % target mechanical frequency (template eigen-shift)
 P.mneigs = 20;                          % # of eigenvalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
@@ -108,13 +111,16 @@ P.rxtalInFilename = 1;
 P.oevenx = 1;                           % forced to 1 by SetupNanobeamFEM when
                                         % P.ribatctr = 1 (dielectric at centre)
 P.oeveny = -1;                          % -1 == TE-like
-P.oevenz = 1;                           % +/-1 to find even/odd optical mode about z
+P.oevenz = 0;                           % +/-1 to find even/odd optical mode about z;
+                                        % 0 = no z symmetry (reference obevenz = 0)
 P.oneigs = 1;                           % # of eigenvalues to find
 P.oMesh = 3;                            % mesh quality for optical simulations
 P.oAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
 P.airrad = 3.1e-6;                      % air-cylinder radius (template)
-P.airZOffset = 60e-9;                   % cylinder axis above the beam mid-plane:
-                                        % 60 nm reproduces the template, 0 = centred
+P.airZOffset = 0;                       % cylinder axis above the beam mid-plane: 0 =
+                                        % centred. 60e-9 only reproduces the th = 110 nm
+                                        % template; for thicker slabs it puts the axis
+                                        % inside the beam and the mesh fails
 
 %% OM coupling parameters
 P.g0min = 80e3;                         % min g0 above which to save plots for
