@@ -458,7 +458,7 @@ if ~(strcmp(srcA,'rule') && strcmp(srcB,'rule'))
     % Explicit half-length: drop the width and any builder-written record so
     % ribLength sees exactly this value.
     Pm.L = (La + Lb)/2;
-    drop = {'w','ribDerived'};
+    drop = {'w','ribDerived','w_mirror','w_ctr'};
     for k = 1:numel(drop)
         if isfield(Pm, drop{k}), Pm = rmfield(Pm, drop{k}); end
     end

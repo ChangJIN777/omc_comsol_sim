@@ -531,6 +531,33 @@ For version 4 the band target +/- `optical_freq_tol_THz` is drawn.
   `plan.json`; for a bare `bands.csv` give `--a-um` and `--celltype`. Without
   tidy3d the unit-cell panel is drawn with sharp corners.
 
+**Looking at mechanical results.** `scripts/plot_mech_bands.py` reads the
+saved records READ-ONLY (sqlite `mode=ro`, no COMSOL, network blocked),
+rebuilds the mechanical bands, recomputes the gaps with the repo's own
+definitions and flags records whose stored gap differs. Rib: `interval_gap`
+per sector (y-even `sym`, y-odd `antisym`) and complete, as
+`objective_rib.py`, plus the window penalty (`mech_terms`). Hole: the
+breathing gap of `run_opt_comsol.py` (records of that loop only: hole
+records of `run_one.py` / `run_loop.py` store no band arrays).
+```bash
+python scripts/plot_mech_bands.py cand_812956efbbba              # an id (or prefix)
+python scripts/plot_mech_bands.py --celltype rib --latest 5
+python scripts/plot_mech_bands.py --celltype hole --all --min-gap 0.2
+python scripts/plot_mech_bands.py --json results/opt_results_rib_tidy3d.json --all
+```
+Filters for `--latest` / `--all`: `--status` (success), `--mech-backend`
+(comsol), `--since DATE`, `--min-gap`. `--json` reads an out_json and takes
+the band arrays (stripped there) from sqlite by id. Output per record in
+`results/mech_analysis/<id>/` (or `--outdir`): `band_diagram.png` (GHz vs
+k a/pi, gaps, 5-10 GHz window, 8 GHz target), `bands.csv`, `summary.json`;
+with several records also `mech_index.csv` and `mech_summary.png`.
+- Hole records of `run_opt_comsol.py` saved before about 18:20 on 2026-07-01
+  hold the older breathing gap (both edges breathing); they are reported as
+  "legacy def", not as a mismatch.
+- A hole id depends on the geometry only, so sqlite keeps the LAST
+  evaluation of a cell: an out_json entry that differs from it is reported
+  and the sqlite record is analysed.
+
 **How comparable are the two engines?**
 - `rect`: same cell, same index, same thickness-even family. Left: fillets are
   8-point polygons in Tidy3D, PML vs scattering boundary, and FDTD resolution.
@@ -558,6 +585,7 @@ scripts/   run_one.py  run_loop.py  run_opt_comsol.py  run_opt_comsol_rib.py
            run_comsol_batch.sh + comsol_batch.py  (comsol batch, batch licences)
            plot_bands.py  plot_geometry.py  plot_mode.py
            plot_tidy3d_bands.py  (offline band diagrams from Tidy3D .hdf5)
+           plot_mech_bands.py  (mechanical bands + gaps of saved records)
 comsol/    hole template recipe + MATLAB LiveLink driver;
            patch_hole_templates_index.m (index parameter for the hole templates)
            build_omc_unitcell_rib.m + omc_mechanical_livelink_rib.m (rib)

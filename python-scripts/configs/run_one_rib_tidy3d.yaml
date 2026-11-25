@@ -9,7 +9,9 @@
 celltype: rib
 
 # One value per searched rib variable (bounds.yaml rib.variables), order a, w, t, s.
-u: [0.5, 0.575254, 0.358947, 0.214737]
+# These give a/w/t/s = 600/1300/280/100 nm (with the current bounds.yaml);
+# th, r1, r2 come from rib.fixed (250/40/40 nm).
+u: [0.428571, 0.423729, 0.242105, 0.111111]
 
 optical: tidy3d          # none | comsol | tidy3d
 mech: comsol     # comsol | surrogate_stub (mechanics is never Tidy3D)
@@ -31,7 +33,7 @@ rib:
   n_k: 10
   n_bands_mech: 20
   optical_study: "opt TE"   # "opt TE" -> Tidy3D TE (Ey dipoles, symmetry (0,-1,1))
-  n_k_opt: 13               # with tidy3d: default number of k points of a sweep
+  n_k_opt: 10               # with tidy3d: default number of k points of a sweep
   n_bands_opt: 10           # COMSOL only
   # (optical_tol_thz and optical_rel_tol are no longer used: score version 3
   #  penalizes the detuning of the gap centre quadratically, with the weight

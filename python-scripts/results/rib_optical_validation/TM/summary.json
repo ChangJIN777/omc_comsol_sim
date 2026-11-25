@@ -1,0 +1,638 @@
+{
+  "template": "/mnt/c/Users/alber/Documents/Github/omc_comsol_sim/python-scripts/comsol/omc_unitcell_rib.mph",
+  "comsol_root": "/mnt/c/Program Files/COMSOL/COMSOL63/Multiphysics",
+  "licence_pool": "batch",
+  "overrides": {
+    "a": "570[nm]"
+  },
+  "timings": {
+    "solve_std4_s": 183.07849407196045,
+    "extract_s": 46.98835563659668
+  },
+  "studies": [
+    {
+      "study": "std4",
+      "study_label": "opt TM",
+      "dataset": "dset4",
+      "a_m": 5.7e-07,
+      "kF_per_m": 5511566.05892946,
+      "k_frac": 0.9999999999999999,
+      "light_line_Hz": 262975840350877.12,
+      "light_line_zone_edge_Hz": 262975840350877.16,
+      "f_target_Hz": 193414489032258.06,
+      "params": {
+        "a": {
+          "value": 5.7e-07,
+          "expr": "570[nm]"
+        },
+        "w": {
+          "value": 1.747e-06,
+          "expr": "1747[nm]"
+        },
+        "th": {
+          "value": 2.83e-07,
+          "expr": "283[nm]"
+        },
+        "t": {
+          "value": 3.91e-07,
+          "expr": "391[nm]"
+        },
+        "s": {
+          "value": 2.54e-07,
+          "expr": "254[nm]"
+        },
+        "r1": {
+          "value": 2e-08,
+          "expr": "20[nm]"
+        },
+        "r2": {
+          "value": 2e-08,
+          "expr": "20[nm]"
+        },
+        "kF": {
+          "value": 5511566.05892946,
+          "expr": "pi/a"
+        },
+        "C11": {
+          "value": 1076000000000.0,
+          "expr": "1076[GPa]"
+        },
+        "C12": {
+          "value": 125000000000.0,
+          "expr": "125[GPa]"
+        },
+        "C44": {
+          "value": 577000000000.0,
+          "expr": "577[GPa]"
+        }
+      },
+      "notes": [],
+      "modes": [
+        {
+          "mode": 1,
+          "f_real_Hz": 183355257495899.0,
+          "f_imag_Hz": 273067810551.647,
+          "f_real_THz": 183.355257495899,
+          "f_imag_THz": 0.27306781055164703,
+          "wavelength_nm": 1635.036061110521,
+          "Q": 335.73209732316633,
+          "below_light_line": true,
+          "pseudo_mode": false,
+          "rel_to_target": -0.05200867622012208,
+          "energy_fraction_in_beam": 0.7589402439524688,
+          "Ex_fraction_in_beam": 0.004393608803477989,
+          "Ey_fraction_in_beam": 0.787915081075563,
+          "Ez_fraction_in_beam": 0.2076913101209591
+        },
+        {
+          "mode": 2,
+          "f_real_Hz": 206281645027811.0,
+          "f_imag_Hz": 397847466089.331,
+          "f_real_THz": 206.281645027811,
+          "f_imag_THz": 0.39784746608933097,
+          "wavelength_nm": 1453.3162073609692,
+          "Q": 259.24715199957234,
+          "below_light_line": true,
+          "pseudo_mode": false,
+          "rel_to_target": 0.06652632933516645,
+          "energy_fraction_in_beam": 0.7644370140188468,
+          "Ex_fraction_in_beam": 0.0010342211510170544,
+          "Ey_fraction_in_beam": 0.7765673698642409,
+          "Ez_fraction_in_beam": 0.222398408984742
+        },
+        {
+          "mode": 3,
+          "f_real_Hz": 217815748205808.0,
+          "f_imag_Hz": 1426958193547.96,
+          "f_real_THz": 217.815748205808,
+          "f_imag_THz": 1.42695819354796,
+          "wavelength_nm": 1376.358047888872,
+          "Q": 76.3216992588393,
+          "below_light_line": true,
+          "pseudo_mode": false,
+          "rel_to_target": 0.1261604510377723,
+          "energy_fraction_in_beam": 0.39586521545414227,
+          "Ex_fraction_in_beam": 0.5480832887290834,
+          "Ey_fraction_in_beam": 0.07490653660851113,
+          "Ez_fraction_in_beam": 0.37701017466240544
+        },
+        {
+          "mode": 4,
+          "f_real_Hz": 217903418917903.0,
+          "f_imag_Hz": 977048159244.709,
+          "f_real_THz": 217.903418917903,
+          "f_imag_THz": 0.977048159244709,
+          "wavelength_nm": 1375.8042874625544,
+          "Q": 111.51109433866067,
+          "below_light_line": true,
+          "pseudo_mode": false,
+          "rel_to_target": 0.12661372996498016,
+          "energy_fraction_in_beam": 0.5555400205489315,
+          "Ex_fraction_in_beam": 0.5118732975247882,
+          "Ey_fraction_in_beam": 0.014492436682118838,
+          "Ez_fraction_in_beam": 0.473634265793093
+        },
+        {
+          "mode": 5,
+          "f_real_Hz": 241065198877889.0,
+          "f_imag_Hz": 358292476784.822,
+          "f_real_THz": 241.065198877889,
+          "f_imag_THz": 0.358292476784822,
+          "wavelength_nm": 1243.615666614156,
+          "Q": 336.40840165151496,
+          "below_light_line": true,
+          "pseudo_mode": false,
+          "rel_to_target": 0.24636577168571716,
+          "energy_fraction_in_beam": 0.774321121220598,
+          "Ex_fraction_in_beam": 0.0029522013162806967,
+          "Ey_fraction_in_beam": 0.48723435267825704,
+          "Ez_fraction_in_beam": 0.5098134460054623
+        },
+        {
+          "mode": 6,
+          "f_real_Hz": 242188567516879.0,
+          "f_imag_Hz": 1109710016832.28,
+          "f_real_THz": 242.188567516879,
+          "f_imag_THz": 1.10971001683228,
+          "wavelength_nm": 1237.8472736088436,
+          "Q": 109.12245714795735,
+          "below_light_line": true,
+          "pseudo_mode": false,
+          "rel_to_target": 0.2521738610621167,
+          "energy_fraction_in_beam": 0.4785869100083016,
+          "Ex_fraction_in_beam": 0.5276366358946941,
+          "Ey_fraction_in_beam": 0.37630811449308904,
+          "Ez_fraction_in_beam": 0.09605524961221677
+        },
+        {
+          "mode": 7,
+          "f_real_Hz": 252678386354025.0,
+          "f_imag_Hz": 951448558940.36,
+          "f_real_THz": 252.678386354025,
+          "f_imag_THz": 0.95144855894036,
+          "wavelength_nm": 1186.45865333319,
+          "Q": 132.78615222006118,
+          "below_light_line": true,
+          "pseudo_mode": false,
+          "rel_to_target": 0.3064087784647963,
+          "energy_fraction_in_beam": 0.5667846876371884,
+          "Ex_fraction_in_beam": 0.552808562245957,
+          "Ey_fraction_in_beam": 0.04314603678512169,
+          "Ez_fraction_in_beam": 0.40404540096892133
+        },
+        {
+          "mode": 8,
+          "f_real_Hz": 254244293926740.0,
+          "f_imag_Hz": 1131340978123.03,
+          "f_real_THz": 254.24429392674,
+          "f_imag_THz": 1.1313409781230301,
+          "wavelength_nm": 1179.1511753116654,
+          "Q": 112.36413196512522,
+          "below_light_line": true,
+          "pseudo_mode": false,
+          "rel_to_target": 0.31450490187597385,
+          "energy_fraction_in_beam": 0.48035292678649777,
+          "Ex_fraction_in_beam": 0.02240236679440743,
+          "Ey_fraction_in_beam": 0.5422885261200594,
+          "Ez_fraction_in_beam": 0.4353091070855332
+        },
+        {
+          "mode": 9,
+          "f_real_Hz": 272185424158855.0,
+          "f_imag_Hz": 850050888497.579,
+          "f_real_THz": 272.185424158855,
+          "f_imag_THz": 0.8500508884975789,
+          "wavelength_nm": 1101.42730429618,
+          "Q": 160.09948806707837,
+          "below_light_line": false,
+          "pseudo_mode": false,
+          "rel_to_target": 0.4072649134029424,
+          "energy_fraction_in_beam": 0.6902869052505343,
+          "Ex_fraction_in_beam": 0.4928330411112379,
+          "Ey_fraction_in_beam": 0.45809199094631736,
+          "Ez_fraction_in_beam": 0.04907496794244486
+        },
+        {
+          "mode": 10,
+          "f_real_Hz": 278353293760106.0,
+          "f_imag_Hz": 3546143641056.75,
+          "f_real_THz": 278.353293760106,
+          "f_imag_THz": 3.54614364105675,
+          "wavelength_nm": 1077.0214138668357,
+          "Q": 39.24732356261192,
+          "below_light_line": false,
+          "pseudo_mode": false,
+          "rel_to_target": 0.4391543009669853,
+          "energy_fraction_in_beam": 0.4419275210349368,
+          "Ex_fraction_in_beam": 0.019440578254652494,
+          "Ey_fraction_in_beam": 0.2815095745175794,
+          "Ez_fraction_in_beam": 0.6990498472277681
+        },
+        {
+          "mode": 11,
+          "f_real_Hz": 290909573125814.0,
+          "f_imag_Hz": 8814933360855.42,
+          "f_real_THz": 290.909573125814,
+          "f_imag_THz": 8.81493336085542,
+          "wavelength_nm": 1030.53486613981,
+          "Q": 16.500951352488926,
+          "below_light_line": false,
+          "pseudo_mode": false,
+          "rel_to_target": 0.5040733224349884,
+          "energy_fraction_in_beam": 0.103020371666959,
+          "Ex_fraction_in_beam": 0.5662083335040617,
+          "Ey_fraction_in_beam": 0.09117405328747157,
+          "Ez_fraction_in_beam": 0.34261761320846673
+        },
+        {
+          "mode": 12,
+          "f_real_Hz": 291301656979888.0,
+          "f_imag_Hz": 9888499109207.1,
+          "f_real_THz": 291.301656979888,
+          "f_imag_THz": 9.8884991092071,
+          "wavelength_nm": 1029.1477951349182,
+          "Q": 14.729316034860105,
+          "below_light_line": false,
+          "pseudo_mode": false,
+          "rel_to_target": 0.5061004914233913,
+          "energy_fraction_in_beam": 0.048594339065646475,
+          "Ex_fraction_in_beam": 0.06321061072042199,
+          "Ey_fraction_in_beam": 0.3980412512254882,
+          "Ez_fraction_in_beam": 0.5387481380540898
+        }
+      ],
+      "solved_mph": "/mnt/c/Users/alber/Documents/Github/omc_comsol_sim/python-scripts/results/rib_optical_validation/TM/solved_std4.mph",
+      "csv": "/mnt/c/Users/alber/Documents/Github/omc_comsol_sim/python-scripts/results/rib_optical_validation/TM/eig_std4.csv"
+    }
+  ],
+  "licence_watch": {
+    "server": "27005@license.seas.harvard.edu",
+    "user_matched": true,
+    "interval_s": 5.0,
+    "n_samples": 31,
+    "features_checked_out_by_phase": {
+      "solve std4": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1
+      },
+      "extract": {
+        "CADIMPORT": 1,
+        "COMSOL": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1,
+        "MEMS": 1,
+        "WAVEOPTICS": 1
+      },
+      "after exit": {}
+    },
+    "still_held_after_exit": {},
+    "released_within_s": 2.8,
+    "samples": [
+      {
+        "time": "16:12:05",
+        "phase": "solve std4",
+        "extra": {}
+      },
+      {
+        "time": "16:12:12",
+        "phase": "solve std4",
+        "extra": {}
+      },
+      {
+        "time": "16:12:20",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:12:28",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:12:36",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:12:44",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:12:52",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:12:59",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:13:07",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:13:15",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:13:23",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:13:31",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:13:39",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:13:47",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:13:55",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:14:03",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:14:12",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:14:19",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:14:27",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:14:35",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:14:43",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:14:51",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:14:59",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1,
+          "COMSOLBATCH": 1,
+          "MEMSBATCH": 1,
+          "WAVEOPTICSBATCH": 1,
+          "CLUSTERNODE": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:15:07",
+        "phase": "solve std4",
+        "extra": {
+          "CADIMPORTBATCH": 1
+        }
+      },
+      {
+        "time": "16:15:15",
+        "phase": "extract",
+        "extra": {}
+      },
+      {
+        "time": "16:15:22",
+        "phase": "extract",
+        "extra": {}
+      },
+      {
+        "time": "16:15:30",
+        "phase": "extract",
+        "extra": {
+          "CADIMPORT": 1,
+          "COMSOL": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:15:38",
+        "phase": "extract",
+        "extra": {
+          "CADIMPORT": 1,
+          "COMSOL": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:15:45",
+        "phase": "extract",
+        "extra": {
+          "CADIMPORT": 1,
+          "COMSOL": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:15:53",
+        "phase": "extract",
+        "extra": {
+          "CADIMPORT": 1,
+          "COMSOL": 1,
+          "MEMS": 1,
+          "WAVEOPTICS": 1,
+          "COMSOLUSER": 1,
+          "CADIMPORTUSER": 1
+        }
+      },
+      {
+        "time": "16:16:01",
+        "phase": "after exit",
+        "extra": {}
+      }
+    ]
+  }
+}

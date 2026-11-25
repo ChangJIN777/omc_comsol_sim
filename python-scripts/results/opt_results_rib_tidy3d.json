@@ -1,0 +1,3732 @@
+[
+  {
+    "id": "cand_200bb8eac07b",
+    "u": [
+      0.5488135039273248,
+      0.7151893663724195,
+      0.6027633760716439,
+      0.5448831829968969
+    ],
+    "params": {
+      "a": 6.841694527491273e-07,
+      "w": 2.1598086307986375e-06,
+      "t": 6.226252072680616e-07,
+      "s": 5.676390238470521e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_ROOT_FILLET: t + 2*r1 703 nm >= period a 684 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_9e6139c0825b",
+    "u": [
+      0.4236547993389047,
+      0.6458941130666561,
+      0.4375872112626925,
+      0.8917730007820798
+    ],
+    "params": {
+      "a": 5.965583595372333e-07,
+      "w": 1.9553876335466355e-06,
+      "t": 4.657078506995579e-07,
+      "s": 8.971843507429758e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.59655836,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.465707851,
+        "w": 1.955387634,
+        "spine_width": 0.897184351,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_9e6139c0825b",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.0,
+      "session_credits": 0.0,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 426216.0,
+      "time_steps": 32549,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 15704271279958.953,
+      "light_line_edge_Hz": 251268340479343.25,
+      "x_point": {
+        "f_lower_THz": 158.54719178821074,
+        "f_upper_THz": 160.0209369428428,
+        "bandGap_THz": 1.47374515463207,
+        "midGap_THz": 159.28406436552677,
+        "normalized_gap": 0.009252307570769313,
+        "fitness": -5.685238700742698e-59
+      }
+    },
+    "optical_gap_detail": {
+      "found": true,
+      "normalized_gap": 0.11715099684484385,
+      "f_lower": 209065654129250.38,
+      "f_upper": 235081813413631.12,
+      "f_center": 222073733771440.75
+    },
+    "optical_gap_candidates": [
+      {
+        "f_lower": 209065654129250.38,
+        "f_upper": 235081813413631.12,
+        "f_center": 222073733771440.75,
+        "normalized_gap": 0.11715099684484385,
+        "value": -0.3514882330711158,
+        "chosen": true
+      }
+    ],
+    "optical_min_resolvable_Hz": 15704271279958.953,
+    "optical_light_line_edge_Hz": 251268340479343.25,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.10286077788452605,
+        "f_lower": 6129992632.744529,
+        "f_upper": 6794715393.499445,
+        "f_center": 6462354013.121986
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.08538180613201983,
+        "f_lower": 7943250865.076612,
+        "f_upper": 8651704495.771334,
+        "f_center": 8297477680.423973
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.06671422612553787,
+        "f_lower": 8093144668.964237,
+        "f_upper": 8651704495.771334,
+        "f_center": 8372424582.367785
+      }
+    },
+    "mech_trusted_window_Hz": [
+      1341419023.212024,
+      18214555276.60081
+    ],
+    "optical_gap": 0.11715099684484385,
+    "mechanical_gap": 0.06671422612553787,
+    "optical_gap_unpenalized": 0.11715099684484385,
+    "optical_gap_effective": 0.11715099684484385,
+    "optical_freq_penalty": 0.3999996566779289,
+    "optical_center_frequency": 222073733771440.75,
+    "mechanical_center_frequency": 8372424582.367785,
+    "score": -0.4624249821187205,
+    "pen_size_o": 0.06863957323803074,
+    "pen_detune_o": 0.3999996566779289,
+    "pen_lightcone_o": 0.0,
+    "pen_size_m": 0.17765097517314254,
+    "pen_window_m": 0.0,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_906157dfd990",
+    "u": [
+      0.9636627605010293,
+      0.3834415188257777,
+      0.7917250380826646,
+      0.5288949197529045
+    ],
+    "params": {
+      "a": 9.745639323507203e-07,
+      "w": 1.1811524805360442e-06,
+      "t": 8.021387861785315e-07,
+      "s": 5.524501737652593e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.974563932,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.802138786,
+        "w": 1.181152481,
+        "spine_width": 0.552450174,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_906157dfd990",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.0,
+      "session_credits": 0.0,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 541384.0,
+      "time_steps": 28979,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 9613032045935.098,
+      "light_line_edge_Hz": 153808512734961.56,
+      "x_point": {
+        "f_lower_THz": 125.53255275794913,
+        "f_upper_THz": 126.49595272297962,
+        "bandGap_THz": 0.9633999650304901,
+        "midGap_THz": 126.01425274046437,
+        "normalized_gap": 0.0076451666702708875,
+        "fitness": -4.6905940892425065e-222
+      }
+    },
+    "optical_gap_detail": {
+      "found": false,
+      "normalized_gap": 0.0,
+      "f_lower": 0.0,
+      "f_upper": 0.0,
+      "f_center": 0.0
+    },
+    "optical_gap_candidates": [],
+    "optical_min_resolvable_Hz": 9613032045935.098,
+    "optical_light_line_edge_Hz": 153808512734961.56,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.15255010654863496,
+        "f_lower": 4882529845.55921,
+        "f_upper": 5688863430.905302,
+        "f_center": 5285696638.232256
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.30558005313565956,
+        "f_lower": 4858480667.846903,
+        "f_upper": 6610885416.606741,
+        "f_center": 5734683042.226822
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.15255010654863496,
+        "f_lower": 4882529845.55921,
+        "f_upper": 5688863430.905302,
+        "f_center": 5285696638.232256
+      }
+    },
+    "mech_trusted_window_Hz": [
+      1755842632.2226932,
+      18871474968.18939
+    ],
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.15255010654863496,
+    "optical_gap_unpenalized": 0.0,
+    "optical_gap_effective": 0.0,
+    "optical_freq_penalty": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 5285696638.232256,
+    "score": -132.88436846448056,
+    "pen_size_o": 0.4000000000000001,
+    "pen_detune_o": 0.0,
+    "pen_lightcone_o": 132.61440364714372,
+    "pen_size_m": 0.02251492388545896,
+    "pen_window_m": 0.0,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_215d72732bfa",
+    "u": [
+      0.5680445610939323,
+      0.925596638292661,
+      0.07103605819788694,
+      0.08712929970154071
+    ],
+    "params": {
+      "a": 6.976311927657526e-07,
+      "w": 2.7805100829633503e-06,
+      "t": 1.174842552879926e-07,
+      "s": 1.3277283471646367e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.697631193,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.117484255,
+        "w": 2.780510083,
+        "spine_width": 0.132772835,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_215d72732bfa",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.225,
+      "session_credits": 0.225,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 514008.0,
+      "time_steps": 32808,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 13429035871172.287,
+      "light_line_edge_Hz": 214864573938756.6,
+      "x_point": {
+        "f_lower_THz": 182.04027351304836,
+        "f_upper_THz": 214.70362859798593,
+        "bandGap_THz": 32.663355084937564,
+        "midGap_THz": 198.37195105551714,
+        "normalized_gap": 0.1646571247151583,
+        "fitness": -0.010731151123954306
+      }
+    },
+    "optical_gap_detail": {
+      "found": true,
+      "normalized_gap": 0.06468342791806732,
+      "f_lower": 201250944766286.75,
+      "f_upper": 214703628597985.94,
+      "f_center": 207977286682136.34
+    },
+    "optical_gap_candidates": [
+      {
+        "f_lower": 201250944766286.75,
+        "f_upper": 214703628597985.94,
+        "f_center": 207977286682136.34,
+        "normalized_gap": 0.06468342791806732,
+        "value": -0.5183450903734081,
+        "chosen": true
+      }
+    ],
+    "optical_min_resolvable_Hz": 13429035871172.287,
+    "optical_light_line_edge_Hz": 214864573938756.6,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.07931985679062291,
+        "f_lower": 4192502944.634089,
+        "f_upper": 4538785207.548481,
+        "f_center": 4365644076.091285
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.13492086506333428,
+        "f_lower": 4495548170.908564,
+        "f_upper": 5145969095.995445,
+        "f_center": 4820758633.452004
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.03843297645383628,
+        "f_lower": 4624311036.491453,
+        "f_upper": 4805519259.353392,
+        "f_center": 4714915147.922422
+      }
+    },
+    "mech_trusted_window_Hz": [
+      184391355.6372669,
+      12601511191.434402
+    ],
+    "optical_gap": 0.06468342791806732,
+    "mechanical_gap": 0.03843297645383628,
+    "optical_gap_unpenalized": 0.06468342791806732,
+    "optical_gap_effective": 0.06468342791806732,
+    "optical_freq_penalty": 0.39992277149142663,
+    "optical_center_frequency": 207977286682136.34,
+    "mechanical_center_frequency": 4714915147.922422,
+    "score": -7.242820975622782,
+    "pen_size_o": 0.18310574680004887,
+    "pen_detune_o": 0.39992277149142663,
+    "pen_lightcone_o": 0.0,
+    "pen_size_m": 0.2610390309756663,
+    "pen_window_m": 6.501869830727544,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_644531989e03",
+    "u": [
+      0.02021839744032572,
+      0.832619845547938,
+      0.7781567509498505,
+      0.8700121482468192
+    ],
+    "params": {
+      "a": 3.1415287820822796e-07,
+      "w": 2.506228544366417e-06,
+      "t": 7.892489134023579e-07,
+      "s": 8.765115408344782e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_RIBS_MERGE: rib width t 789 nm >= period a 314 nm",
+      "GEOM_ROOT_FILLET: t + 2*r1 869 nm >= period a 314 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_ff71f7fe1047",
+    "u": [
+      0.978618342232764,
+      0.7991585642167236,
+      0.46147936225293185,
+      0.7805291762864555
+    ],
+    "params": {
+      "a": 9.850328395629348e-07,
+      "w": 2.4075177644393347e-06,
+      "t": 4.884053941402853e-07,
+      "s": 7.915027174721327e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.98503284,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.488405394,
+        "w": 2.407517764,
+        "spine_width": 0.791502717,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_ff71f7fe1047",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.0,
+      "session_credits": 0.225,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 702336.0,
+      "time_steps": 28446,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 9510864954164.236,
+      "light_line_edge_Hz": 152173839266627.78,
+      "x_point": {
+        "f_lower_THz": 116.46922227267119,
+        "f_upper_THz": 124.82993098283124,
+        "bandGap_THz": 8.360708710160054,
+        "midGap_THz": 120.64957662775122,
+        "normalized_gap": 0.06929745585395586,
+        "fitness": -2.20651368939331e-257
+      }
+    },
+    "optical_gap_detail": {
+      "found": false,
+      "normalized_gap": 0.0,
+      "f_lower": 0.0,
+      "f_upper": 0.0,
+      "f_center": 0.0
+    },
+    "optical_gap_candidates": [],
+    "optical_min_resolvable_Hz": 9510864954164.236,
+    "optical_light_line_edge_Hz": 152173839266627.78,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.08010019497471119,
+        "f_lower": 5131261663.2460165,
+        "f_upper": 5559424694.062984,
+        "f_center": 5345343178.654501
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.18259616878588666,
+        "f_lower": 4966012512.212057,
+        "f_upper": 5963891842.384844,
+        "f_center": 5464952177.29845
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.08010019497471119,
+        "f_lower": 5131261663.2460165,
+        "f_upper": 5559424694.062984,
+        "f_center": 5345343178.654501
+      }
+    },
+    "mech_trusted_window_Hz": [
+      601623582.5331546,
+      13396215059.812216
+    ],
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.08010019497471119,
+    "optical_gap_unpenalized": 0.0,
+    "optical_gap_effective": 0.0,
+    "optical_freq_penalty": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 5345343178.654501,
+    "score": -147.35662491466914,
+    "pen_size_o": 0.4000000000000001,
+    "pen_detune_o": 0.0,
+    "pen_lightcone_o": 146.89296547719283,
+    "pen_size_m": 0.14375963245102275,
+    "pen_window_m": 0.0,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_5b1e3e80183b",
+    "u": [
+      0.11827442586893322,
+      0.6399210213275238,
+      0.1433532874090464,
+      0.9446689170495839
+    ],
+    "params": {
+      "a": 3.8279209810825323e-07,
+      "w": 1.9377670129161954e-06,
+      "t": 1.8618562303859408e-07,
+      "s": 9.474354711971046e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.3333333333333333,
+        0.4166666666666667,
+        0.5,
+        0.5833333333333334,
+        0.6666666666666666,
+        0.75,
+        0.8333333333333334,
+        0.9166666666666666,
+        1.0
+      ],
+      "Nk": 12,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.382792098,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.186185623,
+        "w": 1.937767013,
+        "spine_width": 0.947435471,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_5b1e3e80183b",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.0,
+      "session_credits": 0.225,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 284144.0,
+      "time_steps": 30800,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 32632210744157.34,
+      "light_line_edge_Hz": 391586528929887.94,
+      "x_point": {
+        "f_lower_THz": 218.27978638106285,
+        "f_upper_THz": 219.55627463895058,
+        "bandGap_THz": 1.2764882578877348,
+        "midGap_THz": 218.9180305100067,
+        "normalized_gap": 0.005830895951849826,
+        "fitness": -2.39465363566451e-34
+      }
+    },
+    "optical_gap_detail": {
+      "found": false,
+      "normalized_gap": 0.0,
+      "f_lower": 0.0,
+      "f_upper": 0.0,
+      "f_center": 0.0
+    },
+    "optical_gap_candidates": [],
+    "optical_min_resolvable_Hz": 32632210744157.34,
+    "optical_light_line_edge_Hz": 391586528929887.94,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.10458986657668506,
+        "f_lower": 8894264640.548855,
+        "f_upper": 9875846342.20685,
+        "f_center": 9385055491.377853
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.1013742617555378,
+        "f_lower": 3953979391.321777,
+        "f_upper": 4376212940.2701645,
+        "f_center": 4165096165.795971
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.1013742617555378,
+        "f_lower": 3953979391.321777,
+        "f_upper": 4376212940.2701645,
+        "f_center": 4165096165.795971
+      }
+    },
+    "mech_trusted_window_Hz": [
+      1644139973.2232504,
+      24867159787.233326
+    ],
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.1013742617555378,
+    "optical_gap_unpenalized": 0.0,
+    "optical_gap_effective": 0.0,
+    "optical_freq_penalty": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 4165096165.795971,
+    "score": -56.16104909017422,
+    "pen_size_o": 0.4000000000000001,
+    "pen_detune_o": 0.0,
+    "pen_lightcone_o": 0.0,
+    "pen_size_m": 0.09727036244265175,
+    "pen_window_m": 55.765152989487106,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_75913e08e63b",
+    "u": [
+      0.5218483217500717,
+      0.4146619399905236,
+      0.26455561210462697,
+      0.7742336894342167
+    ],
+    "params": {
+      "a": 6.652938252250501e-07,
+      "w": 1.2732527229720446e-06,
+      "t": 3.013278314993956e-07,
+      "s": 7.855220049625059e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.665293825,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.301327831,
+        "w": 1.273252723,
+        "spine_width": 0.785522005,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_75913e08e63b",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.0,
+      "session_credits": 0.225,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 394592.0,
+      "time_steps": 28645,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 14081769523910.576,
+      "light_line_edge_Hz": 225308312382569.22,
+      "x_point": {
+        "f_lower_THz": 157.696963834572,
+        "f_upper_THz": 158.76292502754137,
+        "bandGap_THz": 1.0659611929693824,
+        "midGap_THz": 158.22994443105668,
+        "normalized_gap": 0.006736785485214139,
+        "fitness": -1.233507245409425e-62
+      }
+    },
+    "optical_gap_detail": {
+      "found": true,
+      "normalized_gap": 0.14323069226450452,
+      "f_lower": 182460680302806.3,
+      "f_upper": 210610617338006.7,
+      "f_center": 196535648820406.5
+    },
+    "optical_gap_candidates": [
+      {
+        "f_lower": 182460680302806.3,
+        "f_upper": 210610617338006.7,
+        "f_center": 196535648820406.5,
+        "normalized_gap": 0.14323069226450452,
+        "value": 0.10198891305443099,
+        "chosen": true
+      }
+    ],
+    "optical_min_resolvable_Hz": 14081769523910.576,
+    "optical_light_line_edge_Hz": 225308312382569.22,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.2211418895009891,
+        "f_lower": 3732014805.843147,
+        "f_upper": 4659918837.017734,
+        "f_center": 4195966821.43044
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.2194808710222081,
+        "f_lower": 6233470440.57385,
+        "f_upper": 7770244182.031811,
+        "f_center": 7001857311.30283
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.09997044790061835,
+        "f_lower": 3855638169.561665,
+        "f_upper": 4261368569.20509,
+        "f_center": 4058503369.3833776
+      }
+    },
+    "mech_trusted_window_Hz": [
+      2927501303.2323422,
+      24385429754.30739
+    ],
+    "optical_gap": 0.14323069226450452,
+    "mechanical_gap": 0.09997044790061835,
+    "optical_gap_unpenalized": 0.14323069226450452,
+    "optical_gap_effective": 0.14323069226450452,
+    "optical_freq_penalty": 0.009014236202399642,
+    "optical_center_frequency": 196535648820406.5,
+    "mechanical_center_frequency": 4058503369.3833776,
+    "score": -70.81137218897321,
+    "pen_size_o": 0.03222754300767388,
+    "pen_detune_o": 0.009014236202399642,
+    "pen_lightcone_o": 0.0,
+    "pen_size_m": 0.10005911293202911,
+    "pen_window_m": 70.91327243699622,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_21ce49105bab",
+    "u": [
+      0.45615033221654855,
+      0.5684339488686485,
+      0.018789800436355142,
+      0.6176354970758771
+    ],
+    "params": {
+      "a": 6.193052325515839e-07,
+      "w": 1.726880149162513e-06,
+      "t": 6.785031041453738e-08,
+      "s": 6.367537222220832e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_TIP_FILLET: 2*r2 80 nm >= rib width t 68 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_7be7db4cd187",
+    "u": [
+      0.6120957227224214,
+      0.6169339968747569,
+      0.9437480785146242,
+      0.6818202991034834
+    ],
+    "params": {
+      "a": 7.28467005905695e-07,
+      "w": 1.869955290780533e-06,
+      "t": 9.465606745888929e-07,
+      "s": 6.977292841483092e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_RIBS_MERGE: rib width t 947 nm >= period a 728 nm",
+      "GEOM_ROOT_FILLET: t + 2*r1 1027 nm >= period a 728 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_0c816db52ca9",
+    "u": [
+      0.359507900573786,
+      0.43703195379934145,
+      0.6976311959272649,
+      0.06022547162926983
+    ],
+    "params": {
+      "a": 5.516555304016502e-07,
+      "w": 1.3392442637080573e-06,
+      "t": 7.127496361309016e-07,
+      "s": 1.0721419804780634e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_RIBS_MERGE: rib width t 713 nm >= period a 552 nm",
+      "GEOM_ROOT_FILLET: t + 2*r1 793 nm >= period a 552 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_6f80ab6883c1",
+    "u": [
+      0.6667667154456677,
+      0.6706378696181594,
+      0.2103825610738409,
+      0.1289262976548533
+    ],
+    "params": {
+      "a": 7.667367008119674e-07,
+      "w": 2.02838171537357e-06,
+      "t": 2.4986343302014885e-07,
+      "s": 1.7247998277211064e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.766736701,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.249863433,
+        "w": 2.028381715,
+        "spine_width": 0.172479983,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_6f80ab6883c1",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.0,
+      "session_credits": 0.225,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 492768.0,
+      "time_steps": 28815,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 12218685113910.455,
+      "light_line_edge_Hz": 195498961822567.28,
+      "x_point": {
+        "f_lower_THz": 153.45506658609375,
+        "f_upper_THz": 192.63481359472104,
+        "bandGap_THz": 39.17974700862729,
+        "midGap_THz": 173.0449400904074,
+        "normalized_gap": 0.2264137107283103,
+        "fitness": -2.1529467635599508e-21
+      }
+    },
+    "optical_gap_detail": {
+      "found": true,
+      "normalized_gap": 0.12353212210238426,
+      "f_lower": 170222543898896.03,
+      "f_upper": 192634813594721.03,
+      "f_center": 181428678746808.53
+    },
+    "optical_gap_candidates": [
+      {
+        "f_lower": 170222543898896.03,
+        "f_upper": 192634813594721.03,
+        "f_center": 181428678746808.53,
+        "normalized_gap": 0.12353212210238426,
+        "value": -0.3345747340235313,
+        "chosen": true
+      },
+      {
+        "f_lower": 153455066586093.75,
+        "f_upper": 170222543898896.03,
+        "f_center": 161838805242494.88,
+        "normalized_gap": 0.10360603742519199,
+        "value": -0.38931176465956163,
+        "chosen": false
+      }
+    ],
+    "optical_min_resolvable_Hz": 12218685113910.455,
+    "optical_light_line_edge_Hz": 195498961822567.28,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.06706862968226343,
+        "f_lower": 5882353891.050854,
+        "f_upper": 6290564364.363271,
+        "f_center": 6086459127.707062
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.5342137158394513,
+        "f_lower": 3190516287.433752,
+        "f_upper": 5516118020.47547,
+        "f_center": 4353317153.954611
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.04737554828239183,
+        "f_lower": 6408533789.76702,
+        "f_upper": 6719507875.653716,
+        "f_center": 6564020832.710368
+      }
+    },
+    "mech_trusted_window_Hz": [
+      610489648.0047146,
+      19927404335.641014
+    ],
+    "optical_gap": 0.12353212210238426,
+    "mechanical_gap": 0.04737554828239183,
+    "optical_gap_unpenalized": 0.12353212210238426,
+    "optical_gap_effective": 0.12353212210238426,
+    "optical_freq_penalty": 0.39963349262426884,
+    "optical_center_frequency": 181428678746808.53,
+    "mechanical_center_frequency": 6564020832.710368,
+    "score": -0.5201414183621446,
+    "pen_size_o": 0.05847336350164671,
+    "pen_detune_o": 0.39963349262426884,
+    "pen_lightcone_o": 0.0,
+    "pen_size_m": 0.23294223262100514,
+    "pen_window_m": 0.0,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_50f94b8e63ae",
+    "u": [
+      0.31542835092418386,
+      0.3637107709426226,
+      0.5701967704178796,
+      0.43860151346232035
+    ],
+    "params": {
+      "a": 5.207998456469287e-07,
+      "w": 1.1229467742807367e-06,
+      "t": 5.916869318969856e-07,
+      "s": 4.666714377892043e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_RIBS_MERGE: rib width t 592 nm >= period a 521 nm",
+      "GEOM_ROOT_FILLET: t + 2*r1 672 nm >= period a 521 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_fa841e6fa483",
+    "u": [
+      0.9883738380592262,
+      0.10204481074802807,
+      0.2088767560948347,
+      0.16130951788499626
+    ],
+    "params": {
+      "a": 9.918616866414584e-07,
+      "w": 3.510321917066828e-07,
+      "t": 2.4843291829009296e-07,
+      "s": 2.0324404199074644e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_FILLETS_MEET: r1 + r2 80 nm >= rib arm (w - s)/2 74 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_d48f22a2be0e",
+    "u": [
+      0.6531083254653984,
+      0.2532916025397821,
+      0.4663107728563063,
+      0.24442559200160274
+    ],
+    "params": {
+      "a": 7.571758278257789e-07,
+      "w": 7.972102274923573e-07,
+      "t": 4.929952342134909e-07,
+      "s": 2.822043124015226e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.757175828,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.492995234,
+        "w": 0.797210227,
+        "spine_width": 0.282204312,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_d48f22a2be0e",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.0,
+      "session_credits": 0.225,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 417248.0,
+      "time_steps": 30753,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 12372970673669.78,
+      "light_line_edge_Hz": 197967530778716.47,
+      "x_point": {
+        "f_lower_THz": 165.30938616144627,
+        "f_upper_THz": 168.8000141907748,
+        "bandGap_THz": 3.4906280293285192,
+        "midGap_THz": 167.05470017611054,
+        "normalized_gap": 0.020895120135193252,
+        "fitness": -6.175251564157611e-36
+      }
+    },
+    "optical_gap_detail": {
+      "found": true,
+      "normalized_gap": 0.0708146621199427,
+      "f_lower": 172847785652891.97,
+      "f_upper": 185537243009685.16,
+      "f_center": 179192514331288.56
+    },
+    "optical_gap_candidates": [
+      {
+        "f_lower": 172847785652891.97,
+        "f_upper": 185537243009685.16,
+        "f_center": 179192514331288.56,
+        "normalized_gap": 0.0708146621199427,
+        "value": -0.4959805192009926,
+        "chosen": true
+      }
+    ],
+    "optical_min_resolvable_Hz": 12372970673669.78,
+    "optical_light_line_edge_Hz": 197967530778716.47,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.3292627717020688,
+        "f_lower": 6431779187.637013,
+        "f_upper": 8966882142.701351,
+        "f_center": 7699330665.169182
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.47918854602379735,
+        "f_lower": 7066170955.505265,
+        "f_upper": 11519094001.647892,
+        "f_center": 9292632478.576578
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.23709909467070758,
+        "f_lower": 7066170955.505265,
+        "f_upper": 8966882142.701351,
+        "f_center": 8016526549.103308
+      }
+    },
+    "mech_trusted_window_Hz": [
+      2178931729.713749,
+      26417126789.516644
+    ],
+    "optical_gap": 0.0708146621199427,
+    "mechanical_gap": 0.23709909467070758,
+    "optical_gap_unpenalized": 0.0708146621199427,
+    "optical_gap_effective": 0.0708146621199427,
+    "optical_freq_penalty": 0.3999066660890896,
+    "optical_center_frequency": 179192514331288.56,
+    "mechanical_center_frequency": 8016526549.103308,
+    "score": -0.25888142453028506,
+    "pen_size_o": 0.16688851523184572,
+    "pen_detune_o": 0.3999066660890896,
+    "pen_lightcone_o": 0.0,
+    "pen_size_m": 0.0,
+    "pen_window_m": 0.0,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_9b6796fb958c",
+    "u": [
+      0.15896958364551972,
+      0.11037514116430513,
+      0.6563295894652734,
+      0.1381829513486138
+    ],
+    "params": {
+      "a": 4.112787085518638e-07,
+      "w": 3.7560666643470016e-07,
+      "t": 6.735131099920098e-07,
+      "s": 1.812738037811831e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_RIBS_MERGE: rib width t 674 nm >= period a 411 nm",
+      "GEOM_ROOT_FILLET: t + 2*r1 754 nm >= period a 411 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_d02d51e2aaf5",
+    "u": [
+      0.1965823616800535,
+      0.3687251706609641,
+      0.8209932298479351,
+      0.09710127579306127
+    ],
+    "params": {
+      "a": 4.3760765317603745e-07,
+      "w": 1.137739253449844e-06,
+      "t": 8.299435683555384e-07,
+      "s": 1.422462120034082e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_RIBS_MERGE: rib width t 830 nm >= period a 438 nm",
+      "GEOM_ROOT_FILLET: t + 2*r1 910 nm >= period a 438 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_8ae81fb6a78c",
+    "u": [
+      0.8379449074988039,
+      0.09609840789396307,
+      0.9764594650133958,
+      0.4686512016477016
+    ],
+    "params": {
+      "a": 8.865614352491627e-07,
+      "w": 3.3349030328719106e-07,
+      "t": 9.77636491762726e-07,
+      "s": 4.952186415653165e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_RIBS_MERGE: rib width t 978 nm >= period a 887 nm",
+      "GEOM_NO_RIB: spine s 495 nm >= width w 333 nm",
+      "GEOM_ROOT_FILLET: t + 2*r1 1058 nm >= period a 887 nm",
+      "GEOM_FILLETS_MEET: r1 + r2 80 nm >= rib arm (w - s)/2 -81 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_75c4a4621d02",
+    "u": [
+      0.9767610881903371,
+      0.604845519745046,
+      0.7392635793983017,
+      0.039187792254320675
+    ],
+    "params": {
+      "a": 9.83732761733236e-07,
+      "w": 1.8342942832478855e-06,
+      "t": 7.523004004283867e-07,
+      "s": 8.722840264160464e-08,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.983732762,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.7523004,
+        "w": 1.834294283,
+        "spine_width": 0.087228403,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_75c4a4621d02",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.225,
+      "session_credits": 0.45,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 634368.0,
+      "time_steps": 33180,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 9523434287167.22,
+      "light_line_edge_Hz": 152374948594675.53,
+      "x_point": {
+        "f_lower_THz": 117.89910531981349,
+        "f_upper_THz": 127.54727878901667,
+        "bandGap_THz": 9.648173469203186,
+        "midGap_THz": 122.72319205441508,
+        "normalized_gap": 0.0786173608076069,
+        "fitness": -5.663054043044053e-243
+      }
+    },
+    "optical_gap_detail": {
+      "found": false,
+      "normalized_gap": 0.0,
+      "f_lower": 0.0,
+      "f_upper": 0.0,
+      "f_center": 0.0
+    },
+    "optical_gap_candidates": [],
+    "optical_min_resolvable_Hz": 9523434287167.22,
+    "optical_light_line_edge_Hz": 152374948594675.53,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.17964138540302202,
+        "f_lower": 6756990030.161104,
+        "f_upper": 8090611922.505968,
+        "f_center": 7423800976.333536
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.5468454724073898,
+        "f_lower": 3235562713.094416,
+        "f_upper": 5670751520.27114,
+        "f_center": 4453157116.682778
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.16824682340695213,
+        "f_lower": 6835017088.296856,
+        "f_upper": 8090611922.505968,
+        "f_center": 7462814505.401412
+      }
+    },
+    "mech_trusted_window_Hz": [
+      620281720.6999631,
+      13560504144.394243
+    ],
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.16824682340695213,
+    "optical_gap_unpenalized": 0.0,
+    "optical_gap_effective": 0.0,
+    "optical_freq_penalty": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 7462814505.401412,
+    "score": -145.32193012320926,
+    "pen_size_o": 0.4000000000000001,
+    "pen_detune_o": 0.0,
+    "pen_lightcone_o": 145.08009430437872,
+    "pen_size_m": 0.010082642237492839,
+    "pen_window_m": 0.0,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_2f1c15061bbc",
+    "u": [
+      0.2828069625764096,
+      0.1201965612131689,
+      0.29614019752214493,
+      0.11872771895424405
+    ],
+    "params": {
+      "a": 4.979648738034867e-07,
+      "w": 4.045798555788483e-07,
+      "t": 3.313331876460377e-07,
+      "s": 1.6279133300653185e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.42857142857142855,
+        0.5,
+        0.5714285714285714,
+        0.6428571428571429,
+        0.7142857142857143,
+        0.7857142857142857,
+        0.8571428571428571,
+        0.9285714285714286,
+        1.0
+      ],
+      "Nk": 14,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.497964874,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.331333188,
+        "w": 0.404579856,
+        "spine_width": 0.162791333,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_2f1c15061bbc",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.22500000000000003,
+      "session_credits": 0.675,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 248744.0,
+      "time_steps": 30614,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 21501262565409.977,
+      "light_line_edge_Hz": 301017675915739.4,
+      "x_point": {
+        "f_lower_THz": 248.88200876860637,
+        "f_upper_THz": 251.58460554970947,
+        "bandGap_THz": 2.7025967811030966,
+        "midGap_THz": 250.2333071591579,
+        "normalized_gap": 0.010800307967732459,
+        "fitness": -1.771074843515202e-158
+      }
+    },
+    "optical_gap_detail": {
+      "found": false,
+      "normalized_gap": 0.0,
+      "f_lower": 0.0,
+      "f_upper": 0.0,
+      "f_center": 0.0
+    },
+    "optical_gap_candidates": [],
+    "optical_min_resolvable_Hz": 21501262565409.977,
+    "optical_light_line_edge_Hz": 301017675915739.4,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.14483364672372,
+        "f_lower": 6170403465.6500225,
+        "f_upper": 7133855647.831425,
+        "f_center": 6652129556.740724
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.13983760084444963,
+        "f_lower": 3966190831.8718224,
+        "f_upper": 4562507164.974768,
+        "f_center": 4264348998.423295
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.09478591243172887,
+        "f_lower": 6202136747.839938,
+        "f_upper": 6819259195.659649,
+        "f_center": 6510697971.749794
+      }
+    },
+    "mech_trusted_window_Hz": [
+      4999862243.98413,
+      35603264990.22182
+    ],
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.09478591243172887,
+    "optical_gap_unpenalized": 0.0,
+    "optical_gap_effective": 0.0,
+    "optical_freq_penalty": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 6510697971.749794,
+    "score": -0.41591412979650944,
+    "pen_size_o": 0.4000000000000001,
+    "pen_detune_o": 0.0,
+    "pen_lightcone_o": 0.0,
+    "pen_size_m": 0.11070004222823826,
+    "pen_window_m": 0.0,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_794a302d4caf",
+    "u": [
+      0.7233853949271724,
+      0.23257608104546007,
+      0.3720915872931839,
+      0.2807212570997707
+    ],
+    "params": {
+      "a": 8.063697764490206e-07,
+      "w": 7.360994390841072e-07,
+      "t": 4.0348700792852473e-07,
+      "s": 3.1668519424478214e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.806369776,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.403487008,
+        "w": 0.736099439,
+        "spine_width": 0.316685194,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_794a302d4caf",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.22499999999999998,
+      "session_credits": 0.9,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 426924.0,
+      "time_steps": 29195,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 11618136723521.266,
+      "light_line_edge_Hz": 185890187576340.25,
+      "x_point": {
+        "f_lower_THz": 164.61488121645442,
+        "f_upper_THz": 170.5077141207029,
+        "bandGap_THz": 5.892832904248479,
+        "midGap_THz": 167.56129766857867,
+        "normalized_gap": 0.035168221935735884,
+        "fitness": -1.9640384156148684e-34
+      }
+    },
+    "optical_gap_detail": {
+      "found": false,
+      "normalized_gap": 0.0,
+      "f_lower": 0.0,
+      "f_upper": 0.0,
+      "f_center": 0.0
+    },
+    "optical_gap_candidates": [],
+    "optical_min_resolvable_Hz": 11618136723521.266,
+    "optical_light_line_edge_Hz": 185890187576340.25,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.3119382047028743,
+        "f_lower": 7160646582.6382675,
+        "f_upper": 9807089083.407963,
+        "f_center": 8483867833.023115
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.23308308745548445,
+        "f_lower": 5685867774.5713215,
+        "f_upper": 7185971833.060647,
+        "f_center": 6435919803.815985
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.11457482771884259,
+        "f_lower": 8744326463.305298,
+        "f_upper": 9807089083.407963,
+        "f_center": 9275707773.35663
+      }
+    },
+    "mech_trusted_window_Hz": [
+      2320403950.6705117,
+      26680307834.105473
+    ],
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.11457482771884259,
+    "optical_gap_unpenalized": 0.0,
+    "optical_gap_effective": 0.0,
+    "optical_freq_penalty": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 9275707773.35663,
+    "score": -3.635196024982934,
+    "pen_size_o": 0.4000000000000001,
+    "pen_detune_o": 0.0,
+    "pen_lightcone_o": 3.2767962521091225,
+    "pen_size_m": 0.07297460059265427,
+    "pen_window_m": 0.0,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_3cd8366ebc32",
+    "u": [
+      0.3442224699135472,
+      0.011316369334524123,
+      0.4236556754998402,
+      0.2851947247489709
+    ],
+    "params": {
+      "a": 5.40955728939483e-07,
+      "w": 8.338328953684616e-08,
+      "t": 4.5247289172484816e-07,
+      "s": 3.2093498851152234e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_NO_RIB: spine s 321 nm >= width w 83 nm",
+      "GEOM_FILLETS_MEET: r1 + r2 80 nm >= rib arm (w - s)/2 -119 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_d5de8009544f",
+    "u": [
+      0.2653211570289205,
+      0.2821517840874794,
+      0.3278441916277733,
+      0.3378657405418545
+    ],
+    "params": {
+      "a": 4.857248099202443e-07,
+      "w": 8.823477630580643e-07,
+      "t": 3.614519820463846e-07,
+      "s": 3.7097245351476177e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.42857142857142855,
+        0.5,
+        0.5714285714285714,
+        0.6428571428571429,
+        0.7142857142857143,
+        0.7857142857142857,
+        0.8571428571428571,
+        0.9285714285714286,
+        1.0
+      ],
+      "Nk": 14,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.48572481,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.361451982,
+        "w": 0.882347763,
+        "spine_width": 0.370972454,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_d5de8009544f",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.22499999999999998,
+      "session_credits": 1.125,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 260544.0,
+      "time_steps": 28429,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 22043085470058.805,
+      "light_line_edge_Hz": 308603196580822.94,
+      "x_point": {
+        "f_lower_THz": 203.04791843263766,
+        "f_upper_THz": 203.40008902699392,
+        "bandGap_THz": 0.3521705943562665,
+        "midGap_THz": 203.2240037298158,
+        "normalized_gap": 0.001732918296524035,
+        "fitness": -3.938855471889245e-08
+      }
+    },
+    "optical_gap_detail": {
+      "found": true,
+      "normalized_gap": 0.1512164572460366,
+      "f_lower": 227299708816096.78,
+      "f_upper": 264482489715396.5,
+      "f_center": 245891099265746.62
+    },
+    "optical_gap_candidates": [
+      {
+        "f_lower": 227299708816096.78,
+        "f_upper": 264482489715396.5,
+        "f_center": 245891099265746.62,
+        "normalized_gap": 0.1512164572460366,
+        "value": -0.27258188047321497,
+        "chosen": true
+      }
+    ],
+    "optical_min_resolvable_Hz": 22043085470058.805,
+    "optical_light_line_edge_Hz": 308603196580822.94,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.27485836170667144,
+        "f_lower": 5982394355.346689,
+        "f_upper": 7888685497.0068445,
+        "f_center": 6935539926.176767
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.45495460526784764,
+        "f_lower": 3774185612.750878,
+        "f_upper": 5996881633.865956,
+        "f_center": 4885533623.308417
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.17991793165622103,
+        "f_lower": 4125400989.7279844,
+        "f_upper": 4941005545.405847,
+        "f_center": 4533203267.5669155
+      }
+    },
+    "mech_trusted_window_Hz": [
+      3567666643.8547893,
+      29973837602.84551
+    ],
+    "optical_gap": 0.1512164572460366,
+    "mechanical_gap": 0.17991793165622103,
+    "optical_gap_unpenalized": 0.1512164572460366,
+    "optical_gap_effective": 0.1512164572460366,
+    "optical_freq_penalty": 0.3999999972829738,
+    "optical_center_frequency": 245891099265746.62,
+    "mechanical_center_frequency": 4533203267.5669155,
+    "score": -17.528631996323007,
+    "pen_size_o": 0.023798340436277755,
+    "pen_detune_o": 0.3999999972829738,
+    "pen_lightcone_o": 0.0,
+    "pen_size_m": 0.004032894689642101,
+    "pen_window_m": 17.431935152816372,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_f4e00f6f0049",
+    "u": [
+      0.4071899161009089,
+      0.22268613621121003,
+      0.5064501164280568,
+      0.21690481276612944
+    ],
+    "params": {
+      "a": 5.850329412706362e-07,
+      "w": 7.069241018230696e-07,
+      "t": 5.31127610606654e-07,
+      "s": 2.5605957212782295e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_ROOT_FILLET: t + 2*r1 611 nm >= period a 585 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_df0323d8791f",
+    "u": [
+      0.760829295527522,
+      0.5093716721807329,
+      0.3404451409488597,
+      0.40149596401364607
+    ],
+    "params": {
+      "a": 8.325805068692653e-07,
+      "w": 1.552646432933162e-06,
+      "t": 3.734228839014167e-07,
+      "s": 4.3142116581296377e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.832580507,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.373422884,
+        "w": 1.552646433,
+        "spine_width": 0.431421166,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_df0323d8791f",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.2250000000000001,
+      "session_credits": 1.35,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 528640.0,
+      "time_steps": 28956,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 11252382484581.85,
+      "light_line_edge_Hz": 180038119753309.6,
+      "x_point": {
+        "f_lower_THz": 140.73098156176624,
+        "f_upper_THz": 156.53054046850932,
+        "bandGap_THz": 15.799558906743073,
+        "midGap_THz": 148.63076101513778,
+        "normalized_gap": 0.10630073343386781,
+        "fitness": -1.7671694855342806e-98
+      }
+    },
+    "optical_gap_detail": {
+      "found": true,
+      "normalized_gap": 0.10630073343386774,
+      "f_lower": 140730981561766.25,
+      "f_upper": 156530540468509.3,
+      "f_center": 148630761015137.78
+    },
+    "optical_gap_candidates": [
+      {
+        "f_lower": 140730981561766.25,
+        "f_upper": 156530540468509.3,
+        "f_center": 148630761015137.78,
+        "normalized_gap": 0.10630073343386774,
+        "value": -0.3814947824590913,
+        "chosen": true
+      }
+    ],
+    "optical_min_resolvable_Hz": 11252382484581.85,
+    "optical_light_line_edge_Hz": 180038119753309.6,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.16060449364158635,
+        "f_lower": 4253248453.911645,
+        "f_upper": 4995982479.205318,
+        "f_center": 4624615466.558481
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.09747540152981893,
+        "f_lower": 5019735816.846999,
+        "f_upper": 5534105791.053084,
+        "f_center": 5276920803.950042
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.05735343628274272,
+        "f_lower": 7312968143.63297,
+        "f_upper": 7744774793.691859,
+        "f_center": 7528871468.662415
+      }
+    },
+    "mech_trusted_window_Hz": [
+      1085058803.3095727,
+      20993190879.542583
+    ],
+    "optical_gap": 0.10630073343386774,
+    "mechanical_gap": 0.05735343628274272,
+    "optical_gap_unpenalized": 0.10630073343386774,
+    "optical_gap_effective": 0.10630073343386774,
+    "optical_freq_penalty": 0.3999999903426479,
+    "optical_center_frequency": 148630761015137.78,
+    "mechanical_center_frequency": 7528871468.662415,
+    "score": -0.527621767579764,
+    "pen_size_o": 0.08779552555031113,
+    "pen_detune_o": 0.3999999903426479,
+    "pen_lightcone_o": 0.0,
+    "pen_size_m": 0.20348042140341543,
+    "pen_window_m": 0.0,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_6a5ad4c859c7",
+    "u": [
+      0.46131356702273657,
+      0.9667779463359969,
+      0.521955172138937,
+      0.000892119551831369
+    ],
+    "params": {
+      "a": 6.229194969159156e-07,
+      "w": 2.901994941691191e-06,
+      "t": 5.458574135319902e-07,
+      "s": 5.08475135742398e-08,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_ROOT_FILLET: t + 2*r1 626 nm >= period a 623 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_4c06bc219de4",
+    "u": [
+      0.2558656952396579,
+      0.013218238971385632,
+      0.4408533770445464,
+      0.9809955505044521
+    ],
+    "params": {
+      "a": 4.791059866677605e-07,
+      "w": 8.899380496558761e-08,
+      "t": 4.688107081923191e-07,
+      "s": 9.819457729792295e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_NO_RIB: spine s 982 nm >= width w 89 nm",
+      "GEOM_ROOT_FILLET: t + 2*r1 549 nm >= period a 479 nm",
+      "GEOM_FILLETS_MEET: r1 + r2 80 nm >= rib arm (w - s)/2 -446 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_bce813f2e6f2",
+    "u": [
+      0.8663641407334486,
+      0.17537258024456198,
+      0.28681724992682606,
+      0.23908796194821014
+    ],
+    "params": {
+      "a": 9.06454898513414e-07,
+      "w": 5.673491117214578e-07,
+      "t": 3.2247638743048473e-07,
+      "s": 2.7713356385079965e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.906454899,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.322476387,
+        "w": 0.567349112,
+        "spine_width": 0.277133564,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_bce813f2e6f2",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.2250000000000001,
+      "session_credits": 1.5750000000000002,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 429520.0,
+      "time_steps": 28940,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 10335334199047.701,
+      "light_line_edge_Hz": 165365347184763.22,
+      "x_point": {
+        "f_lower_THz": 161.01707801854946,
+        "f_upper_THz": 163.6215722511911,
+        "bandGap_THz": 2.604494232641656,
+        "midGap_THz": 162.31932513487027,
+        "normalized_gap": 0.016045496926983868,
+        "fitness": -3.5253693524408256e-49
+      }
+    },
+    "optical_gap_detail": {
+      "found": false,
+      "normalized_gap": 0.0,
+      "f_lower": 0.0,
+      "f_upper": 0.0,
+      "f_center": 0.0
+    },
+    "optical_gap_candidates": [],
+    "optical_min_resolvable_Hz": 10335334199047.701,
+    "optical_light_line_edge_Hz": 165365347184763.22,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.12573876094081596,
+        "f_lower": 3846705707.3222604,
+        "f_upper": 4362834408.340969,
+        "f_center": 4104770057.8316145
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.2611571047384262,
+        "f_lower": 5867587501.28625,
+        "f_upper": 7630095394.105147,
+        "f_center": 6748841447.695699
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.0737486296754168,
+        "f_lower": 5046423184.227103,
+        "f_upper": 5432838789.513645,
+        "f_center": 5239630986.870375
+      }
+    },
+    "mech_trusted_window_Hz": [
+      2072224769.2897017,
+      30008869035.821697
+    ],
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0737486296754168,
+    "optical_gap_unpenalized": 0.0,
+    "optical_gap_effective": 0.0,
+    "optical_freq_penalty": 0.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 5239630986.870375,
+    "score": -58.027007680335004,
+    "pen_size_o": 0.4000000000000001,
+    "pen_detune_o": 0.0,
+    "pen_lightcone_o": 57.54136222492207,
+    "pen_size_m": 0.1593940850883505,
+    "pen_window_m": 0.0,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_c4abd1405074",
+    "u": [
+      0.04566654613484805,
+      0.3000416950649353,
+      0.37925273357299116,
+      0.35930701282541083
+    ],
+    "params": {
+      "a": 3.319665822943936e-07,
+      "w": 9.351230004415591e-07,
+      "t": 4.102900968943416e-07,
+      "s": 3.913416621841403e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_RIBS_MERGE: rib width t 410 nm >= period a 332 nm",
+      "GEOM_ROOT_FILLET: t + 2*r1 490 nm >= period a 332 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_b3dbb2490b95",
+    "u": [
+      0.5034390508787928,
+      0.5024086481093758,
+      0.6111846954386454,
+      0.627906194357051
+    ],
+    "params": {
+      "a": 6.52407335615155e-07,
+      "w": 1.5321055119226587e-06,
+      "t": 6.306254606667132e-07,
+      "s": 6.465108846391983e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "infeasible",
+    "reasons": [
+      "GEOM_ROOT_FILLET: t + 2*r1 711 nm >= period a 652 nm"
+    ],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -10.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  },
+  {
+    "id": "cand_55ff61ecfdde",
+    "u": [
+      0.6063221281066384,
+      0.8040603791930679,
+      0.5535795728147679,
+      0.5144974625509552
+    ],
+    "params": {
+      "a": 7.24425489674647e-07,
+      "w": 2.4219781186195503e-06,
+      "t": 5.759005941740296e-07,
+      "s": 5.387725894234074e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "success",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.72442549,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.575900594,
+        "w": 2.421978119,
+        "spine_width": 0.538772589,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_55ff61ecfdde",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.2250000000000001,
+      "session_credits": 1.8000000000000003,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 526752.0,
+      "time_steps": 30999,
+      "reused_download": false,
+      "gap_method": "guided_interval_gap",
+      "result_source": "cloud",
+      "optical_tol_thz": null,
+      "score_version": 4,
+      "keep_hdf5": "best",
+      "min_resolvable_Hz": 12932336653018.07,
+      "light_line_edge_Hz": 206917386448289.12,
+      "x_point": {
+        "f_lower_THz": 137.677304435557,
+        "f_upper_THz": 145.01188571823977,
+        "bandGap_THz": 7.3345812826827625,
+        "midGap_THz": 141.34459507689837,
+        "normalized_gap": 0.05189148745795615,
+        "fitness": -7.633652981671992e-133
+      }
+    },
+    "optical_gap_detail": {
+      "found": true,
+      "normalized_gap": 0.12924092657524858,
+      "f_lower": 178773792370616.12,
+      "f_upper": 203474878578421.6,
+      "f_center": 191124335474518.88
+    },
+    "optical_gap_candidates": [
+      {
+        "f_lower": 178773792370616.12,
+        "f_upper": 203474878578421.6,
+        "f_center": 191124335474518.88,
+        "normalized_gap": 0.12924092657524858,
+        "value": 0.07839911145339726,
+        "chosen": true
+      }
+    ],
+    "optical_min_resolvable_Hz": 12932336653018.07,
+    "optical_light_line_edge_Hz": 206917386448289.12,
+    "mech_gaps": {
+      "sym": {
+        "found": true,
+        "normalized_gap": 0.07502140720218411,
+        "f_lower": 5042114802.218047,
+        "f_upper": 5435123378.160263,
+        "f_center": 5238619090.189156
+      },
+      "antisym": {
+        "found": true,
+        "normalized_gap": 0.1810858838028733,
+        "f_lower": 4514348881.658364,
+        "f_upper": 5413220191.469038,
+        "f_center": 4963784536.563702
+      },
+      "complete": {
+        "found": true,
+        "normalized_gap": 0.07427143014259573,
+        "f_lower": 4681038549.745012,
+        "f_upper": 5042114802.218047,
+        "f_center": 4861576675.981529
+      }
+    },
+    "mech_trusted_window_Hz": [
+      541415771.4789078,
+      13628706020.483051
+    ],
+    "optical_gap": 0.12924092657524858,
+    "mechanical_gap": 0.07427143014259573,
+    "optical_gap_unpenalized": 0.12924092657524858,
+    "optical_gap_effective": 0.12924092657524858,
+    "optical_freq_penalty": 0.0007733504025576573,
+    "optical_center_frequency": 191124335474518.88,
+    "mechanical_center_frequency": 4861576675.981529,
+    "score": -1.5382875217736927,
+    "pen_size_o": 0.05006846471929365,
+    "pen_detune_o": 0.0007733504025576573,
+    "pen_lightcone_o": 0.0,
+    "pen_size_m": 0.15807673278388185,
+    "pen_window_m": 1.5328813305858038,
+    "pen_center_m": 0.0
+  },
+  {
+    "id": "cand_d02946fde6ca_budget_exceeded",
+    "u": [
+      0.6776857110930281,
+      0.6935824495846569,
+      0.21046120460369747,
+      0.18165116152533545
+    ],
+    "params": {
+      "a": 7.743799977651197e-07,
+      "w": 2.096068226274738e-06,
+      "t": 2.499381443735126e-07,
+      "s": 2.2256860344906868e-07,
+      "th": 2.5e-07,
+      "r1": 4e-08,
+      "r2": 4e-08
+    },
+    "celltype": "rib",
+    "optical_backend": "tidy3d",
+    "mech_backend": "comsol",
+    "optical_engine": "tidy3d",
+    "xsect": "rect",
+    "optical_index": 2.386,
+    "optical_z_symmetry": true,
+    "status": "optical_not_run",
+    "reasons": [],
+    "mech_gap_mode": "complete",
+    "n_k": 10,
+    "n_bands_mech": 20,
+    "optical_study": "opt TE",
+    "n_k_opt": 10,
+    "n_bands_opt": 10,
+    "optical_rel_tol": null,
+    "optical_tol_thz": null,
+    "score_version": 4,
+    "score_weights": {
+      "gmin_o": 0.2,
+      "gmin_m": 0.2,
+      "lambda_optical": 10.0,
+      "lambda_mech": 10.0,
+      "lambda_optical_freq": 0.4,
+      "lambda_light_cone": 2000.0,
+      "lambda_mech_window": 2000.0,
+      "mech_window_GHz": [
+        5.0,
+        10.0
+      ],
+      "optical_freq_tol_THz": 5.0,
+      "optical_freq_power": 8.0
+    },
+    "rxtal_deg": 0.0,
+    "error": "Tidy3D credit budget would be exceeded: 1.800 used + 0.225 for this cell > 2.000 FlexCredits; the drafts were deleted, nothing was started",
+    "optical_tidy3d_stop": "budget_exceeded",
+    "optical_tidy3d_detail": {
+      "engine": "tidy3d",
+      "mode": "run",
+      "k_mode": "sweep",
+      "n_sims": 9,
+      "k_frac": [
+        0.5,
+        0.5625,
+        0.625,
+        0.6875,
+        0.75,
+        0.8125,
+        0.875,
+        0.9375,
+        1.0
+      ],
+      "Nk": 16,
+      "index": 2.386,
+      "polarization": "TE",
+      "optical_study": "opt TE",
+      "window_THz": [
+        93.414489,
+        293.414489
+      ],
+      "band_params": {
+        "index": 2.386,
+        "mode": "TE",
+        "target_freq_thz": 193.414489,
+        "a": 0.774379998,
+        "xsect": "rect",
+        "wedge_angle": 30.0,
+        "geometry": "rib_block",
+        "t": 0.249938144,
+        "w": 2.096068226,
+        "spine_width": 0.222568603,
+        "thickness": 0.25,
+        "fillet_r1": 0.04,
+        "fillet_r2": 0.04
+      },
+      "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\rib\\cand_d02946fde6ca",
+      "xsect": "rect",
+      "z_symmetry": true,
+      "wedge_depths_m": null,
+      "estimated_credits": 0.0,
+      "session_credits": 1.8000000000000003,
+      "symmetry": [
+        0,
+        -1,
+        1
+      ],
+      "grid_cells": 539968.0,
+      "time_steps": 29834,
+      "refused_estimate": 0.225
+    },
+    "optical_gap": 0.0,
+    "mechanical_gap": 0.0,
+    "score": -5.0,
+    "optical_center_frequency": 0.0,
+    "mechanical_center_frequency": 0.0
+  }
+]

@@ -63,7 +63,7 @@ rib:
     a:  { min: 0.30e-6, max: 1.00e-6 }   # period [m]
     w:  { min: 0.05e-6, max: 3.00e-6 }   # rib tip-to-tip width [m]
     t:  { min: 0.05e-6, max: 1.00e-6 }   # rib width along the beam [m]
-    s:  { min: 0.05e-6, max: 1.00e-6 }   # spine width [m]
+    s:  { min: 0.05e-6, max: 0.50e-6 }   # spine width [m]
   fixed:
     # Sent to the template, overriding its saved defaults (283 / 20 / 20 nm).
     # r1 = r2 = 40 nm forces t > 80 nm, a - t > 80 nm and (w - s)/2 > 80 nm.

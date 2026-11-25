@@ -90,5 +90,5 @@ tidy3d:
 out_fig: "results/figures_rib_tidy3d/opt_progress_rib_tidy3d.png"
 out_json: "results/opt_results_rib_tidy3d.json"
 
-fresh_start: false   # true = delete the results_dir and start from scratch
+fresh_start: true   # true = delete the results_dir and start from scratch
 skip_characterization: true   # the end-of-run characterization is COMSOL optics

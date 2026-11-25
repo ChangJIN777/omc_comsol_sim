@@ -4,9 +4,9 @@
 celltype: rib
 
 # One value per searched rib variable (bounds.yaml rib.variables), order a, w, t, s.
-# These give a/w/t/s = 570/1747/391/254 nm; th, r1, r2 come from rib.fixed
-# (250/40/40 nm), so this is NOT the cell of the MATLAB reference run (283/20/20).
-u: [0.385714, 0.575254, 0.358947, 0.214737]
+# These give a/w/t/s = 600/1300/280/100 nm (with the current bounds.yaml);
+# th, r1, r2 come from rib.fixed (250/40/40 nm).
+u: [0.428571, 0.423729, 0.242105, 0.111111]
 
 optical: comsol            # none | comsol. Use comsol only after the optical
                          # validation solve (see the proposal, step B2).

@@ -1,0 +1,43 @@
+{
+  "engine": "tidy3d",
+  "mode": "run",
+  "k_mode": "x_only",
+  "n_sims": 1,
+  "k_frac": [
+    1.0
+  ],
+  "Nk": 1,
+  "index": 2.386,
+  "polarization": "TE",
+  "optical_study": "opt TE",
+  "window_THz": [
+    93.414489,
+    293.414489
+  ],
+  "band_params": {
+    "index": 2.386,
+    "mode": "TE",
+    "target_freq_thz": 193.414489,
+    "a": 0.7,
+    "xsect": "rect",
+    "wedge_angle": 30.0,
+    "geometry": "holey",
+    "beam_width": 0.66,
+    "thickness": 0.325,
+    "hole_x": 0.46,
+    "hole_y": 0.56
+  },
+  "run_dir": "C:\\Users\\alber\\Documents\\Github\\omc_comsol_sim\\python-scripts\\results\\tidy3d\\hole\\cand_808e4ba6dee3",
+  "xsect": "rect",
+  "z_symmetry": true,
+  "wedge_depths_m": null,
+  "estimated_credits": 0.0,
+  "session_credits": 0.0,
+  "symmetry": [
+    0,
+    -1,
+    1
+  ],
+  "grid_cells": 370392.0,
+  "time_steps": 32217
+}

@@ -16,6 +16,12 @@ end
 validateattributes(P.dLda, {'numeric'}, {'scalar','real','finite'}, mfilename, 'P.dLda');
 validateattributes(P.r1, {'numeric'}, {'scalar','real','finite','nonnegative'}, mfilename, 'P.r1');
 validateattributes(P.r2, {'numeric'}, {'scalar','real','finite','nonnegative'}, mfilename, 'P.r2');
+for f = {'w_mirror','w_ctr'}
+    if isfield(P, f{1}) && ~isempty(P.(f{1}))
+        validateattributes(P.(f{1}), {'numeric'}, {'scalar','real','finite','positive'}, ...
+            mfilename, ['P.',f{1}]);
+    end
+end
 
 % Sidewall angle, radians. A value >= pi/2 is almost certainly degrees.
 if ~(isnumeric(P.d) && isscalar(P.d) && isreal(P.d) && isfinite(P.d) && ...
@@ -24,6 +30,18 @@ if ~(isnumeric(P.d) && isscalar(P.d) && isreal(P.d) && isfinite(P.d) && ...
         ['P.d must be a sidewall angle in RADIANS in [0, pi/2), e.g. 15*pi/180; ' ...
          'got %s.'], mat2str(P.d));
 end
+
+% Taper scheme: 'rib' (t constant, L from ribLength) or 'hole'
+% (CreateNanobeamGeom's maxdef/oblong scaling of t and w; see ribLength).
+% P.oblong (default 2.7) is read only in the 'hole' scheme.
+scheme = 'rib';
+if isfield(P,'ribTaperScheme')
+    scheme = P.ribTaperScheme;
+end
+if ~(ischar(scheme) && any(strcmp(scheme, {'rib','hole'})))
+    error('rib:badTaperScheme', 'P.ribTaperScheme must be ''rib'' or ''hole''.');
+end
+holeScheme = strcmp(scheme,'hole');
 
 switch mode
     case 'unitcell'
@@ -51,17 +69,26 @@ switch mode
         error('rib:badMode', 'mode must be ''unitcell'' or ''cavity''.');
 end
 
-% L is either constant (explicit P.L / P.w) or linear in a, so its extremes
-% over [aMin, aMax] sit at the ends.
-Lends = ribLength(P, [aMin aMax]);
+% L and t are constant, linear in a, or (hole scheme) a power of a: all
+% monotonic, as is t/a, so the extremes over [aMin, aMax] sit at the ends.
+aEnds = [aMin aMax];
+[Lends, Lsrc, tEnds] = ribLength(P, aEnds);
 LMin = min(Lends);
 LMax = max(Lends);
+tMin = min(tEnds);
+if holeScheme && strcmp(mode,'cavity') && any(strcmp(Lsrc, {'L','w'}))
+    error('rib:holeSchemeNeedsMirrorWidth', ...
+        ['P.ribTaperScheme = ''hole'' tapers the rib width, so an explicit ' ...
+         'P.L / P.w (one constant width) cannot be used. Give the mirror-cell ' ...
+         'width as P.w_mirror, or use the L(a) rule.']);
+end
 
-% Rib must be narrower than the narrowest cell, or neighbouring ribs fuse.
-if P.t >= aMin
+% Rib must be narrower than its cell, or neighbouring ribs fuse.
+iWide = find(tEnds >= aEnds, 1);
+if ~isempty(iWide)
     error('rib:ribTooWide', ...
-        'P.t = %g nm must be smaller than the narrowest cell width %g nm.', ...
-        P.t*1e9, aMin*1e9);
+        'Rib width t = %g nm must be smaller than the cell width %g nm.', ...
+        tEnds(iWide)*1e9, aEnds(iWide)*1e9);
 end
 % Rib must protrude past the spine (also at the top face when d > 0, since
 % both the tip and the spine edge move in by th*tan(d)).
@@ -80,9 +107,9 @@ if P.d > 0
              'with a sidewall angle (P.d = %g deg). Set P.r1 = P.r2 = 0, which ' ...
              'is the default when d ~= 0.'], P.r1*1e9, P.r2*1e9, P.d*180/pi);
     end
-    if P.t - 2*inset <= 0
+    if tMin - 2*inset <= 0
         error('rib:sidewallTooSteep', ...
-            'Rib top width t - 2*th*tan(d) = %g nm is not positive.', (P.t - 2*inset)*1e9);
+            'Rib top width t - 2*th*tan(d) = %g nm is not positive.', (tMin - 2*inset)*1e9);
     end
     if P.s - 2*inset <= 0
         error('rib:sidewallTooSteep', ...
@@ -97,14 +124,16 @@ if P.d > 0
     end
 else
     % Fillet checks (d = 0 only; with d > 0 the fillets are zero, see above).
-    if 2*P.r2 >= P.t
+    if 2*P.r2 >= tMin
         error('rib:tipFilletTooLarge', ...
-            '2*P.r2 = %g nm must be smaller than P.t = %g nm.', 2*P.r2*1e9, P.t*1e9);
+            '2*P.r2 = %g nm must be smaller than the narrowest rib width t = %g nm.', ...
+            2*P.r2*1e9, tMin*1e9);
     end
-    if P.r1 >= (aMin - P.t)/2
+    gapMin = min(aEnds - tEnds)/2;
+    if P.r1 >= gapMin
         error('rib:rootFilletTooLarge', ...
             'P.r1 = %g nm does not fit in the %g nm of spine beside the rib.', ...
-            P.r1*1e9, (aMin - P.t)/2*1e9);
+            P.r1*1e9, gapMin*1e9);
     end
     if P.r1 + P.r2 >= LMin - P.s/2
         warning('rib:filletsMeet', ...

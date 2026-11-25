@@ -1,0 +1,112 @@
+{
+  "record_id": "cand_518e4e6a4f0b",
+  "celltype": "rib",
+  "xsect": "rect",
+  "geometry": "rib_block",
+  "params_source": "params.json",
+  "a_um": 0.5699998,
+  "index": 2.386,
+  "mode": "TE",
+  "symmetry": [
+    0,
+    -1,
+    1
+  ],
+  "target_THz": 193.414489,
+  "window_THz": [
+    93.414489,
+    293.414489
+  ],
+  "light_line_at_X_THz": 262.97593262313427,
+  "optical_tol_thz": 2.0,
+  "filters": {
+    "minQ": 1.0,
+    "minamp": 1.0,
+    "maxerr": 1000.0,
+    "min_guided_q": null,
+    "light_line_margin": null
+  },
+  "counts": {
+    "k_points": 13,
+    "resonances": 48,
+    "guided": 33,
+    "guided_low_q": 5,
+    "guided_near_light_line": 8,
+    "negative_q": 13,
+    "out_of_window": 0
+  },
+  "k_2pi_over_a": [
+    0.2391304347826087,
+    0.2608695652173913,
+    0.2826086956521739,
+    0.30434782608695654,
+    0.32608695652173914,
+    0.34782608695652173,
+    0.3695652173913043,
+    0.391304347826087,
+    0.41304347826086957,
+    0.43478260869565216,
+    0.45652173913043476,
+    0.4782608695652174,
+    0.5
+  ],
+  "scored_gap": {
+    "found": true,
+    "normalized_gap": 0.08271745430871062,
+    "f_lower_THz": 175.26026990931052,
+    "f_upper_THz": 190.38280195440214,
+    "f_center_THz": 182.82153593185635,
+    "freq_penalty": 6.559684668333616e-13,
+    "effective_gap": 5.426004168324355e-14,
+    "method": "guided_interval_gap",
+    "k_mode": "sweep",
+    "candidates": [
+      {
+        "f_lower": 175260269909310.53,
+        "f_upper": 190382801954402.16,
+        "f_center": 182821535931856.34,
+        "normalized_gap": 0.08271745430871062,
+        "freq_penalty": 6.559684668333616e-13,
+        "penalized_gap": 5.426004168324355e-14,
+        "chosen": true
+      },
+      {
+        "f_lower": 200236299136096.44,
+        "f_upper": 213232569720826.53,
+        "f_center": 206734434428461.5,
+        "normalized_gap": 0.06286456642145569,
+        "freq_penalty": 5.454632816112767e-20,
+        "penalized_gap": 3.4290312697317295e-21,
+        "chosen": false
+      },
+      {
+        "f_lower": 237683187818728.8,
+        "f_upper": 262645079167248.25,
+        "f_center": 250164133492988.53,
+        "normalized_gap": 0.09978205508512297,
+        "freq_penalty": 0.0,
+        "penalized_gap": 0.0,
+        "chosen": false
+      }
+    ]
+  },
+  "scored_gap_min_guided_q": null,
+  "x_point_gap": {
+    "found": true,
+    "f_lower_THz": 169.24593138235636,
+    "f_upper_THz": 190.38280195440214,
+    "f_center_THz": 179.81436666837925,
+    "normalized_gap": 0.11754828584429647
+  },
+  "comparison_with_evaluation_json": {
+    "matches": false,
+    "recorded": {
+      "found": true,
+      "normalized_gap": 0.09978205508512297,
+      "f_lower_THz": 237.6831878187288,
+      "f_upper_THz": 262.64507916724824
+    },
+    "d_lower_THz": -62.42291790941829,
+    "d_upper_THz": -72.2622772128461
+  }
+}

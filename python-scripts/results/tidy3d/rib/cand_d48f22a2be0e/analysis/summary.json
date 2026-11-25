@@ -1,0 +1,110 @@
+{
+  "record_id": "cand_d48f22a2be0e",
+  "celltype": "rib",
+  "xsect": "rect",
+  "geometry": "rib_block",
+  "params_source": "params.json",
+  "data_source": "saved analysis (bands.csv; .hdf5 present, use --reanalyze to read them)",
+  "a_um": 0.757175828,
+  "index": 2.386,
+  "mode": "TE",
+  "symmetry": [
+    0,
+    -1,
+    1
+  ],
+  "target_THz": 193.414489,
+  "window_THz": [
+    93.414489,
+    293.414489
+  ],
+  "light_line_at_X_THz": 197.96753073316543,
+  "score_version": 4,
+  "scoring": "score version 4 (evaluation.json), weights from evaluation.json; flat-top detuning penalty, f_tol = 5 THz, height 0.4",
+  "score_weights": {
+    "gmin_o": 0.2,
+    "gmin_m": 0.2,
+    "lambda_optical": 10.0,
+    "lambda_mech": 10.0,
+    "lambda_optical_freq": 0.4,
+    "lambda_light_cone": 2000.0,
+    "lambda_mech_window": 2000.0,
+    "mech_window_GHz": [
+      5.0,
+      10.0
+    ],
+    "optical_freq_tol_THz": 5.0,
+    "optical_freq_power": 8.0
+  },
+  "optical_tol_thz": null,
+  "optical_tol_source": null,
+  "filters": {
+    "minQ": 1.0,
+    "minamp": 1.0,
+    "maxerr": 1000.0,
+    "min_guided_q": null,
+    "light_line_margin": null
+  },
+  "counts": {
+    "k_points": 9,
+    "resonances": 43,
+    "guided": 19,
+    "guided_low_q": 8,
+    "guided_near_light_line": 11,
+    "negative_q": 4,
+    "out_of_window": 4
+  },
+  "k_2pi_over_a": [
+    0.25,
+    0.28125,
+    0.3125,
+    0.34375,
+    0.375,
+    0.40625,
+    0.4375,
+    0.46875,
+    0.5
+  ],
+  "scored_gap": {
+    "found": true,
+    "normalized_gap": 0.0708146621199427,
+    "f_lower_THz": 172.84778565289196,
+    "f_upper_THz": 185.53724300968514,
+    "f_center_THz": 179.19251433128855,
+    "pen_size_o": 0.16688851523184572,
+    "pen_detune_o": 0.3999066660873964,
+    "pen_lightcone_o": 0.0,
+    "value": -0.4959805191992994,
+    "method": "guided_interval_gap",
+    "k_mode": "sweep",
+    "candidates": [
+      {
+        "f_lower": 172847785652891.97,
+        "f_upper": 185537243009685.16,
+        "f_center": 179192514331288.56,
+        "normalized_gap": 0.0708146621199427,
+        "value": -0.4959805191992994,
+        "chosen": true
+      }
+    ]
+  },
+  "scored_gap_min_guided_q": null,
+  "x_point_gap": {
+    "found": true,
+    "f_lower_THz": 165.30938616144627,
+    "f_upper_THz": 168.8000141907748,
+    "f_center_THz": 167.05470017611054,
+    "normalized_gap": 0.020895120135193252
+  },
+  "comparison_with_evaluation_json": {
+    "matches": true,
+    "recorded": {
+      "found": true,
+      "normalized_gap": 0.0708146621199427,
+      "f_lower_THz": 172.84778565289196,
+      "f_upper_THz": 185.53724300968514
+    },
+    "d_lower_THz": 0.0,
+    "d_upper_THz": 0.0
+  }
+}

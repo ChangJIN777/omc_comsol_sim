@@ -17,10 +17,25 @@ function P = createRibCavityGeom(P)
 %     k <= ndef:  a_k = a*(1 - maxdef*f((k-1)/ndef))      defect cells
 %     k >  ndef:  a_k = a                                  mirror cells
 %     L_k = ribLength(P, a_k): an explicit P.L (or P.w/2) for EVERY cell if
-%           given, otherwise the rule L_ref + dLda*(a_k - a_ref)
+%           given; else, with P.w_mirror (+ optional P.w_ctr), the tip-to-tip
+%           width 2*L_k tapered linearly in a_k from w_mirror (a_k = a) to
+%           w_ctr (a_k = a*(1 - maxdef)); otherwise the rule
+%           L_ref + dLda*(a_k - a_ref)
 %     The sidewall angle P.d is passed through unchanged to buildRibCavity.
 %     f = 1-x^2 (quadratic), 1-3x^2+2x^3 (cubic), 1-x (linear), 1 (none: a
 %     step to a*(1 - maxdef) inside the defect), as CreateNanobeamGeom.
+%
+%   HOLE-STYLE TAPER, P.ribTaperScheme = 'hole' (default 'rib' = the above)
+%     CreateNanobeamGeom's maxdef/oblong scheme with hy <-> w = 2L, hx <-> t.
+%     With sig_k = a_k/a = 1 - maxdef*f((k-1)/ndef)  (1 for mirror cells):
+%         t_k = t  *sig_k^(1 - oblong)
+%         w_k = w_m*sig_k^(1 + oblong),   L_k = w_k/2
+%     w_m = mirror-cell width from P.w_mirror or the L(a) rule at a = P.a.
+%     oblong = 0 scales t and w like a; 1 keeps t; -1 keeps w; > 1 widens t
+%     and shortens the ribs toward the centre; < -1 lengthens them. P.oblong
+%     defaults to 2.7 (ribDefaultParams); P.w_ctr and an explicit P.L / P.w
+%     are errors. s, r1, r2, th and d stay constant. Positions follow
+%     P.taperConvention as below.
 %
 %   POSITIONS, P.taperConvention
 %     'centerspacing' (DEFAULT; CreateNanobeamGeom's convention). The spacing
@@ -54,7 +69,7 @@ function P = createRibCavityGeom(P)
 %     P.ribGeomCols  column indices: x (rib centre), a (a_k, sets L_k), t, L,
 %                    s, xL / xR (spine segment edges)
 %     P.beamLenHalf, P.beamLen
-%     P.a_cell, P.L_cell   half-beam a_k and L_k
+%     P.a_cell, P.L_cell, P.t_cell   half-beam a_k, L_k and t_k
 %     P.sp_cell      half-beam centre spacings sp_k ('centerspacing'), or the
 %                    actual centre-to-centre distances ('cellwidth')
 %     P.w            2*max(L_k), the beam's full y extent. Read as the beam
@@ -87,8 +102,8 @@ aLoc = P.a*ones(N,1);
 if any(inDef)
     aLoc(inDef) = P.a*(1 - P.maxdef*f((k(inDef)-1)/P.ndef));
 end
-[LLoc, Lsrc] = ribLength(P, aLoc);
-tLoc = P.t*ones(N,1);
+% L_k and t_k: t_k = P.t unless P.ribTaperScheme = 'hole' (see ribLength)
+[LLoc, Lsrc, tLoc] = ribLength(P, aLoc);
 sLoc = P.s*ones(N,1);
 
 switch P.taperConvention
@@ -139,10 +154,22 @@ switch P.taperConvention
             P.taperConvention);
 end
 
-if any(xR - xL <= P.t)
+% Per cell: the rib must sit inside its own spine segment on BOTH sides
+% ('centerspacing' segments are not centred on their rib, and t_k varies in
+% the 'hole' scheme), with room left for the root fillet.
+clr = min(xc - xL, xR - xc) - tLoc/2;
+[clrMin, kBad] = min(clr);
+if clrMin <= 0
     error('rib:segmentTooNarrow', ...
-        'A spine segment is no wider than the rib (min %g nm vs t = %g nm).', ...
-        min(xR - xL)*1e9, P.t*1e9);
+        ['Cell %d: rib (t = %g nm at x = %g nm) is not narrower than its spine ' ...
+         'segment [%g, %g] nm.'], kBad, tLoc(kBad)*1e9, xc(kBad)*1e9, ...
+        xL(kBad)*1e9, xR(kBad)*1e9);
+end
+if P.d == 0 && P.r1 > 0 && clrMin <= P.r1
+    warning('rib:rootFilletTight', ...
+        ['Cell %d: only %g nm of spine beside the rib (t = %g nm) for the root ' ...
+         'fillet P.r1 = %g nm. COMSOL may refuse the fillet.'], ...
+        kBad, clrMin*1e9, tLoc(kBad)*1e9, P.r1*1e9);
 end
 
 C = struct('x',1,'a',2,'t',3,'L',4,'s',5,'xL',6,'xR',7);
@@ -162,6 +189,7 @@ P.beamLenHalf = xR(end);
 P.beamLen     = 2*P.beamLenHalf;
 P.a_cell      = aLoc;
 P.L_cell      = LLoc;
+P.t_cell      = tLoc;
 P.sp_cell     = sp;
 P.w           = 2*max(LLoc);
 if ~strcmp(Lsrc,'w')

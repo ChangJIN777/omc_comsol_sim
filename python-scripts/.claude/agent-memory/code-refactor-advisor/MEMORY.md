@@ -1,0 +1,1 @@
+- [tidy3d conda env](reference_tidy3d_env.md) — real tidy3d 2.12.2 source lives in env `tidy`; comsol_sim env has none

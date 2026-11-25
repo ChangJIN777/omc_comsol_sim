@@ -1,0 +1,115 @@
+{
+  "server": "27005@license.seas.harvard.edu",
+  "user_matched": true,
+  "interval_s": 2.0,
+  "n_samples": 11,
+  "features_checked_out_by_phase": {
+    "extract": {
+      "CADIMPORT": 1,
+      "COMSOL": 1,
+      "COMSOLUSER": 1,
+      "CADIMPORTUSER": 1,
+      "MEMS": 1,
+      "WAVEOPTICS": 1
+    },
+    "after exit": {
+      "CADIMPORT": 1,
+      "COMSOL": 1,
+      "MEMS": 1
+    }
+  },
+  "still_held_after_exit": {},
+  "samples": [
+    {
+      "time": "16:10:41",
+      "phase": "extract",
+      "extra": {}
+    },
+    {
+      "time": "16:10:46",
+      "phase": "extract",
+      "extra": {}
+    },
+    {
+      "time": "16:10:51",
+      "phase": "extract",
+      "extra": {}
+    },
+    {
+      "time": "16:10:55",
+      "phase": "extract",
+      "extra": {}
+    },
+    {
+      "time": "16:11:00",
+      "phase": "extract",
+      "extra": {
+        "CADIMPORT": 1,
+        "COMSOL": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:11:04",
+      "phase": "extract",
+      "extra": {
+        "CADIMPORT": 1,
+        "COMSOL": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:11:09",
+      "phase": "extract",
+      "extra": {
+        "CADIMPORT": 1,
+        "COMSOL": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:11:13",
+      "phase": "extract",
+      "extra": {
+        "CADIMPORT": 1,
+        "COMSOL": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:11:18",
+      "phase": "extract",
+      "extra": {
+        "CADIMPORT": 1,
+        "COMSOL": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:11:23",
+      "phase": "extract",
+      "extra": {
+        "CADIMPORT": 1,
+        "COMSOL": 1,
+        "MEMS": 1,
+        "WAVEOPTICS": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:11:27",
+      "phase": "after exit",
+      "extra": {
+        "CADIMPORT": 1,
+        "COMSOL": 1,
+        "MEMS": 1
+      }
+    }
+  ]
+}

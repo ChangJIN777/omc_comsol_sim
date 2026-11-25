@@ -78,15 +78,29 @@ elseif isfield(P,'celltype') && strcmp(P.celltype,'rib')
     if strcmp(Pv.mEndBC,'fixed')
         endStr = 'fx';
     end
-    % Rib length: an explicit P.L / P.w (one constant L for every cell) or
-    % the L(a) rule; see ribLength.
+    % Rib length: an explicit P.L / P.w (one constant L for every cell),
+    % P.w_mirror (+ P.w_ctr; tip-to-tip widths at the mirror and centre
+    % cells) or the L(a) rule; see ribLength. With ribTaperScheme = 'hole'
+    % an '_o<oblong>' token follows, and wc is the real centre width.
     [Lc, Lsrc] = ribLength(Pv, Pv.a);
     if strcmp(Lsrc,'rule')
         Lstr = ['Lr',num2str(Pv.L_ref*1e9,'%.0f'),'nm_',...
                 'ar',num2str(Pv.a_ref*1e9,'%.0f'),'nm_',...
                 'dL',num2str(Pv.dLda,'%.4f')];
+    elseif strcmp(Lsrc,'w_mirror')
+        wEnds = 2*ribLength(Pv, Pv.a*[1, 1 - Pv.maxdef]);
+        Lstr = ['wm',num2str(wEnds(1)*1e9,'%.0f'),'nm_wc',num2str(wEnds(2)*1e9,'%.0f'),'nm'];
     else
         Lstr = ['Lc',num2str(Lc*1e9,'%.0f'),'nm'];
+    end
+    % Hole-style taper (ribTaperScheme = 'hole'): oblong token. Written even
+    % for oblong = 0, which differs from the 'rib' scheme.
+    if strcmp(Pv.ribTaperScheme,'hole')
+        ob = Pv.oblong;
+        if isempty(ob)
+            ob = 2.7;           % ribLength's default for an empty P.oblong
+        end
+        Lstr = [Lstr,'_o',num2str(ob,'%.4f')];
     end
     P.fileBase = [Pv.celltype,'_',...
               'a',num2str(Pv.a*1e9,'%.0f'),'nm_',...

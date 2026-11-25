@@ -1,0 +1,24 @@
+{
+  "managed": true,
+  "policy": "best",
+  "events": [
+    {
+      "ts": 1795532170.2896833,
+      "reason": "not the best cell (keep_hdf5: best)",
+      "deleted": [
+        "batch.hdf5",
+        "fdve-028771f2-d330-4bad-8deb-ccbe69d40876.hdf5",
+        "fdve-27966a2e-0c8f-476b-b2e2-97192550e84b.hdf5",
+        "fdve-2f0d15f9-31f4-4cc3-91dd-0adc7efd7537.hdf5",
+        "fdve-58195fd8-60f1-4e97-82be-04b527db3d21.hdf5",
+        "fdve-62e46b4b-9864-498c-81a2-2390f9b2903f.hdf5",
+        "fdve-76c51aa2-22df-4a8f-8a4a-42142ca9a920.hdf5",
+        "fdve-9be3d2d5-35c1-4804-b089-a4b410a3c1ec.hdf5",
+        "fdve-9d442b1d-a24d-4f81-867d-6fd22257e5c5.hdf5",
+        "fdve-f5f7340d-e779-4a5b-aad1-ed7afcee895e.hdf5"
+      ],
+      "freed_bytes": 23396752
+    }
+  ],
+  "hdf5_deleted": true
+}

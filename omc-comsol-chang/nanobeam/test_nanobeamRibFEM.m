@@ -21,18 +21,27 @@ P.celltype = 'rib';             % specify what type of unit cells we are simulat
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
-P.a  = 300e-9;                          % mirror lattice constant (cell width)
-P.t  = 100e-9;                          % rib width along x
+P.a  = 600e-9;                          % mirror lattice constant (cell width)
+P.t  = 280e-9;                          % rib width along x
 P.s  = 100e-9;                          % spine width along y
-P.th = 110e-9;                          % EFFECTIVE thickness of the template
+P.th = 250e-9;                          % EFFECTIVE thickness of the template
                                         % (z-offset defect); nominal 120e-9
 P.r1 = 40e-9;                           % concave rib/spine fillet (TODO: IR-set value)
 P.r2 = 40e-9;                           % convex rib-tip fillet    (TODO: IR-set value)
 P.L_ref = 400e-9;                       % rib half-length at a = a_ref (template centre)
 P.a_ref = 240e-9;
-P.dLda  = -0.4998;                      % dL/da (template IR set)
-                                        % (an explicit P.w or P.L would override the rule
-                                        %  with one constant rib length for every cell)
+P.dLda  = -0.4998;                      % dL/da (template IR set); used by the L(a)
+                                        % rule, and by P.w_mirror when P.w_ctr is unset
+
+% rib tip-to-tip width w = 2L (at the bottom face; fillets and spine do not change
+% it). Precedence: P.L > P.w (one constant width, no taper) > P.w_mirror (+ P.w_ctr,
+% linear in a, tapered with the cavity) > the L_ref/a_ref/dLda rule above. Leave all
+% unset for the rule (740 nm mirror to 800 nm centre at a = 300 nm, maxdef = 0.2).
+P.w_mirror = 1300e-9;                   % w at the mirror cells (a = P.a)
+% P.w_ctr  = 800e-9;                    % w at the centre cell (a = P.a*(1 - P.maxdef));
+                                        % 'rib' scheme only (an error with 'hole')
+% P.w = 740e-9;                         % alternative: one constant w for every cell
+                                        % (remove w_mirror/w_ctr)
 P.d = 0;                                % sidewall angle in RADIANS; d ~= 0 needs
                                         % r1 = r2 = 0 and mevenz = oevenz = 0
 
@@ -40,13 +49,25 @@ P.d = 0;                                % sidewall angle in RADIANS; d ~= 0 need
 P.ncellHalf = 14;                       % cells in x >= 0 half, centre counted once
 P.ribatctr = 1;                         % 1/0 for rib/spine gap at the centre
 P.ndef = 5;                             % taper length in cells
-P.maxdef = 0.2;                         % centre a = a*(1 - maxdef) = 240 nm
+P.maxdef = 0.2;                         % centre a = a*(1 - maxdef)
 P.taperFunc = 'quadratic';              % linear/cubic/quadratic/none
 P.taperConvention = 'centerspacing';    % 'centerspacing' (default, CreateNanobeamGeom:
                                         % x_{n+1} = x_n + a_{n+1}) or 'cellwidth' (the
                                         % template's; reproduces its positions); see README
 
-P.lambda = 750e-9;                      % target optical wavelength (template optical
+% hole-style taper: CreateNanobeamGeom's maxdef/oblong scheme (as
+% test_nanobeamRectFEM.m), with hy <-> w (tip to tip), hx <-> t, a <-> a:
+%   t_k = t*sig^(1-oblong),  w_k = w_mirror*sig^(1+oblong),
+%   sig = a_k/a = 1 - maxdef*f((k-1)/ndef)   (1 for mirror cells).
+% A positive oblong makes the ribs shorter and wider toward the centre.
+% Needs P.w_mirror (or the L(a) rule) and NO P.w_ctr / P.w / P.L.
+% 'rib' (default) = t constant, w from P.w_mirror/P.w_ctr or the rule above.
+% Validity: t_k < a_k, t_k > 2*r2, w_k > s + 2*(r1 + r2), checked by
+% validateRibParams (createRibCavityGeom errors before COMSOL starts).
+P.ribTaperScheme = 'hole';              % 'rib' | 'hole'
+P.oblong = -2;                         % hole scheme only (default 2.7)
+
+P.lambda = 1550e-9;                      % target optical wavelength (template optical
                                         % eigen-shift 400 THz)
 P.nbeam = 2.386;                        % diamond refractive index (telecom value, used everywhere)
 

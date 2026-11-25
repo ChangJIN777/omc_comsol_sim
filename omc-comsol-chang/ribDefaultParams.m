@@ -44,6 +44,13 @@ function P = ribDefaultParams(P)
 %   maxdef        0.2            cavity: centre a = a*(1 - maxdef)
 %   taperFunc     'quadratic'    cavity taper profile
 %   taperConvention 'centerspacing'  cavity: 'centerspacing' | 'cellwidth'
+%   ribTaperScheme 'rib'           cavity: 'rib' (t constant, L from ribLength) |
+%                                'hole' (CreateNanobeamGeom's maxdef/oblong
+%                                scaling: t_k = t*sig^(1-oblong),
+%                                w_k = w_mirror*sig^(1+oblong), sig = a_k/a)
+%   oblong        2.7            read ONLY when ribTaperScheme = 'hole'
+%                                (test_nanobeamRectFEM.m value); > 0 shortens
+%                                and widens the ribs toward the centre
 %   airrad        3.1 um         cavity air-cylinder radius
 %   airZOffset    60 nm          cavity air-cylinder axis above the mid-plane
 %   airradUC      5*a            unit-cell air radius when P.run_optical (LN)
@@ -52,10 +59,12 @@ function P = ribDefaultParams(P)
 %                                index in runOpticalBand_1D/_3D (LN builder value)
 %   holeatedge 0, plotgeom 0     read unconditionally by runBands
 %
-%   RIB LENGTH (L and w are NOT defaulted here, on purpose)
+%   RIB LENGTH (L, w, w_mirror and w_ctr are NOT defaulted here, on purpose)
 %     An explicitly supplied P.L (half-length) or P.w (tip-to-tip width,
-%     = 2L) wins over the L(a) rule; the rule is used only when neither is
-%     given. See ribLength.m.
+%     = 2L) gives one constant L for every cell. Otherwise P.w_mirror (2L at
+%     a = P.a) and optional P.w_ctr (2L at the centre, a = P.a*(1 - maxdef))
+%     set a width linear in a, tapered with the cavity. The L(a) rule is used
+%     only when none of these is given. See ribLength.m.
 
 if nargin < 1 || isempty(P)
     P = struct();
@@ -81,6 +90,8 @@ defaults = {
     'maxdef',          0.2
     'taperFunc',       'quadratic'
     'taperConvention', 'centerspacing'
+    'ribTaperScheme',  'rib'
+    'oblong',          2.7
     'airrad',          3.1e-6
     'airZOffset',      60e-9
     'mEndBC',          'lowreflecting'

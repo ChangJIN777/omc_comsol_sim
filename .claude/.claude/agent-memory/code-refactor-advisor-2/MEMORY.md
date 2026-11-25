@@ -1,0 +1,2 @@
+- [Tidy3D: no cloud spend](feedback_tidy3d_no_cloud_spend.md) — never upload/run on Tidy3D cloud; test offline with mocked tidy3d
+- [Optical engine decisions](project_optical_engine_comparability.md) — n = 2.386, xsect rect/wedge, parity rule; what is still unverified

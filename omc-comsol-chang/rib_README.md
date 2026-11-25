@@ -70,6 +70,8 @@ Column key:
 |---|---|---|---|---|---|
 | `L` | Explicit rib half-length. **Highest precedence** | unset | U+C | in / **out** | |
 | `w` | Explicit tip-to-tip width, = 2L. Used if `L` is unset | unset | U+C | in / **out** | LN |
+| `w_mirror` | Tip-to-tip width 2L at the mirror cell (`a = P.a`); L linear in a. Used if `L` and `w` are unset | unset | U+C | in | |
+| `w_ctr` | Tip-to-tip width 2L at the centre cell (`a = a·(1 − maxdef)`); sets the slope with `w_mirror` (else `dLda`). Needs `w_mirror` | unset | U+C | in | |
 | `L_ref` | Rule: L at `a = a_ref` | 400 nm | U+C | in | T4 |
 | `a_ref` | Rule: anchor point. **Not** the lattice constant | 240 nm | U+C | in | T4 |
 | `dLda` | Rule: slope dL/da | −0.4998 | U+C | in | T5 |
@@ -94,8 +96,10 @@ Both radii are global, applied to every cell.
 | `maxdef` | Centre a = `a·(1 − maxdef)` | 0.2 (→ 240 nm) | in |
 | `taperFunc` | `'quadratic'`, `'cubic'`, `'linear'` or `'none'` (as `CreateNanobeamGeom`) | `'quadratic'` | in |
 | `taperConvention` | `'centerspacing'` or `'cellwidth'` (§3.2) | `'centerspacing'` | in |
+| `ribTaperScheme` | `'rib'` (t constant, L from §3.1) or `'hole'` (maxdef/oblong scaling of t and w, §3.2a) | `'rib'` | in |
+| `oblong` | Hole scheme only: t_k = t·σ^(1−oblong), w_k = w_mirror·σ^(1+oblong). Ignored in the `'rib'` scheme | 2.7 | in |
 | `ribGeomHalf`, `ribGeom`, `ribGeomCols` | Per-cell table `[x a t L s xL xR]` for the half / full beam, and its column indices | — | **out** |
-| `a_cell`, `L_cell`, `sp_cell`, `w_hole` | Half-beam a_k, L_k, centre spacings, and `2·L_k` | — | **out** |
+| `a_cell`, `L_cell`, `t_cell`, `sp_cell`, `w_hole` | Half-beam a_k, L_k, t_k, centre spacings, and `2·L_k` | — | **out** |
 | `beamLenHalf`, `beamLen` | Beam length (half / full) | — | **out** |
 
 Sources: the defaults reproduce the template's cell positions (T1); `taperConvention` was the user's choice.
@@ -182,9 +186,10 @@ Named selections:
 
 1. **`P.L`** (explicit half-length) → L = `P.L` for every cell.
 2. **`P.w`** (explicit tip-to-tip width, the LN scripts' field) → L = `P.w/2` for every cell.
-3. Otherwise the **rule** `L(a) = L_ref + dLda·(a − a_ref)`.
+3. **`P.w_mirror`** (+ optional **`P.w_ctr`**): tip-to-tip widths at the mirror cell (a = `P.a`) and the centre cell (a = `P.a·(1 − maxdef)`), linear in a: `L(a) = w_mirror/2 + slope·(a − P.a)`, with slope = `(w_mirror − w_ctr)/(2·a·maxdef)`, or `dLda` when `w_ctr` is unset. Because a_k is affine in the taper profile f, this is w_k = w_mirror − (w_mirror − w_ctr)·f. With `maxdef = 0`, `w_ctr` must equal `w_mirror`.
+4. Otherwise the **rule** `L(a) = L_ref + dLda·(a − a_ref)`.
 
-Setting both `P.L` and `P.w` with `P.w ≠ 2·P.L` is an error.
+Setting both `P.L` and `P.w` with `P.w ≠ 2·P.L` is an error, as is `P.w_mirror` together with an explicit `P.L` or `P.w`, or `P.w_ctr` without `P.w_mirror`.
 
 - **Rule example:** a = 300 nm → L = 400 − 0.4998·60 = **370.012 nm** (740 nm tip to tip). `a_ref` is only the anchor point of the line. `dLda = 0` gives L = `L_ref` everywhere.
 - **Write-back.** The builders write the length they used back to `P.L` and `P.w` (cavity: `P.w = 2·max(L_k)`). Fields they *computed* are recorded in `P.ribDerived`, and a value equal to its recorded derived value is not treated as explicit. Re-running a builder on its own output, or after changing `a`, therefore still follows the rule. Setting a new `P.w` makes it explicit again.
@@ -207,6 +212,28 @@ The conventions differ only in how cells are placed:
   - `x_{k+1} = x_k + (a_k + a_{k+1})/2`, with the rib centred in a spine segment of width `a_k`.
   - Reproduces the template: 0, 241, 487, 743, 1013, 1302, …, 3702 nm (7.704 µm beam).
   - The default lands up to 10.5 nm further out than this.
+
+### 3.2a Hole-style taper (`ribTaperScheme = 'hole'`)
+`CreateNanobeamGeom.m`'s maxdef/oblong scheme (`test_nanobeamRectFEM.m`), with hy ↔ w (tip to tip), hx ↔ t and a ↔ a. With σ_k = a_k/a = 1 − maxdef·f((k−1)/ndef) (1 for mirror cells):
+
+- `t_k = t·σ_k^(1 − oblong)`
+- `w_k = w_m·σ_k^(1 + oblong)`, `L_k = w_k/2`
+
+w_m is the mirror-cell width: `P.w_mirror`, or the L(a) rule at a = `P.a`. `oblong` defaults to 2.7.
+
+| oblong | t toward the centre | w toward the centre |
+|---|---|---|
+| > 1 | grows | shrinks faster than σ² |
+| 1 | constant | ∝ σ² |
+| 0 | ∝ σ | ∝ σ |
+| −1 | ∝ σ² | constant |
+| < −1 | shrinks faster than σ² | grows |
+
+- `w_ctr` and an explicit `L`/`w` are errors in this scheme (oblong sets the centre width).
+- `s`, `r1`, `r2`, `th` and `d` stay constant. Positions follow `taperConvention` (§3.2).
+- Validity: t_k < a_k, t_k > 2·r2, w_k > s + 2(r1 + r2), and each rib inside its spine segment. Large `maxdef` quickly breaks these: with oblong 2.7, maxdef 0.8 gives a centre t of ~1.5 µm in a 60 nm cell (`rib:ribTooWide`).
+- Worked example (a = 300, t = 100, s = 100, r1 = r2 = 40, w_mirror = 740 nm, maxdef 0.2, ndef 5, oblong 2.7, cubic): t = 146.1, 139.9, 126.6, 113.2, 103.6, 100 nm and w = 324.1, 356.4, 442.8, 564.8, 684.6, 740 nm for k = 1…6.
+- Not supported: `taperTo`, `useManualDefect`, `wvgmir`.
 
 ### 3.3 `ribatctr` and optical parity
 `SetupNanobeamFEM` uses `oevenx = P.oevenx^(1 − P.ribatctr)`. A rib on the centre puts dielectric at x = 0, the analogue of `holeatctr = 0`, so `oevenx` is forced to 1. With `ribatctr = 0`, `P.oevenx` is used as given.
@@ -232,25 +259,32 @@ Fillets are drawn in the x–y plane and extruded, which only works with vertica
 Most checks are in `validateRibParams.m`; the others are in the file named in the table. Define:
 
 - a_min = `a` (unit cell) or `a·(1 − maxdef)` (cavity);
-- L_min, L_max = the rib half-length at the two ends of [a_min, a] (constant if `L`/`w` is explicit).
+- L_min, L_max = the rib half-length at the two ends of [a_min, a] (constant if `L`/`w` is explicit); t_min likewise (= `t` in the `'rib'` scheme).
 
 | Condition | Result |
 |---|---|
-| `a`, `t`, `s`, `th`, `L_ref` or `a_ref` not a positive finite scalar; `dLda` not finite; `r1`/`r2` negative; cavity counts or ranges invalid | error, `MATLAB:validateRibParams:*` |
+| `a`, `t`, `s`, `th`, `L_ref`, `a_ref`, `w_mirror` or `w_ctr` (when set) not a positive finite scalar; `dLda` not finite; `r1`/`r2` negative; cavity counts or ranges invalid | error, `MATLAB:validateRibParams:*` |
 | `d` not in [0, π/2) (e.g. passed in degrees) | error `rib:badSidewallAngle` |
 | `taperConvention` / `mEndBC` unknown (cavity) | error `rib:badTaperConvention` / `rib:badEndBC` (also `SetupNanobeamFEM:badEndBC`) |
 | L ≤ 0; or both `L` and `w` given with `w ≠ 2L` (`ribLength.m`) | error `rib:nonPositiveL` / `rib:inconsistentLW` |
-| `t` ≥ a_min | error `rib:ribTooWide` |
+| `w_mirror` combined with an explicit `L` or `w` (`ribLength.m`) | error `rib:conflictingLength` |
+| `w_ctr` given without `w_mirror` (`ribLength.m`) | error `rib:wCtrWithoutMirror` |
+| `maxdef = 0` and `w_ctr ≠ w_mirror` (`ribLength.m`) | error `rib:wCtrNoTaper` |
+| `ribTaperScheme` not `'rib'`/`'hole'` | error `rib:badTaperScheme` |
+| Hole scheme: `oblong` not a finite real scalar / combined with `w_ctr` (`ribLength.m`) | error `rib:badOblong` / `rib:wCtrWithHoleScheme` |
+| Hole scheme, cavity: explicit `L` or `w` | error `rib:holeSchemeNeedsMirrorWidth` |
+| t(a) ≥ a at either end of [a_min, a] | error `rib:ribTooWide` |
 | L_min ≤ `s`/2 | error `rib:ribShorterThanSpine` |
 | `d > 0` and (`r1` > 0 or `r2` > 0) | error `rib:filletWithSidewall` |
 | `d > 0` and `t − 2·th·tan d ≤ 0`, or `s − 2·th·tan d ≤ 0` | error `rib:sidewallTooSteep` |
 | `d > 0` with z symmetry (unit cell: `mbevenz ≠ 0`; cavity: the z cut would be on, in `buildRibCavity.m`) | error `rib:zSymWithSidewall` |
-| `d = 0`: 2·`r2` ≥ `t` | error `rib:tipFilletTooLarge` |
-| `d = 0`: `r1` ≥ (a_min − `t`)/2 | error `rib:rootFilletTooLarge` |
+| `d = 0`: 2·`r2` ≥ t_min | error `rib:tipFilletTooLarge` |
+| `d = 0`: `r1` ≥ min(a − t(a))/2 over the two ends | error `rib:rootFilletTooLarge` |
 | `d = 0`: `r1` + `r2` ≥ L_min − `s`/2 | warning `rib:filletsMeet` |
 | `d = 0`: 4·L_min + `s`/2 − 10 nm ≤ L_max (a cell's off-to-the-side drawing position overlaps placed cells) | warning `rib:stagingOverlap` |
 | Air does not enclose the beam (cavity `airrad` − \|`airZOffset`\|; unit-cell `airradUC`) | error `rib:airTooSmall` |
-| Cavity: spine segment ≤ `t` / unknown `taperFunc` (`createRibCavityGeom.m`) | error `rib:segmentTooNarrow` / `rib:badTaperFunc` |
+| Cavity: a rib not inside its spine segment on both sides (per cell) / unknown `taperFunc` (`createRibCavityGeom.m`) | error `rib:segmentTooNarrow` / `rib:badTaperFunc` |
+| Cavity, `d = 0`: spine beside a rib ≤ `r1` in some cell (`createRibCavityGeom.m`) | warning `rib:rootFilletTight` |
 | Cavity: missing fields, PML or asymmetric cavity requested (`buildRibCavity.m`) | error `rib:missingFields` / `rib:noPML` / `rib:noAsym` |
 | Root helpers not on the path (nanobeam side) | error `rib:pathMissing` |
 | `run_optical = 1` passed to the mechanics runners | error `runBands:ribOptical` / `runBands_noSym:ribOptical` |
@@ -265,7 +299,7 @@ Most checks are in `validateRibParams.m`; the others are in the file named in th
 | `solveBands` (mechanics, symmetric sectors) | `rib_a_…nm_s_…nm_w_…nm_t_…nm_th_…nm_d_…deg_r1_…nm_r2_…nm_rxt_…_` | New. Previously `solveBands` had no rib branch at all |
 | `solveBands_noSym` (mechanics, LN scripts) | `hole_unitCella_…nm_s_…nmw_…nm_t_…nm_th_…nm_d_…deg` + `_r1_…nm_r2_…nm` **only if a fillet is nonzero** | Legacy format kept, quirks included, so existing LN data under `test/` still matches |
 | `solveOpticalBands` | `optical_rib_a_…nm_s_…nmw_…nm_t_…nm_th_…nm_d_…deg` + the same conditional fillet suffix | Legacy format kept |
-| `CreateFileBase` (cavity, both copies) | `rib_a…nm_t…nm_s…nm_<L>_r1_…nm_r2_…nm_sw…deg_nc…_nd…_d…_<taper>_<cs\|cw>_ctr…_az…nm_<lr\|fx>`, then `_X…_Y…_Z…`. `<L>` is `Lr…nm_ar…nm_dL…` (rule) or `Lc…nm` (explicit). The shared tail prepends `th…nm_` (and `rxt…o_` when `rxtalInFilename = 1`) | |
+| `CreateFileBase` (cavity, both copies) | `rib_a…nm_t…nm_s…nm_<L>_r1_…nm_r2_…nm_sw…deg_nc…_nd…_d…_<taper>_<cs\|cw>_ctr…_az…nm_<lr\|fx>`, then `_X…_Y…_Z…`. `<L>` is `Lr…nm_ar…nm_dL…` (rule), `wm…nm_wc…nm` (`w_mirror`: tip-to-tip widths at the mirror and centre cells) or `Lc…nm` (explicit `L`/`w`); with `ribTaperScheme = 'hole'`, `_o<oblong %.4f>` is appended to `<L>` and `wc` is the real centre width. The shared tail prepends `th…nm_` (and `rxt…o_` when `rxtalInFilename = 1`) | |
 
 - `w` is always the width actually built (explicit, or `2·L(a)`).
 - `d` is printed in whole degrees; lengths in whole nm; `dLda` and `maxdef` to 4 decimals.

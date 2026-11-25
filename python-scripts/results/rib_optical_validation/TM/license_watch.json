@@ -1,0 +1,370 @@
+{
+  "server": "27005@license.seas.harvard.edu",
+  "user_matched": true,
+  "interval_s": 5.0,
+  "n_samples": 31,
+  "features_checked_out_by_phase": {
+    "solve std4": {
+      "CADIMPORTBATCH": 1,
+      "COMSOLBATCH": 1,
+      "COMSOLUSER": 1,
+      "CADIMPORTUSER": 1,
+      "MEMSBATCH": 1,
+      "WAVEOPTICSBATCH": 1,
+      "CLUSTERNODE": 1
+    },
+    "extract": {
+      "CADIMPORT": 1,
+      "COMSOL": 1,
+      "COMSOLUSER": 1,
+      "CADIMPORTUSER": 1,
+      "MEMS": 1,
+      "WAVEOPTICS": 1
+    },
+    "after exit": {}
+  },
+  "still_held_after_exit": {},
+  "released_within_s": 2.8,
+  "samples": [
+    {
+      "time": "16:12:05",
+      "phase": "solve std4",
+      "extra": {}
+    },
+    {
+      "time": "16:12:12",
+      "phase": "solve std4",
+      "extra": {}
+    },
+    {
+      "time": "16:12:20",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:12:28",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:12:36",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:12:44",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:12:52",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:12:59",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:13:07",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:13:15",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:13:23",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:13:31",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:13:39",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:13:47",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:13:55",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:14:03",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:14:12",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:14:19",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:14:27",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:14:35",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:14:43",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:14:51",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:14:59",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1,
+        "COMSOLBATCH": 1,
+        "MEMSBATCH": 1,
+        "WAVEOPTICSBATCH": 1,
+        "CLUSTERNODE": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:15:07",
+      "phase": "solve std4",
+      "extra": {
+        "CADIMPORTBATCH": 1
+      }
+    },
+    {
+      "time": "16:15:15",
+      "phase": "extract",
+      "extra": {}
+    },
+    {
+      "time": "16:15:22",
+      "phase": "extract",
+      "extra": {}
+    },
+    {
+      "time": "16:15:30",
+      "phase": "extract",
+      "extra": {
+        "CADIMPORT": 1,
+        "COMSOL": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:15:38",
+      "phase": "extract",
+      "extra": {
+        "CADIMPORT": 1,
+        "COMSOL": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:15:45",
+      "phase": "extract",
+      "extra": {
+        "CADIMPORT": 1,
+        "COMSOL": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:15:53",
+      "phase": "extract",
+      "extra": {
+        "CADIMPORT": 1,
+        "COMSOL": 1,
+        "MEMS": 1,
+        "WAVEOPTICS": 1,
+        "COMSOLUSER": 1,
+        "CADIMPORTUSER": 1
+      }
+    },
+    {
+      "time": "16:16:01",
+      "phase": "after exit",
+      "extra": {}
+    }
+  ]
+}
