@@ -55,6 +55,7 @@ to both scripts.
   - [Rib pre-filter](#rib-pre-filter)
   - [Rib configuration reference](#rib-configuration-reference)
   - [Rib outputs and file names](#rib-outputs-and-file-names)
+  - [Rib store and resume](#rib-store-and-resume)
   - [Dry run](#dry-run)
 - [Known gotchas](#known-gotchas)
 - [Testing](#testing)
@@ -159,8 +160,8 @@ assigned from them, because the start point and the objective's mapping both dep
 `hy/hx`. Writing the ratio out twice lets them drift, and `x0` then stops corresponding
 to `oblong_0`.
 
-> **Rib cavity:** the same two variables, with hy ↔ w (rib tip-to-tip width) and hx ↔ t
-> (rib width) — see [Rib design space](#rib-design-space).
+> **Rib cavity:** the rib script searches `oblong` itself, not the aspect ratio (hy ↔ w,
+> rib tip-to-tip width; hx ↔ t, rib width) — see [Rib design space](#rib-design-space).
 
 ---
 
@@ -886,13 +887,14 @@ only what differs.
 
 | | Hole (`optimize_oblong_maxdef.m`) | Rib (`optimize_rib_oblong_maxdef.m`) |
 |---|---|---|
-| Variables | `defectAspectRatio` = hy/hx at centre, `maxdef` | `defectAspectRatio` = **w/t at centre**, `maxdef` |
+| Variables | `defectAspectRatio` = hy/hx at centre, `maxdef` | **`oblong`**, `maxdef` (the centre w/t is derived and recorded) |
 | Optimizers, objective scaling, ladder | — | identical |
-| `OptimStore`, `seedBayesFromStore` | — | reused unchanged |
+| `OptimStore`, `seedBayesFromStore` | — | reused unchanged; rows are still keyed on (centre w/t, `maxdef`) |
 | Fitness | `g_OM²·Q_opt·L(λ)`, binary `Q_mech` gate | `g_OM²·Q_opt·L(λ)`, **gate off by default** |
 | Coupled constraints (`bayesopt`) | gate + usable solve | usable solve (+ gate if switched on) |
 | Pre-filter | `isFabricable` | `isFabricableRib` |
-| `bayesopt` variable | linear in the ratio | log-transformed ratio (`OPT.bo.dARtransform`) |
+| Search box | 100 % fabricable | 91.9 % fabricable; the rest is excluded without a solve |
+| `bayesopt` variable | linear in the ratio | linear in `oblong` |
 | First evaluation | random seed points | the start design (`OPT.bo.evalStartFirst`) |
 | Configuration | edit the knobs | edit the knobs, or pass an override struct |
 | Without COMSOL | separate test scripts | `OPT.dryRun = 1` runs the real script |
@@ -915,6 +917,7 @@ optimize_rib_oblong_maxdef(struct('dryRun', true));   % one dry study, seconds
 optimize_rib_oblong_maxdef(struct('optimizer', 'neldermead'));
 optimize_rib_oblong_maxdef(struct('runId', 'ribOblongMaxdef_trial2', ...
                                   'bo', struct('maxEvals', 90)));
+optimize_rib_oblong_maxdef(struct('oblong_min', -2.5, 'oblong_max', 1.5));   % the 100 % box
 ```
 
 Time one evaluation first with `test_nanobeamRibFEM.m` at the same `P.mMesh` / `P.oMesh`;
@@ -925,47 +928,79 @@ The script adds the repo root to the end of the path itself (`ribDefaultParams`,
 
 ### Rib design space
 
+The rib script searches the taper exponent directly:
+
+| `x` | Symbol | Meaning |
+|---|---|---|
+| `x(1)` | `oblong` | taper exponent, `P.oblong` |
+| `x(2)` | `maxdef` | fraction the lattice constant shrinks at the centre, `P.maxdef` |
+
 The hole-style rib taper is `CreateNanobeamGeom`'s scheme with hy ↔ w (rib tip-to-tip
 width, 2L) and hx ↔ t (rib width along the beam). With σ_k = 1 − maxdef·f((k−1)/ndef):
 
 ```
 a_k = a·σ_k        t_k = t·σ_k^(1−oblong)        w_k = w_mirror·σ_k^(1+oblong)
 
-defectAspectRatio = (w_mirror/t) · (1−maxdef)^(2·oblong)        centre-cell w/t
-
-  =>  oblong = log(defectAspectRatio / (w_mirror/t)) / (2·log(1−maxdef))
+defectAspectRatio = (w_mirror/t) · (1−maxdef)^(2·oblong)        centre-cell w/t, derived
 ```
+
+`oblong = 0` scales t and w like a; `oblong < −1` lengthens and narrows the ribs toward
+the centre (the start design); `oblong > 1` shortens and widens them. The centre-cell
+ratio is no longer searched, but it is still computed for every point: it is the
+pre-filter's input, the `dAR` column of the CSV and the key of the run store (see
+[Rib store and resume](#rib-store-and-resume)).
 
 `t_0` and `wm_0` are defined once at the top of the knobs block and `P.t` / `P.w_mirror`
 are assigned from them; a pre-flight check stops the run if `P` and the knobs disagree.
 
-Why the ratio and not `oblong` directly: the buildable region is a rectangle in
-`(defectAspectRatio, maxdef)` and a curved region in `(oblong, maxdef)`. With the base
-design, 100 % of the default box below builds, against 91.7 % of
-`oblong ∈ [−3, 3] × maxdef ∈ [0.05, 0.30]` (feasible `oblong` shrinks from [−3, 3] at
-maxdef ≤ 0.15 to [−2.4, 1.5] at 0.30). The ratio also keeps `OptimStore`'s columns and
-`seedBayesFromStore` usable as they are.
+**The feasible region is curved.** The buildable `oblong` interval narrows as `maxdef`
+grows, because the same exponent acts on a larger shrink. For the base design (a = 600,
+t = 280, w_mirror = 1300 nm, r1 = r2 = 40 nm, ndef = 5, quadratic):
 
-Default box, for a = 600, t = 280, w_mirror = 1300 nm (mirror w/t = 4.643) and the start
-design `oblong_0 = −2`, `maxdef_0 = 0.2` (centre w/t = 11.335, t = 143 nm, w = 1625 nm):
+| `maxdef` | buildable `oblong` | lower limit | upper limit |
+|---|---|---|---|
+| ≤ 0.10 | wider than [−8, 5] | — | — |
+| 0.15 | [−6.70, 3.63] | tip fillet | root fillet |
+| 0.20 | [−4.61, 2.59] | tip fillet | root fillet |
+| 0.25 | [−3.35, 1.96] | tip fillet | root fillet |
+| 0.30 | [−2.51, 1.54] | tip fillet | root fillet |
 
-| Knob | Default | Value |
+Strongly negative `oblong` thins the centre rib until t reaches 2·r2 = 80 nm
+(`BUILD_TIP_FILLET`); strongly positive `oblong` widens it inside a shrinking cell until
+the spine beside it, (a − t)/2, drops to r1 (`BUILD_ROOT_FILLET`, with the 50 nm rib-gap
+floor `FAB_MIN_GAP` just behind it). So a box cannot be both wide and fully buildable:
+
+| `oblong` box (× `maxdef` ∈ [0.05, 0.30]) | fabricable, 41×41 scan | Note |
 |---|---|---|
-| `OPT.defectAspectRatio_min` | `mirrorAspectRatio/3` | 1.548 |
-| `OPT.defectAspectRatio_max` | `defectAspectRatio_0*1.5` | 17.00 |
-| `OPT.maxdef_min` / `max` | absolute | 0.05 / 0.30 |
+| **[−4, 2.5]** | **91.9 %** | **default** — holds the whole buildable interval for `maxdef` ≥ 0.23 |
+| [−3, 3] | 91.7 % | symmetric; spends its upper end on unbuildable designs and stops 1 below the start |
+| [−5, 2] | 89.1 % | more room on the rib-narrowing side |
+| [−2.5, 1.5] | 100 % | the widest fully buildable box (0.35 nm margin); stops 0.5 below the start |
 
-The box spans **both taper directions**: ratios below the mirror's (`oblong > 0`, ribs
-shorten and widen toward the centre) and above it (`oblong < 0`, ribs lengthen and
-narrow). The induced `oblong` range is [−12.6, 10.7], reached only at small `maxdef`,
-where a large exponent is needed to produce the same centre shape. A 41×41 scan passes
-`isFabricableRib` everywhere; the tightest point is the (min ratio, max maxdef) corner,
-0.3 nm inside the root-fillet rule. For a local search around the start, as the hole
-script does, use `defectAspectRatio_0*0.5` and `*1.5` (also 100 %, tightest margin
-22 nm).
+| Knob | Default |
+|---|---|
+| `OPT.oblong_min` / `max` | −4 / 2.5 |
+| `OPT.maxdef_min` / `max` | 0.05 / 0.30 (absolute) |
 
-Under `bayesopt` the ratio is **log-transformed** (`OPT.bo.dARtransform = 'log'`): the box
-spans an 11× range, and at fixed `maxdef` log(ratio) is linear in `oblong`.
+The unbuildable corners cost nothing: `bayesopt` never proposes them (`XConstraintFcn`)
+and Nelder–Mead gets a graded penalty without a solve. `oblong` is on a **linear** axis
+under `bayesopt` (it changes sign, so there is nothing to log-transform).
+
+**The trade-off against searching the ratio.** [The design space](#the-design-space)
+argues for the centre aspect ratio, and the first version of this script searched it:
+a box in (ratio, `maxdef`) fixes the centre *shape*, and the default one was 100 %
+buildable. Its price is that `oblong = log(ratio/(w_mirror/t)) / (2·log(1−maxdef))`
+diverges as `maxdef` → 0, so that box reached `oblong` from −12.7 to +10.7 at
+`maxdef` = 0.05 while allowing only [−1.8, 1.5] at 0.30 — the range of the taper
+*exponent* was set by `maxdef`, not by a knob. Searching `oblong` puts the bound on the
+quantity `P.oblong` actually is, makes a result directly comparable with
+`test_nanobeamRibFEM.m` and `sweep_oblong_maxdef.m`, and keeps the two search variables
+independent in the geometry (`maxdef` sets how far a shrinks, `oblong` how that shrink is
+split between t and w). What is given up is the rectangular feasible region, which the
+pre-filter handles, and a direct bound on the centre shape: the fabricable part of the
+default box spans centre w/t from 1.46 to 34 (t from 80 to 396 nm, w from 525 to
+2754 nm), so read the `dAR`, `t_ctr_nm` and `w_ctr_nm` columns rather than assuming a
+shape.
 
 ### Rib objective, and the missing Q_mech
 
@@ -1021,6 +1056,8 @@ The one alternative objective kept is `fitness_maxGOM`.
 [ok, margin, why, info] = isFabricableRib(defectAspectRatio, maxdef, P);
 ```
 
+Its interface is unchanged: it takes the centre-cell aspect ratio, so the optimizer
+converts each `(oblong, maxdef)` candidate with the formula above before calling it.
 Vectorized (10⁴ candidates in about 20 ms) and used exactly like `isFabricable`:
 `XConstraintFcn` under `bayesopt`, graded penalty under Nelder–Mead, 41×41 startup scan.
 `why` is a reason code; `info.valid` / `.warn` / `.fab` give the three rule groups
@@ -1039,9 +1076,19 @@ floors are deliberately stricter than the builder and tested separately. With r1
 40 nm the build rules already imply t > 80 nm and a − t > 80 nm, so at the defaults the
 floors bind only on the rib arm and on the fixed s and th.
 
-The binding rule at the default box's tight corner is `BUILD_ROOT_FILLET`: for
-`oblong > 1` the rib widens toward the centre while the cell shrinks, and the spine left
-beside the rib drops below r1.
+The startup scan is uniform in `(oblong, maxdef)` — the measure `bayesopt` draws its
+seed points from — and, because part of the default box is unbuildable by design, it
+names the rules that exclude it:
+
+```
+Fabricable   : 91.9% of the search box (excluded: BUILD_ROOT_FILLET 2.4%, BUILD_TIP_FILLET 4.5%, FAB_MIN_GAP 1.2%)
+```
+
+With a fully buildable box it prints the tightest margin instead, as the hole script
+does. The thresholds are the hole script's: 0 % is an error, below 25 % a warning.
+`BUILD_TIP_FILLET` is the negative-`oblong` corner at large `maxdef` (t → 2·r2);
+`BUILD_ROOT_FILLET` / `FAB_MIN_GAP` the positive one, where the rib widens while the
+cell shrinks and the spine left beside it drops below r1.
 
 ### Rib configuration reference
 
@@ -1051,12 +1098,13 @@ Only the knobs that differ from the [Configuration reference](#configuration-ref
 |---|---|---|
 | `t_0`, `wm_0` | 280 nm, 1300 nm | mirror-cell rib width and tip-to-tip width; `P.t`/`P.w_mirror` derive from these |
 | `oblong_0`, `maxdef_0` | −2, 0.2 | start design (`test_nanobeamRibFEM.m`) |
+| `OPT.oblong_min`, `OPT.oblong_max` | −4, 2.5 | search box in `oblong` (replaces `OPT.defectAspectRatio_min/max`, which are now an unknown-option error) |
+| `OPT.maxdef_min`, `OPT.maxdef_max` | 0.05, 0.30 | search box in `maxdef` |
 | `OPT.targetFreq` | 7.2 GHz | mechanical solver target (`P.freq`) |
 | `OPT.useQmechGate` | `0` | 1 = gate on the low-reflecting-end `Q_mech` estimate |
 | `OPT.QmechMin` | 1e7 | gate threshold (uncalibrated for the rib) |
 | `OPT.mechFreqWindow` | `[]` | `[fLo fHi]` in Hz; `[]` = off |
 | `OPT.mechFreqTol` | 0.5 GHz | Gaussian 1/e half-width of the window roll-off |
-| `OPT.bo.dARtransform` | `'log'` | `'none'` for a linear ratio axis |
 | `OPT.bo.evalStartFirst` | `1` | cold start evaluates the start design first |
 | `OPT.nm.TolX/TolFun/MaxIter/MaxFunEvals` | 1e-4, 1e-3, 100, 200 | Nelder–Mead stopping rules (the hole script's `optimset` values) |
 | `OPT.shortFileBase` | `1` | short per-evaluation file names — see below |
@@ -1077,8 +1125,10 @@ counters `nEval`, `nSolved`, `nCacheHits`, `nInfeasible` plus `stats.bestCpl`, t
 ### Rib outputs and file names
 
 Same layout as [Outputs](#outputs), under `./test/1D_OMC_rib/optimize_<OPT.runId>/`. The
-CSV keeps the hole script's 13 columns (`LSiV_MHz` is NaN) and appends `dAR`,
-`t_ctr_nm`, `w_ctr_nm`.
+CSV keeps the hole script's 13 columns (`LSiV_MHz` is NaN) and appends `dAR` (the
+derived centre w/t), `t_ctr_nm`, `w_ctr_nm`. The second panel of
+`optimize_convergence.png` has `oblong` on its x axis and, when part of the box is
+unbuildable, a dotted line at the edge of the fabricable region.
 
 **File names are shortened by default.** `CreateFileBase`'s rib name is 141 characters
 for the start design (`rxt0o_th250nm_rib_a600nm_t280nm_s100nm_wm1300nm_wc1625nm_o-2.0000_…`).
@@ -1093,6 +1143,28 @@ startup if the projected path exceeds 259 characters.
 **Keep the rib store separate from the hole store.** The `dar` column holds w/t here and
 hy/hx there. Run ids keep the rows apart, but anything that reads the column across runs
 would mix two different quantities.
+
+### Rib store and resume
+
+`OptimStore` and `seedBayesFromStore` are shared with the hole script and unchanged, so
+a rib row is still written with `x = [defectAspectRatio, maxdef]`: the `dar` column and
+`param_key` hold the derived centre w/t, and `oblong` — now the searched value itself —
+sits beside it. Every row therefore records both, and the store does not depend on which
+variable a session searched:
+
+- **Cache.** A candidate `(oblong, maxdef)` is converted to `(dAR, maxdef)` and looked up
+  on that key, to 10 significant digits as before.
+- **Seeding.** The stored `(dAR, maxdef)` points are mapped back to `oblong` (the mapping
+  is exact) before they are handed to `bayesopt`.
+- **Studies stored by the ratio-searching version resume as they are**, under the same
+  `OPT.runId`, with either optimizer. Their points at small `maxdef` can lie outside the
+  `oblong` box; `bayesopt` still models them (it warns once, and the script prints how
+  many) but will not return one as its best point. If the best stored design is itself
+  outside the box, the script says so at startup and keeps it as the incumbent until a
+  better one is found — widen the bounds to search around it.
+
+`config_json` gains `searchSpace: "oblong"`, for the record only. Use a new `OPT.runId`
+when the *physics* changes (mirror cell, fitness, mesh), not because of this change.
 
 ### Dry run
 
@@ -1177,7 +1249,11 @@ test_isFabricableRib
 test_optimize_rib_dryrun    % needs the Statistics and ML Toolbox
 % Rib: runs optimize_rib_oblong_maxdef itself with OPT.dryRun = 1 -- a cold
 % Bayesian study, a resumed one, a Nelder-Mead session on the same run id,
-% and a study with the Q_mech gate on -- and asserts on what the store holds.
+% and a study with the Q_mech gate on -- and asserts on what the store holds:
+% every point inside the (oblong, maxdef) box, none unfabricable, dAR and
+% oblong consistent. Then a fresh Nelder-Mead study must land on the
+% stand-in's optimum (oblong = -1.2192, maxdef = 0.20), and a study written
+% the way the ratio-searching version stored it must resume.
 ```
 
 Expected output of the resume test:
@@ -1233,13 +1309,19 @@ ALL ISFABRICABLERIB ASSERTIONS PASSED
 and of the rib dry-run test (the optimizer's own per-evaluation log is omitted):
 
 ```
-[1] cold study : 10 solved, best fitness 3.962e+16
-[2] resume     : 4 new solve(s), best fitness 4e+16
-[3] neldermead : 1 cached, 25 solved, best fitness 4e+16
-[4] gate on    : 2 of 14 design(s) gated
+[1] cold study : 10 solved, best fitness 3.999e+16
+[2] resume     : 4 new solve(s), best fitness 3.999e+16
+[3] neldermead : 1 cached, 25 solved, best fitness 3.999e+16
+[4] gate on    : 1 of 14 design(s) gated
 [5] unknown option rejected
+[7] NM optimum  : oblong -1.2192 (expected -1.2192), maxdef 0.2000, 65 solved
+[8] dAR-era run : 3 stored rows seeded bayesopt (5 new solves); NM 2 cached
 ALL RIB DRY-RUN ASSERTIONS PASSED
 ```
+
+Lines [1]–[4] and [8] come from `bayesopt` and vary a little from run to run; [7] is
+deterministic. (There is no line [6]: assertion 6, the coupling breakdown, is checked
+inside sections 1–3.)
 
 The identical-path assertion is the important one: if the replay diverged, the
 fast-forward would be serving stored answers for a trajectory the optimizer is no longer

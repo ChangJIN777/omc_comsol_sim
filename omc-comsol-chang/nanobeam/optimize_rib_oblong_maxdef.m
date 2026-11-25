@@ -5,10 +5,10 @@ function [best_oblong, best_maxdef, fitnessBest, dsBest, OPT, stats] = optimize_
 %   the rib cavity's hole-style taper (P.celltype = 'rib',
 %   P.ribTaperScheme = 'hole'); each objective evaluation is a full COMSOL
 %   mechanical + optical solve via RunNanobeamFEM:
-%       x(1) = defectAspectRatio  rib aspect ratio w/t of the CENTRE cell
-%                                 (tip-to-tip width over rib width), mapped
-%                                 to P.oblong, see below
-%       x(2) = maxdef             maximum defect ratio, dimensionless
+%       x(1) = oblong   taper exponent P.oblong, searched DIRECTLY
+%       x(2) = maxdef   maximum defect ratio, dimensionless
+%   (Unlike optimize_oblong_maxdef.m, which searches the centre-cell aspect
+%   ratio and maps it to oblong. The ratio is still derived and recorded.)
 %
 %   [best_oblong, best_maxdef, fitnessBest, dsBest, OPT, stats] = ...
 %       optimize_rib_oblong_maxdef()
@@ -29,13 +29,20 @@ function [best_oblong, best_maxdef, fitnessBest, dsBest, OPT, stats] = optimize_
 %   Both write the same physics to the same run store, so a study started
 %   with one can be resumed or seeded with the other.
 %
-%   PARAMETER MAPPING (the hole optimizer's, with hy <-> w and hx <-> t)
+%   SEARCH SPACE AND THE DERIVED ASPECT RATIO
 %   The 'hole' taper scheme (createRibCavityGeom.m, ribLength.m) gives, with
 %   sig_k = 1 - maxdef*f((k-1)/ndef):
 %       a_k = a*sig_k,  t_k = t*sig_k^(1-oblong),  w_k = w_mirror*sig_k^(1+oblong)
-%   so at the centre cell (sig = 1 - maxdef)
+%   x = [oblong, maxdef] goes into P.oblong / P.maxdef unchanged. The
+%   centre-cell aspect ratio w/t (sig = 1 - maxdef) follows from it,
 %       defectAspectRatio = (w_mirror/t) * (1-maxdef)^(2*oblong)
-%       oblong = log(defectAspectRatio/(w_mirror/t)) / (2*log(1-maxdef))
+%   and is what isFabricableRib takes and what the run store is KEYED on
+%   (its 'dar' column; 'oblong' is stored beside it). The store is therefore
+%   independent of the search space: a study recorded by the earlier version
+%   of this script, which searched defectAspectRatio, resumes here unchanged.
+%   The buildable region is not a rectangle in (oblong, maxdef): the corners
+%   of the box at large maxdef are unbuildable. They are never solved (see
+%   FABRICATION PRE-FILTER) and the start-up scan reports their share.
 %
 %   FITNESS (OPT.fitnessFcn, default fitness_ribCoop)
 %
@@ -75,6 +82,9 @@ function [best_oblong, best_maxdef, fitnessBest, dsBest, OPT, stats] = optimize_
 %     OPT.resume : 1 = serve stored points, 0 = re-solve (still records).
 %     OPT.dbPath : the run store (separate from the hole optimizer's, because
 %                  the stored 'dAR' means w/t here and hy/hx there).
+%   Stored points are matched on (defectAspectRatio, maxdef), so they are
+%   reused whichever variable the session that wrote them searched. Stored
+%   points outside the current oblong box still seed the Bayesian surrogate.
 %   Ctrl-C is safe: an onCleanup guard marks the run 'interrupted'.
 %
 %   DRY RUN (OPT.dryRun = 1)
@@ -84,7 +94,7 @@ function [best_oblong, best_maxdef, fitnessBest, dsBest, OPT, stats] = optimize_
 %   NOT physics. See test_optimize_rib_dryrun.m.
 %
 %   Returns:
-%     best_oblong  - oblong at the optimum (mapped from defectAspectRatio)
+%     best_oblong  - oblong at the optimum
 %     best_maxdef  - maxdef at the optimum
 %     fitnessBest  - fitness (positive, un-scaled) at the optimum
 %     dsBest       - ds struct from the final re-run of the best point
@@ -128,9 +138,10 @@ addpath(fileparts(thisDir), '-end');
 %% ===================== TUNABLE KNOBS =====================
 
 % --- mirror-cell rib dimensions (m) ---
-% Defined here rather than only in the P struct below because the starting
-% point and the objective's oblong mapping BOTH depend on the mirror aspect
-% ratio w_mirror/t. P.t / P.w_mirror are assigned from these.
+% Defined here rather than only in the P struct below because the derived
+% centre-cell aspect ratio (the pre-filter's input and the run store's key)
+% depends on the mirror aspect ratio w_mirror/t. P.t / P.w_mirror are
+% assigned from these.
 t_0  = 280e-9;      % rib width along x at the mirror cells
 wm_0 = 1300e-9;     % rib tip-to-tip width at the mirror cells
 
@@ -141,23 +152,31 @@ wm_0 = 1300e-9;     % rib tip-to-tip width at the mirror cells
 oblong_0 = -2;
 maxdef_0 = 0.2;
 mirrorAspectRatio   = wm_0 / t_0;                                        % 4.643
-defectAspectRatio_0 = mirrorAspectRatio * (1-maxdef_0)^(2*oblong_0);     % 11.335
+defectAspectRatio_0 = dARofOblong(oblong_0, maxdef_0, mirrorAspectRatio); % 11.335
 
-% --- defectAspectRatio box constraints (dimensionless) ---
-% Centre-cell w/t. The box spans BOTH taper directions: below the mirror
-% ratio (oblong > 0) and above it (oblong < 0). On a 41x41 scan 100 % of it
-% passes isFabricableRib; the tightest point is the (min ratio, max maxdef)
-% corner, 0.3 nm inside the root-fillet rule.
-% For a local search around the start, as the hole optimizer does, use
-% defectAspectRatio_0*0.5 and defectAspectRatio_0*1.5 (also 100 % feasible).
-OPT.defectAspectRatio_min = mirrorAspectRatio/3;        % 1.548
-OPT.defectAspectRatio_max = defectAspectRatio_0*1.5;    % 17.00
+% --- oblong box constraints (dimensionless taper exponent) ---
+% Searched directly, on a LINEAR axis. Both taper directions are inside:
+% oblong < 0 (ribs lengthen and narrow toward the centre, as the start
+% design does) and oblong > 0 (ribs shorten and widen).
+% The buildable oblong interval narrows as maxdef grows (base design):
+%     maxdef <= 0.10 : wider than [-8, 5]     maxdef = 0.25 : [-3.35, 1.96]
+%     maxdef  = 0.15 : [-6.70, 3.63]          maxdef = 0.30 : [-2.51, 1.54]
+%     maxdef  = 0.20 : [-4.61, 2.59]
+% bounded below by the tip fillet (t_ctr -> 2*r2) and above by the root
+% fillet ((a - t)/2 -> r1 at the centre). So no box is both wide and fully
+% buildable. With the default below 91.9 % of a 41x41 scan passes
+% isFabricableRib; the rest (the two corners at large maxdef) is excluded
+% by XConstraintFcn under bayesopt and by the graded penalty under
+% Nelder-Mead, never solved.
+% Alternatives: [-2.5, 1.5] is the widest box that is 100 % buildable
+% (0.35 nm margin), but it stops 0.5 below the start design; [-3, 3] gives
+% 91.7 %, [-5, 2] 89.1 %.
+OPT.oblong_min = -4;
+OPT.oblong_max = 2.5;
 
 % --- maxdef box constraints (dimensionless, 0-<1) ---
 % Absolute, not fractions of maxdef_0, so the box does not move if the start
-% point is retuned. The induced oblong range is wide at small maxdef
-% (oblong = log(r)/(2*log(1-maxdef)) diverges as maxdef -> 0); that is
-% harmless here, since the box bounds the centre-cell SHAPE directly.
+% point is retuned.
 OPT.maxdef_min = 0.05;
 OPT.maxdef_max = 0.30;
 
@@ -230,9 +249,6 @@ OPT.bo.acquisition    = 'expected-improvement-plus';
 % repeated evaluation of the same geometry differ slightly.
 OPT.bo.deterministic  = false;
 OPT.bo.plotFcn        = {@plotMinObjective, @plotObjectiveModel};
-% 'log': the GP sees log(defectAspectRatio), which at fixed maxdef is LINEAR
-% in oblong, and the box spans an 11x range of the ratio. 'none' = linear.
-OPT.bo.dARtransform   = 'log';
 % 1 = on a cold start the start point above is the first evaluation, so
 % every study contains the baseline design. (bayesopt would otherwise only
 % draw random seed points.)
@@ -434,8 +450,13 @@ if abs(wmChk/Pdef.t - mirrorAspectRatio) > 1e-9*mirrorAspectRatio
         wmChk/Pdef.t, mirrorAspectRatio);
 end
 [x0ok, ~, x0why] = isFabricableRib(defectAspectRatio_0, maxdef_0, P);
-x0inBox = defectAspectRatio_0 >= OPT.defectAspectRatio_min && ...
-          defectAspectRatio_0 <= OPT.defectAspectRatio_max && ...
+if ~(isscalar(OPT.oblong_min) && isscalar(OPT.oblong_max) && ...
+        isfinite(OPT.oblong_min) && isfinite(OPT.oblong_max) && ...
+        OPT.oblong_min < OPT.oblong_max)
+    error('optimize_rib_oblong_maxdef:badOblongBounds', ...
+        'OPT.oblong_min and OPT.oblong_max must be finite scalars with min < max.');
+end
+x0inBox = oblong_0 >= OPT.oblong_min && oblong_0 <= OPT.oblong_max && ...
           maxdef_0 >= OPT.maxdef_min && maxdef_0 <= OPT.maxdef_max;
 if ~x0ok
     warning('optimize_rib_oblong_maxdef:startUnfabricable', ...
@@ -516,6 +537,9 @@ if OPT.useStore
     % jsonencode cannot represent a cell array of function handles, so the
     % plot-function list is stringified for the configuration snapshot.
     cfgSnap = OPT;
+    % For the record only: which variables this session searched. Resume
+    % does not depend on it, because the store is keyed on (dAR, maxdef).
+    cfgSnap.searchSpace = 'oblong';
     if iscell(cfgSnap.bo.plotFcn)
         cfgSnap.bo.plotFcn = cellfun(@func2str, cfgSnap.bo.plotFcn, ...
             'UniformOutput', false);
@@ -531,13 +555,13 @@ if OPT.useStore
         % Seed the incumbent from what the earlier session already found,
         % so a resumed run can never report a worse design than one that
         % has already been paid for.
+        % The store is keyed on x = [defectAspectRatio, maxdef].
         [xPrior, fPrior, iPrior] = store.best(OPT.runId);
         if ~isempty(xPrior)
             bestSoFar.fitness = fPrior;
             bestSoFar.defectAspectRatio = xPrior(1);
             bestSoFar.maxdef  = xPrior(2);
-            bestSoFar.oblong  = log(xPrior(1) / mirrorAspectRatio) / ...
-                                (2 * log(1 - xPrior(2)));
+            bestSoFar.oblong  = oblongOfDAR(xPrior(1), xPrior(2), mirrorAspectRatio);
             hitPrior = store.lookup(OPT.runId, xPrior);
             if ~isempty(hitPrior)
                 bestSoFar.gOM = hitPrior.gOM;
@@ -545,10 +569,18 @@ if OPT.useStore
                 bestSoFar.gPE = hitPrior.gPE;
             end
             fprintf(['Resuming     : best stored fitness %.4g at eval %d ' ...
-                     '(dAR=%.4f, maxdef=%.4f)\n' ...
+                     '(oblong=%.4f, maxdef=%.4f, dAR=%.4f)\n' ...
                      '               gOM = %s\n'], ...
-                fPrior, iPrior, xPrior(1), xPrior(2), ...
+                fPrior, iPrior, bestSoFar.oblong, xPrior(2), xPrior(1), ...
                 cplText(cplSummary(bestSoFar.gOM, bestSoFar.gMB, bestSoFar.gPE)));
+            if bestSoFar.oblong < OPT.oblong_min - 1e-9 || ...
+                    bestSoFar.oblong > OPT.oblong_max + 1e-9 || ...
+                    xPrior(2) < OPT.maxdef_min || xPrior(2) > OPT.maxdef_max
+                fprintf(['               NOTE: that design lies OUTSIDE the ' ...
+                         'current search box. It stays the incumbent\n' ...
+                         '               until a better one is found; widen ' ...
+                         'the bounds to search around it.\n']);
+            end
         else
             fprintf('Resuming     : no successful evaluation stored yet\n');
         end
@@ -566,7 +598,7 @@ if OPT.useStore
 end
 
 %% ===================== START-UP REPORT =====================
-x0 = [defectAspectRatio_0, maxdef_0];
+x0 = [oblong_0, maxdef_0];
 
 fprintf('\n==================== OPTIMIZATION START ====================\n');
 if OPT.dryRun
@@ -575,10 +607,11 @@ end
 fprintf('Optimizer                = %s\n', OPT.optimizer);
 fprintf('Mirror cell              : t = %.0f nm, w = %.0f nm (w/t = %.4f)\n', ...
     t_0*1e9, wm_0*1e9, mirrorAspectRatio);
-fprintf('Start defectAspectRatio  = %.6f  (oblong_0 = %.4f)\n', defectAspectRatio_0, oblong_0);
+fprintf('Search variables         = oblong, maxdef\n');
+fprintf('Start oblong             = %.6f  (centre-cell w/t = %.4f)\n', oblong_0, defectAspectRatio_0);
 fprintf('Start maxdef             = %.6f\n', maxdef_0);
-fprintf('defectAspectRatio bounds = [%.6f, %.6f]\n', ...
-    OPT.defectAspectRatio_min, OPT.defectAspectRatio_max);
+fprintf('oblong bounds            = [%.6f, %.6f]\n', ...
+    OPT.oblong_min, OPT.oblong_max);
 fprintf('maxdef bounds            = [%.6f, %.6f]\n', ...
     OPT.maxdef_min, OPT.maxdef_max);
 if OPT.useQmechGate
@@ -598,19 +631,30 @@ fprintf('Log written -> %s\n\n', logFile);
 %% ===================== FABRICATION FEASIBILITY SCAN ==================
 % isFabricableRib reproduces the builder's validity rules and the 50 nm
 % lithography floors as arithmetic. Scanning the box up front says how much
-% of the search space is reachable before any COMSOL time is spent.
+% of the search space is reachable before any COMSOL time is spent. The grid
+% is uniform in (oblong, maxdef), which is also how bayesopt draws its seed
+% points, so the fraction is the share of random draws that are admissible.
+% Part of the box being unbuildable is EXPECTED in these variables (see the
+% oblong bounds above); the report then names the rules that exclude it.
 nScan = 41;
-if strcmpi(OPT.bo.dARtransform, 'log')
-    scanAxis = exp(linspace(log(OPT.defectAspectRatio_min), ...
-                            log(OPT.defectAspectRatio_max), nScan));
-else
-    scanAxis = linspace(OPT.defectAspectRatio_min, OPT.defectAspectRatio_max, nScan);
-end
-[scanDAR, scanMD] = meshgrid(scanAxis, linspace(OPT.maxdef_min, OPT.maxdef_max, nScan));
-[scanOK, scanMargin] = isFabricableRib(scanDAR, scanMD, P);
+[scanOB, scanMD] = meshgrid(linspace(OPT.oblong_min, OPT.oblong_max, nScan), ...
+                            linspace(OPT.maxdef_min, OPT.maxdef_max, nScan));
+[scanOK, scanMargin, scanWhy] = isFabricableRib( ...
+    dARofOblong(scanOB, scanMD, mirrorAspectRatio), scanMD, P);
 fracFab = mean(scanOK(:));
-fprintf('Fabricable   : %.1f%% of the search box (tightest margin %.1f nm)\n', ...
-    100*fracFab, min(scanMargin(:))*1e9);
+if all(scanOK(:))
+    fprintf('Fabricable   : 100.0%% of the search box (tightest margin %.1f nm)\n', ...
+        min(scanMargin(:))*1e9);
+else
+    scanRules = unique(scanWhy(~scanOK));
+    scanText  = cell(size(scanRules));
+    for iRule = 1:numel(scanRules)
+        scanText{iRule} = sprintf('%s %.1f%%', scanRules{iRule}, ...
+            100*nnz(strcmp(scanWhy(:), scanRules{iRule}))/numel(scanOK));
+    end
+    fprintf('Fabricable   : %.1f%% of the search box (excluded: %s)\n', ...
+        100*fracFab, strjoin(scanText(:)', ', '));
+end
 if fracFab == 0
     error('optimize_rib_oblong_maxdef:boxInfeasible', ...
         ['No point on a %dx%d scan of the bounds is fabricable, so the ' ...
@@ -654,12 +698,10 @@ switch lower(OPT.optimizer)
         end
 
         % The box is the variable range, so bayesopt never proposes an
-        % out-of-bounds point. The variable names match the run store's
-        % columns, which is what lets seedBayesFromStore be shared.
+        % out-of-bounds point. oblong is on a linear axis (no transform).
         optVars = [ ...
-            optimizableVariable('dAR', ...
-                [OPT.defectAspectRatio_min, OPT.defectAspectRatio_max], ...
-                'Type', 'real', 'Transform', OPT.bo.dARtransform), ...
+            optimizableVariable('oblong', ...
+                [OPT.oblong_min, OPT.oblong_max], 'Type', 'real'), ...
             optimizableVariable('maxdef', ...
                 [OPT.maxdef_min, OPT.maxdef_max], 'Type', 'real')];
 
@@ -670,6 +712,16 @@ switch lower(OPT.optimizer)
         % only the second is meaningful (its first treats a missing Q_mech
         % as a violation), so that one is dropped.
         [initX, initObj, initCon] = seedBayesFromStore(store, OPT);
+        % seedBayesFromStore (shared with the hole optimizer) returns the
+        % store's own coordinates, (dAR, maxdef). Map them to the search
+        % variables; the mapping is exact, so rows written by a session that
+        % searched dAR seed this one just as well. A value that comes back a
+        % rounding error outside the box is snapped onto its edge.
+        seedOb = oblongOfDAR(initX.dAR, initX.maxdef, mirrorAspectRatio);
+        seedOb(abs(seedOb - OPT.oblong_min) < 1e-9) = OPT.oblong_min;
+        seedOb(abs(seedOb - OPT.oblong_max) < 1e-9) = OPT.oblong_max;
+        nSeedOut = nnz(seedOb < OPT.oblong_min | seedOb > OPT.oblong_max);
+        initX = table(seedOb, initX.maxdef, 'VariableNames', {'oblong', 'maxdef'});
         if OPT.useQmechGate
             numCon = 2;
         else
@@ -681,6 +733,13 @@ switch lower(OPT.optimizer)
         if nSeeded > 0
             fprintf(['Seeding GP with %d stored point(s); %d fresh seed ' ...
                      'point(s) to go.\n'], nSeeded, seedLeft);
+        end
+        if nSeedOut > 0
+            % bayesopt warns about these itself, and still uses them.
+            fprintf(['               %d of them lie outside the oblong box: ' ...
+                     'they inform the surrogate but cannot be\n' ...
+                     '               returned by bayesopt as its best point.\n'], ...
+                nSeedOut);
         end
         if nSeeded >= OPT.bo.maxEvals
             warning('optimize_rib_oblong_maxdef:budgetExhausted', ...
@@ -696,7 +755,8 @@ switch lower(OPT.optimizer)
         % called at all, so an unfabricable design is never proposed and
         % never costs a solve. isFabricableRib is vectorized because
         % bayesopt passes a table of many candidate rows at once.
-        xConFcn = @(t) isFabricableRib(t.dAR, t.maxdef, P);
+        xConFcn = @(t) isFabricableRib( ...
+            dARofOblong(t.oblong, t.maxdef, mirrorAspectRatio), t.maxdef, P);
 
         boArgs = {'MaxObjectiveEvaluations',  OPT.bo.maxEvals, ...
                   'XConstraintFcn',           xConFcn, ...
@@ -714,8 +774,8 @@ switch lower(OPT.optimizer)
         elseif OPT.bo.evalStartFirst && x0ok && x0inBox
             % InitialX without InitialObjective: bayesopt evaluates it first.
             boArgs = [boArgs, {'InitialX', ...
-                table(defectAspectRatio_0, maxdef_0, ...
-                      'VariableNames', {'dAR', 'maxdef'})}];
+                table(oblong_0, maxdef_0, ...
+                      'VariableNames', {'oblong', 'maxdef'})}];
         end
 
         boResults = bayesopt(@bayesObjective, optVars, boArgs{:});
@@ -725,7 +785,7 @@ switch lower(OPT.optimizer)
         % both optimizers maintain identically. JBest = NaN routes it there.
         try
             tBest = bestPoint(boResults);
-            xBest = [tBest.dAR, tBest.maxdef];
+            xBest = [tBest.oblong, tBest.maxdef];
         catch
             warning('optimize_rib_oblong_maxdef:noFeasibleBO', ...
                 ['bayesopt found no point satisfying the constraints. ' ...
@@ -747,10 +807,9 @@ switch lower(OPT.optimizer)
 end
 
 %% ===================== RESOLVE BEST POINT =====================
-best_defectAspectRatio = xBest(1);
+best_oblong            = xBest(1);
 best_maxdef            = xBest(2);
-best_oblong = log(best_defectAspectRatio / mirrorAspectRatio) / ...
-              (2*log(1 - best_maxdef));
+best_defectAspectRatio = dARofOblong(best_oblong, best_maxdef, mirrorAspectRatio);
 
 % Undo the log scaling. A J at or above the penalty floor means fminsearch
 % finished on an out-of-bounds, gated or failed vertex, which carries no
@@ -791,9 +850,9 @@ stats = struct('nEval', evalCount, 'nSolved', nSolved, ...
                'bestCpl', bestCpl);
 
 fprintf('\n==================== OPTIMIZATION COMPLETE ====================\n');
-fprintf('Best defectAspectRatio = %.6f\n', best_defectAspectRatio);
 fprintf('Best oblong            = %.4f\n', best_oblong);
 fprintf('Best maxdef            = %.4f\n', best_maxdef);
+fprintf('Best defectAspectRatio = %.6f  (centre-cell w/t, derived)\n', best_defectAspectRatio);
 fprintf('Best fitness           = %.4g\n', fitnessBest);
 fprintf('Best gOM               = %s\n', cplText(bestCpl));
 fprintf('Highest eval index     = %d\n', evalCount);
@@ -855,34 +914,38 @@ else
     % meaningful; bayesopt jumps wherever the acquisition function points.
     isSimplex = strcmpi(OPT.optimizer, 'neldermead');
     nexttile;
+    legendText = {'evals', 'start', 'best', 'bounds'};
     if isSimplex
-        plot(history.dAR, history.maxdef, '-', 'Color', [0.7 0.7 0.7]);
+        plot(history.oblong, history.maxdef, '-', 'Color', [0.7 0.7 0.7]);
         hold on;
+        legendText = [{'path'}, legendText];
     end
-    scatter(history.dAR, history.maxdef, 34, history.eval, 'filled');
+    scatter(history.oblong, history.maxdef, 34, history.eval, 'filled');
     hold on;
     cb = colorbar;
     cb.Label.String = 'evaluation number';
-    plot(defectAspectRatio_0, maxdef_0, 'ks', 'MarkerSize', 11, 'LineWidth', 1.4);
-    plot(best_defectAspectRatio, best_maxdef, 'r*', 'MarkerSize', 15, 'LineWidth', 1.6);
-    plot([OPT.defectAspectRatio_min, OPT.defectAspectRatio_max, ...
-          OPT.defectAspectRatio_max, OPT.defectAspectRatio_min, ...
-          OPT.defectAspectRatio_min], ...
+    plot(oblong_0, maxdef_0, 'ks', 'MarkerSize', 11, 'LineWidth', 1.4);
+    plot(best_oblong, best_maxdef, 'r*', 'MarkerSize', 15, 'LineWidth', 1.6);
+    plot([OPT.oblong_min, OPT.oblong_max, OPT.oblong_max, ...
+          OPT.oblong_min, OPT.oblong_min], ...
          [OPT.maxdef_min, OPT.maxdef_min, OPT.maxdef_max, ...
           OPT.maxdef_max, OPT.maxdef_min], 'k--', 'LineWidth', 1);
-    if strcmpi(OPT.bo.dARtransform, 'log')
-        set(gca, 'XScale', 'log');
+    if ~all(scanOK(:))
+        % Edge of the fabricable region inside the box, from the start-up
+        % scan: the corners beyond it are never solved.
+        contour(scanOB, scanMD, double(scanOK), [0.5 0.5], ':', ...
+            'LineColor', [0.85 0.33 0.10], 'LineWidth', 1.2);
+        legendText = [legendText, {'fabricable limit'}];
     end
     grid on;
-    xlabel('defectAspectRatio  (centre-cell w/t)');
+    xlabel('oblong');
     ylabel('maxdef');
     if isSimplex
         title('Simplex trajectory');
-        legend({'path', 'evals', 'start', 'best', 'bounds'}, 'Location', 'best');
     else
         title('Sampled designs');
-        legend({'evals', 'start', 'best', 'bounds'}, 'Location', 'best');
     end
+    legend(legendText, 'Location', 'best');
 
     saveas(figConv,  [OPT.rootLoc, 'optimize_convergence.png']);
     savefig(figConv, [OPT.rootLoc, 'optimize_convergence.fig']);
@@ -950,7 +1013,7 @@ end
     %   usable solve : -1 on success, +1 when there is no usable mode
     %   Q_mech gate  : 1 - Qmech/QmechMin   (only with OPT.useQmechGate)
     % A NaN objective marks an evaluation bayesopt could not use.
-        R = evalPoint([t.dAR, t.maxdef]);
+        R = evalPoint([t.oblong, t.maxdef]);
 
         usable = isfinite(R.fitRaw) && R.fitRaw > 0;
         if usable
@@ -978,10 +1041,10 @@ end
     % The out-of-bounds penalty grows with the distance outside the box
     % (normalized by each parameter's range), so the simplex always has a
     % direction back into the feasible set. No FEM call is made.
-        dARrange = OPT.defectAspectRatio_max - OPT.defectAspectRatio_min;
-        mdRange  = OPT.maxdef_max - OPT.maxdef_min;
-        viol = max([(OPT.defectAspectRatio_min - x(1)) / dARrange, ...
-                    (x(1) - OPT.defectAspectRatio_max) / dARrange, ...
+        obRange = OPT.oblong_max - OPT.oblong_min;
+        mdRange = OPT.maxdef_max - OPT.maxdef_min;
+        viol = max([(OPT.oblong_min - x(1)) / obRange, ...
+                    (x(1) - OPT.oblong_max) / obRange, ...
                     (OPT.maxdef_min - x(2)) / mdRange, ...
                     (x(2) - OPT.maxdef_max) / mdRange, ...
                     0]);
@@ -995,7 +1058,7 @@ end
     end
 
     function R = evalPoint(x)
-    % Shared evaluation core for BOTH optimizers: maps x -> (oblong, maxdef),
+    % Shared evaluation core for BOTH optimizers: x = [oblong, maxdef]. It
     % serves the point from the store if it was already solved, otherwise
     % runs RunNanobeamFEM (or the dry-run stand-in), then logs to the CSV,
     % the store and the plotting history.
@@ -1003,8 +1066,11 @@ end
     %   R.fitRaw - UNGATED fitness                               -- bayesopt
     %   R.Qmech  - mechanical Q estimate                 -- the BO constraint
     %   R.J      - Nelder-Mead penalty-ladder objective
-        defectAspectRatio_i = x(1);
-        maxdef_i            = x(2);
+        oblong_i = x(1);
+        maxdef_i = x(2);
+        % Centre-cell w/t: derived, not searched. It is the pre-filter's
+        % input and, with maxdef, the run store's key (see logEval below).
+        defectAspectRatio_i = dARofOblong(oblong_i, maxdef_i, mirrorAspectRatio);
         R = struct('fit', NaN, 'fitRaw', NaN, 'Qmech', NaN, ...
                    'J', 2*OPT.Jpenalty, 'cached', false, ...
                    'fabricable', true);
@@ -1021,13 +1087,15 @@ end
             viol   = min(10, -fabMargin / 50e-9);
             R.J    = OPT.Jpenalty * (2 + viol);
             R.fabricable = false;
-            fprintf(['  eval  --: dAR=%.4f  maxdef=%.4f  ' ...
+            fprintf(['  eval  --: oblong=%.4f  maxdef=%.4f  (dAR=%.4f)  ' ...
                      '[UNFABRICABLE: %s, %.1f nm short]\n'], ...
-                defectAspectRatio_i, maxdef_i, fabWhy{1}, -fabMargin*1e9);
+                oblong_i, maxdef_i, defectAspectRatio_i, fabWhy{1}, -fabMargin*1e9);
             return;
         end
 
         % --- resume fast-forward: was this exact point already solved? ---
+        % Matched on (dAR, maxdef), the store's key, so a row written by a
+        % session that searched dAR is found as well.
         if OPT.useStore && OPT.resume
             hit = store.lookup(OPT.runId, [defectAspectRatio_i, maxdef_i]);
             if ~isempty(hit)
@@ -1048,12 +1116,12 @@ end
                 fprintf(['  eval %3d: oblong=%.4f  maxdef=%.4f  ' ...
                          '[CACHED  fitness=%.4g  %s]\n' ...
                          '         gOM=%.2f kHz (MB %.2f + PE %.2f)\n'], ...
-                    hit.eval_idx, hit.oblong, maxdef_i, hit.fitness, ...
+                    hit.eval_idx, oblong_i, maxdef_i, hit.fitness, ...
                     hit.status, hit.gOM*1e-3, hit.gMB*1e-3, hit.gPE*1e-3);
 
                 if isfinite(hit.fitness) && hit.fitness > bestSoFar.fitness
                     bestSoFar.fitness = hit.fitness;
-                    bestSoFar.oblong  = hit.oblong;
+                    bestSoFar.oblong  = oblong_i;
                     bestSoFar.maxdef  = maxdef_i;
                     bestSoFar.defectAspectRatio = defectAspectRatio_i;
                     bestSoFar.gOM = hit.gOM;
@@ -1066,7 +1134,7 @@ end
                 history.eval(end+1, 1)    = hit.eval_idx;
                 history.dAR(end+1, 1)     = defectAspectRatio_i;
                 history.maxdef(end+1, 1)  = maxdef_i;
-                history.oblong(end+1, 1)  = hit.oblong;
+                history.oblong(end+1, 1)  = oblong_i;
                 history.fitness(end+1, 1) = hit.fitness;
                 history.Qmech(end+1, 1)   = hit.Qmech;
                 history.J(end+1, 1)       = R.J;
@@ -1080,11 +1148,10 @@ end
         evalCount = evalCount + 1;
         nSolved   = nSolved + 1;
 
-        % --- map the centre aspect ratio to oblong ---
+        % --- the search variables go into P unchanged ---
         Pe = P;
         Pe.maxdef = maxdef_i;
-        Pe.oblong = log(defectAspectRatio_i / mirrorAspectRatio) / ...
-                    (2*log(1 - maxdef_i));
+        Pe.oblong = oblong_i;
         sigCtr  = 1 - maxdef_i;
         tCtr_i  = t_0  * sigCtr^(1 - Pe.oblong);
         wCtr_i  = wm_0 * sigCtr^(1 + Pe.oblong);
@@ -1250,6 +1317,11 @@ end
         history.J(end+1, 1)       = J;
 
         % --- persist immediately so an interrupted run resumes from here ---
+        % rec.x is the STORE's key, [defectAspectRatio, maxdef], not the
+        % search vector: OptimStore (shared with the hole optimizer) writes
+        % x(1) to its 'dar' column and builds param_key from x. Keeping that
+        % convention is what records dar AND oblong for every row and keeps
+        % studies stored by the dAR-searching version resumable.
         if OPT.useStore
             try
                 store.logEval(OPT.runId, evalCount, struct( ...
@@ -1306,9 +1378,25 @@ function s = shortFileBase(prefix, oblong, maxdef)
 s = sprintf('rib_%sob%.4f_md%.4f', prefix, oblong, maxdef);
 end
 
+function dAR = dARofOblong(oblong, maxdef, mirrorAspectRatio)
+%DAROFOBLONG  Centre-cell aspect ratio w/t of a hole-scheme rib taper.
+%   dAR = (w_mirror/t) * (1 - maxdef)^(2*oblong). Element-wise; the inverse
+%   of oblongOfDAR. This is isFabricableRib's first input and x(1) of the
+%   run store's key.
+dAR = mirrorAspectRatio .* (1 - maxdef).^(2*oblong);
+end
+
+function oblong = oblongOfDAR(dAR, maxdef, mirrorAspectRatio)
+%OBLONGOFDAR  Taper exponent that gives the centre-cell aspect ratio dAR.
+%   oblong = log(dAR/(w_mirror/t)) / (2*log(1 - maxdef)). Element-wise; used
+%   to bring stored (dAR, maxdef) points into the search variables.
+oblong = log(dAR ./ mirrorAspectRatio) ./ (2*log(1 - maxdef));
+end
+
 function ds = dryRunDs(Pe, defectAspectRatio, OPT)
 %DRYRUNDS  Analytic stand-in for RunNanobeamFEM (OPT.dryRun). NOT physics:
-%   a smooth peak near (aspect ratio 8, maxdef 0.20) with the same fields,
+%   a smooth peak at (aspect ratio 8, maxdef 0.20), which for the default
+%   mirror cell (w/t = 1300/280) is oblong = -1.2192, with the same fields,
 %   units and orders of magnitude the real ds has, so every code path of the
 %   optimizer can be exercised without COMSOL. Q_mech drops below 1e7 away
 %   from maxdef = 0.19, so the optional gate has something to reject.

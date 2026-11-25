@@ -11,16 +11,25 @@ function test_optimize_rib_dryrun()
 %   What it asserts:
 %     1. A cold Bayesian study evaluates the start design first, spends
 %        exactly its budget, and stores fitness == fitnessRaw (gate off)
-%        together with a finite Q_mech estimate.
+%        together with a finite Q_mech estimate. It searches x = [oblong,
+%        maxdef]: every point lies in the oblong box, none is unfabricable
+%        although part of the box is, and each row records oblong AND the
+%        centre-cell aspect ratio derived from it.
 %     2. Re-running with the same runId and a larger budget solves only the
 %        difference, and never reports a worse incumbent.
 %     3. A Nelder-Mead session on the same runId reuses the stored start
 %        point (cross-optimizer resume).
 %     4. With OPT.useQmechGate = 1, gated rows have fitness 0, a positive
 %        ungated fitness, Q_mech below the threshold and status Qmech_gated.
-%     5. A mistyped option name is an error.
+%     5. A mistyped option name is an error, and so are the knobs of the
+%        earlier dAR-searching version.
 %     6. The coupling breakdown (gMB, gPE) travels with gOM into the store,
 %        the CSV and stats.bestCpl, on cold, resumed and cached paths.
+%     7. A fresh Nelder-Mead study converges onto the stand-in's known
+%        optimum, oblong = -1.2192, maxdef = 0.20, staying inside the box.
+%     8. A study stored by the dAR-searching version (rows keyed on
+%        [dAR, maxdef], one of them outside today's oblong box) resumes:
+%        its points seed bayesopt and serve the Nelder-Mead cache.
 %
 %   Requires the Statistics and Machine Learning Toolbox (for bayesopt).
 %
@@ -34,6 +43,11 @@ end
 rid = ['dryrun_test_', char(datetime('now', 'Format', 'yyyyMMddHHmmssSSS'))];
 fprintf('=== optimize_rib_oblong_maxdef dry-run test ===\nrun id: %s\n\n', rid);
 
+% Mirror-cell aspect ratio w_mirror/t of the optimizer's base design, and
+% the optimum of its dry-run stand-in (aspect ratio 8 at maxdef 0.20).
+mirrorAR  = 1300/280;
+obOptimum = log(8/mirrorAR)/(2*log(1 - 0.20));     % -1.2192
+
 %% ---------- 1. cold Bayesian study ----------
 [ob1, md1, fit1, ds1, O1, s1] = optimize_rib_oblong_maxdef( ...
     struct('dryRun', true, 'runId', rid, 'bo', struct('maxEvals', 10)));
@@ -42,6 +56,14 @@ T1 = store.loadEvals(rid);
 assert(height(T1) == 10 && s1.nSolved == 10 && s1.nCacheHits == 0, ...
     'a cold study must solve exactly its budget');
 assert(s1.nInfeasible == 0, 'XConstraintFcn let an unfabricable candidate through');
+assert(isfield(O1, 'oblong_min') && ~isfield(O1, 'defectAspectRatio_min'), ...
+    'the search box must be given in oblong');
+assert(all(T1.oblong >= O1.oblong_min & T1.oblong <= O1.oblong_max) && ...
+       all(T1.maxdef >= O1.maxdef_min & T1.maxdef <= O1.maxdef_max), ...
+    'an evaluated point lies outside the (oblong, maxdef) box');
+assert(all(abs(T1.dAR - mirrorAR*(1 - T1.maxdef).^(2*T1.oblong)) <= 1e-9*T1.dAR), ...
+    'the stored dAR must be the centre-cell aspect ratio of the stored oblong');
+assert(numel(unique(round(T1.oblong, 6))) > 1, 'oblong is not being varied');
 assert(abs(T1.oblong(1) - (-2)) < 1e-9 && abs(T1.maxdef(1) - 0.2) < 1e-12, ...
     'the start design must be the first evaluation');
 assert(all(strcmp(T1.status, 'ok')), 'every dry-run evaluation should be ok');
@@ -51,8 +73,12 @@ assert(all(isfinite(T1.Qmech) & T1.Qmech > 0), ...
     'the Q_mech estimate must be recorded even with the gate off');
 assert(isfinite(fit1) && abs(fit1 - max(T1.fitness)) <= 1e-9*fit1, ...
     'the reported best fitness must be the best stored one');
-assert(isfinite(ob1) && md1 >= O1.maxdef_min && md1 <= O1.maxdef_max && isstruct(ds1), ...
+assert(ob1 >= O1.oblong_min && ob1 <= O1.oblong_max && ...
+       md1 >= O1.maxdef_min && md1 <= O1.maxdef_max && isstruct(ds1), ...
     'best point / dsBest malformed');
+[~, kBest1] = max(T1.fitness);
+assert(abs(ob1 - T1.oblong(kBest1)) < 1e-9 && abs(md1 - T1.maxdef(kBest1)) < 1e-12, ...
+    'the reported best (oblong, maxdef) is not the best stored row');
 assert(exist([O1.rootLoc, 'optimize_log.csv'], 'file') == 2 && ...
        exist([O1.rootLoc, 'optimize_convergence.png'], 'file') == 2, ...
     'CSV log or convergence figure missing');
@@ -85,6 +111,8 @@ assert(s2.nSolved + s2.nCacheHits == 4, ...
     'a resumed study must spend only the budget the store does not cover');
 assert(height(T2) == 10 + s2.nSolved, 'store row count disagrees with the solves');
 assert(fit2 >= fit1*(1 - 1e-12), 'a resumed study reported a worse incumbent');
+assert(all(T2.oblong >= O1.oblong_min & T2.oblong <= O1.oblong_max), ...
+    'the resumed study left the oblong box');
 assert(isfinite(s2.bestCpl.gMB) && isfinite(s2.bestCpl.gPE) && ...
        abs(s2.bestCpl.gMB + s2.bestCpl.gPE - s2.bestCpl.gOM) <= 1e-9*s2.bestCpl.gOM, ...
     'a resumed study lost the coupling breakdown of its incumbent');
@@ -124,14 +152,72 @@ assert(all(T4.Qmech(passed) >= O4.QmechMin), ...
     'a row passed the gate despite failing the Q_mech threshold');
 
 %% ---------- 5. a mistyped option is an error ----------
-threw = false;
-try
-    optimize_rib_oblong_maxdef(struct('dryRun', true, 'optimiser', 'bayesopt'));
-catch ME
-    threw = strcmp(ME.identifier, 'optimize_rib_oblong_maxdef:unknownOption');
+badOpts = {struct('dryRun', true, 'optimiser', 'bayesopt'), ...
+           struct('dryRun', true, 'defectAspectRatio_min', 2), ...
+           struct('dryRun', true, 'bo', struct('dARtransform', 'log'))};
+for k = 1:numel(badOpts)
+    threw = false;
+    try
+        optimize_rib_oblong_maxdef(badOpts{k});
+    catch ME
+        threw = strcmp(ME.identifier, 'optimize_rib_oblong_maxdef:unknownOption');
+    end
+    assert(threw, 'an unknown option name must raise unknownOption (case %d)', k);
 end
-assert(threw, 'an unknown option name must raise unknownOption');
 fprintf('[5] unknown option rejected\n');
+
+%% ---------- 7. Nelder-Mead finds the stand-in's optimum in oblong ----------
+% Deterministic (fminsearch from the start design), unlike the bayesopt
+% sections. A narrowed box checks that the bounds are honoured: its lower
+% edge sits just under the start design.
+rid7 = [rid, '_nm'];
+[ob7, md7, fit7, ~, O7, s7] = optimize_rib_oblong_maxdef( ...
+    struct('dryRun', true, 'runId', rid7, 'optimizer', 'neldermead', ...
+           'oblong_min', -2.05, 'oblong_max', 1.5, ...
+           'nm', struct('MaxFunEvals', 80)));
+T7 = store.loadEvals(rid7);
+assert(abs(T7.oblong(1) - (-2)) < 1e-12 && abs(T7.maxdef(1) - 0.2) < 1e-12, ...
+    'Nelder-Mead must start from the start design');
+assert(all(T7.oblong >= O7.oblong_min & T7.oblong <= O7.oblong_max) && ...
+       all(T7.maxdef >= O7.maxdef_min & T7.maxdef <= O7.maxdef_max), ...
+    'Nelder-Mead solved a point outside the (oblong, maxdef) box');
+assert(abs(ob7 - obOptimum) < 0.02 && abs(md7 - 0.20) < 0.005, ...
+    'Nelder-Mead did not converge onto the stand-in optimum (oblong %.4f, maxdef %.4f)', ...
+    ob7, md7);
+assert(fit7 > 0.99*4e16, 'the optimum of the stand-in is 4e16');
+fprintf('\n[7] NM optimum  : oblong %.4f (expected %.4f), maxdef %.4f, %d solved\n\n', ...
+    ob7, obOptimum, md7, s7.nSolved);
+
+%% ---------- 8. resuming a study stored by the dAR-searching version ----------
+% Its rows are keyed on x = [dAR, maxdef], which is still the store's key.
+rid8 = [rid, '_legacy'];
+legacyX = [mirrorAR*(1 - 0.2)^(2*(-2)), 0.20;   % the start design
+           8.0,                         0.22;   % inside the oblong box
+           16.0,                        0.06];  % oblong = -10: outside it
+legacyFit = [1e15; 2e15; 5e14];
+for k = 1:3
+    store.logEval(rid8, k, struct('x', legacyX(k, :), ...
+        'oblong', log(legacyX(k, 1)/mirrorAR)/(2*log(1 - legacyX(k, 2))), ...
+        'wM', 7.2e9, 'gOM', 1e5, 'gMB', 1.4e5, 'gPE', -0.4e5, ...
+        'Qmech', 2e7, 'Qopt', 1e6, 'lambdaNm', 1550, ...
+        'fitness', legacyFit(k), 'fitnessRaw', legacyFit(k), ...
+        'J', -log10(legacyFit(k)), 'status', 'ok'));
+end
+[~, ~, fit8, ~, O8, s8] = optimize_rib_oblong_maxdef( ...
+    struct('dryRun', true, 'runId', rid8, 'bo', struct('maxEvals', 8)));
+T8 = store.loadEvals(rid8);
+assert(s8.nSolved + s8.nCacheHits == 5 && height(T8) == 3 + s8.nSolved, ...
+    'all 3 legacy rows must seed bayesopt and count against its budget');
+assert(all(T8.oblong(4:end) >= O8.oblong_min & T8.oblong(4:end) <= O8.oblong_max), ...
+    'a new evaluation of the resumed legacy study left the oblong box');
+assert(fit8 >= 2e15*(1 - 1e-12), 'the legacy incumbent was lost');
+[~, ~, ~, ~, ~, s8nm] = optimize_rib_oblong_maxdef( ...
+    struct('dryRun', true, 'runId', rid8, 'optimizer', 'neldermead', ...
+           'nm', struct('MaxFunEvals', 6)));
+assert(s8nm.nCacheHits >= 1, ...
+    'the start design stored under [dAR, maxdef] must serve the Nelder-Mead cache');
+fprintf('\n[8] dAR-era run : 3 stored rows seeded bayesopt (%d new solves); NM %d cached\n', ...
+    s8.nSolved, s8nm.nCacheHits);
 
 fprintf('\nALL RIB DRY-RUN ASSERTIONS PASSED\n');
 end
