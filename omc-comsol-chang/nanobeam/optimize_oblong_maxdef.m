@@ -1,4 +1,4 @@
-function [best_oblong, best_maxdef, fitnessBest, dsBest] = optimize_oblong_maxdef()
+function [best_oblong, best_maxdef, fitnessBest, dsBest, bestCpl] = optimize_oblong_maxdef()
 %OPTIMIZE_OBLONG_MAXDEF  Optimize the nanobeam cavity defect taper.
 %
 %   Searches two parameters, where each objective evaluation is a full COMSOL
@@ -65,6 +65,11 @@ function [best_oblong, best_maxdef, fitnessBest, dsBest] = optimize_oblong_maxde
 %     best_maxdef  - maxdef value at the optimum
 %     fitnessBest  - fitness (positive, un-scaled) at the optimum
 %     dsBest       - ds struct from the final re-run of the best point
+%     bestCpl      - coupling of the reported best design, in Hz:
+%                      .gOM  net |g_OM|       .gMB  moving boundary, signed
+%                      .gPE  photoelastic, signed (gMB + gPE = +/- gOM)
+%                      .cancelRatio  (|gMB| + |gPE|)/gOM, > 1 = they oppose
+%                      .rerun        the same four from the BEST re-run
 %
 %   Writes into OPT.rootLoc (which is keyed on OPT.runId, not the date, so a
 %   resumed study keeps all of its output together):
@@ -357,6 +362,11 @@ bestSoFar.fitness = -Inf;
 bestSoFar.oblong  = NaN;
 bestSoFar.maxdef  = NaN;
 bestSoFar.defectAspectRatio = NaN;
+% Its coupling in Hz: net, and the signed moving-boundary and photoelastic
+% parts of the same mode pair (see local_getGOM).
+bestSoFar.gOM = NaN;
+bestSoFar.gMB = NaN;
+bestSoFar.gPE = NaN;
 
 % Full search history, appended by the objective and plotted after the run.
 history.eval    = [];
@@ -395,9 +405,17 @@ if OPT.useStore
             bestSoFar.maxdef  = xPrior(2);
             bestSoFar.oblong  = log(xPrior(1) / (P.hy / P.hx)) / ...
                                 (2 * log(1 - xPrior(2)));
+            hitPrior = store.lookup(OPT.runId, xPrior);
+            if ~isempty(hitPrior)
+                bestSoFar.gOM = hitPrior.gOM;
+                bestSoFar.gMB = hitPrior.gMB;
+                bestSoFar.gPE = hitPrior.gPE;
+            end
             fprintf(['Resuming     : best stored fitness %.4g at eval %d ' ...
-                     '(dAR=%.4f, maxdef=%.4f)\n'], ...
-                fPrior, iPrior, xPrior(1), xPrior(2));
+                     '(dAR=%.4f, maxdef=%.4f)\n' ...
+                     '               gOM = %s\n'], ...
+                fPrior, iPrior, xPrior(1), xPrior(2), ...
+                cplText(cplSummary(bestSoFar.gOM, bestSoFar.gMB, bestSoFar.gPE)));
         else
             fprintf('Resuming     : no successful evaluation stored yet\n');
         end
@@ -617,11 +635,27 @@ if (~isfinite(fitnessBest) || fitnessBest <= 0) && isfinite(bestSoFar.fitness)
     fitnessBest            = bestSoFar.fitness;
 end
 
+% Coupling of the REPORTED design.  bestSoFar carries it whenever the
+% incumbent is the design reported; otherwise the optimizer's own endpoint
+% is, and the store has its row.
+bestCpl = cplSummary(NaN, NaN, NaN);
+if bestSoFar.defectAspectRatio == best_defectAspectRatio && ...
+        bestSoFar.maxdef == best_maxdef
+    bestCpl = cplSummary(bestSoFar.gOM, bestSoFar.gMB, bestSoFar.gPE);
+elseif OPT.useStore
+    hitBest = store.lookup(OPT.runId, [best_defectAspectRatio, best_maxdef]);
+    if ~isempty(hitBest)
+        bestCpl = cplSummary(hitBest.gOM, hitBest.gMB, hitBest.gPE);
+    end
+end
+bestCpl.rerun = cplSummary(NaN, NaN, NaN);   % filled after the BEST re-run
+
 fprintf('\n==================== OPTIMIZATION COMPLETE ====================\n');
 fprintf('Best defectAspectRatio = %.6f\n', best_defectAspectRatio);
 fprintf('Best oblong            = %.4f\n', best_oblong);
 fprintf('Best maxdef            = %.4f\n', best_maxdef);
 fprintf('Best fitness           = %.4g\n', fitnessBest);
+fprintf('Best gOM               = %s\n', cplText(bestCpl));
 fprintf('Total evaluations      = %d\n', evalCount);
 fprintf('Rejected unfabricable  = %d (no solve attempted)\n', nInfeasible);
 if OPT.useStore
@@ -731,6 +765,12 @@ if isfield(Pfinal, 'fileBase'); Pfinal = rmfield(Pfinal, 'fileBase'); end
 bestLoc = [OPT.rootLoc, 'BEST', filesep];
 fprintf('\nRe-running best design with plots -> %s\n', bestLoc);
 [dsBest, ~] = RunNanobeamFEM(Pfinal, bestLoc);
+
+% Coupling of the re-run itself.  It is a fresh solve, so it need not
+% reproduce the search-time numbers above exactly (mesh noise).
+[gOMre, gMBre, gPEre] = local_getGOM(dsBest);
+bestCpl.rerun = cplSummary(gOMre, gMBre, gPEre);
+fprintf('BEST re-run gOM        = %s\n', cplText(bestCpl.rerun));
 
 %% ===================== CLOSE OUT THE RUN =====================
 if OPT.useStore
@@ -895,15 +935,19 @@ end
                 J = R.J;
                 nCacheHits = nCacheHits + 1;
                 fprintf(['  eval %3d: oblong=%.4f  maxdef=%.4f  ' ...
-                         '[CACHED  fitness=%.4g  %s]\n'], ...
+                         '[CACHED  fitness=%.4g  %s]\n' ...
+                         '         gOM=%.2f kHz (MB %.2f + PE %.2f)\n'], ...
                     hit.eval_idx, hit.oblong, maxdef_i, hit.fitness, ...
-                    hit.status);
+                    hit.status, hit.gOM*1e-3, hit.gMB*1e-3, hit.gPE*1e-3);
 
                 if isfinite(hit.fitness) && hit.fitness > bestSoFar.fitness
                     bestSoFar.fitness = hit.fitness;
                     bestSoFar.oblong  = hit.oblong;
                     bestSoFar.maxdef  = maxdef_i;
                     bestSoFar.defectAspectRatio = defectAspectRatio_i;
+                    bestSoFar.gOM = hit.gOM;
+                    bestSoFar.gMB = hit.gMB;
+                    bestSoFar.gPE = hit.gPE;
                 end
 
                 % Replayed points join the history so the convergence plots
@@ -1098,6 +1142,9 @@ end
                 bestSoFar.oblong  = Pe.oblong;
                 bestSoFar.maxdef  = maxdef_i;
                 bestSoFar.defectAspectRatio = defectAspectRatio_i;
+                bestSoFar.gOM = gOM_i;
+                bestSoFar.gMB = gMB_i;
+                bestSoFar.gPE = gPE_i;
             end
         elseif isfinite(fit)
             J = OPT.Jpenalty;        % fit == 0: rejected by the Q_mech gate
@@ -1280,6 +1327,25 @@ if isfield(c, 'gMBmax') && ~isempty(c.gMBmax)
 end
 if isfield(c, 'gPEmax') && ~isempty(c.gPEmax)
     gPE = c.gPEmax(1);
+end
+end
+
+function s = cplSummary(gOM, gMB, gPE)
+%CPLSUMMARY  Coupling of one design as a struct, all in Hz.
+%   gOM is the net magnitude; gMB (moving boundary) and gPE (photoelastic)
+%   are the SIGNED parts of the same mode pair, so gMB + gPE = +/- gOM.
+%   cancelRatio = (|gMB| + |gPE|)/|gOM| as in CalcGOM: 1 when the two
+%   mechanisms reinforce, above 1 when they oppose. NaN where not computed.
+s = struct('gOM', gOM, 'gMB', gMB, 'gPE', gPE, ...
+           'cancelRatio', (abs(gMB) + abs(gPE)) / max(abs(gOM), eps));
+end
+
+function txt = cplText(s)
+%CPLTEXT  One-line console form of a cplSummary struct, in kHz.
+txt = sprintf('%.2f kHz (MB %.2f + PE %.2f), cancelRatio %.2f', ...
+    s.gOM*1e-3, s.gMB*1e-3, s.gPE*1e-3, s.cancelRatio);
+if s.cancelRatio > 1.5
+    txt = [txt, '  [MB and PE oppose]'];
 end
 end
 

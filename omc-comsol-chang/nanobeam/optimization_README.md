@@ -9,6 +9,12 @@ Two optimizers are selectable — **Bayesian** (`bayesopt`, the default) and **N
 (`fminsearch`). Both write the same physics to the same database, so a study started with
 one can be resumed or seeded with the other.
 
+The same machinery drives the **rib cavity** (`celltype = 'rib'`, hole-style taper) through
+`optimize_rib_oblong_maxdef.m`. It differs in the fitness (the rib has no mechanical PML,
+so there is no `Q_mech` gate by default) and in the pre-filter — see
+[Rib cavity counterpart](#rib-cavity-counterpart). Everything else in this guide applies
+to both scripts.
+
 ---
 
 ## Contents
@@ -41,6 +47,15 @@ one can be resumed or seeded with the other.
   - [Search and objective](#search-and-objective)
   - [Optimizer and persistence](#optimizer-and-persistence)
   - [Physics (the expensive settings)](#physics-the-expensive-settings)
+- [Rib cavity counterpart](#rib-cavity-counterpart)
+  - [Same and different](#same-and-different)
+  - [Rib quick start](#rib-quick-start)
+  - [Rib design space](#rib-design-space)
+  - [Rib objective, and the missing Q_mech](#rib-objective-and-the-missing-q_mech)
+  - [Rib pre-filter](#rib-pre-filter)
+  - [Rib configuration reference](#rib-configuration-reference)
+  - [Rib outputs and file names](#rib-outputs-and-file-names)
+  - [Dry run](#dry-run)
 - [Known gotchas](#known-gotchas)
 - [Testing](#testing)
 - [Related files](#related-files)
@@ -52,12 +67,16 @@ one can be resumed or seeded with the other.
 | File | Role |
 |---|---|
 | `optimize_oblong_maxdef.m` | The optimizer. Bayesian by default, Nelder–Mead switchable. |
+| `optimize_rib_oblong_maxdef.m` | Rib-cavity counterpart. Same optimizers and store; rib fitness and pre-filter. |
 | `OptimStore.m` | Persistence + stop/resume: SQLite where available, JSONL everywhere else. |
 | `isFabricable.m` | Lithography feasibility of a design, without any solve. |
+| `isFabricableRib.m` | Rib: build validity + lithography floors of a taper, without any solve. |
 | `seedBayesFromStore.m` | Turns stored evaluations into `bayesopt` seed data. |
 | `test_OptimStore_resume.m` | COMSOL-free proof that resume works. Runs in ~1 s. |
 | `test_bayesopt_wiring.m` | COMSOL-free proof of the Bayesian plumbing. |
 | `test_isFabricable.m` | Cross-validates the pre-filter against `CreateNanobeamGeom`. |
+| `test_isFabricableRib.m` | Cross-validates the rib pre-filter against `createRibCavityGeom`. |
+| `test_optimize_rib_dryrun.m` | Runs the rib optimizer end to end on its analytic dry-run stand-in. |
 | `bayesopt_oblong_maxdef_PROPOSAL.md` | The design this backend was built from. |
 | `sweep_oblong_maxdef.m` | Grid-sweep sibling over the same two parameters. |
 
@@ -140,6 +159,9 @@ assigned from them, because the start point and the objective's mapping both dep
 `hy/hx`. Writing the ratio out twice lets them drift, and `x0` then stops corresponding
 to `oblong_0`.
 
+> **Rib cavity:** the same two variables, with hy ↔ w (rib tip-to-tip width) and hx ↔ t
+> (rib width) — see [Rib design space](#rib-design-space).
+
 ---
 
 ## The objective
@@ -173,6 +195,10 @@ every design below the threshold scores exactly 0 and is indistinguishable from 
 other. If a run stalls immediately, either lower `OPT.QmechMin` or switch to
 `fitness_QxQxLambda`, which varies smoothly with `Q_mech` and so always supplies a
 gradient.
+
+> **Rib cavity:** there is no PML `Q_mech`, so the gate is off by default and the fitness
+> is `g_OM² · Q_opt · L(λ)` — see
+> [Rib objective, and the missing Q_mech](#rib-objective-and-the-missing-q_mech).
 
 ### Why the objective is `-log10(fitness)`
 
@@ -429,6 +455,9 @@ disagree with the code that actually throws.
 The binding rule is normally `a_def - hx_def`: into the taper the lattice contracts
 (`a_def = a(1-maxdef)`) while the hole *widens* (`hx_def = hx(1-maxdef)^(1-oblong)` grows
 for `oblong > 1`), so the solid bridge between holes is what runs out first.
+
+> **Rib cavity:** `isFabricableRib` plays the same role with the rib builder's rules — see
+> [Rib pre-filter](#rib-pre-filter).
 
 ### How each optimizer uses it
 
@@ -748,7 +777,27 @@ and are therefore mostly zeros — reading `cpl.gOM(3,7)` cannot distinguish "no
 from "never evaluated". `cpl.breakdown` lists only the pairs actually computed. Full
 column reference: `README_calcGOM.md` §6.5.
 
-A `cancelRatio` above 1.5 is also called out on the console during the run.
+**Where the breakdown appears.** Everywhere a run reports `gOM`, it reports `gMB` and
+`gPE` of the same mode pair next to it, in both optimizers:
+
+| Place | Form |
+|---|---|
+| per-evaluation console line | `gOM=… kHz (MB … + PE …)` |
+| replayed (`CACHED`) evaluations | the same, read back from the store |
+| `Resuming : best stored fitness …` | followed by a `gOM = …` line for the stored incumbent |
+| final summary | `Best gOM = … kHz (MB … + PE …), cancelRatio …` |
+| after the `BEST/` re-run | `BEST re-run gOM = …` — the re-run's own numbers, a fresh solve |
+| `optimize_log.csv` | `gOM_kHz, gMB_kHz, gPE_kHz` |
+| run store, `.jsonl` mirror, `store.loadEvals`, `store.lookup` | `gOM`, `gMB`, `gPE` in Hz |
+| return value | `bestCpl` — 5th output of `optimize_oblong_maxdef`, `stats.bestCpl` of `optimize_rib_oblong_maxdef` |
+
+`bestCpl` has `.gOM`, `.gMB`, `.gPE` (Hz, parts signed), `.cancelRatio`, and `.rerun`
+with the same four fields from the `BEST/` re-run. `dsBest.cpl.breakdown(1,:)` adds the
+`p11`/`p12`/`p44` split. The convergence figure and `bayesopt_results.mat` carry fitness
+only, no coupling.
+
+A `cancelRatio` above 1.5 is flagged `[MB and PE oppose]` in the summary lines, and
+`CalcGOM` calls it out per mode pair during each solve.
 
 **Why this matters for the optimizer.** The active fitness is `g_OM² · Q_opt · L(λ)`, so
 nothing in the objective penalizes a cancellation notch: the search will happily settle in
@@ -824,6 +873,244 @@ writes mode profiles into its own folder. Set them to 0 for a faster, quieter ru
 
 ---
 
+## Rib cavity counterpart
+
+`optimize_rib_oblong_maxdef.m` optimizes the defect taper of the **rib cavity**
+(`P.celltype = 'rib'`, built by `createRibCavityGeom` + `buildRibCavity`) with its
+hole-style taper, `P.ribTaperScheme = 'hole'` (`rib_README.md` §3.2a). Its base design is
+the one in `test_nanobeamRibFEM.m`. The optimizers, the `-log10` objective, the penalty
+ladder, the store and resume all work exactly as described above; this section covers
+only what differs.
+
+### Same and different
+
+| | Hole (`optimize_oblong_maxdef.m`) | Rib (`optimize_rib_oblong_maxdef.m`) |
+|---|---|---|
+| Variables | `defectAspectRatio` = hy/hx at centre, `maxdef` | `defectAspectRatio` = **w/t at centre**, `maxdef` |
+| Optimizers, objective scaling, ladder | — | identical |
+| `OptimStore`, `seedBayesFromStore` | — | reused unchanged |
+| Fitness | `g_OM²·Q_opt·L(λ)`, binary `Q_mech` gate | `g_OM²·Q_opt·L(λ)`, **gate off by default** |
+| Coupled constraints (`bayesopt`) | gate + usable solve | usable solve (+ gate if switched on) |
+| Pre-filter | `isFabricable` | `isFabricableRib` |
+| `bayesopt` variable | linear in the ratio | log-transformed ratio (`OPT.bo.dARtransform`) |
+| First evaluation | random seed points | the start design (`OPT.bo.evalStartFirst`) |
+| Configuration | edit the knobs | edit the knobs, or pass an override struct |
+| Without COMSOL | separate test scripts | `OPT.dryRun = 1` runs the real script |
+| Output file names | `CreateFileBase` | short `rib_ob…_md…` (`OPT.shortFileBase`) |
+| Store | `./test/1D_OMC_hole/optim_runs.sqlite3` | `./test/1D_OMC_rib/optim_runs.sqlite3` |
+
+### Rib quick start
+
+```matlab
+% None of these need COMSOL:
+checkcode('optimize_rib_oblong_maxdef.m')
+test_isFabricableRib            % pre-filter vs. the real rib geometry builder
+test_optimize_rib_dryrun        % the whole script on an analytic stand-in
+optimize_rib_oblong_maxdef(struct('dryRun', true));   % one dry study, seconds
+
+% With COMSOL + LiveLink running, from nanobeam/:
+[best_oblong, best_maxdef, fitnessBest, dsBest, OPT, stats] = optimize_rib_oblong_maxdef();
+
+% Overrides instead of editing the file (unknown names are an error):
+optimize_rib_oblong_maxdef(struct('optimizer', 'neldermead'));
+optimize_rib_oblong_maxdef(struct('runId', 'ribOblongMaxdef_trial2', ...
+                                  'bo', struct('maxEvals', 90)));
+```
+
+Time one evaluation first with `test_nanobeamRibFEM.m` at the same `P.mMesh` / `P.oMesh`;
+the default budget is 60 solves.
+
+The script adds the repo root to the end of the path itself (`ribDefaultParams`,
+`validateRibParams` and `ribLength` live there), as `test_nanobeamRibFEM.m` does.
+
+### Rib design space
+
+The hole-style rib taper is `CreateNanobeamGeom`'s scheme with hy ↔ w (rib tip-to-tip
+width, 2L) and hx ↔ t (rib width along the beam). With σ_k = 1 − maxdef·f((k−1)/ndef):
+
+```
+a_k = a·σ_k        t_k = t·σ_k^(1−oblong)        w_k = w_mirror·σ_k^(1+oblong)
+
+defectAspectRatio = (w_mirror/t) · (1−maxdef)^(2·oblong)        centre-cell w/t
+
+  =>  oblong = log(defectAspectRatio / (w_mirror/t)) / (2·log(1−maxdef))
+```
+
+`t_0` and `wm_0` are defined once at the top of the knobs block and `P.t` / `P.w_mirror`
+are assigned from them; a pre-flight check stops the run if `P` and the knobs disagree.
+
+Why the ratio and not `oblong` directly: the buildable region is a rectangle in
+`(defectAspectRatio, maxdef)` and a curved region in `(oblong, maxdef)`. With the base
+design, 100 % of the default box below builds, against 91.7 % of
+`oblong ∈ [−3, 3] × maxdef ∈ [0.05, 0.30]` (feasible `oblong` shrinks from [−3, 3] at
+maxdef ≤ 0.15 to [−2.4, 1.5] at 0.30). The ratio also keeps `OptimStore`'s columns and
+`seedBayesFromStore` usable as they are.
+
+Default box, for a = 600, t = 280, w_mirror = 1300 nm (mirror w/t = 4.643) and the start
+design `oblong_0 = −2`, `maxdef_0 = 0.2` (centre w/t = 11.335, t = 143 nm, w = 1625 nm):
+
+| Knob | Default | Value |
+|---|---|---|
+| `OPT.defectAspectRatio_min` | `mirrorAspectRatio/3` | 1.548 |
+| `OPT.defectAspectRatio_max` | `defectAspectRatio_0*1.5` | 17.00 |
+| `OPT.maxdef_min` / `max` | absolute | 0.05 / 0.30 |
+
+The box spans **both taper directions**: ratios below the mirror's (`oblong > 0`, ribs
+shorten and widen toward the centre) and above it (`oblong < 0`, ribs lengthen and
+narrow). The induced `oblong` range is [−12.6, 10.7], reached only at small `maxdef`,
+where a large exponent is needed to produce the same centre shape. A 41×41 scan passes
+`isFabricableRib` everywhere; the tightest point is the (min ratio, max maxdef) corner,
+0.3 nm inside the root-fillet rule. For a local search around the start, as the hole
+script does, use `defectAspectRatio_0*0.5` and `*1.5` (also 100 %, tightest margin
+22 nm).
+
+Under `bayesopt` the ratio is **log-transformed** (`OPT.bo.dARtransform = 'log'`): the box
+spans an 11× range, and at fixed `maxdef` log(ratio) is linear in `oblong`.
+
+### Rib objective, and the missing Q_mech
+
+```
+fitness = g_OM² · Q_opt · L(λ)           L(λ) = exp(-((λ_opt - targetLambda)/lambdaTol)²)
+```
+
+This is `fitness_coopProduct` **without the `Q_mech` gate**, as `fitness_ribCoop`. The
+gate cannot be carried over:
+
+- `buildRibCavity` builds no mechanical PML and errors on `P.solveMechPML = 1`
+  (`buildRibCavity.m:60-62`).
+- `SolveNanobeamFEM` fills `ds.mfem.QAll` only under a PML (`SolveNanobeamFEM.m:396-398`),
+  so the hole fitness would return NaN for every rib design.
+
+**What is lost.** Nothing in the default objective rewards mechanical confinement. The
+only mechanical filter is `SolveNanobeamFEM`'s localization test
+(`P.extractLocMechModes`: displacement within 2a of the centre above 10 %). A design
+whose mechanical mode leaks through the mirrors is not penalized. Adding a PML to
+`buildRibCavity` is a separate piece of work; once it exists, `local_getQmechRib` already
+prefers `ds.mfem.QAll`, and only the `noRibPML` pre-flight check has to be removed.
+
+Two opt-in substitutes:
+
+| Knob | Effect |
+|---|---|
+| `OPT.useQmechGate = 1` | binary gate on an **estimate** of `Q_mech`, `OPT.QmechMin` as threshold; becomes a coupled constraint under `bayesopt`, as for the hole cavity |
+| `OPT.mechFreqWindow = [fLo fHi]` | multiplies the fitness by `exp(-(Δf/OPT.mechFreqTol)²)`, Δf being how far the mechanical mode of the best `g_OM` pair lies outside the window (e.g. the mirror band gap) |
+
+The estimate comes from the rib's default beam-end condition. `P.mEndBC = 'lowreflecting'`
+puts a low-reflecting boundary on the beam end (`SetupNanobeamFEM.m:232-246`), which
+makes the mechanical eigenvalues complex; `Q = |Im|/(2|Re|)` of `ds.mfem.PVals` is then
+the same expression `SolveNanobeamFEM.m:397` uses under a PML. It is a first-order
+absorbing boundary, not a PML: use it to **rank** designs, not as a Q value. It is
+written to the `Q_mech` column of every evaluation whether or not the gate is on, so a
+first ungated run shows what threshold is meaningful. `OPT.QmechMin = 1e7` is the hole
+script's PML value, not a calibrated rib number. With `P.mEndBC = 'fixed'` the
+eigenvalues are lossless and `OPT.useQmechGate = 1` is an error.
+
+Other differences from `fitness_coopProduct`:
+
+- **No partial scores.** Without `g_OM`, an optical Q and a wavelength the result is NaN
+  (unusable), so every finite fitness is on one scale.
+- **0 means gated, nothing else.** A usable score is floored at `realmin`.
+- **Which mode.** `Q_mech` and the window use the mechanical mode of the best `g_OM` pair
+  (`ds.cpl.mSol`), falling back to the most localized mode.
+
+The one alternative objective kept is `fitness_maxGOM`.
+
+### Rib pre-filter
+
+```matlab
+[ok, margin, why, info] = isFabricableRib(defectAspectRatio, maxdef, P);
+```
+
+Vectorized (10⁴ candidates in about 20 ms) and used exactly like `isFabricable`:
+`XConstraintFcn` under `bayesopt`, graded penalty under Nelder–Mead, 41×41 startup scan.
+`why` is a reason code; `info.valid` / `.warn` / `.fab` give the three rule groups
+separately, and `info.oblong`, `.a_ctr`, `.t_ctr`, `.w_ctr` the centre cell.
+
+| Group | Rules | Source |
+|---|---|---|
+| `BUILD_*` | t < a; min L > s/2; min t > 2·r2; min (a − t)/2 > r1; each rib inside its spine segment; air cylinder encloses the beam; (d > 0) top widths positive | hard errors of `validateRibParams.m` and `createRibCavityGeom.m:596-603` |
+| `WARN_*` | min L − s/2 > r1 + r2; per-cell spine beside the rib > r1; staging clearance | the builder's *warnings* ("COMSOL may refuse the fillet"); rejected unless `P.ribFabStrict = 0` |
+| `FAB_*` | t_k, s, rib arm (w_k − s)/2 ≥ `P.minRibFeature`; a_k − t_k ≥ `P.minRibGap`; th ≥ `P.minRibThickness` | `python-scripts/configs/bounds.yaml:81-83`, 50 nm each; 0 switches a rule off |
+
+The `BUILD_*` and `WARN_*` groups mirror the builder exactly, and `test_isFabricableRib`
+asserts it: zero false positives and zero false negatives against `createRibCavityGeom`
+across both taper conventions, both centre types and all four taper profiles. The `FAB_*`
+floors are deliberately stricter than the builder and tested separately. With r1 = r2 =
+40 nm the build rules already imply t > 80 nm and a − t > 80 nm, so at the defaults the
+floors bind only on the rib arm and on the fixed s and th.
+
+The binding rule at the default box's tight corner is `BUILD_ROOT_FILLET`: for
+`oblong > 1` the rib widens toward the centre while the cell shrinks, and the spine left
+beside the rib drops below r1.
+
+### Rib configuration reference
+
+Only the knobs that differ from the [Configuration reference](#configuration-reference).
+
+| Knob | Default | Meaning |
+|---|---|---|
+| `t_0`, `wm_0` | 280 nm, 1300 nm | mirror-cell rib width and tip-to-tip width; `P.t`/`P.w_mirror` derive from these |
+| `oblong_0`, `maxdef_0` | −2, 0.2 | start design (`test_nanobeamRibFEM.m`) |
+| `OPT.targetFreq` | 7.2 GHz | mechanical solver target (`P.freq`) |
+| `OPT.useQmechGate` | `0` | 1 = gate on the low-reflecting-end `Q_mech` estimate |
+| `OPT.QmechMin` | 1e7 | gate threshold (uncalibrated for the rib) |
+| `OPT.mechFreqWindow` | `[]` | `[fLo fHi]` in Hz; `[]` = off |
+| `OPT.mechFreqTol` | 0.5 GHz | Gaussian 1/e half-width of the window roll-off |
+| `OPT.bo.dARtransform` | `'log'` | `'none'` for a linear ratio axis |
+| `OPT.bo.evalStartFirst` | `1` | cold start evaluates the start design first |
+| `OPT.nm.TolX/TolFun/MaxIter/MaxFunEvals` | 1e-4, 1e-3, 100, 200 | Nelder–Mead stopping rules (the hole script's `optimset` values) |
+| `OPT.shortFileBase` | `1` | short per-evaluation file names — see below |
+| `OPT.dryRun` | `0` | 1 = analytic stand-in, output under `tempdir` |
+| `OPT.runId` | `'ribOblongMaxdef_trial1'` | names the study |
+| `OPT.dbPath` | `./test/1D_OMC_rib/optim_runs.sqlite3` | rib run store |
+| `P.minRibFeature`, `P.minRibGap`, `P.minRibThickness` | 50 nm | lithography floors |
+| `P.ribFabStrict` | `1` | reject designs the builder only warns about |
+
+Physics: `P.solveMech = 1`, `P.solveOpt = 1`, `P.calcG = 1`, **`P.solveMechPML = 0`**,
+`P.calcS = 0`, `P.mEndBC = 'lowreflecting'`, `P.ribatctr = 1` (which makes
+`SetupNanobeamFEM` force `oevenx = 1`).
+
+A fifth output `OPT` returns the settings actually used, and a sixth, `stats`, the
+counters `nEval`, `nSolved`, `nCacheHits`, `nInfeasible` plus `stats.bestCpl`, the
+[coupling breakdown](#coupling-breakdown) of the best design.
+
+### Rib outputs and file names
+
+Same layout as [Outputs](#outputs), under `./test/1D_OMC_rib/optimize_<OPT.runId>/`. The
+CSV keeps the hole script's 13 columns (`LSiV_MHz` is NaN) and appends `dAR`,
+`t_ctr_nm`, `w_ctr_nm`.
+
+**File names are shortened by default.** `CreateFileBase`'s rib name is 141 characters
+for the start design (`rxt0o_th250nm_rib_a600nm_t280nm_s100nm_wm1300nm_wc1625nm_o-2.0000_…`).
+Inside `optimize_<runId>/eval_NNNN_ob…_md…/`, with `RunNanobeamFEM`'s
+`_wl_…_wM_…_gO_….mat` suffix, the full path is over 300 characters from this repo's
+location — beyond Windows' 260-character limit, so the save fails unless long paths are
+enabled. With `OPT.shortFileBase = 1` files are named `rib_ob<oblong>_md<maxdef>…`
+(`rib_BEST_…` in `BEST/`); every parameter is still in `ds.P` inside the `.mat`, and the
+start design's full `CreateFileBase` name is printed at startup. The script warns at
+startup if the projected path exceeds 259 characters.
+
+**Keep the rib store separate from the hole store.** The `dar` column holds w/t here and
+hy/hx there. Run ids keep the rows apart, but anything that reads the column across runs
+would mix two different quantities.
+
+### Dry run
+
+`OPT.dryRun = 1` replaces `RunNanobeamFEM` with `dryRunDs`, a smooth analytic stand-in
+with the real `ds` fields and orders of magnitude. **It is not physics.** Everything
+else is the production path: `createRibCavityGeom` still runs for every point (so a
+pre-filter that disagreed with the builder would surface as a failed evaluation), and
+the pre-filter, both optimizers, the store, seeding, the CSV and the convergence figure
+are exercised.
+
+A dry run never touches a real study: the store and output root move to
+`tempdir/optimize_rib_oblong_maxdef_dryrun/`, the run id gets a `_dryrun_<timestamp>`
+suffix, the live `bayesopt` plots are off, and the budget is capped at 15 (`bayesopt`) /
+40 (Nelder–Mead) — each unless overridden explicitly, which is how
+`test_optimize_rib_dryrun` tests resume.
+
+---
+
 ## Known gotchas
 
 **Renaming `OPT.runId` mid-study orphans the old output.** Output paths are derived
@@ -851,8 +1138,8 @@ but a run that mixes the two branches cannot be ranked meaningfully.
 
 ## Testing
 
-None of these need COMSOL. `test_bayesopt_wiring` needs the Statistics and Machine
-Learning Toolbox; the rest run on base MATLAB.
+None of these need COMSOL. `test_bayesopt_wiring` and `test_optimize_rib_dryrun` need the
+Statistics and Machine Learning Toolbox; the rest run on base MATLAB.
 
 ```matlab
 OptimStore.selfTestAll
@@ -879,6 +1166,18 @@ test_bayesopt_wiring    % needs the Statistics and ML Toolbox
 % fitness; the Q_mech constraint is positive exactly on the gated designs;
 % seedBayesFromStore returns data bayesopt accepts; and a Nelder-Mead cache
 % read can re-derive its own J from rows a Bayesian run wrote.
+
+test_isFabricableRib
+% Rib: cross-validates isFabricableRib against createRibCavityGeom over the
+% default box, a wide region and seven geometry variants (taper convention,
+% centre type, taper profile, ndef), asserting zero false positives, zero
+% false negatives and matching warnings; then checks the fab floors, the
+% reason codes and the vectorization contract.
+
+test_optimize_rib_dryrun    % needs the Statistics and ML Toolbox
+% Rib: runs optimize_rib_oblong_maxdef itself with OPT.dryRun = 1 -- a cold
+% Bayesian study, a resumed one, a Nelder-Mead session on the same run id,
+% and a study with the Q_mech gate on -- and asserts on what the store holds.
 ```
 
 Expected output of the resume test:
@@ -900,7 +1199,7 @@ wide region  25x25 : filter  86.9% ok, builder  86.9% ok, agreement 100.0%
 ALL ISFABRICABLE ASSERTIONS PASSED
 ```
 
-and of the bayesopt wiring test:
+of the bayesopt wiring test:
 
 ```
 session 1 : 14 evaluation(s), 14 objective row(s) in the study
@@ -909,6 +1208,37 @@ session 1 : 14 evaluation(s), 14 objective row(s) in the study
 session 2 : 6 new evaluation(s), study holds 20 point(s)
            NM re-derives J = -13.4 from a BO-written row
 ALL BAYESOPT WIRING ASSERTIONS PASSED
+```
+
+of the rib pre-filter test:
+
+```
+nominal design: ok=1, margin=50.0 nm, oblong=-2.0000, t_ctr=143.4 nm, w_ctr=1625.0 nm
+search box     21x21 : filter 100.0% valid, builder 100.0% valid, agreement 100.0%, warned 0
+wide region    25x25 : filter  47.8% valid, builder  47.8% valid, agreement 100.0%, warned 3
+cellwidth      15x15 : filter  46.7% valid, builder  46.7% valid, agreement 100.0%, warned 0
+gap at centre  15x15 : filter  46.7% valid, builder  46.7% valid, agreement 100.0%, warned 0
+cubic          15x15 : filter  46.7% valid, builder  46.7% valid, agreement 100.0%, warned 4
+linear, ndef 8 15x15 : filter  46.7% valid, builder  46.7% valid, agreement 100.0%, warned 5
+none, ndef 1   15x15 : filter  46.7% valid, builder  46.7% valid, agreement 100.0%, warned 0
+ndef 0         15x15 : filter  46.7% valid, builder  46.7% valid, agreement 100.0%, warned 0
+N 3 < ndef     15x15 : filter  46.7% valid, builder  46.7% valid, agreement 100.0%, warned 2
+fab floors    : off == builder validity; on only shrinks; reason code + margin correct
+vectorization : logical column, matches scalar calls
+broadcasting  : scalar/array mixes expand correctly
+robustness    : non-physical inputs rejected without error
+ALL ISFABRICABLERIB ASSERTIONS PASSED
+```
+
+and of the rib dry-run test (the optimizer's own per-evaluation log is omitted):
+
+```
+[1] cold study : 10 solved, best fitness 3.962e+16
+[2] resume     : 4 new solve(s), best fitness 4e+16
+[3] neldermead : 1 cached, 25 solved, best fitness 4e+16
+[4] gate on    : 2 of 14 design(s) gated
+[5] unknown option rejected
+ALL RIB DRY-RUN ASSERTIONS PASSED
 ```
 
 The identical-path assertion is the important one: if the replay diverged, the
@@ -924,6 +1254,8 @@ Static analysis — `checkcode` on every file in this directory:
 | `test_isFabricable.m`, `test_bayesopt_wiring.m`, `test_OptimStore_resume.m` | clean |
 | `OptimStore.m` | one "value might be unused" — a defensive init in `selfTest` |
 | `optimize_oblong_maxdef.m` | three "function might be unused" for the intentionally-kept alternative fitness functions, one defensive `status_i` init |
+| `isFabricableRib.m`, `test_isFabricableRib.m`, `test_optimize_rib_dryrun.m` | clean |
+| `optimize_rib_oblong_maxdef.m` | one "function might be unused" (`fitness_maxGOM`, kept as the alternative), one defensive `status_i` init |
 
 ---
 
@@ -934,7 +1266,11 @@ Static analysis — `checkcode` on every file in this directory:
 | `sweep_oblong_maxdef.m` | grid sweep over the same two parameters (different geometry) |
 | `RunNanobeamFEM.m` | the per-evaluation pipeline: geometry → mesh → solve → post-process |
 | `CreateNanobeamGeom.m` | builds the hole arrays; lines 72-84 are the lithography guards `isFabricable` mirrors |
-| `SolveNanobeamFEM.m` | source of `ds.mfem.QAll`, `ds.ofem.Q` |
+| `SolveNanobeamFEM.m` | source of `ds.mfem.QAll`, `ds.mfem.PVals`, `ds.ofem.Q` |
+| `createRibCavityGeom.m`, `buildRibCavity.m` | rib cavity geometry; the first (with `../validateRibParams.m`, `../ribLength.m`) holds the rules `isFabricableRib` mirrors |
+| `test_nanobeamRibFEM.m` | front panel for a single rib cavity solve; source of the rib optimizer's base `P` |
+| `../rib_README.md` | rib geometry reference — §3.2a is the hole-style taper |
+| `../../python-scripts/configs/bounds.yaml` | `rib.fabrication` — source of the 50 nm rib floors |
 | `CalcGOM.m` | computes `ds.cpl` — `gMax`, `gMBmax`, `gPEmax`, `breakdown` |
 | `README_calcGOM.md` | **the reference for the coupling physics** — equations, signs, limitations |
 | `../bayesopt_boomerang.m`, `../bayesopt_README.md` | MATLAB `bayesopt` reference implementation |
