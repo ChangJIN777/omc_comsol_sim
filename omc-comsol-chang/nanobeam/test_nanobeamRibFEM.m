@@ -28,15 +28,11 @@ P.th = 250e-9;                          % EFFECTIVE thickness of the template
                                         % (z-offset defect); nominal 120e-9
 P.r1 = 40e-9;                           % concave rib/spine fillet (TODO: IR-set value)
 P.r2 = 40e-9;                           % convex rib-tip fillet    (TODO: IR-set value)
-P.L_ref = 400e-9;                       % rib half-length at a = a_ref (template centre)
-P.a_ref = 240e-9;
-P.dLda  = -0.4998;                      % dL/da (template IR set); used by the L(a)
-                                        % rule, and by P.w_mirror when P.w_ctr is unset
-
 % rib tip-to-tip width w = 2L (at the bottom face; fillets and spine do not change
 % it). Precedence: P.L > P.w (one constant width, no taper) > P.w_mirror (+ P.w_ctr,
-% linear in a, tapered with the cavity) > the L_ref/a_ref/dLda rule above. Leave all
-% unset for the rule (740 nm mirror to 800 nm centre at a = 300 nm, maxdef = 0.2).
+% linear in a, tapered with the cavity) > the L(a) rule (L_ref/a_ref/dLda, defaulted
+% by ribDefaultParams; only the 'rib' scheme uses it). With 'hole' below, the taper
+% comes from P.oblong and w_mirror alone.
 P.w_mirror = 1300e-9;                   % w at the mirror cells (a = P.a)
 % P.w_ctr  = 800e-9;                    % w at the centre cell (a = P.a*(1 - P.maxdef));
                                         % 'rib' scheme only (an error with 'hole')
