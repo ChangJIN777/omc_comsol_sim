@@ -242,8 +242,8 @@ OPT.dryRun = 0;
 % maxEvals is the TOTAL size of the study, and points seeded from the store
 % COUNT AGAINST IT. To extend a finished study, raise maxEvals. Every point
 % not served from the store is a full COMSOL solve, so time one first.
-OPT.bo.maxEvals       = 60;
-OPT.bo.numSeedPoints  = 8;
+OPT.bo.maxEvals       = 80;
+OPT.bo.numSeedPoints  = 10;
 OPT.bo.acquisition    = 'expected-improvement-plus';
 % FALSE on purpose: adaptive meshing (P.mAdjMesh / P.oAdjMesh) makes a
 % repeated evaluation of the same geometry differ slightly.
@@ -323,7 +323,7 @@ P.anisoMat = 1;
 P.rxtal    = 0;
 P.rxtalInFilename = 1;
 
-P.a  = 600e-9;      % mirror lattice constant (cell width)
+P.a  = 650e-9;      % mirror lattice constant (cell width)
 P.t  = t_0;         % rib width along x - set in TUNABLE KNOBS
 P.s  = 100e-9;      % spine width along y
 P.th = 250e-9;      % slab thickness
@@ -335,9 +335,9 @@ P.dLda  = -0.4998;
 P.w_mirror = wm_0;  % rib tip-to-tip width at the mirror cells - TUNABLE KNOBS
 P.d = 0;            % sidewall angle (rad); d ~= 0 needs r1 = r2 = 0
 
-P.ncellHalf = 14;
+P.ncellHalf = 22;
 P.ribatctr  = 1;    % rib at the cavity centre
-P.ndef      = 5;
+P.ndef      = 7;
 P.maxdef    = maxdef_0;     % start value - overwritten every evaluation
 P.taperFunc = 'quadratic';
 P.taperConvention = 'centerspacing';
@@ -370,8 +370,8 @@ P.mevenx  = 1;
 P.meveny  = 1;
 P.mevenz  = 1;
 P.freq    = OPT.targetFreq;
-P.mneigs  = 20;
-P.mMesh   = 1;
+P.mneigs  = 10;
+P.mMesh   = 3;
 P.mAdjMesh = 1;
 P.mEndBC  = 'lowreflecting';    % beam-end BC: 'lowreflecting' or 'fixed'
 P.max_dof = 5e6;

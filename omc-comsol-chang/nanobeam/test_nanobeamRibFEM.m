@@ -46,10 +46,10 @@ P.d = 0;                                % sidewall angle in RADIANS; d ~= 0 need
                                         % r1 = r2 = 0 and mevenz = oevenz = 0
 
 % cavity taper
-P.ncellHalf = 14;                       % cells in x >= 0 half, centre counted once
+P.ncellHalf = 30;                       % cells in x >= 0 half, centre counted once
 P.ribatctr = 1;                         % 1/0 for rib/spine gap at the centre
-P.ndef = 6;                             % taper length in cells
-P.maxdef = 1-550/650;                         % centre a = a*(1 - maxdef)
+P.ndef = 7;                             % taper length in cells
+P.maxdef = 0.1765;                         % centre a = a*(1 - maxdef)
 P.taperFunc = 'quadratic';              % linear/cubic/quadratic/none
 P.taperConvention = 'centerspacing';    % 'centerspacing' (default, CreateNanobeamGeom:
                                         % x_{n+1} = x_n + a_{n+1}) or 'cellwidth' (the
@@ -65,7 +65,7 @@ P.taperConvention = 'centerspacing';    % 'centerspacing' (default, CreateNanobe
 % Validity: t_k < a_k, t_k > 2*r2, w_k > s + 2*(r1 + r2), checked by
 % validateRibParams (createRibCavityGeom errors before COMSOL starts).
 P.ribTaperScheme = 'hole';              % 'rib' | 'hole'
-P.oblong = 0.5;                         % hole scheme only (default 2.7)
+P.oblong = 1;                         % hole scheme only (default 2.7)
 
 P.lambda = 1550e-9;                      % target optical wavelength (template optical
                                         % eigen-shift 400 THz)
