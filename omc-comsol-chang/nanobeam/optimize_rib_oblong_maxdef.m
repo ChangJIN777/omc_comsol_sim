@@ -149,10 +149,10 @@ wm_0 = 1300e-9;     % rib tip-to-tip width at the mirror cells
 % w ~ (1-maxdef)^(1+oblong), t ~ (1-maxdef)^(1-oblong).
 % oblong = 0 -> t and w scale like a; oblong < -1 -> ribs lengthen and
 % narrow toward the centre; oblong > 1 -> ribs shorten and widen.
-oblong_0 = -2;
-maxdef_0 = 0.2;
+oblong_0 = 1;
+maxdef_0 = 0.1765;
 mirrorAspectRatio   = wm_0 / t_0;                                        % 4.643
-defectAspectRatio_0 = dARofOblong(oblong_0, maxdef_0, mirrorAspectRatio); % 11.335
+defectAspectRatio_0 = dARofOblong(oblong_0, maxdef_0, mirrorAspectRatio); % 3.149
 
 % --- oblong box constraints (dimensionless taper exponent) ---
 % Searched directly, on a LINEAR axis. Both taper directions are inside:
@@ -181,7 +181,7 @@ OPT.maxdef_min = 0.05;
 OPT.maxdef_max = 0.30;
 
 % --- target mechanical frequency (solver eigen-shift, P.freq) ---
-OPT.targetFreq = 7.2e9;    % Hz  (test_nanobeamRibFEM.m)
+OPT.targetFreq = 7e9;      % Hz  (test_nanobeamRibFEM.m)
 
 % --- optical-wavelength fitness target and tolerance ---
 % The wavelength factor is GAUSSIAN: exp(-((lambda - target)/lambdaTol)^2),
@@ -335,7 +335,7 @@ P.dLda  = -0.4998;
 P.w_mirror = wm_0;  % rib tip-to-tip width at the mirror cells - TUNABLE KNOBS
 P.d = 0;            % sidewall angle (rad); d ~= 0 needs r1 = r2 = 0
 
-P.ncellHalf = 22;
+P.ncellHalf = 30;
 P.ribatctr  = 1;    % rib at the cavity centre
 P.ndef      = 7;
 P.maxdef    = maxdef_0;     % start value - overwritten every evaluation

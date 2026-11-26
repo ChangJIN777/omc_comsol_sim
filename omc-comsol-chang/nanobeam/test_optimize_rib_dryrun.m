@@ -64,7 +64,7 @@ assert(all(T1.oblong >= O1.oblong_min & T1.oblong <= O1.oblong_max) && ...
 assert(all(abs(T1.dAR - mirrorAR*(1 - T1.maxdef).^(2*T1.oblong)) <= 1e-9*T1.dAR), ...
     'the stored dAR must be the centre-cell aspect ratio of the stored oblong');
 assert(numel(unique(round(T1.oblong, 6))) > 1, 'oblong is not being varied');
-assert(abs(T1.oblong(1) - (-2)) < 1e-9 && abs(T1.maxdef(1) - 0.2) < 1e-12, ...
+assert(abs(T1.oblong(1) - 1) < 1e-9 && abs(T1.maxdef(1) - 0.1765) < 1e-12, ... % oblong_0, maxdef_0
     'the start design must be the first evaluation');
 assert(all(strcmp(T1.status, 'ok')), 'every dry-run evaluation should be ok');
 assert(all(abs(T1.fitness - T1.fitnessRaw) <= 1e-12*T1.fitnessRaw), ...
@@ -169,14 +169,14 @@ fprintf('[5] unknown option rejected\n');
 %% ---------- 7. Nelder-Mead finds the stand-in's optimum in oblong ----------
 % Deterministic (fminsearch from the start design), unlike the bayesopt
 % sections. A narrowed box checks that the bounds are honoured: its lower
-% edge sits just under the start design.
+% edge sits just under the stand-in's optimum (oblong -1.2192).
 rid7 = [rid, '_nm'];
 [ob7, md7, fit7, ~, O7, s7] = optimize_rib_oblong_maxdef( ...
     struct('dryRun', true, 'runId', rid7, 'optimizer', 'neldermead', ...
            'oblong_min', -2.05, 'oblong_max', 1.5, ...
            'nm', struct('MaxFunEvals', 80)));
 T7 = store.loadEvals(rid7);
-assert(abs(T7.oblong(1) - (-2)) < 1e-12 && abs(T7.maxdef(1) - 0.2) < 1e-12, ...
+assert(abs(T7.oblong(1) - 1) < 1e-12 && abs(T7.maxdef(1) - 0.1765) < 1e-12, ... % oblong_0, maxdef_0
     'Nelder-Mead must start from the start design');
 assert(all(T7.oblong >= O7.oblong_min & T7.oblong <= O7.oblong_max) && ...
        all(T7.maxdef >= O7.maxdef_min & T7.maxdef <= O7.maxdef_max), ...
@@ -191,7 +191,7 @@ fprintf('\n[7] NM optimum  : oblong %.4f (expected %.4f), maxdef %.4f, %d solved
 %% ---------- 8. resuming a study stored by the dAR-searching version ----------
 % Its rows are keyed on x = [dAR, maxdef], which is still the store's key.
 rid8 = [rid, '_legacy'];
-legacyX = [mirrorAR*(1 - 0.2)^(2*(-2)), 0.20;   % the start design
+legacyX = [mirrorAR*(1 - 0.1765)^(2*1), 0.1765; % the start design (oblong_0, maxdef_0)
            8.0,                         0.22;   % inside the oblong box
            16.0,                        0.06];  % oblong = -10: outside it
 legacyFit = [1e15; 2e15; 5e14];
