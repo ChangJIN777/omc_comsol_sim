@@ -130,9 +130,21 @@ else
               'nw',num2str(P.wvgmir,'%.0f'),'_',...
               'w',num2str(P.w*1e9,'%.0f'),'nm_',...
               'hx',num2str(P.hx*1e9,'%.0f'),'nm_',...
-              'hy',num2str(P.hy*1e9,'%.0f'),'nm_',...
+              'hy',num2str(P.hy*1e9,'%.0f'),'nm_'];
+    if isfield(P,'useManualGeom') && P.useManualGeom
+        % Manual hole arrays (CreateNanobeamGeom ignores oblong/maxdef): name
+        % the run by a hash of the arrays, so two manual designs never share
+        % a fileBase and RunNanobeamFEM cannot reload the wrong cached result.
+        % The token REPLACES the o/d tokens instead of following them, because
+        % RunNanobeamFEM globs [fileBase,'*.mat'] and a formula-run name must
+        % not be a prefix of a manual-run name. Keep this branch identical in
+        % CreateFileBase.m and nanobeam/CreateFileBase.m.
+        P.fileBase = [P.fileBase,'mg',manualGeomHash(P)];
+    else
+        P.fileBase = [P.fileBase,...
               'o',num2str(P.oblong,'%.4f'),'_',...
               'd',num2str(P.maxdef,'%.4f')];
+    end
 end
 
 % cross-cell phononic shield tokens. Additive and field-guarded: a caller that
@@ -195,6 +207,11 @@ if isfield(P,'asymCav') && P.asymCav && isfield(P,'PL')
     P.fileBase = [P.fileBase,'_'...
                   'nmL',num2str(P.PL.nholes-P.PL.ndef,'%.0f'),'_',...
                   'nwL',num2str(P.PL.wvgmir,'%.0f')];
+    if isfield(P.PL,'useManualGeom') && P.PL.useManualGeom
+        % left-half manual arrays: own hash, or two asymmetric runs that
+        % differ only on the left would share a fileBase
+        P.fileBase = [P.fileBase,'_mgL',manualGeomHash(P.PL)];
+    end
 end
 if isfield(P,'shave')
     P.fileBase = [P.fileBase,'_sh',num2str(P.shave*1e9,'%.0f'),'nm'];
@@ -213,4 +230,43 @@ if isfield(P,'filRad') && P.filRad > 0
     fBase = [fBase,'_Rfil_',num2str(P.filRad*1e9,'%.1f'),'nm'];
 end
 
+end
+
+% =========================================================================
+function h = manualGeomHash(P)
+%MANUALGEOMHASH  8-hex-digit FNV-1a hash of the manual hole arrays.
+%   Hashes P.a_hole, P.hx_hole, P.hy_hole (the arrays CreateNanobeamGeom reads
+%   when P.useManualGeom = 1) printed in nm to 0.001 nm, so edits below 1 pm
+%   keep the same name. a_hole(1) is left out when P.holeatctr = 1, where the
+%   builder does not use it. With P.useManualWvgMir = 1 and P.wvgmir > 0 the
+%   end-taper arrays P.a_wvgmir/hx_wvgmir/hy_wvgmir are hashed too; without
+%   them the string, and so the token, is what it was before. Pure
+%   arithmetic: the same arrays give the same token on every machine and
+%   MATLAB release.
+if ~all(isfield(P,{'a_hole','hx_hole','hy_hole'}))
+    error('CreateFileBase:manualGeom',...
+        'P.useManualGeom = 1 requires P.a_hole, P.hx_hole and P.hy_hole.');
+end
+aH = P.a_hole(:)';
+if isfield(P,'holeatctr') && P.holeatctr
+    aH = aH(2:end);
+end
+str = [sprintf('%.3f,',aH*1e9),';',...
+       sprintf('%.3f,',P.hx_hole(:)'*1e9),';',...
+       sprintf('%.3f,',P.hy_hole(:)'*1e9)];
+if isfield(P,'useManualWvgMir') && P.useManualWvgMir && ...
+        isfield(P,'wvgmir') && P.wvgmir > 0
+    if ~all(isfield(P,{'a_wvgmir','hx_wvgmir','hy_wvgmir'}))
+        error('CreateFileBase:manualWvgMir',...
+            'P.useManualWvgMir = 1 requires P.a_wvgmir, P.hx_wvgmir and P.hy_wvgmir.');
+    end
+    str = [str,';w',sprintf('%.3f,',P.a_wvgmir(:)'*1e9),';',...
+           sprintf('%.3f,',P.hx_wvgmir(:)'*1e9),';',...
+           sprintf('%.3f,',P.hy_wvgmir(:)'*1e9)];
+end
+hv = uint64(2166136261);                        % FNV-1a 32-bit offset basis
+for c = uint64(str)
+    hv = mod(bitxor(hv,c)*uint64(16777619),uint64(4294967296));
+end
+h = sprintf('%08x',hv);
 end
