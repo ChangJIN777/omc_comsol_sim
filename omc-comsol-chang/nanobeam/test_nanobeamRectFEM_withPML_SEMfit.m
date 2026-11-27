@@ -4,7 +4,7 @@ clear all; close all; clc
 
 %% geometry parameters
 % unit cell params
-P.xsect = 'rect';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
+P.xsect = 'isoFit';                       % beam cross sectional shape - 'tri' or 'rect' or 'isoFit'
 P.celltype = 'hole';                    % specify what type of unit cells we are simulating
 P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
@@ -12,7 +12,7 @@ P.anisoMat = 1;
 P.a = 529e-9;                           % nominal lattice constant
 P.w = 767.5e-9;                           % beam width
 P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 327e-9;                          % beam thickness
+P.th = 327e-9+P.w/(2*sqrt(3));                          % beam thickness
 P.hx = 197e-9;                          % nominal hole height (along x-axis)
 P.hy = 578e-9;                          % nominal hole width (along y-axis)
 % fit the sem of the fabricated omc 
@@ -186,7 +186,7 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC (asymCav = 1 forces 0)
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 9e9;                           % target mechanical frequency
+P.freq = 7e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
@@ -239,7 +239,7 @@ P.max_dof = 5e6;                        % max # of degrees of freedom
 %% single run
 % data location to save files in
 currentDate = datestr(now,'mmddyyyy');
-datLoc = [fullfile('.','test','1D_OMC_hole',currentDate),filesep];
+datLoc = [fullfile('.','test','1D_OMC_hole_isoFit',currentDate),filesep];
 [ds,model] = RunNanobeamFEM(P,datLoc);
 
 
