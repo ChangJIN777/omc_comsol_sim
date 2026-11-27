@@ -172,13 +172,13 @@ defectAspectRatio_0 = dARofOblong(oblong_0, maxdef_0, mirrorAspectRatio); % 3.14
 % (0.35 nm margin), but it stops 0.5 below the start design; [-3, 3] gives
 % 91.7 %, [-5, 2] 89.1 %.
 OPT.oblong_min = -4;
-OPT.oblong_max = 2.5;
+OPT.oblong_max = 4;
 
 % --- maxdef box constraints (dimensionless, 0-<1) ---
 % Absolute, not fractions of maxdef_0, so the box does not move if the start
 % point is retuned.
-OPT.maxdef_min = 0.05;
-OPT.maxdef_max = 0.30;
+OPT.maxdef_min = 0.01;
+OPT.maxdef_max = 0.50;
 
 % --- target mechanical frequency (solver eigen-shift, P.freq) ---
 OPT.targetFreq = 7e9;      % Hz  (test_nanobeamRibFEM.m)
@@ -221,7 +221,7 @@ OPT.optimizer = 'bayesopt';
 %                remote workstation cannot be launched by MATLAB).
 OPT.useStore     = 1;
 OPT.storeBackend = 'jsonl';
-OPT.runId        = 'ribOblongMaxdef_trial1';
+OPT.runId        = 'ribOblongMaxdef_trial4';
 OPT.dbPath       = fullfile('.', 'test', '1D_OMC_rib', 'optim_runs.sqlite3');
 OPT.resume       = 1;
 
@@ -242,7 +242,7 @@ OPT.dryRun = 0;
 % maxEvals is the TOTAL size of the study, and points seeded from the store
 % COUNT AGAINST IT. To extend a finished study, raise maxEvals. Every point
 % not served from the store is a full COMSOL solve, so time one first.
-OPT.bo.maxEvals       = 80;
+OPT.bo.maxEvals       = 100;
 OPT.bo.numSeedPoints  = 10;
 OPT.bo.acquisition    = 'expected-improvement-plus';
 % FALSE on purpose: adaptive meshing (P.mAdjMesh / P.oAdjMesh) makes a
@@ -339,7 +339,7 @@ P.ncellHalf = 30;
 P.ribatctr  = 1;    % rib at the cavity centre
 P.ndef      = 7;
 P.maxdef    = maxdef_0;     % start value - overwritten every evaluation
-P.taperFunc = 'quadratic';
+P.taperFunc = 'cubic';
 P.taperConvention = 'centerspacing';
 P.ribTaperScheme  = 'hole';     % required: this is what P.oblong acts on
 P.oblong    = oblong_0;     % start value - overwritten every evaluation

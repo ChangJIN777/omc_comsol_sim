@@ -61,7 +61,7 @@ P.taperConvention = 'centerspacing';    % 'centerspacing' (default, CreateNanobe
 % Validity: t_k < a_k, t_k > 2*r2, w_k > s + 2*(r1 + r2), checked by
 % validateRibParams (createRibCavityGeom errors before COMSOL starts).
 P.ribTaperScheme = 'hole';              % 'rib' | 'hole'
-P.oblong = 1;                         % hole scheme only (default 2.7)
+P.oblong = -1;                         % hole scheme only (default 2.7)
 
 P.lambda = 1550e-9;                      % target optical wavelength (template optical
                                         % eigen-shift 400 THz)
@@ -95,7 +95,7 @@ P.mevenz = 1;                           % +/-1 to find even/odd mode about z; 0 
                                         % shared: mevenz and oevenz must be 0 together
 P.freq = 7e9;                        % target mechanical frequency (template eigen-shift)
 P.mneigs = 20;                          % # of eigenvalues to find
-P.mMesh = 3;                            % mesh quality for mechanical simulations
+P.mMesh = 2;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
 P.mEndBC = 'lowreflecting';             % beam-end BC: 'lowreflecting' (template) or 'fixed'
 
@@ -110,7 +110,7 @@ P.oeveny = -1;                          % -1 == TE-like
 P.oevenz = 1;                           % +/-1 to find even/odd optical mode about z;
                                         % 0 = no z symmetry (reference obevenz = 0)
 P.oneigs = 1;                           % # of eigenvalues to find
-P.oMesh = 3;                            % mesh quality for optical simulations
+P.oMesh = 2;                            % mesh quality for optical simulations
 P.oAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
 P.airrad = 3.1e-6;                      % air-cylinder radius (template)
 P.airZOffset = 0;                       % cylinder axis above the beam mid-plane: 0 =
@@ -128,7 +128,7 @@ P.ySlc = 0;
 P.zSlc = 0;
 
 %% Simulation settings
-P.max_dof = 5e6;                        % max # of degrees of freedom
+P.max_dof = 10e7;                        % max # of degrees of freedom
 
 %% pre-flight (pure MATLAB): the 'cellwidth' taper must reproduce the template
 % Cell centres read off the template's feature tags (finalunion_<x_nm>_<k>).
