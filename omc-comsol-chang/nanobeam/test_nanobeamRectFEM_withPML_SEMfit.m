@@ -10,9 +10,9 @@ P.beamMat = 'diamond';                  % beam material name
 P.anisoMat = 1;
 
 P.a = 529e-9;                           % nominal lattice constant
-P.w = 767.5e-9;                           % beam width
-P.theta = 45;                           % etch angle in degrees (no effect for rect cross section)
-P.th = 327e-9+P.w/(2*sqrt(3));                          % beam thickness
+P.w = 711.76e-9;                           % beam width
+P.theta = 30;                           % etch angle in degrees (no effect for rect cross section)
+P.th = 310.75e-9+P.w/(2*sqrt(3));                          % beam thickness
 P.hx = 197e-9;                          % nominal hole height (along x-axis)
 P.hy = 578e-9;                          % nominal hole width (along y-axis)
 % fit the sem of the fabricated omc 
@@ -80,7 +80,7 @@ if P.useManualGeom
     if isempty(scriptDir)
         scriptDir = pwd;                % e.g. run as a section
     end
-    P.semFile = fullfile(scriptDir,'SEM_data','omc_v2_dose430_a0MN3w1.csv');
+    P.semFile = fullfile(scriptDir,'SEM_data','omc_v2_dose460_a0MN3w1.csv');
     P.semCenterHole = [];               % file hole index of the cavity centre; [] = from hx/hy symmetry
     P.semHalf = 'both';                 % 'both' (asymCav = 1) | 'average' | 'right' | 'left'
     P.semEndTaper = 'holes';            % one-sided end taper: 'holes' | 'wvgmir' | 'drop'
@@ -168,7 +168,7 @@ P.extractLocMechModes = 1;              % if we are filtering mode based on how 
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
-P.solveOpt = 0;                         % 1 to solve for optics
+P.solveOpt = 1;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
 P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 1;                     % 1 to solve for mechanical Q (future implementation)
@@ -186,7 +186,7 @@ P.plotStrCpl = 1*P.calcS;               % 1 to plot strain coupling profile
 P.mevenx = 1;                           % +/-1 to find even/odd mode about x; 0 for fixed BC (asymCav = 1 forces 0)
 P.meveny = 1;                           % +/-1 to find even/odd mode about y
 P.mevenz = 1;                           % +/-1 to find even/odd mode about z
-P.freq = 7e9;                           % target mechanical frequency
+P.freq = 8e9;                           % target mechanical frequency
 P.mneigs = 20;                          % # of eignevalues to find
 P.mMesh = 1;                            % mesh quality for mechanical simulations
 P.mAdjMesh = 1;                         % adjust mesh if DOFs exceed max_dof
