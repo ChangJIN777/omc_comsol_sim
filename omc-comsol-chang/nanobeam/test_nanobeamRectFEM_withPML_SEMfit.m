@@ -80,7 +80,7 @@ if P.useManualGeom
     if isempty(scriptDir)
         scriptDir = pwd;                % e.g. run as a section
     end
-    P.semFile = fullfile(scriptDir,'SEM_data','omc_v2_dose460_a0MN3w1.csv');
+    P.semFile = fullfile(scriptDir,'SEM_data','omc_v2_dose470_a2MN3w0.csv');
     P.semCenterHole = [];               % file hole index of the cavity centre; [] = from hx/hy symmetry
     P.semHalf = 'both';                 % 'both' (asymCav = 1) | 'average' | 'right' | 'left'
     P.semEndTaper = 'holes';            % one-sided end taper: 'holes' | 'wvgmir' | 'drop'
@@ -168,7 +168,7 @@ P.extractLocMechModes = 1;              % if we are filtering mode based on how 
 
 %% specify simulation/calculation/plot/save options
 P.solveMech = 1;                        % 1 to solve for mechanics
-P.solveOpt = 1;                         % 1 to solve for optics
+P.solveOpt = 0;                         % 1 to solve for optics
 P.calcG = 1*(P.solveMech && P.solveOpt);% 1 to calculate optomechanical coupling
 P.calcS = 0*P.solveMech;                % 1 to calculate strain coupling
 P.solveMechPML = 1;                     % 1 to solve for mechanical Q (future implementation)
